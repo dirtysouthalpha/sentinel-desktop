@@ -17,6 +17,22 @@ pydantic>=2.0.0
 # Screen analysis (optional but recommended)
 opencv-python>=4.8.0
 
+# Fast multi-monitor capture (optional — falls back to pyautogui)
+mss>=9.0.0
+
+# Global Esc-x3 failsafe hotkey (optional — agent runs without it)
+keyboard>=0.13.5
+
+# OCR for click_text / read_text (optional — also requires the Tesseract binary)
+# Windows install: choco install tesseract  OR  download from https://github.com/UB-Mannheim/tesseract
+pytesseract>=0.3.10
+
+# Native Windows accessibility (optional — enables click_control / set_text / list_controls)
+uiautomation>=2.0.18; sys_platform == "win32"
+
+# System-tray support (optional — enables minimize-to-tray + background mode)
+pystray>=0.19.5
+
 # Windows-specific
 pygetwindow>=0.0.9
 pywin32>=306; sys_platform == "win32"

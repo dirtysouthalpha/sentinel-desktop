@@ -16,15 +16,21 @@ Give it a goal in plain English. It sees your screen, moves the mouse, types, an
 ## Features
 
 - 🤖 **Vision-driven agent loop** — screenshots → LLM → action → verify → repeat
-- 🖱️ **Full desktop control** — mouse, keyboard, clipboard, file I/O
-- 🪟 **Window management** — focus, close, list, resize windows
-- 📸 **Screen analysis** — template matching, OCR-ready screenshots
-- 🔌 **16+ LLM providers** — OpenAI, Anthropic, Google, Azure, Ollama, LM Studio, and more
-- 🌐 **Three modes** — GUI, headless API, CLI
-- 🔒 **MSP-grade safety** — approval mode, sensitive field protection, tenant lockdown
-- 📝 **Forensic logging** — every action logged with timestamps
-- 🎨 **Dark theme** — customtkinter with midnight/ocean/ember themes
-- 📡 **WebSocket live feed** — real-time status updates
+- 🖱️ **Full desktop control** — mouse, keyboard, clipboard, file I/O, multi-monitor screenshots
+- 👁️ **OCR-aware** — `click_text` and `read_text` use Tesseract to locate and read on-screen text
+- 🪟 **UIAutomation** — `click_control` / `set_text` / `list_controls` drive native Windows controls by accessibility name (the desktop analogue of CSS selectors)
+- 🎯 **Animated cursor overlay** — glides to each action location, pulses, then fades — just like Sentinel Override's operator cursor
+- 🔌 **20+ LLM providers** with native tool/function calling — OpenAI (ChatGPT), Anthropic (Claude), Google Gemini, xAI Grok, DeepSeek, OpenRouter, Groq, Mistral, Together, Fireworks, Cerebras, Perplexity, **Z.ai (GLM-5 / coding plan)**, **MiniMax**, **Moonshot (Kimi)**, **Qwen (Alibaba)**, **Cohere**, **NVIDIA NIM**, **HuggingFace**, **GitHub Models**, **DeepInfra**, Azure OpenAI, Ollama (local), LM Studio (local), and any OpenAI-compatible custom endpoint
+- 🌐 **Three modes** — GUI, headless API, CLI (`--dry-run` flag to preview without acting)
+- 🔒 **Safety stack** — approval gate per state-changing action, Esc-x3 panic stop, sensitive-field filter, tenant lockdown, dry-run
+- 🔁 **Retry/backoff** on transient LLM errors with friendly error messages
+- 📝 **Forensic logging** — structured per-step audit trail with JSON/CSV export
+- 💾 **Checkpoint & Resume** — auto-saves state every 5 steps; resume after crash or close
+- ⌨️ **Command palette (Ctrl+K)** — fuzzy-search commands, themes, settings
+- 🎨 **14 themes** — Midnight, Dark, Matrix, Tron, Cyberpunk, Neon, Terminal, Blood, Ocean, Light, Sunset, Paper, Forest, Mono
+- 🖥️ **Virtual Desktop isolation** — agent operates on its own Windows desktop, never interrupts the user
+- 🥷 **Stealth input** — PostMessage / UIAInvoke for non-interrupting actions (no mouse/keyboard hijack)
+- 📡 **WebSocket live feed** — every step broadcast to connected clients
 
 ## Quick Start
 
@@ -40,9 +46,23 @@ python main.py --api --port 8091
 
 # Run single command
 python main.py -c "Open Notepad and type Hello World"
+
+# Dry-run (logs state-changing actions instead of executing them)
+python main.py --dry-run -c "Open Notepad and type Hello World"
 ```
 
 Or on Windows: double-click `install_and_run.bat`
+
+## Safety hotkeys
+
+Press **Esc three times within 1.5 seconds** to immediately stop the agent. This works globally and is independent of pyautogui's move-to-corner failsafe. Requires the optional `keyboard` package (installed by default).
+
+## Testing
+
+```bash
+pip install pytest
+pytest -v
+```
 
 ## Configuration
 
@@ -98,7 +118,12 @@ The agent can perform these actions:
 | Action | Description |
 |--------|-------------|
 | `click` | Click at screen coordinates |
+| `click_text` | OCR the screen, find visible text, click it (requires Tesseract) |
 | `click_image` | Find and click a template image |
+| `click_control` | Click a native Windows control by accessibility name (requires uiautomation) |
+| `list_controls` | Enumerate accessible controls (buttons, edits, menus) in a window |
+| `set_text` | Deterministically set the value of an editable control |
+| `read_text` | OCR the entire screen and return its text |
 | `type_text` | Type text character by character |
 | `press_key` | Press a single key |
 | `hotkey` | Press key combination |
@@ -150,11 +175,16 @@ sentinel-desktop/
 
 ## Safety
 
-- **Approval mode**: Every action requires user confirmation before execution
-- **Sensitive field protection**: Won't type into password/credential fields
+- **Approval mode**: Every state-changing action requires user confirmation before execution (Approve / Reject dialog in the GUI)
+- **Dry-run mode**: `--dry-run` logs every action it _would_ take without actually clicking or typing
+- **Esc x3 failsafe**: Three rapid Esc presses stop the agent immediately, globally
+- **pyautogui corner failsafe**: Move mouse to a screen corner to abort
+- **Sensitive field protection**: Won't type strings that look like passwords or credentials
 - **Tenant lockdown**: Restrict file access to tenant-scoped paths
-- **Failsafe**: Move mouse to screen corner to abort (pyautogui built-in)
 - **Step budget**: Agent stops after N actions (configurable, default 100)
+- **Bounded conversation**: Old screenshots are pruned from the LLM context so token cost stays predictable
+- **LLM retry/backoff**: Transient 429/5xx errors retry with exponential backoff
+- **API auth**: Set `SENTINEL_API_TOKEN` to require `Authorization: Bearer <token>` on every endpoint
 - **Forensic log**: Every action logged with timestamp, params, and result
 
 ## Companion Projects

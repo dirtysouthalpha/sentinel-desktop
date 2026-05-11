@@ -15,6 +15,10 @@ from core import process_manager as pm
 from core import file_ops
 from core import clipboard as clip
 from core import system_info as sysinfo
+from core import ocr
+from core import ui_tree
+from core import launcher
+from core import stealth_input
 from core.screenshot import capture_screen, capture_to_base64, find_template, wait_for_template
 
 logger = logging.getLogger(__name__)
@@ -25,17 +29,48 @@ SENSITIVE_FIELDS = [
     "credit_card", "ssn", "social_security", "pin",
 ]
 
+# Actions that *change state* on the user's machine. In dry-run mode these
+# are logged instead of executed. Read-only actions (screenshot, find_image,
+# list_*, system_info, read_file, clipboard_read, note) still run for real
+# so the agent can observe.
+STATE_CHANGING_ACTIONS = {
+    "click", "click_text", "click_image", "click_control",
+    "type_text", "set_text", "press_key", "hotkey", "scroll", "drag",
+    "open_app", "smart_open", "start_process", "close_app", "kill_process",
+    "focus_window", "close_window", "write_file", "clipboard_write",
+}
+
 
 class ActionExecutor:
     """Execute desktop actions returned by the LLM."""
 
-    def __init__(self, approval_callback: Optional[Callable] = None):
+    def __init__(self, approval_callback: Optional[Callable] = None,
+                 dry_run: bool = False,
+                 pre_action_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+                 click_offset: tuple = (0, 0),
+                 monitor: Optional[int] = None,
+                 stealth: bool = False):
         """
         Args:
             approval_callback: Async callable(action_dict) → bool.
                 If provided, actions are sent for approval before execution.
+            dry_run: When True, state-changing actions are logged but not
+                executed. Useful for safely testing prompts.
+            pre_action_callback: Optional sync callable(action_dict) invoked
+                immediately before each action is dispatched. Used by the GUI
+                to flash an on-screen overlay over the target location.
+            click_offset: (x, y) screen-coord offset of the captured image's
+                origin. Required for multi-monitor mode where the virtual
+                desktop top-left may have negative coords. Defaults to (0, 0).
         """
         self.approval_callback = approval_callback
+        self.dry_run = dry_run
+        self.pre_action_callback = pre_action_callback
+        self.click_offset = click_offset
+        self.monitor = monitor
+        # stealth: don't move the cursor / keyboard if False routes via win32
+        # PostMessage / UIA Invoke. Falls back to physical input on failure.
+        self.stealth = bool(stealth)
         self._desktop = desktop_mod.DesktopEngine()
         self._log: List[Dict[str, Any]] = []
 
@@ -63,6 +98,19 @@ class ActionExecutor:
                 self._log_entry(action_type, params, result)
                 return result
 
+        # Pre-action hook (overlay etc.).
+        if self.pre_action_callback is not None:
+            try:
+                self.pre_action_callback(action)
+            except Exception as exc:
+                logger.debug("pre_action_callback failed: %s", exc)
+
+        # Dry-run short-circuit
+        if self.dry_run and action_type in STATE_CHANGING_ACTIONS:
+            result = _dry_run_result(action_type, params)
+            self._log_entry(action_type, params, result)
+            return result
+
         # Dispatch
         handler = self._dispatch_table.get(action_type)
         if handler:
@@ -86,6 +134,19 @@ class ActionExecutor:
         """Synchronous wrapper — executes action directly (no event loop needed)."""
         action_type = action.get("action", "").lower()
         params = {k: v for k, v in action.items() if k != "action"}
+
+        # Pre-action hook (overlay etc.). Never let UI failures block the agent.
+        if self.pre_action_callback is not None:
+            try:
+                self.pre_action_callback(action)
+            except Exception as exc:
+                logger.debug("pre_action_callback failed: %s", exc)
+
+        # Dry-run short-circuit
+        if self.dry_run and action_type in STATE_CHANGING_ACTIONS:
+            result = _dry_run_result(action_type, params)
+            self._log_entry(action_type, params, result)
+            return result
 
         handler = self._dispatch_table.get(action_type)
         if handler:
@@ -113,16 +174,182 @@ class ActionExecutor:
     # -------------------------------------------------------------------
     # Action handlers (sync — wrapped by execute())
     # -------------------------------------------------------------------
-    def _click(self, *, x: int, y: int, button: str = "left", **_) -> Dict:
-        self._desktop.click(x, y, button=button)
-        return {"success": True, "output": f"Clicked ({x}, {y})"}
+    def _click(self, *, x: int, y: int, button: str = "left", **_) -> Dict[str, Any]:
+        # Translate from captured-image coords to absolute screen coords for
+        # multi-monitor virtual-desktop capture.
+        sx = int(x) + self.click_offset[0]
+        sy = int(y) + self.click_offset[1]
+        # In stealth mode, try the no-cursor-move path first.
+        if self.stealth and stealth_input.is_available():
+            if stealth_input.post_click(sx, sy, button=button):
+                return {"success": True, "output": f"Clicked ({sx}, {sy}) — stealth"}
+            # PostMessage failed; fall through to physical click.
+        self._desktop.click(sx, sy, button=button)
+        return {"success": True, "output": f"Clicked ({sx}, {sy})"}
 
-    def _click_text(self, *, text: str, **_) -> Dict:
-        # Text clicking relies on OCR which is not always available;
-        # the LLM should use screenshot + coordinates instead.
-        return {"success": False, "output": "click_text requires OCR — use click with coordinates from screenshot", "error": "not_implemented"}
+    def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_) -> Dict:
+        """OCR-backed click: locate visible text and click its centre."""
+        pos = ocr.find_text(text, fuzzy=fuzzy)
+        if pos is None:
+            return {
+                "success": False,
+                "output": (
+                    f"Text {text!r} not found on screen (or Tesseract OCR "
+                    "is not installed)."
+                ),
+                "error": "text_not_found",
+            }
+        x, y = pos
+        sx = x + self.click_offset[0]
+        sy = y + self.click_offset[1]
+        # Stealth path: send the click via Win32 PostMessage so the cursor
+        # stays put while the user keeps using their mouse/keyboard.
+        if self.stealth and stealth_input.is_available():
+            if stealth_input.post_click(sx, sy, button=button):
+                return {
+                    "success": True,
+                    "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
+                    "position": [sx, sy],
+                }
+        self._desktop.click(sx, sy, button=button)
+        return {"success": True, "output": f"Clicked text {text!r} at ({sx}, {sy})", "position": [sx, sy]}
+
+    def _read_text(self, *, scope: str = "focused", window: Optional[str] = None, **_) -> Dict:
+        """OCR text from the screen.
+
+        Args:
+            scope: ``"focused"`` (default) reads only the foreground window —
+                far more useful than full-screen OCR on multi-monitor setups
+                where the screen contains many apps. ``"all"`` reads the
+                entire screen / virtual desktop.
+            window: When provided, OCR a specific window by partial title
+                match (overrides ``scope``).
+        """
+        if window:
+            text = ocr.read_window_text(window)
+            origin = f"window {window!r}"
+        elif scope == "all":
+            text = ocr.read_screen_text()
+            origin = "full screen"
+        else:
+            text, title = ocr.read_focused_window_text_with_title()
+            origin = f"focused window: {title!r}" if title else "focused window"
+        if not text:
+            return {
+                "success": False,
+                "output": f"No text found in {origin} (or Tesseract OCR unavailable)",
+                "error": "ocr_unavailable",
+            }
+        result = {
+            "success": True,
+            "output": text[:8000],
+            "length": len(text),
+            "source": origin,
+        }
+        # Flag suspect output so the LLM knows to trust the screenshot over
+        # this garbled text. The prompt teaches it how to react.
+        if ocr.looks_low_confidence(text):
+            result["low_confidence"] = True
+            result["hint"] = (
+                "OCR output looks garbled. Trust the screenshot vision "
+                "instead — read content directly from the image and act on "
+                "coordinates rather than OCR text."
+            )
+        return result
+
+    def _read_window(self, *, title: str, **_) -> Dict:
+        """OCR a specific window by partial title match — convenience for the LLM."""
+        text = ocr.read_window_text(title)
+        if not text:
+            return {
+                "success": False,
+                "output": f"Window {title!r} not found or contained no text",
+                "error": "window_not_found",
+            }
+        result = {"success": True, "output": text[:8000], "length": len(text), "window": title}
+        if ocr.looks_low_confidence(text):
+            result["low_confidence"] = True
+            result["hint"] = (
+                "OCR output looks garbled. Read content from the screenshot "
+                "directly and act on coordinates instead of relying on this text."
+            )
+        return result
+
+    # ---- UIAutomation handlers ---------------------------------------
+
+    def _click_control(self, *, name: Optional[str] = None,
+                       automation_id: Optional[str] = None,
+                       control_type: Optional[str] = None,
+                       window_title: Optional[str] = None,
+                       button: str = "left", **_) -> Dict:
+        """Click a native Windows control by its accessibility name/id/type."""
+        pos = ui_tree.click_control(
+            name=name, automation_id=automation_id,
+            control_type=control_type, window_title=window_title,
+            button=button,
+        )
+        if pos is None:
+            return {
+                "success": False,
+                "output": (
+                    f"No control matched (name={name!r}, automation_id={automation_id!r}, "
+                    f"control_type={control_type!r}). UIAutomation may be unavailable."
+                ),
+                "error": "control_not_found",
+            }
+        return {"success": True, "output": f"Clicked control at {pos}", "position": list(pos)}
+
+    def _list_controls(self, *, window_title: Optional[str] = None,
+                       max_results: int = 60, **_) -> Dict:
+        """List accessible controls in a window for the LLM to choose from."""
+        controls = ui_tree.list_controls(window_title=window_title, max_results=max_results)
+        if not controls:
+            return {
+                "success": False,
+                "output": "UIAutomation unavailable or window has no controls",
+                "error": "uia_unavailable",
+            }
+        # Trim to what's useful for the LLM (drop offscreen controls, big text).
+        slim = [
+            {
+                "name": c["name"][:120],
+                "control_type": c["control_type"],
+                "automation_id": c["automation_id"],
+                "x": c["x"], "y": c["y"],
+                "width": c["width"], "height": c["height"],
+            }
+            for c in controls if not c.get("is_offscreen") and c.get("is_enabled", True)
+        ]
+        return {"success": True, "output": slim, "count": len(slim)}
+
+    def _set_text(self, *, text: str,
+                  name: Optional[str] = None,
+                  automation_id: Optional[str] = None,
+                  window_title: Optional[str] = None, **_) -> Dict:
+        """Set the value of a named edit/textbox control deterministically."""
+        if _contains_sensitive(text):
+            return {"success": False, "output": "Blocked: text appears sensitive", "error": "sensitive_field"}
+        ok = ui_tree.set_text(
+            text, name=name, automation_id=automation_id, window_title=window_title,
+        )
+        if not ok:
+            return {
+                "success": False,
+                "output": f"No editable control matched (name={name!r}).",
+                "error": "control_not_found",
+            }
+        return {"success": True, "output": f"Set text on {name or automation_id!r}"}
 
     def _click_image(self, *, template_path: str, confidence: float = 0.8, **_) -> Dict:
+        # Find the template position; click via stealth if enabled so the
+        # cursor stays put.
+        if self.stealth and stealth_input.is_available():
+            pos = find_template(template_path, confidence)
+            if pos:
+                sx = pos[0] + self.click_offset[0]
+                sy = pos[1] + self.click_offset[1]
+                if stealth_input.post_click(sx, sy):
+                    return {"success": True, "output": f"Clicked template at ({sx},{sy}) — stealth"}
         found = self._desktop.click_image(template_path, confidence)
         return {"success": found, "output": f"Template {'found and clicked' if found else 'not found'}"}
 
@@ -130,23 +357,63 @@ class ActionExecutor:
         # Sensitive field check
         if _contains_sensitive(text):
             return {"success": False, "output": "Blocked: text appears to contain sensitive data", "error": "sensitive_field"}
+        if self.stealth and stealth_input.is_available():
+            if stealth_input.post_text(text):
+                return {"success": True, "output": f"Typed {len(text)} chars — stealth"}
         self._desktop.type_text(text)
         return {"success": True, "output": f"Typed {len(text)} characters"}
 
     def _press_key(self, *, key: str, **_) -> Dict:
+        if self.stealth and stealth_input.is_available():
+            if stealth_input.post_named_key(key):
+                return {"success": True, "output": f"Pressed {key} — stealth"}
         self._desktop.press_key(key)
         return {"success": True, "output": f"Pressed {key}"}
 
     def _hotkey(self, *, keys: list, **_) -> Dict:
+        if self.stealth and stealth_input.is_available():
+            if stealth_input.post_hotkey(keys):
+                return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
         self._desktop.hotkey(*keys)
         return {"success": True, "output": f"Hotkey: {'+'.join(keys)}"}
+
+    def _drag(self, *, from_x: int, from_y: int, to_x: int, to_y: int,
+              duration: float = 0.5, button: str = "left", **_) -> Dict:
+        sx, sy = self._apply_offset(from_x, from_y)
+        tx, ty = self._apply_offset(to_x, to_y)
+        if self.stealth and stealth_input.is_available():
+            # Stealth drag: PostMessage mouse_down at source, move events, mouse_up at dest
+            try:
+                import win32gui, win32api, win32con
+                hwnd = win32gui.WindowFromPoint((sx, sy))
+                cx, cy = win32gui.ScreenToClient(hwnd, (sx, sy))
+                cx2, cy2 = win32gui.ScreenToClient(hwnd, (tx, ty))
+                lparam_down = ((cy & 0xFFFF) << 16) | (cx & 0xFFFF)
+                lparam_up = ((cy2 & 0xFFFF) << 16) | (cx2 & 0xFFFF)
+                mk = win32con.MK_LBUTTON if button == "left" else win32con.MK_RBUTTON
+                win32api.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, mk, lparam_down)
+                # Simulate move events
+                steps = max(1, int(duration / 0.01))
+                for i in range(1, steps + 1):
+                    mx = int(cx + (cx2 - cx) * i / steps)
+                    my = int(cy + (cy2 - cy) * i / steps)
+                    lparam_move = ((my & 0xFFFF) << 16) | (mx & 0xFFFF)
+                    win32api.PostMessage(hwnd, win32con.WM_MOUSEMOVE, mk, lparam_move)
+                    import time as _t; _t.sleep(duration / steps)
+                win32api.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lparam_up)
+                return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y}) — stealth"}
+            except Exception as exc:
+                logger.debug("Stealth drag failed, falling back: %s", exc)
+        self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
+        return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
 
     def _scroll(self, *, amount: int, **_) -> Dict:
         self._desktop.scroll(amount)
         return {"success": True, "output": f"Scrolled {amount}"}
 
     def _screenshot(self, **_) -> Dict:
-        b64 = capture_to_base64()
+        # Honor the configured monitor so screenshots see every screen.
+        b64 = capture_to_base64(monitor=self.monitor)
         return {"success": True, "output": f"Screenshot captured ({len(b64)} chars base64)", "screenshot": b64}
 
     def _find_image(self, *, template_path: str, confidence: float = 0.8, **_) -> Dict:
@@ -154,6 +421,14 @@ class ActionExecutor:
         if pos:
             return {"success": True, "output": f"Found at ({pos[0]}, {pos[1]})", "position": list(pos)}
         return {"success": False, "output": "Image not found on screen"}
+
+    def _wait(self, *, seconds: float = 1.0, **_) -> Dict:
+        import time as _time
+        seconds = max(0.0, float(seconds))
+        # Cap the wait so a runaway LLM can't lock the agent for hours.
+        seconds = min(seconds, 60.0)
+        _time.sleep(seconds)
+        return {"success": True, "output": f"Waited {seconds}s"}
 
     def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_) -> Dict:
         pos = wait_for_template(template_path, float(timeout))
@@ -167,6 +442,10 @@ class ActionExecutor:
             return {"success": True, "output": f"Started process (pid {pid})"}
         return {"success": False, "output": "Failed to start process"}
 
+    def _smart_open(self, *, name: str, **_) -> Dict:
+        """Focus an existing window if the app is already running, else launch."""
+        return launcher.smart_open(name)
+
     def _close_app(self, *, name: str = None, pid: int = None, **_) -> Dict:
         target = pid or name
         if target is None:
@@ -177,6 +456,10 @@ class ActionExecutor:
     def _focus_window(self, *, title: str, **_) -> Dict:
         ok = wm.focus_window(title)
         return {"success": ok, "output": f"Window '{title}' {'focused' if ok else 'not found'}"}
+
+    def _close_window(self, *, title: str, **_) -> Dict:
+        ok = wm.close_window(title)
+        return {"success": ok, "output": f"Window '{title}' {'closed' if ok else 'not found'}"}
 
     def _list_windows(self, **_) -> Dict:
         windows = wm.list_windows()
@@ -238,16 +521,25 @@ class ActionExecutor:
         "click": _click,
         "click_text": _click_text,
         "click_image": _click_image,
+        "click_control": _click_control,
+        "list_controls": _list_controls,
+        "set_text": _set_text,
+        "read_text": _read_text,
+        "read_window": _read_window,
         "type_text": _type_text,
         "press_key": _press_key,
         "hotkey": _hotkey,
         "scroll": _scroll,
+        "drag": _drag,
         "screenshot": _screenshot,
         "find_image": _find_image,
+        "wait": _wait,
         "wait_for_image": _wait_for_image,
         "open_app": _open_app,
+        "smart_open": _smart_open,
         "close_app": _close_app,
         "focus_window": _focus_window,
+        "close_window": _close_window,
         "list_windows": _list_windows,
         "read_file": _read_file,
         "write_file": _write_file,
@@ -266,6 +558,16 @@ class ActionExecutor:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _dry_run_result(action_type: str, params: Dict) -> Dict:
+    """Return a synthetic success result for a state-changing action in dry-run mode."""
+    preview = ", ".join(f"{k}={v!r}" for k, v in list(params.items())[:4])
+    if len(preview) > 200:
+        preview = preview[:200] + "…"
+    msg = f"[DRY-RUN] would have run {action_type}({preview})"
+    logger.info(msg)
+    return {"success": True, "output": msg, "dry_run": True}
+
 
 def _contains_sensitive(text: str) -> bool:
     """Check if text looks like it contains sensitive data.

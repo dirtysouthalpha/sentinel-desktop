@@ -1,4 +1,5 @@
 """System information: CPU, memory, disk, network."""
+import os
 import psutil
 import platform
 import socket
@@ -23,7 +24,20 @@ def brief_system_info() -> str:
 def system_info() -> dict:
     """Return full system info as a dict."""
     mem = psutil.virtual_memory()
-    disk = psutil.disk_usage("/")
+    # On Windows, "/" is not a valid drive root — use the system drive instead.
+    if platform.system() == "Windows":
+        root = os.environ.get("SystemDrive", "C:") + "\\"
+    else:
+        root = "/"
+    try:
+        disk = psutil.disk_usage(root)
+    except Exception as exc:
+        logger.warning("disk_usage(%s) failed: %s", root, exc)
+
+        class _ZeroDisk:
+            total = used = 0
+            percent = 0.0
+        disk = _ZeroDisk()
     return {
         "os": f"{platform.system()} {platform.release()}",
         "hostname": socket.gethostname(),

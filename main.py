@@ -56,6 +56,14 @@ def parse_args():
         "--debug", action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Log state-changing actions instead of executing them",
+    )
+    parser.add_argument(
+        "--autonomous", action="store_true",
+        help="Skip every approval prompt and let the agent run uninterrupted",
+    )
     return parser.parse_args()
 
 
@@ -95,7 +103,7 @@ def run_api(host="0.0.0.0", port=8091):
     uvicorn.run(app, host=host, port=port, log_level="info")
 
 
-def run_cli(goal: str):
+def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False):
     """Execute a single goal and exit."""
     from config import Config
     from core.engine import AgentEngine
@@ -104,6 +112,12 @@ def run_cli(goal: str):
 
     config = Config()
     cfg = config.load()
+    if dry_run:
+        cfg["dry_run"] = True
+        logger.info("DRY-RUN mode: state-changing actions will be logged, not executed")
+    if autonomous:
+        cfg["autonomous"] = True
+        logger.info("AUTONOMOUS mode: no approval prompts")
     engine = AgentEngine(cfg)
 
     result = engine.run(goal)
@@ -126,8 +140,20 @@ def main():
     if args.api:
         run_api(host=args.host, port=args.port)
     elif args.command:
-        run_cli(args.command)
+        run_cli(args.command, dry_run=args.dry_run, autonomous=args.autonomous)
     else:
+        # Surface CLI flags to config so the GUI picks them up this session.
+        if args.dry_run or args.autonomous:
+            from config import Config
+            cfg = Config()
+            data = cfg.load()
+            if args.dry_run:
+                data["dry_run"] = True
+                logger.info("DRY-RUN mode enabled for this session")
+            if args.autonomous:
+                data["autonomous"] = True
+                logger.info("AUTONOMOUS mode enabled for this session")
+            cfg.save(data)
         run_gui()
 
 

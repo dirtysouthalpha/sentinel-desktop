@@ -35,6 +35,43 @@ DEFAULTS: Dict[str, Any] = {
     "api_port": 8091,
     "log_level": "INFO",
     "auto_screenshot": True,
+    # Monitor to capture. None = primary (pyautogui default), 0 = virtual
+    # union of all monitors (mss only), 1+ = specific monitor index.
+    # "auto" picks the monitor containing the focused window (recommended);
+    # 0 = virtual desktop union; 1+ = specific monitor index.
+    "monitor": "auto",
+    # How many screenshot messages stay in the LLM context at once.
+    "image_history": 3,
+    # Dry-run: state-changing actions log instead of executing.
+    "dry_run": False,
+    # Autonomous mode: skip every approval prompt and just let the agent run.
+    # The Esc-x3 failsafe and Stop button still work.
+    "autonomous": False,
+    # Stealth input: route clicks/typing through Win32 PostMessage + UIA
+    # Invoke instead of physical mouse/keyboard. Lets the user keep using
+    # their own input device while the agent works in the background.
+    # Falls back to physical input when the target app rejects synthesized
+    # messages (Chromium-based apps, games, etc.).
+    "stealth_input": False,
+    # LLM retry policy.
+    "llm_max_retries": 3,
+    "llm_retry_base_delay": 1.0,
+    # Use native LLM tool/function calling when the provider supports it.
+    # Falls back to JSON-in-text parsing for providers that don't.
+    "use_tools": True,
+    # Up to 10 most recent goals; populated by the GUI as the user runs them.
+    "recent_prompts": [],
+    # Common prompt presets the user can launch from a chip button.
+    "quick_actions": [
+        "Take a screenshot and describe what you see, then finish.",
+        "List all my open windows.",
+        "Read my clipboard and tell me what's in it.",
+        "What's currently focused on my screen?",
+    ],
+    # If True, the GUI hides to the system tray when minimized (requires
+    # the optional pystray dependency).
+    "minimize_to_tray": False,
+    "start_in_tray": False,
 }
 
 # ---------------------------------------------------------------------------

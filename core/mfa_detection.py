@@ -1,0 +1,677 @@
+"""
+Sentinel Desktop v2 — MFA / UAC / credential prompt detector.
+
+Detects multi-factor authentication, User Account Control, and credential
+dialogs on the Windows desktop and signals the agent to pause until the user
+handles them. This is the desktop equivalent of Sentinel Override's MFA
+auto-pause feature.
+
+Detection strategy (first match wins):
+  1. **Window title check** — scan for known auth dialog titles.
+  2. **OCR text check** — run pytesseract on the screenshot and match
+     MFA / UAC / credential text patterns.
+  3. **UIA check** — walk the accessibility tree for password edit controls
+     or text elements that match auth prompts.
+
+Thread-safe. Graceful no-op on non-Windows. Uses only PIL for screenshot
+analysis, pytesseract for OCR (optional), and uiautomation for UIA (optional).
+"""
+
+from __future__ import annotations
+
+import logging
+import platform
+import threading
+import time
+from dataclasses import dataclass, field
+from typing import Callable, List, Optional, Tuple
+
+from PIL import Image
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Platform gate
+# ---------------------------------------------------------------------------
+
+_IS_WINDOWS = platform.system() == "Windows"
+
+# ---------------------------------------------------------------------------
+# Integration constants
+# ---------------------------------------------------------------------------
+
+# (title_substring, detection_type)
+AUTH_WINDOW_TITLES: List[Tuple[str, str]] = [
+    ("Windows Security", "credential"),
+    ("User Account Control", "uac"),
+    ("UAC", "uac"),
+    ("Enter your password", "credential"),
+    ("Verify your identity", "mfa"),
+    ("Sign in", "credential"),
+    ("Microsoft account", "credential"),
+    ("Two-factor authentication", "2fa"),
+    ("2FA", "2fa"),
+    ("Enter the code", "2fa"),
+    ("Authentication required", "mfa"),
+    ("Windows Hello", "pin"),
+    ("Security verification", "mfa"),
+    ("Credential Manager", "credential"),
+    ("Enter credentials", "credential"),
+    ("PIN", "pin"),
+]
+
+# Generic substrings — if *any* window title contains these, classify.
+_GENERIC_TITLE_KEYWORDS: List[Tuple[str, str]] = [
+    ("credential", "credential"),
+    ("authentication", "mfa"),
+]
+
+# (pattern_text, detection_type)
+MFA_PATTERNS: List[Tuple[str, str]] = [
+    ("verify your identity", "mfa"),
+    ("enter the code", "2fa"),
+    ("approve sign-in", "mfa"),
+    ("approve the request", "mfa"),
+    ("6-digit code", "2fa"),
+    ("authenticator app", "mfa"),
+    ("otp", "mfa"),
+    ("one-time password", "mfa"),
+    ("do you want to allow", "uac"),
+    ("user account control", "uac"),
+    ("enter your password", "credential"),
+    ("authentication required", "mfa"),
+    ("security verification", "mfa"),
+    ("two-step verification", "mfa"),
+    ("two-factor authentication", "2fa"),
+    ("enter your pin", "pin"),
+    ("windows hello", "pin"),
+    ("sign-in attempt", "mfa"),
+    ("unusual sign-in", "mfa"),
+    ("push notification", "mfa"),
+]
+
+# Keywords that strongly indicate a UAC prompt specifically.
+UAC_KEYWORDS: List[str] = [
+    "user account control",
+    "do you want to allow",
+    "uac",
+    "allow this app to make changes",
+    "do you want to allow this app",
+    "windows needs your permission",
+    "an unidentified program wants access",
+]
+
+# ---------------------------------------------------------------------------
+# Optional-dependency probes
+# ---------------------------------------------------------------------------
+
+_TESSERACT_OK: Optional[bool] = None
+_pytesseract = None  # type: ignore[assignment]
+
+
+def _have_tesseract() -> bool:
+    """Lazily probe for pytesseract + Tesseract binary."""
+    global _TESSERACT_OK, _pytesseract
+    if _TESSERACT_OK is not None:
+        return _TESSERACT_OK
+    try:
+        import pytesseract  # type: ignore
+        pytesseract.get_tesseract_version()
+        _pytesseract = pytesseract
+        _TESSERACT_OK = True
+    except Exception as exc:
+        logger.debug("MFA OCR tier disabled — pytesseract unavailable (%s)", exc)
+        _TESSERACT_OK = False
+    return _TESSERACT_OK
+
+
+_UIA_AVAILABLE: Optional[bool] = None
+_auto = None  # uiautomation module ref
+
+
+def _have_uia() -> bool:
+    """Lazily probe for the *uiautomation* package."""
+    global _UIA_AVAILABLE, _auto
+    if _UIA_AVAILABLE is not None:
+        return _UIA_AVAILABLE
+    try:
+        import uiautomation as auto  # type: ignore
+        _auto = auto
+        _UIA_AVAILABLE = True
+    except Exception as exc:
+        logger.debug("MFA UIA tier disabled — uiautomation unavailable (%s)", exc)
+        _UIA_AVAILABLE = False
+    return _UIA_AVAILABLE
+
+
+# ---------------------------------------------------------------------------
+# DetectionResult
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class DetectionResult:
+    """Represents the outcome of an MFA / UAC / credential detection pass.
+
+    Attributes:
+        detected: Whether an auth prompt was found.
+        type: Detection category — ``"mfa"`` | ``"uac"`` | ``"credential"``
+              | ``"2fa"`` | ``"pin"`` | ``""``.
+        prompt_text: The text shown in the prompt (extracted via OCR or title).
+        window_title: The window title of the auth dialog.
+        confidence: Detection confidence in ``[0, 1]``.
+        action: Recommended action — ``"pause_agent"`` | ``"notify_user"``
+                | ``"none"``.
+    """
+
+    detected: bool = False
+    type: str = ""
+    prompt_text: str = ""
+    window_title: str = ""
+    confidence: float = 0.0
+    action: str = "none"
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _empty_result() -> DetectionResult:
+    """Return a fresh, undetected result."""
+    return DetectionResult()
+
+
+def _classify_action(det_type: str, confidence: float) -> str:
+    """Decide the recommended action from detection type and confidence."""
+    if not det_type or confidence < 0.3:
+        return "none"
+    # UAC and credential prompts always pause the agent — they block
+    # input anyway so there's nothing the agent can do.
+    if det_type in ("uac", "credential"):
+        return "pause_agent"
+    if det_type in ("mfa", "2fa", "pin") and confidence >= 0.5:
+        return "pause_agent"
+    return "notify_user"
+
+
+# ---------------------------------------------------------------------------
+# Window title scanning
+# ---------------------------------------------------------------------------
+
+
+def _get_window_titles() -> List[str]:
+    """Return titles of all visible windows (Windows-only, best-effort)."""
+    titles: List[str] = []
+    if not _IS_WINDOWS:
+        return titles
+    try:
+        import win32gui  # type: ignore
+
+        def _enum(hwnd: int, _) -> None:
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                if title:
+                    titles.append(title)
+
+        win32gui.EnumWindows(_enum, None)
+    except Exception:
+        # Fall back to our own window_manager if win32gui is unavailable.
+        try:
+            from core import window_manager as wm
+
+            for w in wm.list_windows():
+                t = w.get("title", "")
+                if t:
+                    titles.append(t)
+        except Exception as exc:
+            logger.debug("window title enumeration failed: %s", exc)
+    return titles
+
+
+def _match_window_title(titles: List[str]) -> Optional[DetectionResult]:
+    """Check *titles* against :data:`AUTH_WINDOW_TITLES`.
+
+    Returns the first matching :class:`DetectionResult`, or ``None``.
+    """
+    for title in titles:
+        tl = title.lower()
+        # Specific known titles
+        for substring, det_type in AUTH_WINDOW_TITLES:
+            if substring.lower() in tl:
+                return DetectionResult(
+                    detected=True,
+                    type=det_type,
+                    prompt_text=title,
+                    window_title=title,
+                    confidence=0.95,
+                    action="pause_agent",
+                )
+        # Generic keyword match
+        for keyword, det_type in _GENERIC_TITLE_KEYWORDS:
+            if keyword in tl:
+                return DetectionResult(
+                    detected=True,
+                    type=det_type,
+                    prompt_text=title,
+                    window_title=title,
+                    confidence=0.85,
+                    action="pause_agent",
+                )
+    return None
+
+
+# ---------------------------------------------------------------------------
+# OCR text scanning
+# ---------------------------------------------------------------------------
+
+
+def _ocr_check(screenshot: Image.Image) -> Optional[DetectionResult]:
+    """OCR the *screenshot* and scan for MFA/UAC text patterns.
+
+    Returns a :class:`DetectionResult` on the first match, or ``None``.
+    """
+    if not _have_tesseract():
+        return None
+
+    try:
+        from core.ocr import preprocess_for_ocr
+
+        processed = preprocess_for_ocr(screenshot)
+        text = _pytesseract.image_to_string(processed)  # type: ignore[union-attr]
+    except Exception as exc:
+        logger.debug("MFA OCR scan failed: %s", exc)
+        return None
+
+    if not text:
+        return None
+
+    text_lower = text.lower()
+
+    for pattern, det_type in MFA_PATTERNS:
+        if pattern.lower() in text_lower:
+            # Boost confidence if multiple patterns match
+            match_count = sum(
+                1 for p, _ in MFA_PATTERNS if p.lower() in text_lower
+            )
+            confidence = min(0.6 + match_count * 0.08, 0.95)
+
+            # UAC-specific boost
+            is_uac = any(kw in text_lower for kw in UAC_KEYWORDS)
+            if is_uac:
+                det_type = "uac"
+                confidence = max(confidence, 0.85)
+
+            # Extract a short prompt excerpt around the match
+            excerpt = _extract_excerpt(text, pattern)
+
+            return DetectionResult(
+                detected=True,
+                type=det_type,
+                prompt_text=excerpt,
+                window_title="",
+                confidence=confidence,
+                action=_classify_action(det_type, confidence),
+            )
+
+    return None
+
+
+def _extract_excerpt(text: str, pattern: str, context_chars: int = 80) -> str:
+    """Return a short text excerpt centred on *pattern* within *text*."""
+    idx = text.lower().find(pattern.lower())
+    if idx < 0:
+        return text[:120].strip()
+    start = max(0, idx - context_chars // 2)
+    end = min(len(text), idx + len(pattern) + context_chars // 2)
+    excerpt = text[start:end].strip()
+    if start > 0:
+        excerpt = "…" + excerpt
+    if end < len(text):
+        excerpt = excerpt + "…"
+    return excerpt
+
+
+# ---------------------------------------------------------------------------
+# UIA scanning
+# ---------------------------------------------------------------------------
+
+
+def _uia_check() -> Optional[DetectionResult]:
+    """Walk the accessibility tree for password fields / auth text elements.
+
+    Returns a :class:`DetectionResult` if an auth prompt is identified,
+    or ``None``.
+    """
+    if not _have_uia() or not _IS_WINDOWS:
+        return None
+
+    try:
+        auto = _auto  # type: ignore[union-attr]
+        root = auto.GetRootControl()
+
+        # Iterate over top-level windows
+        for win in root.GetChildren():
+            try:
+                title = win.Name or ""
+            except Exception:
+                title = ""
+
+            # If the window already matches by title, skip — the title
+            # checker handles that with higher confidence.
+            tl = title.lower()
+            already_matched = any(
+                substr.lower() in tl for substr, _ in AUTH_WINDOW_TITLES
+            )
+            if already_matched:
+                continue
+
+            found_password = False
+            found_auth_text = False
+            prompt_text_parts: List[str] = []
+
+            # Walk immediate children (don't recurse too deep — it's slow).
+            for ctrl in win.GetChildren():
+                try:
+                    ctrl_type = ctrl.ControlTypeName
+                except Exception:
+                    continue
+
+                # Password edit controls
+                if ctrl_type == "EditControl":
+                    try:
+                        if getattr(ctrl, "IsPassword", False):
+                            found_password = True
+                    except Exception:
+                        pass
+
+                # Text elements matching auth patterns
+                if ctrl_type in ("TextControl", "StaticControl"):
+                    try:
+                        text = (ctrl.Name or "").strip()
+                        if text:
+                            tl_text = text.lower()
+                            for pattern, det_type in MFA_PATTERNS:
+                                if pattern.lower() in tl_text:
+                                    found_auth_text = True
+                                    prompt_text_parts.append(text[:120])
+                                    break
+                    except Exception:
+                        pass
+
+            if found_password or found_auth_text:
+                det_type = "credential" if found_password else "mfa"
+                prompt = " | ".join(prompt_text_parts[:3]) if prompt_text_parts else title
+                confidence = 0.8 if found_password else 0.7
+                return DetectionResult(
+                    detected=True,
+                    type=det_type,
+                    prompt_text=prompt,
+                    window_title=title,
+                    confidence=confidence,
+                    action=_classify_action(det_type, confidence),
+                )
+
+    except Exception as exc:
+        logger.debug("MFA UIA scan failed: %s", exc)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# MFADetector
+# ---------------------------------------------------------------------------
+
+
+class MFADetector:
+    """Detects MFA / UAC / credential prompts on the desktop.
+
+    Typical usage::
+
+        detector = MFADetector()
+
+        # One-shot check:
+        result = detector.check_screen(screenshot_image)
+        if result.detected:
+            print(f"MFA prompt detected: {result.type}")
+
+        # Background monitoring:
+        def on_mfa(det_type: str, prompt_text: str) -> None:
+            engine.pause(reason=f"MFA: {det_type}")
+
+        detector.start_monitoring(on_mfa)
+        # ... later ...
+        detector.stop_monitoring()
+
+    All public methods are thread-safe.
+    """
+
+    def __init__(self, cooldown_seconds: float = 10.0) -> None:
+        self._lock = threading.Lock()
+        self._last_detection: Optional[DetectionResult] = None
+        self._last_detection_time: float = 0.0
+        self._last_prompt_sig: str = ""  # for cooldown dedup
+        self._cooldown = cooldown_seconds
+
+        # Monitoring state
+        self._monitor_thread: Optional[threading.Thread] = None
+        self._monitor_stop = threading.Event()
+        self._callback: Optional[Callable[[str, str], None]] = None
+        self._interval: float = 2.0
+
+    # ------------------------------------------------------------------
+    # Public detection methods
+    # ------------------------------------------------------------------
+
+    def check_screen(self, screenshot: Image.Image) -> DetectionResult:
+        """Analyse a *screenshot* for MFA / UAC / credential prompts.
+
+        Runs three detection tiers in order (window title → OCR → UIA);
+        the first match wins.
+
+        Args:
+            screenshot: A PIL ``Image`` of the desktop.
+
+        Returns:
+            A :class:`DetectionResult` describing what was found.
+        """
+        if not _IS_WINDOWS:
+            return _empty_result()
+
+        # Tier 1: Window title check (fast, no image processing).
+        result = self.check_window_titles()
+        if result.detected:
+            return result
+
+        # Tier 2: OCR text check.
+        result = _ocr_check(screenshot)
+        if result is not None and result.detected:
+            with self._lock:
+                self._last_detection = result
+                self._last_detection_time = time.monotonic()
+            return result
+
+        # Tier 3: UIA check.
+        result = _uia_check()
+        if result is not None and result.detected:
+            with self._lock:
+                self._last_detection = result
+                self._last_detection_time = time.monotonic()
+            return result
+
+        # Nothing detected.
+        with self._lock:
+            self._last_detection = None
+        return _empty_result()
+
+    def check_window_titles(self) -> DetectionResult:
+        """Check currently open window titles for known auth dialogs.
+
+        Returns:
+            A :class:`DetectionResult`. This method does not perform OCR.
+        """
+        if not _IS_WINDOWS:
+            return _empty_result()
+
+        titles = _get_window_titles()
+        result = _match_window_title(titles)
+        if result is not None:
+            with self._lock:
+                self._last_detection = result
+                self._last_detection_time = time.monotonic()
+            return result
+
+        return _empty_result()
+
+    # ------------------------------------------------------------------
+    # Background monitoring
+    # ------------------------------------------------------------------
+
+    def start_monitoring(
+        self,
+        callback: Callable[[str, str], None],
+        interval: float = 2.0,
+    ) -> None:
+        """Start background polling for auth prompts.
+
+        Spawns a daemon thread that checks for MFA/UAC prompts every
+        *interval* seconds. When a prompt is detected, *callback* is
+        called with ``(detection_type, prompt_text)``.
+
+        If monitoring is already active, the old thread is stopped first.
+
+        Args:
+            callback: ``callback(type_str, prompt_text)`` — called from
+                the monitor thread when a prompt is detected.
+            interval: Polling interval in seconds (default 2.0).
+        """
+        self.stop_monitoring()
+
+        self._callback = callback
+        self._interval = max(0.5, interval)
+        self._monitor_stop.clear()
+
+        thread = threading.Thread(
+            target=self._monitor_loop,
+            name="mfa-detector",
+            daemon=True,
+        )
+        self._monitor_thread = thread
+        thread.start()
+        logger.info(
+            "MFA monitoring started (interval=%.1fs, cooldown=%.1fs)",
+            self._interval,
+            self._cooldown,
+        )
+
+    def stop_monitoring(self) -> None:
+        """Stop the background monitoring thread (if running)."""
+        self._monitor_stop.set()
+        thread = self._monitor_thread
+        self._monitor_thread = None
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=self._interval + 2.0)
+            logger.info("MFA monitoring stopped")
+
+    def get_last_detection(self) -> Optional[DetectionResult]:
+        """Return the most recent :class:`DetectionResult`, or ``None``."""
+        with self._lock:
+            return self._last_detection
+
+    # ------------------------------------------------------------------
+    # Monitor loop (runs on background thread)
+    # ------------------------------------------------------------------
+
+    def _monitor_loop(self) -> None:
+        """Background loop: poll for auth prompts and invoke callback."""
+        # Import here to avoid circular-import issues at module level.
+        from core.screenshot import capture_screen
+
+        was_detected = False
+
+        while not self._monitor_stop.is_set():
+            try:
+                result = self._poll_once(capture_screen)
+            except Exception as exc:
+                logger.debug("MFA monitor poll error: %s", exc)
+                result = _empty_result()
+
+            now = time.monotonic()
+
+            if result.detected:
+                # Cooldown: skip if we already detected this exact prompt
+                # within the cooldown window.
+                sig = f"{result.type}:{result.window_title}:{result.prompt_text[:40]}"
+                with self._lock:
+                    in_cooldown = (
+                        sig == self._last_prompt_sig
+                        and (now - self._last_detection_time) < self._cooldown
+                    )
+
+                if not in_cooldown:
+                    with self._lock:
+                        self._last_detection = result
+                        self._last_detection_time = now
+                        self._last_prompt_sig = sig
+
+                    # Invoke user callback
+                    if self._callback is not None:
+                        try:
+                            self._callback(result.type, result.prompt_text)
+                        except Exception as exc:
+                            logger.warning("MFA callback error: %s", exc)
+
+                    was_detected = True
+                    logger.info(
+                        "MFA detected: type=%s confidence=%.2f title=%r",
+                        result.type,
+                        result.confidence,
+                        result.window_title[:60],
+                    )
+
+            elif was_detected:
+                # Auto-resume: the dialog has disappeared.
+                logger.info("MFA prompt no longer visible — auto-resume")
+                was_detected = False
+                with self._lock:
+                    self._last_detection = None
+                    self._last_prompt_sig = ""
+
+            # Wait for next interval (interruptible by stop).
+            self._monitor_stop.wait(timeout=self._interval)
+
+    def _poll_once(
+        self,
+        capture_fn: Callable[..., Image.Image],
+    ) -> DetectionResult:
+        """Execute a single detection pass.
+
+        Args:
+            capture_fn: Callable returning a PIL screenshot image.
+
+        Returns:
+            A :class:`DetectionResult`.
+        """
+        # Tier 1: Window title
+        result = self.check_window_titles()
+        if result.detected:
+            return result
+
+        # Tier 2: OCR
+        try:
+            screenshot = capture_fn()
+        except Exception as exc:
+            logger.debug("MFA monitor screenshot failed: %s", exc)
+            screenshot = None
+
+        if screenshot is not None:
+            ocr_result = _ocr_check(screenshot)
+            if ocr_result is not None and ocr_result.detected:
+                return ocr_result
+
+        # Tier 3: UIA
+        uia_result = _uia_check()
+        if uia_result is not None and uia_result.detected:
+            return uia_result
+
+        return _empty_result()

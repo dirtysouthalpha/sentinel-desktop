@@ -139,16 +139,125 @@ PROVIDERS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "zai": {
-        "name": "Z.ai (GLM)",
+        "name": "Z.ai Coding Plan (GLM)",
         "base_url": "https://api.z.ai/api/coding/paas/v4",
         "models_endpoint": None,
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
         "manual_models": [
-            "glm-4-plus",
             "glm-5",
+            "glm-5-pro",
+            "glm-5-flash",
+            "glm-4.6",
+            "glm-4.5",
+            "glm-4.5-air",
+            "glm-4-plus",
+            "glm-4-air",
+            "glm-4-flash",
+            "glm-z1-air",
+            "glm-z1-flash",
         ],
+    },
+    "minimax": {
+        "name": "MiniMax",
+        "base_url": "https://api.minimax.io/v1",
+        "models_endpoint": None,
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "MiniMax-M1",
+            "MiniMax-Text-01",
+            "abab6.5-chat",
+            "abab6.5s-chat",
+            "abab6.5t-chat",
+        ],
+    },
+    "moonshot": {
+        "name": "Moonshot (Kimi)",
+        "base_url": "https://api.moonshot.ai/v1",
+        "models_endpoint": "/models",
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "kimi-latest",
+            "kimi-k2-0905-preview",
+            "moonshot-v1-128k",
+            "moonshot-v1-32k",
+            "moonshot-v1-8k",
+        ],
+    },
+    "qwen": {
+        "name": "Qwen (Alibaba DashScope)",
+        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        "models_endpoint": "/models",
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "qwen-max",
+            "qwen-plus",
+            "qwen-turbo",
+            "qwen2.5-72b-instruct",
+            "qwen2.5-coder-32b-instruct",
+            "qwen2-vl-72b-instruct",
+        ],
+    },
+    "cohere": {
+        "name": "Cohere",
+        "base_url": "https://api.cohere.ai/compatibility/v1",
+        "models_endpoint": "/models",
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "command-a-03-2025",
+            "command-r-plus",
+            "command-r",
+            "command-r7b",
+        ],
+    },
+    "nvidia": {
+        "name": "NVIDIA NIM",
+        "base_url": "https://integrate.api.nvidia.com/v1",
+        "models_endpoint": "/models",
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+    },
+    "huggingface": {
+        "name": "HuggingFace Router",
+        "base_url": "https://router.huggingface.co/v1",
+        "models_endpoint": "/models",
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+    },
+    "github": {
+        "name": "GitHub Models",
+        "base_url": "https://models.github.ai/inference",
+        "models_endpoint": "/models",
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+    },
+    "deepinfra": {
+        "name": "DeepInfra",
+        "base_url": "https://api.deepinfra.com/v1/openai",
+        "models_endpoint": "/models",
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "chat_endpoint": "/chat/completions",
+    },
+    "azure_openai": {
+        "name": "Azure OpenAI (use Custom for deployment URL)",
+        "base_url": "",
+        "models_endpoint": "/models",
+        "auth_header": "api-key",
+        "auth_prefix": "",
+        "chat_endpoint": "/chat/completions",
     },
     "ollama": {
         "name": "Ollama (local)",
@@ -201,11 +310,13 @@ def get_provider_display_name(name: str) -> str:
 def get_base_url(provider_key: str, custom_url: Optional[str] = None) -> str:
     """Resolve the effective base URL for *provider_key*.
 
-    For the ``"custom"`` provider the *custom_url* parameter is used when
-    provided; otherwise the catalog's ``base_url`` is returned (stripped of
-    any trailing slash).
+    If *custom_url* is truthy, it overrides the catalog URL for **any**
+    provider (not just the ``"custom"`` placeholder). This is how the GUI's
+    "Base URL" field redirects e.g. Z.ai to its coding-plan endpoint.
+
+    Falls back to the catalog ``base_url`` when no override is provided.
     """
-    if provider_key == "custom" and custom_url:
+    if custom_url:
         return custom_url.rstrip("/")
     provider = PROVIDERS.get(provider_key, {})
     return provider.get("base_url", "").rstrip("/")

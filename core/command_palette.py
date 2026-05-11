@@ -1,0 +1,210 @@
+"""
+Sentinel Desktop v2 — Command palette (Ctrl+K).
+
+Fuzzy-searchable command palette matching Sentinel Override's ⌘K UX.
+Provides quick access to: New Chat, Export Log, Clear Chat, Toggle Theme,
+Open Settings, Resume Checkpoint, Toggle Approval Mode, Toggle Stealth,
+Switch Desktop, Take Screenshot, Emergency Stop.
+
+Implementation: popup toplevel with a search entry and filtered list.
+"""
+
+from __future__ import annotations
+
+import logging
+from difflib import SequenceMatcher
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
+
+class Command:
+    """A single palette command."""
+    def __init__(self, name: str, shortcut: str, category: str,
+                 handler: Callable, keywords: List[str] = None):
+        self.name = name
+        self.shortcut = shortcut
+        self.category = category
+        self.handler = handler
+        self.keywords = keywords or []
+
+    def matches(self, query: str) -> float:
+        """Return match score 0-1 against query. Uses fuzzy matching."""
+        if not query:
+            return 0.5
+        q = query.lower().strip()
+        n = self.name.lower()
+
+        # Exact match
+        if q == n:
+            return 1.0
+
+        # Starts with
+        if n.startswith(q):
+            return 0.95
+
+        # Contains
+        if q in n:
+            return 0.85
+
+        # Keyword match
+        for kw in self.keywords:
+            if q in kw.lower():
+                return 0.75
+
+        # Fuzzy ratio
+        ratio = SequenceMatcher(None, q, n).ratio()
+        if ratio > 0.5:
+            return ratio * 0.7
+
+        return 0.0
+
+
+class CommandPalette:
+    """
+    Manages the command registry and search logic.
+    The actual popup UI is rendered by the GUI layer.
+    """
+
+    def __init__(self):
+        self._commands: List[Command] = []
+
+    def register(self, name: str, shortcut: str, category: str,
+                 handler: Callable, keywords: List[str] = None):
+        """Register a command."""
+        self._commands.append(Command(name, shortcut, category, handler, keywords))
+
+    def search(self, query: str, limit: int = 10) -> List[Tuple[Command, float]]:
+        """Search commands by query. Returns list of (command, score) sorted by score desc."""
+        scored = [(cmd, cmd.matches(query)) for cmd in self._commands]
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [(cmd, score) for cmd, score in scored if score > 0.1][:limit]
+
+    def get_all(self) -> List[Command]:
+        """Return all commands grouped by category."""
+        return sorted(self._commands, key=lambda c: (c.category, c.name))
+
+    def get_categories(self) -> List[str]:
+        """Return unique categories."""
+        return sorted(set(c.category for c in self._commands))
+
+    def by_shortcut(self, key: str) -> Optional[Command]:
+        """Find command by keyboard shortcut."""
+        for cmd in self._commands:
+            if cmd.shortcut.lower() == key.lower():
+                return cmd
+        return None
+
+
+# ── Default command registry ────────────────────────────────────────
+
+def create_default_palette(app) -> CommandPalette:
+    """
+    Create and register all default commands for the Sentinel Desktop app.
+    `app` is the SentinelApp instance (gui/app.py).
+    """
+    p = CommandPalette()
+
+    # Chat
+    p.register("New Chat", "Ctrl+N", "Chat",
+                lambda: app.clear_chat(),
+                keywords=["clear", "reset", "new", "start"])
+    p.register("Clear Chat", "Ctrl+L", "Chat",
+                lambda: app.clear_chat(),
+                keywords=["clear", "wipe"])
+    p.register("Export Conversation", "Ctrl+E", "Chat",
+                lambda: app.export_chat(),
+                keywords=["export", "save", "download"])
+
+    # Run control
+    p.register("Run Agent", "Ctrl+Enter", "Agent",
+                lambda: app.submit_goal(),
+                keywords=["run", "start", "go", "execute"])
+    p.register("Stop Agent", "Escape", "Agent",
+                lambda: app.stop_agent(),
+                keywords=["stop", "cancel", "abort", "halt"])
+    p.register("Emergency Stop", "Ctrl+Shift+Esc", "Agent",
+                lambda: app.emergency_stop(),
+                keywords=["emergency", "panic", "kill"])
+    p.register("Toggle Approval Mode", "Ctrl+Shift+A", "Agent",
+                lambda: app.toggle_approval(),
+                keywords=["approval", "gate", "approve", "confirm"])
+    p.register("Toggle Stealth Input", "Ctrl+Shift+S", "Agent",
+                lambda: app.toggle_stealth(),
+                keywords=["stealth", "hidden", "background"])
+    p.register("Resume from Checkpoint", "Ctrl+Shift+R", "Agent",
+                lambda: app._do_resume_checkpoint(),
+                keywords=["resume", "checkpoint", "continue", "restore"])
+
+    # Desktop control
+    p.register("Take Screenshot", "Ctrl+Shift+X", "Desktop",
+                lambda: app.take_screenshot(),
+                keywords=["screenshot", "capture", "screen"])
+    p.register("Switch Virtual Desktop", "Ctrl+Shift+D", "Desktop",
+                lambda: app.switch_desktop(),
+                keywords=["desktop", "virtual", "switch", "isolate"])
+    p.register("List Windows", "", "Desktop",
+                lambda: app.list_windows_cmd(),
+                keywords=["windows", "list", "apps"])
+
+    # Logs
+    p.register("Export Forensic Log (JSON)", "", "Logs",
+                lambda: app.export_log_json(),
+                keywords=["log", "forensic", "json", "export", "audit"])
+    p.register("Export Forensic Log (CSV)", "", "Logs",
+                lambda: app.export_log_csv(),
+                keywords=["log", "forensic", "csv", "export", "audit"])
+
+    # Settings
+    p.register("Open Settings", "Ctrl+,", "Settings",
+                lambda: app.open_settings(),
+                keywords=["settings", "config", "preferences", "provider"])
+    p.register("Detect Models", "", "Settings",
+                lambda: app.detect_models(),
+                keywords=["detect", "models", "provider", "api"])
+
+    # Themes — register one command per theme
+    p.register("Theme: Midnight", "", "Theme",
+                lambda: app.set_theme("midnight"),
+                keywords=["midnight", "dark", "blue", "theme"])
+    p.register("Theme: Dark", "", "Theme",
+                lambda: app.set_theme("dark"),
+                keywords=["dark", "theme"])
+    p.register("Theme: Matrix", "", "Theme",
+                lambda: app.set_theme("matrix"),
+                keywords=["matrix", "green", "hacker", "theme"])
+    p.register("Theme: Tron", "", "Theme",
+                lambda: app.set_theme("tron"),
+                keywords=["tron", "cyan", "blue", "sci-fi", "theme"])
+    p.register("Theme: Cyberpunk", "", "Theme",
+                lambda: app.set_theme("cyberpunk"),
+                keywords=["cyberpunk", "pink", "neon", "theme"])
+    p.register("Theme: Neon", "", "Theme",
+                lambda: app.set_theme("neon"),
+                keywords=["neon", "purple", "theme"])
+    p.register("Theme: Terminal", "", "Theme",
+                lambda: app.set_theme("terminal"),
+                keywords=["terminal", "green", "monochrome", "theme"])
+    p.register("Theme: Blood", "", "Theme",
+                lambda: app.set_theme("blood"),
+                keywords=["blood", "red", "dark", "theme"])
+    p.register("Theme: Ocean", "", "Theme",
+                lambda: app.set_theme("ocean"),
+                keywords=["ocean", "sea", "blue", "theme"])
+    p.register("Theme: Light", "", "Theme",
+                lambda: app.set_theme("light"),
+                keywords=["light", "bright", "white", "theme"])
+    p.register("Theme: Sunset", "", "Theme",
+                lambda: app.set_theme("sunset"),
+                keywords=["sunset", "orange", "warm", "theme"])
+    p.register("Theme: Paper", "", "Theme",
+                lambda: app.set_theme("paper"),
+                keywords=["paper", "parchment", "warm", "light", "theme"])
+    p.register("Theme: Forest", "", "Theme",
+                lambda: app.set_theme("forest"),
+                keywords=["forest", "green", "nature", "theme"])
+    p.register("Theme: Mono", "", "Theme",
+                lambda: app.set_theme("mono"),
+                keywords=["mono", "grayscale", "minimal", "theme"])
+
+    return p

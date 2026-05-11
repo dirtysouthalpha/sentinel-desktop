@@ -36,22 +36,28 @@ def start_process(path: str, args: list = None) -> int:
 
 def kill_process(target) -> bool:
     """Kill a process by PID (int) or name (str). Returns True on success."""
+    if target is None or target == "":
+        logger.warning("kill_process called with empty target")
+        return False
     try:
         if isinstance(target, int):
             p = psutil.Process(target)
             p.kill()
             return True
-        else:
-            # Kill by name
-            killed = False
-            for p in psutil.process_iter(["name", "pid"]):
-                if target.lower() in p.info["name"].lower():
-                    try:
-                        p.kill()
-                        killed = True
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        pass
-            return killed
+        # Kill by name (string match)
+        name = str(target).lower()
+        if not name:
+            return False
+        killed = False
+        for p in psutil.process_iter(["name", "pid"]):
+            proc_name = (p.info.get("name") or "").lower()
+            if name in proc_name:
+                try:
+                    p.kill()
+                    killed = True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        return killed
     except psutil.NoSuchProcess:
         return False
     except Exception as e:

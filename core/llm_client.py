@@ -28,6 +28,8 @@ from __future__ import annotations
 import json
 import logging
 import base64
+import random
+import time
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -38,6 +40,36 @@ logger = logging.getLogger(__name__)
 
 # Default network timeout (seconds) — generous for large generations.
 DEFAULT_TIMEOUT = 120
+
+# Default retry policy. The engine overrides these from config when calling
+# .chat(); keep these conservative as a fallback for direct LLMClient users.
+DEFAULT_MAX_RETRIES = 3
+DEFAULT_RETRY_BASE_DELAY = 1.0  # seconds — multiplied by 2^attempt with jitter
+
+# HTTP status codes we consider transient and worth retrying.
+RETRY_STATUSES = {408, 425, 429, 500, 502, 503, 504, 522, 524}
+
+
+class LLMError(Exception):
+    """Raised for unrecoverable LLM errors with a human-friendly message."""
+
+
+def _friendly_http_error(status: int, body: str) -> str:
+    """Map an HTTP status code to an actionable message for the GUI."""
+    snippet = body.strip()
+    if len(snippet) > 240:
+        snippet = snippet[:240] + "…"
+    if status == 401:
+        return "Invalid API key — check Settings."
+    if status == 403:
+        return "API key lacks access to this model (or org/billing issue)."
+    if status == 404:
+        return "Model or endpoint not found — verify the model name."
+    if status == 429:
+        return f"Rate limited by provider. {snippet}"
+    if 500 <= status < 600:
+        return f"Provider error (HTTP {status}). {snippet}"
+    return f"HTTP {status}: {snippet}"
 
 
 class LLMClient:
@@ -65,6 +97,8 @@ class LLMClient:
         temperature: float = 0.1,
         custom_url: Optional[str] = None,
         timeout: int = DEFAULT_TIMEOUT,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
     ) -> str:
         """Send a chat completion request and return the assistant's text.
 
@@ -106,6 +140,8 @@ class LLMClient:
                 max_tokens=max_tokens,
                 temperature=temperature,
                 timeout=timeout,
+                max_retries=max_retries,
+                retry_base_delay=retry_base_delay,
             )
 
         # --- OpenAI-compatible path ------------------------------------
@@ -129,20 +165,49 @@ class LLMClient:
             provider, model, len(messages), len(tools or []),
         )
 
-        resp = requests.post(
-            chat_url, headers=headers, json=payload, timeout=timeout,
+        data = self._post_with_retry(
+            chat_url, headers, payload, timeout,
+            max_retries=max_retries, base_delay=retry_base_delay,
+            provider_label=provider,
         )
-        resp.raise_for_status()
-        data = resp.json()
 
-        choice = data.get("choices", [{}])[0]
-        msg = choice.get("message", {})
+        # Defensively unwrap the OpenAI-shaped response. Some providers (e.g.
+        # Z.ai's coding plan) occasionally return error envelopes without a
+        # "choices" key — we surface a clear LLMError instead of letting a
+        # KeyError bubble up to the GUI.
+        if not isinstance(data, dict):
+            raise LLMError(
+                f"{provider}: unexpected response type {type(data).__name__}"
+            )
+        if "error" in data and not data.get("choices"):
+            err = data["error"]
+            if isinstance(err, dict):
+                err = err.get("message") or err.get("code") or str(err)
+            raise LLMError(f"{provider}: {err}")
+
+        choices = data.get("choices") or []
+        if not choices:
+            raise LLMError(
+                f"{provider}: response had no 'choices'. Body: "
+                f"{json.dumps(data)[:300]}"
+            )
+
+        choice = choices[0] if isinstance(choices[0], dict) else {}
+        msg = choice.get("message") or choice.get("delta") or {}
+        if not isinstance(msg, dict):
+            msg = {}
 
         # Check for tool calls first — return as JSON payload.
         if msg.get("tool_calls"):
             return json.dumps({"tool_calls": msg["tool_calls"]})
 
-        return msg.get("content", "")
+        # Some providers nest the text under "content" as a list of blocks.
+        content = msg.get("content", "")
+        if isinstance(content, list):
+            content = " ".join(
+                str(b.get("text", "")) for b in content if isinstance(b, dict)
+            )
+        return content or ""
 
     def chat_with_vision(
         self,
@@ -235,6 +300,8 @@ class LLMClient:
         max_tokens: int,
         temperature: float,
         timeout: int,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
     ) -> str:
         """Send a chat request using Anthropic's native ``/messages`` API."""
         provider_config = PROVIDERS["anthropic"]
@@ -271,11 +338,11 @@ class LLMClient:
 
         logger.info("chat → anthropic/%s", model)
 
-        resp = requests.post(
-            chat_url, headers=headers, json=payload, timeout=timeout,
+        data = self._post_with_retry(
+            chat_url, headers, payload, timeout,
+            max_retries=max_retries, base_delay=retry_base_delay,
+            provider_label="anthropic",
         )
-        resp.raise_for_status()
-        data = resp.json()
 
         # Extract text / tool-use from the response.
         content_blocks = data.get("content", [])
@@ -308,6 +375,81 @@ class LLMClient:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Networking with retry/backoff
+    # ------------------------------------------------------------------
+
+    def _post_with_retry(
+        self,
+        url: str,
+        headers: Dict[str, str],
+        payload: Dict[str, Any],
+        timeout: int,
+        *,
+        max_retries: int,
+        base_delay: float,
+        provider_label: str,
+    ) -> Dict[str, Any]:
+        """POST a JSON payload with exponential backoff for transient errors.
+
+        Raises:
+            LLMError: With a human-readable message after retries are exhausted
+                or on a non-retriable error.
+        """
+        attempt = 0
+        last_exc: Optional[Exception] = None
+        last_status: Optional[int] = None
+        last_body: str = ""
+
+        while attempt <= max_retries:
+            try:
+                resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            except requests.exceptions.Timeout as exc:
+                last_exc = exc
+                logger.warning(
+                    "%s: request timed out (attempt %d/%d)",
+                    provider_label, attempt + 1, max_retries + 1,
+                )
+            except requests.exceptions.ConnectionError as exc:
+                last_exc = exc
+                logger.warning(
+                    "%s: connection error (attempt %d/%d): %s",
+                    provider_label, attempt + 1, max_retries + 1, exc,
+                )
+            else:
+                if resp.status_code < 400:
+                    try:
+                        return resp.json()
+                    except ValueError as exc:
+                        raise LLMError(
+                            f"{provider_label}: provider returned non-JSON body"
+                        ) from exc
+                last_status = resp.status_code
+                last_body = (resp.text or "")[:500]
+                if resp.status_code not in RETRY_STATUSES:
+                    # Non-retriable HTTP error — raise immediately.
+                    raise LLMError(_friendly_http_error(resp.status_code, last_body))
+                logger.warning(
+                    "%s: HTTP %d (attempt %d/%d) — %s",
+                    provider_label, resp.status_code,
+                    attempt + 1, max_retries + 1, last_body[:120],
+                )
+
+            if attempt >= max_retries:
+                break
+            # Exponential backoff with jitter (capped at 30s).
+            delay = min(30.0, base_delay * (2 ** attempt))
+            delay += random.uniform(0, base_delay)
+            time.sleep(delay)
+            attempt += 1
+
+        # Out of retries.
+        if last_status is not None:
+            raise LLMError(_friendly_http_error(last_status, last_body))
+        if last_exc is not None:
+            raise LLMError(f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}")
+        raise LLMError(f"{provider_label}: request failed for unknown reasons")
 
     @staticmethod
     def _build_headers(

@@ -18,14 +18,34 @@ import asyncio
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-from core.llm_client import LLMClient
+from core.llm_client import LLMClient, LLMError
 from core.action_executor import ActionExecutor
-from core.screenshot import capture_to_base64, capture_screen
+from core.screenshot import capture_to_base64, capture_screen, get_capture_offset
 from core import system_info as sysinfo
 from core import window_manager as wm
+from core import failsafe
 from core.provider_registry import get_base_url
+from core.tool_schemas import TOOLS as ACTION_TOOLS, TOOL_CAPABLE_PROVIDERS
+from core.forensic_log import ForensicLog
+from core.checkpoint import CheckpointManager
+from core.approval_gate import ApprovalGate, ApprovalDecision
+from core.mfa_detection import MFADetector
 
 logger = logging.getLogger(__name__)
+
+# Maximum number of screenshot messages kept in-context at once. Older
+# screenshots get rewritten to a short text stub so the token budget doesn't
+# grow unboundedly across long runs.
+DEFAULT_IMAGE_HISTORY = 3
+
+# Actions the agent can request that we always show to the user before
+# executing when approval_mode is on. Read-only actions like screenshot,
+# note, find_image, etc. are not gated.
+APPROVAL_REQUIRED_ACTIONS = {
+    "click", "click_image", "type_text", "press_key", "hotkey", "scroll",
+    "open_app", "start_process", "close_app", "kill_process",
+    "close_window", "write_file",
+}
 
 # ---------------------------------------------------------------------------
 # System prompt template
@@ -49,11 +69,13 @@ Return a single JSON object with an "action" field and relevant parameters:
 | press_key | key | Press a single key (enter, tab, escape, etc.) |
 | hotkey | keys (list) | Press key combo, e.g. ["ctrl","c"] |
 | scroll | amount | Scroll (positive=up, negative=down) |
+| drag | from_x, from_y, to_x, to_y, duration?, button? | Drag from one point to another |
 | screenshot | (none) | Take a fresh screenshot |
 | find_image | template_path, confidence? | Find image on screen, return position |
 | wait_for_image | template_path, timeout? | Wait for image to appear |
 | wait | seconds | Wait N seconds |
-| open_app | path, args? | Start a program |
+| smart_open | name | **PREFERRED** — focus the app's window if it's already open, else launch it. Works for outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc. |
+| open_app | path, args? | Start a raw program by path (use smart_open instead when you can) |
 | focus_window | title | Bring window to front by title |
 | close_window | title | Close a window by title |
 | list_windows | (none) | List all visible windows |
@@ -79,8 +101,43 @@ Return a single JSON object with an "action" field and relevant parameters:
 - Break complex goals into small, atomic steps.
 - After each action, observe the result before proceeding.
 - If something goes wrong, note it and try an alternative approach.
-- When finished, call finish with a summary of what was accomplished.
 - Be efficient — don't take unnecessary screenshots or repeat actions.
+
+## STOPPING — read this carefully
+- The moment you have enough information to answer the user's question,
+  call ``finish({"summary": "<your answer>"})``. Do NOT keep collecting more
+  data after you have what you need.
+- If the user asked "what are the last N emails" and ``read_window`` already
+  returned the inbox text with N or more visible subjects, STOP and finish
+  with what you saw. Don't read the window again. Don't take another
+  screenshot. Just summarise.
+- A 3-step run that finishes correctly is BETTER than a 15-step run that
+  keeps gathering. Errors compound; extra steps usually make things worse.
+- If ``read_window`` or ``read_text`` returned garbled OCR but you can still
+  identify the answer from the screenshot you saw earlier, finish anyway —
+  the user can ask for refinement.
+
+## Reading content from a specific app — IMPORTANT
+- After ``smart_open("outlook")`` returns ``"window_title": "Mail - ..."``, use
+  ``read_window(title="Outlook")`` (or that exact title) instead of
+  ``read_text(scope="focused")``. The latter can read the Sentinel Desktop
+  agent window itself or whatever stole focus, while ``read_window`` always
+  targets the named app deterministically.
+- Same pattern for ``click_text`` inside a specific app — focus the window
+  first, then click. If the result mentions OCR'd Chrome/Sentinel UI when you
+  expected Outlook, the focus snapped away; use ``focus_window`` then retry.
+
+## When OCR returns garbage — fall back to vision
+- If a ``read_text``/``read_window`` result has ``low_confidence: true`` or
+  the text looks like jumbled punctuation and stray characters, DO NOT
+  retry OCR. The Tesseract output is unreliable for this content.
+- Instead, look at the most recent screenshot yourself — you are a vision
+  model and can read the rendered pixels directly. Identify the answer
+  from what you see in the image.
+- Pick coordinates from the screenshot for any clicks (use ``click(x, y)``).
+  You don't need OCR to act; the screenshot tells you everything.
+- This is normal — UI text with custom fonts, icons, or anti-aliasing often
+  defeats OCR. Trust your eyes.
 
 IMPORTANT: Reply with ONLY a JSON object. No markdown, no explanation, just the JSON.
 Example: {"action": "click", "x": 500, "y": 300}
@@ -90,19 +147,51 @@ Example: {"action": "click", "x": 500, "y": 300}
 class AgentEngine:
     """The main agent loop that drives desktop automation via LLM."""
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: Optional[Dict] = None,
+                 approval_callback: Optional[Callable[[Dict], bool]] = None,
+                 pre_action_callback: Optional[Callable[[Dict], None]] = None):
         self.config = config or {}
         self.llm = LLMClient()
-        self.executor = ActionExecutor()
+        # approval_callback(action_dict) -> bool. When set AND
+        # config['approval_mode'] is truthy, every action in
+        # APPROVAL_REQUIRED_ACTIONS is shown to the user before execution.
+        self.approval_callback = approval_callback
+        # pre_action_callback(action_dict) -> None. Invoked just before each
+        # action is dispatched. GUI uses it to flash an on-screen overlay.
+        self.pre_action_callback = pre_action_callback
+        self.executor = ActionExecutor(
+            dry_run=bool(self.config.get("dry_run", False)),
+            pre_action_callback=pre_action_callback,
+            click_offset=get_capture_offset(self.config.get("monitor")),
+            monitor=self.config.get("monitor"),
+            stealth=bool(self.config.get("stealth_input", False)),
+        )
 
         # Public state (accessed by GUI and API)
         self.running = False
         self.step = 0
         self.max_steps = self.config.get("max_steps", 100)
+        self.image_history = int(
+            self.config.get("image_history", DEFAULT_IMAGE_HISTORY)
+        )
         self.notes: List[str] = []
         self.forensic_log: List[Dict] = []
         self.on_step_callback: Optional[Callable] = None
         self.finish_summary: str = ""
+
+        # ── Enhanced subsystems ───────────────────────────────────────
+        self.logger = ForensicLog()
+        self.checkpoint = CheckpointManager()
+        self.gate = ApprovalGate(
+            enabled=bool(self.config.get("approval_mode") and not self.config.get("autonomous"))
+        )
+        # Wire approval gate callback to the legacy approval_callback if set
+        if self.approval_callback:
+            self.gate.set_callback(lambda req: None)  # UI handles display
+
+        # MFA/UAC detection — pauses agent when auth prompts appear
+        self.mfa_detector = MFADetector()
+        self._mfa_paused = False
 
     # ── Sync entry point ────────────────────────────────────────────────
 
@@ -119,36 +208,77 @@ class AgentEngine:
         model = self.config.get("model", "")
 
         if not api_key and provider not in ("ollama", "lmstudio", "custom"):
-            return {"steps": 0, "notes": ["Error: API key not configured"]}
+            self.notes = [
+                "Error: API key not configured. Open ⚙ Settings, pick a "
+                "provider, paste your API key, and choose a model."
+            ]
+            self.running = False
+            return {"steps": 0, "notes": self.notes, "error": "api_key_missing"}
+        if not provider:
+            self.notes = ["Error: No LLM provider selected. Open ⚙ Settings."]
+            self.running = False
+            return {"steps": 0, "notes": self.notes, "error": "provider_missing"}
         if not model:
-            return {"steps": 0, "notes": ["Error: Model not configured"]}
+            self.notes = [
+                f"Error: No model selected for provider {provider!r}. "
+                "Open ⚙ Settings, click 🔍 Detect, or type a model name."
+            ]
+            self.running = False
+            return {"steps": 0, "notes": self.notes, "error": "model_missing"}
 
-        # Build system prompt
+        # Build system prompt. We use .replace() — NOT .format() — because
+        # the prompt contains literal JSON examples like {"action":"click"}
+        # whose braces would otherwise be interpreted as format placeholders
+        # (Python's str.format raises KeyError: '"action"' on those).
         env_context = self._build_env_context()
-        system_prompt = SYSTEM_PROMPT.format(env_context=env_context)
+        system_prompt = SYSTEM_PROMPT.replace("{env_context}", env_context)
         messages = [{"role": "system", "content": system_prompt}]
 
         # Initial screenshot + goal
-        screenshot_b64 = capture_to_base64()
+        screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
         self._add_vision_message(messages, screenshot_b64,
                                  f"Goal: {goal}\n\nI can see this screen. What should I do first?")
 
         start_time = time.time()
+
+        # Start structured forensic log
+        run_id = self.logger.start_run(goal, provider, model)
+
+        # Arm the Esc-x3 failsafe for the duration of this run. Safe no-op
+        # if the keyboard package isn't installed or can't hook globally.
+        failsafe.arm(self.stop)
 
         try:
             while self.running and self.step < self.max_steps:
                 self.step += 1
                 logger.info("Step %d/%d", self.step, self.max_steps)
 
-                # Call LLM
+                # Call LLM. Strip internal `_sentinel_*` markers so they
+                # never reach the provider's API.
+                use_tools = (
+                    self.config.get("use_tools", True)
+                    and provider in TOOL_CAPABLE_PROVIDERS
+                )
+                tools = ACTION_TOOLS if use_tools else None
                 try:
                     response_text = self.llm.chat(
                         provider=provider,
                         api_key=api_key,
                         model=model,
-                        messages=messages,
+                        messages=_clean_messages_for_api(messages),
+                        tools=tools,
                         temperature=0.1,
+                        custom_url=self.config.get("custom_base_url") or None,
+                        max_retries=int(self.config.get("llm_max_retries", 3)),
+                        retry_base_delay=float(
+                            self.config.get("llm_retry_base_delay", 1.0)
+                        ),
                     )
+                except LLMError as exc:
+                    # Already a clean, user-facing message.
+                    logger.error("LLM call failed: %s", exc)
+                    self.notes.append(f"LLM error at step {self.step}: {exc}")
+                    break
                 except Exception as exc:
                     logger.error("LLM call failed: %s", exc)
                     self.notes.append(f"LLM error at step {self.step}: {exc}")
@@ -178,6 +308,59 @@ class AgentEngine:
                     self.running = False
                     break
 
+                # Approval gate via ApprovalGate subsystem
+                if self.gate.enabled and action_name in APPROVAL_REQUIRED_ACTIONS:
+                    decision, approved_action = self.gate.evaluate(action, self.step)
+                    if decision in (ApprovalDecision.SKIP, ApprovalDecision.ABORT):
+                        rejection = {"ok": False, "msg": f"Action {decision.value} by user"}
+                        self._log_step(action, rejection)
+                        self.logger.log_step(self.step, action_name,
+                                             str(action), action, rejection)
+                        if decision == ApprovalDecision.ABORT:
+                            self.running = False
+                            break
+                        messages.append({
+                            "role": "user",
+                            "content": "The user skipped that action. Try a different approach.",
+                        })
+                        continue
+                    action = approved_action or action
+
+                # MFA/UAC detection — pause if auth prompt is on screen
+                mfa_result = self.mfa_detector.check_window_titles()
+                if not mfa_result.detected:
+                    try:
+                        from core.screenshot import capture_screen
+                        screen = capture_screen()
+                        mfa_result = self.mfa_detector.check_screen(screen)
+                    except Exception:
+                        pass
+                if mfa_result.detected:
+                    self._mfa_paused = True
+                    self.logger.log_event("mfa_pause", {
+                        "type": mfa_result.type,
+                        "prompt": mfa_result.prompt_text,
+                        "window": mfa_result.window_title,
+                    })
+                    if self.on_step_callback:
+                        try:
+                            self.on_step_callback(
+                                step=self.step, action={"action": "mfa_pause"},
+                                result={"ok": False, "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}"},
+                            )
+                        except Exception:
+                            pass
+                    # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
+                    for _ in range(150):
+                        time.sleep(2)
+                        if not self.running:
+                            break
+                        recheck = self.mfa_detector.check_window_titles()
+                        if not recheck.detected:
+                            self._mfa_paused = False
+                            self.logger.log_event("mfa_resume", {"msg": "Auth prompt dismissed"})
+                            break
+
                 # Log the action
                 self._log_step(action, {"pending": True})
 
@@ -189,6 +372,29 @@ class AgentEngine:
                 }
                 self._log_step_result(self.step, log_result)
 
+                # Structured forensic log
+                self.logger.log_step(
+                    self.step, action_name,
+                    str(action.get("x", action.get("name", ""))),
+                    action, log_result,
+                )
+
+                # Checkpoint every 5 steps
+                if self.checkpoint.should_auto_save(self.step):
+                    try:
+                        self.checkpoint.save(
+                            goal=goal, step_num=self.step,
+                            agent_memory=self.notes,
+                            last_screenshot_path=None,
+                            config=self.config,
+                            status="running",
+                            messages=messages,
+                        )
+                    except Exception as exc:
+                        logger.debug("Checkpoint save failed: %s", exc)
+
+                # Note actions are no-ops at the executor level; record once
+                # here so we don't double-log.
                 if action_name == "note":
                     self.notes.append(action.get("text", ""))
 
@@ -206,7 +412,10 @@ class AgentEngine:
 
                 # Take new screenshot for next iteration
                 if self.running and self.config.get("auto_screenshot", True):
-                    screenshot_b64 = capture_to_base64()
+                    # Prune old screenshots before adding a new one so the
+                    # conversation doesn't balloon to dozens of images.
+                    self._prune_old_screenshots(messages)
+                    screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
                     self._add_vision_message(
                         messages, screenshot_b64,
                         f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
@@ -215,11 +424,23 @@ class AgentEngine:
         except Exception as exc:
             logger.exception("Agent run error")
             self.notes.append(f"Fatal error: {exc}")
+            self.logger.log_event("error", {"message": str(exc)})
         finally:
             self.running = False
+            failsafe.disarm()
+            # Finalize structured forensic log
+            status = "completed" if self.finish_summary else "error"
+            self.logger.end_run(status, self.finish_summary or "Run ended", self.step)
 
         elapsed = time.time() - start_time
         logger.info("Agent run finished: steps=%d, elapsed=%.1fs", self.step, elapsed)
+
+        # Sound notification
+        try:
+            from core.sound import play_sound
+            play_sound("complete" if self.finish_summary else "error")
+        except Exception:
+            pass
 
         return {
             "steps": self.step,
@@ -237,7 +458,11 @@ class AgentEngine:
     # ── Internal ────────────────────────────────────────────────────────
 
     def _build_env_context(self) -> str:
-        info = sysinfo.brief_system_info() if hasattr(sysinfo, 'brief_system_info') else ""
+        try:
+            info = sysinfo.brief_system_info()
+        except Exception as exc:
+            logger.debug("brief_system_info failed: %s", exc)
+            info = ""
         active_win = ""
         try:
             windows = wm.list_windows()
@@ -255,7 +480,11 @@ class AgentEngine:
         return info + active_win + tenant
 
     def _add_vision_message(self, messages: list, screenshot_b64: str, text: str):
-        """Add a vision message (screenshot + text) to the conversation."""
+        """Add a vision message (screenshot + text) to the conversation.
+
+        capture_to_base64() encodes PNG by default; the media type below must
+        stay in sync with the screenshot encoding or Anthropic will reject.
+        """
         provider = self.config.get("provider", "")
         if provider == "anthropic":
             messages.append({
@@ -268,6 +497,9 @@ class AgentEngine:
                         "data": screenshot_b64,
                     }},
                 ],
+                # Marker so _prune_old_screenshots can find image messages.
+                "_sentinel_has_image": True,
+                "_sentinel_step": self.step,
             })
         else:
             messages.append({
@@ -278,38 +510,123 @@ class AgentEngine:
                         "url": f"data:image/png;base64,{screenshot_b64}",
                     }},
                 ],
+                "_sentinel_has_image": True,
+                "_sentinel_step": self.step,
             })
 
+    def _prune_old_screenshots(self, messages: list) -> None:
+        """Drop the image bytes from older screenshot messages, but PRESERVE
+        any text in those messages (which often includes the original goal!).
+
+        Earlier versions of this method replaced the whole message with a
+        text stub — that erased the user's goal from the first message and
+        the agent forgot what it was supposed to do. We now extract the text
+        block and only discard the image payload.
+        """
+        keep = max(1, self.image_history)
+        image_indices = [
+            i for i, m in enumerate(messages)
+            if m.get("_sentinel_has_image")
+        ]
+        if len(image_indices) <= keep:
+            return
+        to_strip = image_indices[: len(image_indices) - keep]
+        for idx in to_strip:
+            msg = messages[idx]
+            step = msg.get("_sentinel_step", "?")
+
+            # Pull any plain-text content out of the vision message's
+            # content-block list before we drop the image.
+            preserved_text = ""
+            content = msg.get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        preserved_text = block.get("text", "")
+                        break
+            elif isinstance(content, str):
+                preserved_text = content
+
+            stub = f"[screenshot at step {step} omitted to save tokens]"
+            new_content = (
+                f"{preserved_text}\n{stub}" if preserved_text else stub
+            )
+            messages[idx] = {"role": "user", "content": new_content}
+
     def _parse_action(self, response: str) -> Optional[Dict]:
-        """Extract JSON action from LLM response text."""
-        # Try direct JSON parse
+        """Extract an action dict from an LLM response.
+
+        Handles three shapes:
+          1. Tool-call envelope ``{"tool_calls":[{"function":{...}}]}`` —
+             produced by LLMClient when the model used native function calls.
+          2. A plain action dict ``{"action":"click","x":1,"y":2}``.
+          3. The above wrapped in a markdown code fence.
+        """
         text = response.strip()
+
+        # 1) Native tool-call envelope from LLMClient.
         try:
             parsed = json.loads(text)
-            if isinstance(parsed, dict) and "action" in parsed:
-                return parsed
         except json.JSONDecodeError:
-            pass
+            parsed = None
+        if isinstance(parsed, dict) and parsed.get("tool_calls"):
+            return self._action_from_tool_call(parsed["tool_calls"])
+        if isinstance(parsed, dict) and "action" in parsed:
+            return parsed
 
-        # Try extracting JSON from markdown code blocks
+        # 2) JSON fenced in a markdown code block.
         json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
         if json_match:
             try:
-                parsed = json.loads(json_match.group(1))
-                if isinstance(parsed, dict) and "action" in parsed:
-                    return parsed
+                inner = json.loads(json_match.group(1))
             except json.JSONDecodeError:
-                pass
+                inner = None
+            if isinstance(inner, dict):
+                if inner.get("tool_calls"):
+                    return self._action_from_tool_call(inner["tool_calls"])
+                if "action" in inner:
+                    return inner
 
-        # Try finding any JSON object in the response
-        brace_match = re.search(r'\{[^{}]*"action"[^{}]*\}', text, re.DOTALL)
-        if brace_match:
-            try:
-                return json.loads(brace_match.group(0))
-            except json.JSONDecodeError:
-                pass
+        # 3) Best-effort: find a balanced JSON object containing "action".
+        obj = _find_balanced_json_with_key(text, "action")
+        if obj is not None:
+            return obj
 
         return None
+
+    @staticmethod
+    def _action_from_tool_call(tool_calls) -> Optional[Dict]:
+        """Convert the first tool_call into an action dict for the executor.
+
+        Defensive: tool_calls coming from real providers occasionally arrive
+        in unexpected shapes (string, None, list of strings, etc.) — we never
+        want any of those to crash the agent loop.
+        """
+        if not isinstance(tool_calls, list) or not tool_calls:
+            return None
+        call = tool_calls[0]
+        if not isinstance(call, dict):
+            return None
+        # OpenAI shape: {"function": {"name": ..., "arguments": "<json>"}}
+        func = call.get("function") if isinstance(call.get("function"), dict) else {}
+        name = func.get("name") or call.get("name")
+        raw_args = func.get("arguments")
+        if isinstance(raw_args, str):
+            try:
+                args = json.loads(raw_args) if raw_args.strip() else {}
+            except json.JSONDecodeError:
+                args = {}
+        elif isinstance(raw_args, dict):
+            args = raw_args
+        else:
+            args = call.get("input") if isinstance(call.get("input"), dict) else {}
+        if not name:
+            return None
+        # The model occasionally re-includes "action" in its arguments — drop
+        # it so we don't end up with two values for the same key.
+        if isinstance(args, dict) and "action" in args:
+            args = {k: v for k, v in args.items() if k != "action"}
+        return {"action": str(name), **(args if isinstance(args, dict) else {})}
 
     def _log_step(self, action: Dict, result: Dict):
         self.forensic_log.append({
@@ -328,3 +645,68 @@ class AgentEngine:
 
     def export_log(self) -> str:
         return json.dumps(self.forensic_log, indent=2, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _find_balanced_json_with_key(text: str, key: str) -> Optional[Dict]:
+    """Scan *text* for a balanced ``{...}`` JSON object that contains *key*.
+
+    Handles strings and escape characters so nested braces don't break the
+    scanner the way the original regex did.
+    """
+    needle = f'"{key}"'
+    depth = 0
+    start = -1
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text):
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+            continue
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start >= 0:
+                candidate = text[start:i + 1]
+                if needle in candidate:
+                    try:
+                        obj = json.loads(candidate)
+                    except json.JSONDecodeError:
+                        obj = None
+                    if isinstance(obj, dict) and key in obj:
+                        return obj
+                start = -1
+    return None
+
+
+def _clean_messages_for_api(messages: list) -> list:
+    """Return a copy of *messages* with internal ``_sentinel_*`` keys stripped.
+
+    The engine attaches private markers like ``_sentinel_has_image`` so it can
+    prune old screenshots; these must not appear in the JSON body sent to a
+    provider's API.
+    """
+    cleaned = []
+    for m in messages:
+        if not isinstance(m, dict):
+            cleaned.append(m)
+            continue
+        cleaned.append({
+            k: v for k, v in m.items()
+            if not (isinstance(k, str) and k.startswith("_sentinel_"))
+        })
+    return cleaned

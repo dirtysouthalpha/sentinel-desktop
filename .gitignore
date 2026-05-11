@@ -1,0 +1,57 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Sentinel runtime data (NEVER commit — contains API keys!)
+config.json
+sentinel_log_*.json
+logs/
+forensic_*.json
+
+# Local screenshots / templates used for click_image
+screenshots/
+templates/
+
+# Logs
+*.log
+
+# Local-only environment overrides
+.env
+.env.local

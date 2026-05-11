@@ -1,88 +1,356 @@
 """
 Sentinel Desktop v2 — Theme definitions for CustomTkinter.
+
+14 built-in themes matching Sentinel Override's visual identity.
+Each theme defines: appearance mode, color theme, accent color, and
+additional color overrides for chat tags, status indicators, etc.
 """
 
-# Sentinel brand colors
-COLORS = {
-    # Primary
-    "bg_dark": "#0d1117",
-    "bg_panel": "#161b22",
-    "bg_card": "#1c2128",
-    "bg_input": "#21262d",
-    "bg_hover": "#292e36",
+from __future__ import annotations
 
-    # Accent
-    "accent": "#e8793a",       # Sentinel orange
-    "accent_hover": "#f09050",
-    "accent_dim": "#c45a20",
-    "accent_glow": "#ff8c42",
+import logging
+from typing import Any, Dict
 
-    # Text
-    "text_primary": "#e6edf3",
-    "text_secondary": "#8b949e",
-    "text_muted": "#6e7681",
-    "text_link": "#58a6ff",
+logger = logging.getLogger(__name__)
 
-    # Status
-    "success": "#3fb950",
-    "warning": "#d29922",
-    "error": "#f85149",
-    "info": "#58a6ff",
-
-    # Borders
-    "border": "#30363d",
-    "border_focus": "#e8793a",
-
-    # Provider chips
-    "chip_provider": "#1f6feb",
-    "chip_tenant": "#238636",
-    "chip_step": "#6e40c9",
-}
-
-# Theme configurations for CustomTkinter
-CTK_THEMES = {
-    "dark": {
+# ---------------------------------------------------------------------------
+# Color palette constants
+# ---------------------------------------------------------------------------
+THEMES: Dict[str, Dict[str, Any]] = {
+    # ── Dark family ─────────────────────────────────────────────────────
+    "midnight": {
+        "label": "🌌 Midnight",
+        "appearance": "dark",
         "color_theme": "dark-blue",
-        "window_bg": COLORS["bg_dark"],
-        "panel_bg": COLORS["bg_panel"],
-        "card_bg": COLORS["bg_card"],
-        "input_bg": COLORS["bg_input"],
-        "text": COLORS["text_primary"],
-        "text_secondary": COLORS["text_secondary"],
-        "accent": COLORS["accent"],
-        "border": COLORS["border"],
+        "accent": "#4A90D9",
+        "accent_hover": "#5BA0E9",
+        "bg_primary": "#1a1a2e",
+        "bg_secondary": "#16213e",
+        "bg_input": "#0f3460",
+        "text_primary": "#e0e0e0",
+        "text_secondary": "#a0a0b0",
+        "status_idle": "#666666",
+        "status_running": "#2ecc71",
+        "status_error": "#e74c3c",
+        "tag_user": "#4A90D9",
+        "tag_assistant": "#2ecc71",
+        "tag_action": "#f39c12",
+        "tag_error": "#e74c3c",
+        "tag_system": "#95a5a6",
+        "overlay_ring": "#4A90D9",
+        "overlay_fill": "#4A90D9",
     },
-    "light": {
+    "dark": {
+        "label": "🌙 Dark",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#1f6aa5",
+        "accent_hover": "#2a7abf",
+        "bg_primary": "#2b2b2b",
+        "bg_secondary": "#333333",
+        "bg_input": "#404040",
+        "text_primary": "#d0d0d0",
+        "text_secondary": "#909090",
+        "status_idle": "#666666",
+        "status_running": "#2ecc71",
+        "status_error": "#e74c3c",
+        "tag_user": "#1f6aa5",
+        "tag_assistant": "#2ecc71",
+        "tag_action": "#f39c12",
+        "tag_error": "#e74c3c",
+        "tag_system": "#808080",
+        "overlay_ring": "#1f6aa5",
+        "overlay_fill": "#1f6aa5",
+    },
+    "matrix": {
+        "label": "💻 Matrix",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#00ff41",
+        "accent_hover": "#33ff66",
+        "bg_primary": "#0a0a0a",
+        "bg_secondary": "#0d1a0d",
+        "bg_input": "#0f2a0f",
+        "text_primary": "#00ff41",
+        "text_secondary": "#009926",
+        "status_idle": "#004d00",
+        "status_running": "#00ff41",
+        "status_error": "#ff0000",
+        "tag_user": "#00ff41",
+        "tag_assistant": "#33ff66",
+        "tag_action": "#99ff99",
+        "tag_error": "#ff3333",
+        "tag_system": "#00802b",
+        "overlay_ring": "#00ff41",
+        "overlay_fill": "#00ff41",
+    },
+    "tron": {
+        "label": "🔷 Tron",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#00dffc",
+        "accent_hover": "#33e8ff",
+        "bg_primary": "#0a0e14",
+        "bg_secondary": "#0d1520",
+        "bg_input": "#101c2a",
+        "text_primary": "#c0e8ff",
+        "text_secondary": "#5a8aa5",
+        "status_idle": "#2a4a5a",
+        "status_running": "#00dffc",
+        "status_error": "#ff3366",
+        "tag_user": "#00dffc",
+        "tag_assistant": "#66eeff",
+        "tag_action": "#ffaa00",
+        "tag_error": "#ff3366",
+        "tag_system": "#3a6a8a",
+        "overlay_ring": "#00dffc",
+        "overlay_fill": "#00dffc",
+    },
+    "cyberpunk": {
+        "label": "⚡ Cyberpunk",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#ff2a6d",
+        "accent_hover": "#ff5588",
+        "bg_primary": "#0a0014",
+        "bg_secondary": "#150020",
+        "bg_input": "#200030",
+        "text_primary": "#ff2a6d",
+        "text_secondary": "#cc2288",
+        "status_idle": "#660033",
+        "status_running": "#05d9e8",
+        "status_error": "#ff2a6d",
+        "tag_user": "#ff2a6d",
+        "tag_assistant": "#05d9e8",
+        "tag_action": "#f5dd42",
+        "tag_error": "#ff2a6d",
+        "tag_system": "#770044",
+        "overlay_ring": "#ff2a6d",
+        "overlay_fill": "#ff2a6d",
+    },
+    "neon": {
+        "label": "💜 Neon",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#b400ff",
+        "accent_hover": "#cc33ff",
+        "bg_primary": "#0d001a",
+        "bg_secondary": "#140026",
+        "bg_input": "#1f0033",
+        "text_primary": "#e0b0ff",
+        "text_secondary": "#9966cc",
+        "status_idle": "#4d0080",
+        "status_running": "#b400ff",
+        "status_error": "#ff0066",
+        "tag_user": "#b400ff",
+        "tag_assistant": "#cc66ff",
+        "tag_action": "#ff9900",
+        "tag_error": "#ff0066",
+        "tag_system": "#6633cc",
+        "overlay_ring": "#b400ff",
+        "overlay_fill": "#b400ff",
+    },
+    "terminal": {
+        "label": "🟢 Terminal",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#00ff00",
+        "accent_hover": "#33ff33",
+        "bg_primary": "#000000",
+        "bg_secondary": "#0a0a0a",
+        "bg_input": "#141414",
+        "text_primary": "#00ff00",
+        "text_secondary": "#008800",
+        "status_idle": "#004400",
+        "status_running": "#00ff00",
+        "status_error": "#ff0000",
+        "tag_user": "#00ff00",
+        "tag_assistant": "#44ff44",
+        "tag_action": "#ffff00",
+        "tag_error": "#ff0000",
+        "tag_system": "#006600",
+        "overlay_ring": "#00ff00",
+        "overlay_fill": "#00ff00",
+    },
+    "blood": {
+        "label": "🩸 Blood",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#cc0000",
+        "accent_hover": "#e60000",
+        "bg_primary": "#0a0000",
+        "bg_secondary": "#140000",
+        "bg_input": "#200000",
+        "text_primary": "#ff3333",
+        "text_secondary": "#993333",
+        "status_idle": "#4d0000",
+        "status_running": "#cc0000",
+        "status_error": "#ff0000",
+        "tag_user": "#cc0000",
+        "tag_assistant": "#ff4444",
+        "tag_action": "#ff8800",
+        "tag_error": "#ff0000",
+        "tag_system": "#660000",
+        "overlay_ring": "#cc0000",
+        "overlay_fill": "#cc0000",
+    },
+    "ocean": {
+        "label": "🌊 Ocean",
+        "appearance": "dark",
         "color_theme": "blue",
-        "window_bg": "#ffffff",
-        "panel_bg": "#f6f8fa",
-        "card_bg": "#ffffff",
-        "input_bg": "#f0f0f0",
-        "text": "#1f2328",
-        "text_secondary": "#656d76",
-        "accent": "#e8793a",
-        "border": "#d0d7de",
+        "accent": "#0077be",
+        "accent_hover": "#0088dd",
+        "bg_primary": "#001122",
+        "bg_secondary": "#001a33",
+        "bg_input": "#002244",
+        "text_primary": "#c0ddef",
+        "text_secondary": "#5a8ea8",
+        "status_idle": "#003355",
+        "status_running": "#00aaff",
+        "status_error": "#ff4444",
+        "tag_user": "#0077be",
+        "tag_assistant": "#00aaff",
+        "tag_action": "#ffbb33",
+        "tag_error": "#ff4444",
+        "tag_system": "#336688",
+        "overlay_ring": "#0077be",
+        "overlay_fill": "#0077be",
+    },
+
+    # ── Light / warm family ─────────────────────────────────────────────
+    "light": {
+        "label": "☀️ Light",
+        "appearance": "light",
+        "color_theme": "blue",
+        "accent": "#1f6aa5",
+        "accent_hover": "#2a7abf",
+        "bg_primary": "#f0f0f0",
+        "bg_secondary": "#e0e0e0",
+        "bg_input": "#ffffff",
+        "text_primary": "#222222",
+        "text_secondary": "#666666",
+        "status_idle": "#999999",
+        "status_running": "#2ecc71",
+        "status_error": "#e74c3c",
+        "tag_user": "#1f6aa5",
+        "tag_assistant": "#27ae60",
+        "tag_action": "#e67e22",
+        "tag_error": "#e74c3c",
+        "tag_system": "#888888",
+        "overlay_ring": "#1f6aa5",
+        "overlay_fill": "#1f6aa5",
+    },
+    "sunset": {
+        "label": "🌅 Sunset",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#ff6b35",
+        "accent_hover": "#ff8855",
+        "bg_primary": "#1a0a00",
+        "bg_secondary": "#2a1500",
+        "bg_input": "#3a2000",
+        "text_primary": "#ffd4b8",
+        "text_secondary": "#b07040",
+        "status_idle": "#663300",
+        "status_running": "#ff6b35",
+        "status_error": "#ff3333",
+        "tag_user": "#ff6b35",
+        "tag_assistant": "#ffaa44",
+        "tag_action": "#ffdd00",
+        "tag_error": "#ff3333",
+        "tag_system": "#884422",
+        "overlay_ring": "#ff6b35",
+        "overlay_fill": "#ff6b35",
+    },
+    "paper": {
+        "label": "📜 Paper",
+        "appearance": "light",
+        "color_theme": "blue",
+        "accent": "#8b7355",
+        "accent_hover": "#a08866",
+        "bg_primary": "#f5f0e8",
+        "bg_secondary": "#ebe5d8",
+        "bg_input": "#ffffff",
+        "text_primary": "#3a3226",
+        "text_secondary": "#7a6e5e",
+        "status_idle": "#b0a890",
+        "status_running": "#6b8e4e",
+        "status_error": "#c44",
+        "tag_user": "#8b7355",
+        "tag_assistant": "#6b8e4e",
+        "tag_action": "#b8860b",
+        "tag_error": "#c44",
+        "tag_system": "#9a8e7e",
+        "overlay_ring": "#8b7355",
+        "overlay_fill": "#8b7355",
+    },
+    "forest": {
+        "label": "🌲 Forest",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#2d6a4f",
+        "accent_hover": "#3a8a66",
+        "bg_primary": "#0a1208",
+        "bg_secondary": "#0f1a0c",
+        "bg_input": "#142210",
+        "text_primary": "#a8d5a0",
+        "text_secondary": "#5a8a50",
+        "status_idle": "#2a4a22",
+        "status_running": "#52b788",
+        "status_error": "#e74c3c",
+        "tag_user": "#2d6a4f",
+        "tag_assistant": "#52b788",
+        "tag_action": "#d4a037",
+        "tag_error": "#e74c3c",
+        "tag_system": "#3a5a32",
+        "overlay_ring": "#2d6a4f",
+        "overlay_fill": "#2d6a4f",
+    },
+    "mono": {
+        "label": "⬛ Mono",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#cccccc",
+        "accent_hover": "#ffffff",
+        "bg_primary": "#111111",
+        "bg_secondary": "#1a1a1a",
+        "bg_input": "#222222",
+        "text_primary": "#cccccc",
+        "text_secondary": "#777777",
+        "status_idle": "#444444",
+        "status_running": "#ffffff",
+        "status_error": "#ff4444",
+        "tag_user": "#cccccc",
+        "tag_assistant": "#ffffff",
+        "tag_action": "#999999",
+        "tag_error": "#ff4444",
+        "tag_system": "#555555",
+        "overlay_ring": "#cccccc",
+        "overlay_fill": "#cccccc",
     },
 }
 
-# Font definitions
-FONTS = {
-    "header": ("Segoe UI", 18, "bold"),
-    "subheader": ("Segoe UI", 14, "bold"),
-    "body": ("Segoe UI", 12),
-    "body_bold": ("Segoe UI", 12, "bold"),
-    "code": ("Cascadia Code", 11),
-    "small": ("Segoe UI", 10),
-    "tiny": ("Segoe UI", 9),
-    "mono": ("Consolas", 11),
-}
 
-# Status indicator config
-STATUS_COLORS = {
-    "idle": COLORS["text_muted"],
-    "running": COLORS["accent"],
-    "success": COLORS["success"],
-    "error": COLORS["error"],
-    "warning": COLORS["warning"],
-    "waiting": COLORS["info"],
-}
+def get_theme(name: str) -> Dict[str, Any]:
+    """Get a theme by name, falling back to midnight."""
+    return THEMES.get(name, THEMES["midnight"])
+
+
+def get_theme_names() -> list:
+    """Return list of (key, label) tuples for all themes."""
+    return [(k, v["label"]) for k, v in THEMES.items()]
+
+
+def apply_theme(name_or_dict) -> Dict[str, Any]:
+    """Apply a named theme or theme dict to customtkinter. Returns the theme dict."""
+    try:
+        import customtkinter as ctk
+    except ImportError:
+        return THEMES["midnight"]
+
+    theme = THEMES.get(name_or_dict, THEMES["midnight"]) if isinstance(name_or_dict, str) else name_or_dict
+
+    ctk.set_appearance_mode(theme.get("appearance", "dark"))
+    ctk.set_default_color_theme(theme.get("color_theme", "dark-blue"))
+
+    return theme
