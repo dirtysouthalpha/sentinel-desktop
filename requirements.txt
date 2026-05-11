@@ -1,0 +1,22 @@
+# Sentinel Desktop v2 — AI-powered Windows desktop automation
+# Core
+customtkinter>=5.0.0
+pyautogui>=0.9.54
+psutil>=5.9.0
+Pillow>=10.0.0
+pyperclip>=1.8.2
+requests>=2.31.0
+httpx>=0.25.0
+
+# API server
+fastapi>=0.104.0
+uvicorn>=0.24.0
+websockets>=12.0
+pydantic>=2.0.0
+
+# Screen analysis (optional but recommended)
+opencv-python>=4.8.0
+
+# Windows-specific
+pygetwindow>=0.0.9
+pywin32>=306; sys_platform == "win32"
