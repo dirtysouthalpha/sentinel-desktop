@@ -30,6 +30,8 @@ from core.forensic_log import ForensicLog
 from core.checkpoint import CheckpointManager
 from core.approval_gate import ApprovalGate, ApprovalDecision
 from core.mfa_detection import MFADetector
+from core.smart_wait import SmartWait
+from core.app_profiles import detect_profile, get_timing_for_app
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,7 @@ type, and interact with applications.
 
 ## Environment
 {env_context}
+{app_context}
 
 ## Available Actions
 Return a single JSON object with an "action" field and relevant parameters:
@@ -74,6 +77,9 @@ Return a single JSON object with an "action" field and relevant parameters:
 | find_image | template_path, confidence? | Find image on screen, return position |
 | wait_for_image | template_path, timeout? | Wait for image to appear |
 | wait | seconds | Wait N seconds |
+| smart_wait | timeout?, region? | Wait until the screen changes (faster than fixed wait) |
+| wait_for_stable | timeout?, stable_time? | Wait until screen stops changing (page loads) |
+| wait_for_text | text, timeout? | Wait until specific text appears on screen |
 | smart_open | name | **PREFERRED** — focus the app's window if it's already open, else launch it. Works for outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc. |
 | open_app | path, args? | Start a raw program by path (use smart_open instead when you can) |
 | focus_window | title | Bring window to front by title |
@@ -193,6 +199,9 @@ class AgentEngine:
         self.mfa_detector = MFADetector()
         self._mfa_paused = False
 
+        # Smart wait — visual-diff-based waiting instead of fixed timers
+        self.smart_waiter = SmartWait()
+
     # ── Sync entry point ────────────────────────────────────────────────
 
     def run(self, goal: str) -> Dict[str, Any]:
@@ -203,6 +212,31 @@ class AgentEngine:
         self.forensic_log = []
         self.finish_summary = ""
 
+        # Optional: switch to a virtual desktop so agent doesn't interrupt user
+        vd = None
+        if self.config.get("virtual_desktop"):
+            try:
+                from core.virtual_desktop import VirtualDesktop
+                vd = VirtualDesktop()
+                vd.create("SentinelAgent")
+                vd.switch_to("SentinelAgent")
+                self.notes.append("Running on virtual desktop 'SentinelAgent'")
+            except Exception as exc:
+                logger.warning("Virtual desktop creation failed: %s", exc)
+                self.notes.append(f"Virtual desktop unavailable: {exc}")
+
+        try:
+            return self._run_inner(goal)
+        finally:
+            # Switch back to default desktop when done
+            if vd:
+                try:
+                    vd.switch_to("Default")
+                except Exception:
+                    pass
+
+    def _run_inner(self, goal: str) -> Dict[str, Any]:
+        """Inner agent loop — called by run() with virtual desktop wrapping."""
         provider = self.config.get("provider", "")
         api_key = self.config.get("api_key", "")
         model = self.config.get("model", "")
@@ -232,6 +266,10 @@ class AgentEngine:
         # (Python's str.format raises KeyError: '"action"' on those).
         env_context = self._build_env_context()
         system_prompt = SYSTEM_PROMPT.replace("{env_context}", env_context)
+
+        # Inject app profile context — detect active window and add profile hints
+        app_context = self._build_app_context()
+        system_prompt = system_prompt.replace("{app_context}", app_context)
         messages = [{"role": "system", "content": system_prompt}]
 
         # Initial screenshot + goal
@@ -478,6 +516,41 @@ class AgentEngine:
             if self.config.get("tenant_lockdown"):
                 tenant += " (LOCKDOWN MODE)"
         return info + active_win + tenant
+
+    def _build_app_context(self) -> str:
+        """Build app-profile context for the system prompt."""
+        try:
+            windows = wm.list_windows()
+            focused_title = ""
+            for w in windows:
+                if w.get("is_focused"):
+                    focused_title = w.get("title", "")
+                    break
+            if not focused_title:
+                return ""
+            profile = detect_profile(focused_title)
+            if not profile:
+                return ""
+            lines = [
+                f"## Active App: {profile.display_name}",
+                f"- Stealth compatibility: {profile.stealth_compatible}",
+                f"- Preferred input method: {profile.preferred_input}",
+            ]
+            if profile.quirks:
+                lines.append("- Quirks:")
+                for q in profile.quirks:
+                    lines.append(f"  - {q}")
+            if profile.strategies:
+                lines.append("- Suggested strategies:")
+                for task, strategy in profile.strategies.items():
+                    lines.append(f"  - {task}: {strategy}")
+            if profile.menu_paths:
+                lines.append("- Known menu paths:")
+                for action, path in profile.menu_paths.items():
+                    lines.append(f"  - {action}: {' → '.join(path)}")
+            return "\n".join(lines)
+        except Exception:
+            return ""
 
     def _add_vision_message(self, messages: list, screenshot_b64: str, text: str):
         """Add a vision message (screenshot + text) to the conversation.

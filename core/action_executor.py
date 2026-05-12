@@ -436,6 +436,54 @@ class ActionExecutor:
             return {"success": True, "output": f"Image appeared at ({pos[0]}, {pos[1]})", "position": list(pos)}
         return {"success": False, "output": f"Timed out after {timeout}s"}
 
+    def _smart_wait(self, *, timeout: float = 10, region: list = None, **_) -> Dict:
+        """Wait until the screen changes (visual diff)."""
+        try:
+            from core.smart_wait import SmartWait
+            sw = SmartWait()
+            region_tuple = tuple(region) if region else None
+            result = sw.wait_for_change(timeout=float(timeout), region=region_tuple)
+            return {
+                "success": result.success,
+                "output": f"Screen changed after {result.elapsed:.1f}s ({result.frames_checked} frames)" if result.success else f"No change after {result.elapsed:.1f}s",
+                "elapsed": result.elapsed,
+                "frames_checked": result.frames_checked,
+            }
+        except Exception as exc:
+            import time as _t; _t.sleep(min(float(timeout), 5.0))
+            return {"success": False, "output": f"Smart wait fallback: {exc}"}
+
+    def _wait_for_stable(self, *, timeout: float = 10, stable_time: float = 1.5, region: list = None, **_) -> Dict:
+        """Wait until the screen stops changing."""
+        try:
+            from core.smart_wait import SmartWait
+            sw = SmartWait()
+            region_tuple = tuple(region) if region else None
+            result = sw.wait_for_stable(timeout=float(timeout), stable_time=float(stable_time), region=region_tuple)
+            return {
+                "success": result.success,
+                "output": f"Screen stable after {result.elapsed:.1f}s" if result.success else f"Still changing after {result.elapsed:.1f}s",
+                "elapsed": result.elapsed,
+            }
+        except Exception as exc:
+            import time as _t; _t.sleep(3.0)
+            return {"success": False, "output": f"Wait-for-stable fallback: {exc}"}
+
+    def _wait_for_text(self, *, text: str, timeout: float = 10, region: list = None, **_) -> Dict:
+        """Wait until specific text appears on screen via OCR."""
+        try:
+            from core.smart_wait import SmartWait
+            sw = SmartWait()
+            region_tuple = tuple(region) if region else None
+            result = sw.wait_for_text(text, timeout=float(timeout), region=region_tuple)
+            return {
+                "success": result.success,
+                "output": f"Text '{text}' found after {result.elapsed:.1f}s" if result.success else f"Text '{text}' not found after {result.elapsed:.1f}s",
+                "elapsed": result.elapsed,
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"Wait-for-text fallback: {exc}"}
+
     def _open_app(self, *, path: str, args: list = None, **_) -> Dict:
         pid = pm.start_process(path, args)
         if pid:
@@ -535,6 +583,9 @@ class ActionExecutor:
         "find_image": _find_image,
         "wait": _wait,
         "wait_for_image": _wait_for_image,
+        "smart_wait": _smart_wait,
+        "wait_for_stable": _wait_for_stable,
+        "wait_for_text": _wait_for_text,
         "open_app": _open_app,
         "smart_open": _smart_open,
         "close_app": _close_app,

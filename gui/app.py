@@ -371,6 +371,10 @@ class SentinelApp:
             # All Tk widget updates must run on the main thread.
             self.root.after(0, self._update_step_labels, step)
 
+            # Feed action history sidebar
+            self.root.after(0, self._add_history_entry, step, action_name,
+                            {"ok": result.get("ok", True), "msg": result.get("msg", "")})
+
             # Update screenshot if provided
             screenshot_b64 = kwargs.get("screenshot")
             if screenshot_b64:
