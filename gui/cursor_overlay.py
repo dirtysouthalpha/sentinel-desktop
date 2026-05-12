@@ -38,7 +38,7 @@ class CursorOverlay:
     cursor overlay. Thread-safe — call show_action() from any thread.
     """
 
-    def __init__(self, accent_color: str = "#4A90D9"):
+    def __init__(self, accent_color: str = "#00F0FF"):
         self._accent = accent_color
         self._thread: Optional[threading.Thread] = None
         self._running = False
@@ -185,13 +185,13 @@ class CursorOverlay:
             ring_color = self._accent
             fill_alpha = 0.6
         elif action_type in ("type_text", "type_into_field"):
-            ring_color = "#2ecc71"
+            ring_color = "#95E400"     # lime (Override success)
             fill_alpha = 0.4
         elif action_type in ("press_key", "hotkey"):
-            ring_color = "#f39c12"
+            ring_color = "#FBBC00"     # amber (Override warning)
             fill_alpha = 0.3
         elif action_type in ("scroll",):
-            ring_color = "#9b59b6"
+            ring_color = "#8a5cff"     # phantom purple
             fill_alpha = 0.3
         else:
             ring_color = self._accent
@@ -267,7 +267,7 @@ def get_overlay() -> CursorOverlay:
     return _overlay
 
 
-def start_overlay(accent_color: str = "#4A90D9") -> bool:
+def start_overlay(accent_color: str = "#00F0FF") -> bool:
     """Start the cursor overlay. Returns True if successful."""
     o = get_overlay()
     o.set_accent(accent_color)
