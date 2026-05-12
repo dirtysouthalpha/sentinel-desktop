@@ -256,6 +256,22 @@ class AgentEngine:
         if self.config.get("scheduler_enabled"):
             self.scheduler.start()
 
+        # Auth manager — RBAC + session tokens
+        from core.auth import AuthManager
+        self.auth_manager = AuthManager()
+
+        # Credential vault — DPAPI encryption for API keys
+        from core.encryption import CredentialVault
+        self.vault = CredentialVault()
+
+        # Audit exporter — professional reports
+        from core.audit_export import AuditExporter
+        self.audit_exporter = AuditExporter()
+
+        # Agent pool — multi-agent parallel execution
+        from core.agent_pool import AgentPool
+        self.agent_pool = AgentPool(max_agents=self.config.get("max_agents", 3))
+
     # ── Sync entry point ────────────────────────────────────────────────
 
     def run(self, goal: str) -> Dict[str, Any]:

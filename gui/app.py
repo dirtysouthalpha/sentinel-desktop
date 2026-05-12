@@ -149,6 +149,7 @@ class SentinelApp:
         tab_scripts = self.tabview.add("📜 Scripts")
         tab_workflows = self.tabview.add("🔀 Workflows")
         tab_history = self.tabview.add("📁 History")
+        tab_settings = self.tabview.add("⚙️ Settings")
 
         # Dashboard tab = existing main area content
         self._build_main_area_into(tab_dashboard)
@@ -175,6 +176,14 @@ class SentinelApp:
             self.history_tab = HistoryTab(tab_history, self)
         except ImportError:
             ctk.CTkLabel(tab_history, text="History tab unavailable",
+                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+
+        # Settings tab
+        try:
+            from gui.tabs.settings_tab import SettingsTab
+            self.settings_tab = SettingsTab(tab_settings, self)
+        except ImportError:
+            ctk.CTkLabel(tab_settings, text="Settings tab unavailable",
                          text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
 
     def _build_main_area_into(self, parent):
@@ -832,7 +841,7 @@ class SentinelApp:
 
     def run(self):
         self._add_chat(
-            "Sentinel Desktop v2 ready. Describe a goal and press Enter.\n"
+            "Sentinel Desktop v3.0 ready. Describe a goal and press Enter.\n"
             "Ctrl+K for command palette. ⚙ for settings.",
             "system"
         )
