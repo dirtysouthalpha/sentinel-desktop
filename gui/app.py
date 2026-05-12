@@ -66,7 +66,7 @@ class SentinelApp:
 
         # Build UI
         self._build_header()
-        self._build_main_area()
+        self._build_tabs()
         self._build_recorder_panel()
         self._build_input()
 
@@ -130,11 +130,57 @@ class SentinelApp:
             command=self._open_settings,
         ).pack(side="right", padx=4)
 
-    # ── Main area ───────────────────────────────────────────────────────
+    # ── Tabbed Layout ──────────────────────────────────────────────────
 
-    def _build_main_area(self):
-        main = ctk.CTkFrame(self.root)
-        main.pack(fill="both", expand=True, padx=8, pady=4)
+    def _build_tabs(self):
+        """Build tabbed interface: Dashboard | Scripts | Workflows | History."""
+        self.tabview = ctk.CTkTabview(
+            self.root,
+            fg_color=self._t("bg_secondary", "#161b22"),
+            segmented_button_fg_color=self._t("bg_input", "#21262d"),
+            segmented_button_selected_color=self._t("accent", "#58a6ff"),
+            segmented_button_unselected_color=self._t("bg_input", "#21262d"),
+            corner_radius=8,
+        )
+        self.tabview.pack(fill="both", expand=True, padx=8, pady=4)
+
+        # Create tabs
+        tab_dashboard = self.tabview.add("🖥️ Dashboard")
+        tab_scripts = self.tabview.add("📜 Scripts")
+        tab_workflows = self.tabview.add("🔀 Workflows")
+        tab_history = self.tabview.add("📁 History")
+
+        # Dashboard tab = existing main area content
+        self._build_main_area_into(tab_dashboard)
+
+        # Scripts tab
+        try:
+            from gui.tabs.scripts_tab import ScriptsTab
+            self.scripts_tab = ScriptsTab(tab_scripts, self)
+        except ImportError:
+            ctk.CTkLabel(tab_scripts, text="Scripts tab unavailable",
+                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+
+        # Workflows tab
+        try:
+            from gui.tabs.workflows_tab import WorkflowsTab
+            self.workflows_tab = WorkflowsTab(tab_workflows, self)
+        except ImportError:
+            ctk.CTkLabel(tab_workflows, text="Workflows tab unavailable",
+                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+
+        # History tab
+        try:
+            from gui.tabs.history_tab import HistoryTab
+            self.history_tab = HistoryTab(tab_history, self)
+        except ImportError:
+            ctk.CTkLabel(tab_history, text="History tab unavailable",
+                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+
+    def _build_main_area_into(self, parent):
+        """Build the original main area content into a given parent frame."""
+        main = ctk.CTkFrame(parent, fg_color="transparent")
+        main.pack(fill="both", expand=True)
         main.grid_columnconfigure(0, weight=3)
         main.grid_columnconfigure(1, weight=1)
         main.grid_rowconfigure(0, weight=1)

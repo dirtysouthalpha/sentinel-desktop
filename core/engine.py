@@ -12,6 +12,7 @@ Supports both sync and async usage:
 
 import json
 import logging
+import os
 import re
 import time
 import asyncio
@@ -215,6 +216,45 @@ class AgentEngine:
         # PowerShell runner — execute PS scripts/commands
         from core.powershell import PowerShellRunner
         self.powershell = PowerShellRunner()
+
+        # Workflow engine — multi-step workflows with conditions/loops
+        from core.workflow import WorkflowEngine
+        self.workflow_engine = WorkflowEngine(self.executor, self.script_engine)
+
+        # Task scheduler — cron-like scheduling
+        from core.scheduler import TaskScheduler
+        self.scheduler = TaskScheduler(self)
+
+        # Notification manager — toast/email/webhook
+        from core.notifications import NotificationManager
+        notify_config = {
+            "enabled_channels": self.config.get("notify_channels", ["toast", "log"]),
+            "webhook_url": self.config.get("notify_webhook_url", ""),
+            "discord_webhook": self.config.get("notify_discord_webhook", ""),
+        }
+        self.notifications = NotificationManager(notify_config)
+
+        # Plugin loader — drop-in extensibility
+        from core.plugin_loader import PluginLoader
+        self.plugin_loader = PluginLoader(
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
+        )
+
+        # Recovery manager — self-healing + popup auto-dismiss
+        from core.recovery import RecoveryManager
+        self.recovery = RecoveryManager(self.executor, self.config)
+
+        # Load plugins
+        try:
+            loaded = self.plugin_loader.load_all()
+            for p in loaded:
+                logger.info("Plugin loaded: %s v%s", p.get("name"), p.get("version"))
+        except Exception as exc:
+            logger.warning("Plugin loading failed: %s", exc)
+
+        # Start scheduler if configured
+        if self.config.get("scheduler_enabled"):
+            self.scheduler.start()
 
     # ── Sync entry point ────────────────────────────────────────────────
 

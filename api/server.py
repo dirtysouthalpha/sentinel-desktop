@@ -135,6 +135,16 @@ class SentinelServer:
         app.post("/powershell")(self._handle_powershell)
         app.post("/recorder/start")(self._handle_recorder_start)
         app.post("/recorder/stop")(self._handle_recorder_stop)
+        # v3.0 Phase 2 — Workflow, Scheduler, Notifications, Plugins
+        app.get("/workflows")(self._handle_workflows_list)
+        app.post("/workflows/run")(self._handle_workflow_run)
+        app.get("/schedule")(self._handle_schedule_list)
+        app.post("/schedule/add")(self._handle_schedule_add)
+        app.post("/schedule/remove")(self._handle_schedule_remove)
+        app.post("/schedule/run")(self._handle_schedule_run)
+        app.post("/notify")(self._handle_notify)
+        app.get("/plugins")(self._handle_plugins_list)
+        app.post("/plugins/reload")(self._handle_plugins_reload)
         app.websocket("/ws")(self._handle_ws)
 
         return app
@@ -340,6 +350,103 @@ class SentinelServer:
         path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
         script.save(path)
         return {"status": "saved", "path": path, "steps": len(script.steps)}
+
+    # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
+
+    async def _handle_workflows_list(self,
+                                      authorization: Optional[str] = Header(default=None)):
+        """List available workflows."""
+        self._check_auth(authorization)
+        try:
+            from core.workflow import WorkflowEngine
+            import os
+            wf_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workflows")
+            return {"workflows": WorkflowEngine.list_workflows(wf_dir)}
+        except Exception as exc:
+            return {"workflows": [], "error": str(exc)}
+
+    async def _handle_workflow_run(self, req: Dict,
+                                    authorization: Optional[str] = Header(default=None)):
+        """Run a workflow."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        from core.workflow import WorkflowEngine
+        wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
+        result = wf.run_workflow(req.get("path", ""), req.get("variables"))
+        return {
+            "success": result.success,
+            "steps_completed": result.steps_completed,
+            "steps_total": result.steps_total,
+            "error": result.error,
+            "elapsed": result.elapsed_seconds,
+        }
+
+    async def _handle_schedule_list(self,
+                                     authorization: Optional[str] = Header(default=None)):
+        """List scheduled tasks."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        return {"tasks": self.engine.scheduler.list_tasks()}
+
+    async def _handle_schedule_add(self, req: Dict,
+                                    authorization: Optional[str] = Header(default=None)):
+        """Add a scheduled task."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        task_id = self.engine.scheduler.add_task(req)
+        return {"status": "added", "task_id": task_id}
+
+    async def _handle_schedule_remove(self, req: Dict,
+                                       authorization: Optional[str] = Header(default=None)):
+        """Remove a scheduled task."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        removed = self.engine.scheduler.remove_task(req.get("task_id", ""))
+        return {"status": "removed" if removed else "not_found"}
+
+    async def _handle_schedule_run(self, req: Dict,
+                                    authorization: Optional[str] = Header(default=None)):
+        """Run a scheduled task immediately."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        result = self.engine.scheduler.run_task_now(req.get("task_id", ""))
+        return result
+
+    async def _handle_notify(self, req: Dict,
+                              authorization: Optional[str] = Header(default=None)):
+        """Send a notification."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        success = self.engine.notifications.notify(
+            title=req.get("title", "Sentinel"),
+            message=req.get("message", ""),
+            level=req.get("level", "info"),
+        )
+        return {"success": success}
+
+    async def _handle_plugins_list(self,
+                                    authorization: Optional[str] = Header(default=None)):
+        """List loaded plugins."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        return {"plugins": self.engine.plugin_loader.list_plugins()}
+
+    async def _handle_plugins_reload(self, req: Dict,
+                                      authorization: Optional[str] = Header(default=None)):
+        """Reload a plugin."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        name = req.get("name", "")
+        success = self.engine.plugin_loader.reload_plugin(name)
+        return {"success": success, "name": name}
 
     # ── WebSocket broadcasting ──────────────────────────────────────
 
