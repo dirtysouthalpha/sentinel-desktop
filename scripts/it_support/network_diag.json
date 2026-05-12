@@ -1,0 +1,115 @@
+{
+  "name": "Network Diagnostics",
+  "description": "Runs a comprehensive network diagnostic: ipconfig /all, ping gateway, nslookup, and traceroute to identify connectivity issues.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": ["network", "diagnostics", "troubleshooting", "ipconfig", "ping"],
+  "category": "network",
+  "icon": "🌐",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": { "command": "cmd", "args": "" },
+      "description": "Open Command Prompt",
+      "wait_after_ms": 1500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "ipconfig /all" },
+      "description": "Type ipconfig /all command",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute ipconfig /all",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "echo --- Pinging Default Gateway ---" },
+      "description": "Display section header",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute echo command",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "for /f \"tokens=2 delims=:\" %a in ('ipconfig ^| findstr /c:\"Default Gateway\"') do ping %a" },
+      "description": "Ping the default gateway",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute gateway ping",
+      "wait_after_ms": 5000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "echo --- DNS Lookup Test ---" },
+      "description": "Display section header",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute echo command",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "nslookup google.com" },
+      "description": "DNS lookup for google.com",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute nslookup",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "echo --- Traceroute to 8.8.8.8 ---" },
+      "description": "Display section header",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute echo command",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "tracert -d 8.8.8.8" },
+      "description": "Traceroute to Google DNS",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute tracert",
+      "wait_after_ms": 15000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "echo --- Network Diagnostics Complete ---" },
+      "description": "Display completion message",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute echo command",
+      "wait_after_ms": 500
+    }
+  ]
+}

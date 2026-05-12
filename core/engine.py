@@ -93,6 +93,8 @@ Return a single JSON object with an "action" field and relevant parameters:
 | system_info | (none) | Get system details |
 | list_processes | (none) | List running processes |
 | kill_process | pid or name | Kill a process |
+| powershell | command | Run a PowerShell command and return output |
+| run_script | path, params? | Replay a recorded script from JSON file |
 | note | text | Make a note (no side effects) |
 | finish | summary | Signal task completion |
 
@@ -201,6 +203,18 @@ class AgentEngine:
 
         # Smart wait — visual-diff-based waiting instead of fixed timers
         self.smart_waiter = SmartWait()
+
+        # Script recorder — captures actions for replay
+        from core.recorder import ActionRecorder
+        self.recorder = ActionRecorder()
+
+        # Script engine — replays recorded scripts
+        from core.script_engine import ScriptEngine
+        self.script_engine = ScriptEngine(self.executor)
+
+        # PowerShell runner — execute PS scripts/commands
+        from core.powershell import PowerShellRunner
+        self.powershell = PowerShellRunner()
 
     # ── Sync entry point ────────────────────────────────────────────────
 
@@ -404,6 +418,11 @@ class AgentEngine:
 
                 # Execute the action
                 result = self.executor.execute_sync(action)
+
+                # Capture for script recorder if recording
+                if self.recorder.is_recording:
+                    self.recorder.capture_action(action, result)
+
                 log_result = {
                     "ok": result.get("success", True),
                     "msg": str(result.get("output", ""))[:500],

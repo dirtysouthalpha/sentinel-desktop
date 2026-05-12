@@ -207,4 +207,94 @@ def create_default_palette(app) -> CommandPalette:
                 lambda: app.set_theme("mono"),
                 keywords=["mono", "grayscale", "minimal", "theme"])
 
+    # ── v3.0: Script Recorder / Playback ──────────────────────────────
+    p.register("⏺ Start Recording", "Ctrl+Shift+R", "Recorder",
+                lambda: _start_recording(app),
+                keywords=["record", "capture", "start"])
+    p.register("⏹ Stop Recording", "", "Recorder",
+                lambda: _stop_recording(app),
+                keywords=["record", "stop", "save"])
+    p.register("▶ Run Script...", "Ctrl+Shift+P", "Recorder",
+                lambda: _run_script_dialog(app),
+                keywords=["script", "run", "play", "replay"])
+    p.register("📋 Script Library", "", "Recorder",
+                lambda: _show_script_library(app),
+                keywords=["script", "library", "list", "browse"])
+    p.register("💻 PowerShell Command...", "", "Recorder",
+                lambda: _run_powershell_dialog(app),
+                keywords=["powershell", "ps", "command", "shell"])
+    p.register("🔧 IT: Disk Cleanup", "", "Quick Actions",
+                lambda: _run_it_script(app, "disk_cleanup"),
+                keywords=["disk", "cleanup", "clean", "maintenance"])
+    p.register("🔧 IT: Network Diagnostics", "", "Quick Actions",
+                lambda: _run_it_script(app, "network_diag"),
+                keywords=["network", "ping", "dns", "diag", "tracert"])
+    p.register("🔧 IT: Service Restart...", "", "Quick Actions",
+                lambda: _run_it_script(app, "service_restart"),
+                keywords=["service", "restart", "windows"])
+    p.register("🔧 IT: Event Log Errors", "", "Quick Actions",
+                lambda: _run_it_script(app, "event_log_errors"),
+                keywords=["event", "log", "error", "viewer"])
+    p.register("🔧 IT: Temp File Cleanup", "", "Quick Actions",
+                lambda: _run_it_script(app, "temp_file_cleanup"),
+                keywords=["temp", "cleanup", "files", "junk"])
+    p.register("🔧 IT: Software Inventory", "", "Quick Actions",
+                lambda: _run_it_script(app, "software_inventory"),
+                keywords=["software", "inventory", "installed", "list"])
+    p.register("🔧 IT: System Info Export", "", "Quick Actions",
+                lambda: _run_it_script(app, "system_info_export"),
+                keywords=["system", "info", "export", "msinfo"])
+    p.register("🔧 IT: Create Restore Point...", "", "Quick Actions",
+                lambda: _run_it_script(app, "restore_point_create"),
+                keywords=["restore", "point", "backup", "system"])
+
     return p
+
+
+# ── Command handler helpers ────────────────────────────────────────────
+
+def _start_recording(app):
+    if hasattr(app, 'engine') and app.engine:
+        app.engine.recorder.start_recording("")
+        if hasattr(app, 'recorder_panel'):
+            app.recorder_panel._on_record_click()
+
+def _stop_recording(app):
+    if hasattr(app, 'engine') and app.engine:
+        script = app.engine.recorder.stop_recording()
+        if hasattr(app, 'recorder_panel'):
+            app.recorder_panel._on_stop_click()
+
+def _run_script_dialog(app):
+    if hasattr(app, 'recorder_panel'):
+        app.recorder_panel._on_play_click()
+
+def _show_script_library(app):
+    if hasattr(app, 'recorder_panel'):
+        app.recorder_panel._on_library_click()
+
+def _run_powershell_dialog(app):
+    import tkinter.simpledialog as sd
+    cmd = sd.askstring("PowerShell", "Enter PowerShell command:", parent=app.root)
+    if cmd and hasattr(app, 'engine') and app.engine:
+        result = app.engine.powershell.run_command(cmd)
+        if hasattr(app, 'chat_display'):
+            app.root.after(0, lambda: app.chat_display.configure(
+                state="normal",
+                text_color=app._t("text_primary", "#e6edf3")))
+            app.root.after(0, lambda: app.chat_display.insert(
+                "end", f"\n[PS] > {cmd}\n{result.stdout or result.stderr}\n"))
+
+def _run_it_script(app, script_name):
+    import os
+    scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts", "it_support")
+    path = os.path.join(scripts_dir, f"{script_name}.json")
+    if not os.path.exists(path):
+        return
+    if hasattr(app, 'engine') and app.engine:
+        from core.script_engine import ScriptEngine
+        engine = ScriptEngine(app.engine.executor)
+        result = engine.run_script(path)
+        if hasattr(app, 'notes_label'):
+            status = f"✅ {result.steps_completed}/{result.steps_total}" if result.success else f"❌ {result.error}"
+            app.root.after(0, lambda: app.notes_label.configure(text=f"Script: {status}"))

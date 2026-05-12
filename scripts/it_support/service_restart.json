@@ -1,0 +1,70 @@
+{
+  "name": "Restart Windows Service",
+  "description": "Opens Services MMC, searches for the specified service, and restarts it via right-click context menu.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": ["service", "restart", "windows", "troubleshooting"],
+  "category": "system_admin",
+  "icon": "🔄",
+  "parameters": [
+    {
+      "name": "service_name",
+      "type": "string",
+      "label": "Service Name",
+      "description": "The display name or short name of the Windows service to restart",
+      "default": "Spooler",
+      "required": true
+    }
+  ],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": { "command": "services.msc", "args": "" },
+      "description": "Open Services management console",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "click",
+      "params": { "target": "list#ServicesList" },
+      "description": "Focus on the services list",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Tab" },
+      "description": "Tab to ensure list has focus",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "{{service_name}}" },
+      "description": "Type service name to search/filter in the list",
+      "wait_after_ms": 1000
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Apps" },
+      "description": "Open context menu via keyboard Apps key",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "click",
+      "params": { "target": "menuitem#Restart" },
+      "description": "Click Restart from context menu",
+      "wait_after_ms": 1000
+    },
+    {
+      "action": "wait",
+      "params": { "duration_ms": 5000 },
+      "description": "Wait for service to stop and restart",
+      "wait_after_ms": 5000
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Alt+F4" },
+      "description": "Close Services console",
+      "wait_after_ms": 500
+    }
+  ]
+}

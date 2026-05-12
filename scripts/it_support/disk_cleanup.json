@@ -1,0 +1,109 @@
+{
+  "name": "Disk Cleanup",
+  "description": "Opens Windows Disk Cleanup utility, selects all cleanup categories, and runs the cleanup process to free disk space.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": ["disk", "cleanup", "storage", "maintenance"],
+  "category": "system_maintenance",
+  "icon": "💿",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": { "command": "cleanmgr", "args": "/d C" },
+      "description": "Launch Disk Cleanup for C: drive",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "click",
+      "params": { "target": "button#OK", "description": "Select drive C: confirmation" },
+      "description": "Confirm drive selection if prompted",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#TemporaryFiles", "check": true },
+      "description": "Check Temporary files",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#TemporaryInternetFiles", "check": true },
+      "description": "Check Temporary Internet files",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#RecycleBin", "check": true },
+      "description": "Check Recycle Bin",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#Thumbnails", "check": true },
+      "description": "Check Thumbnails",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#DownloadedProgramFiles", "check": true },
+      "description": "Check Downloaded Program Files",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#OfflineWebpages", "check": true },
+      "description": "Check Offline Web pages",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#OldChkDskFiles", "check": true },
+      "description": "Check Old ChkDsk files",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#SetupLogFiles", "check": true },
+      "description": "Check Setup log files",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#WindowsErrorReporting", "check": true },
+      "description": "Check Windows Error Reporting files",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#DeliveryOptimization", "check": true },
+      "description": "Check Delivery Optimization files",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "checkbox#DirectXShaderCache", "check": true },
+      "description": "Check DirectX Shader Cache",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "click",
+      "params": { "target": "button#CleanUpSystemFiles" },
+      "description": "Click 'Clean up system files' for deeper cleanup",
+      "wait_after_ms": 5000
+    },
+    {
+      "action": "click",
+      "params": { "target": "button#OK" },
+      "description": "Click OK to start cleanup",
+      "wait_after_ms": 1000
+    },
+    {
+      "action": "click",
+      "params": { "target": "button#DeleteFiles" },
+      "description": "Confirm file deletion",
+      "wait_after_ms": 2000
+    }
+  ]
+}

@@ -67,6 +67,7 @@ class SentinelApp:
         # Build UI
         self._build_header()
         self._build_main_area()
+        self._build_recorder_panel()
         self._build_input()
 
         # Command palette
@@ -175,6 +176,17 @@ class SentinelApp:
             info_frame, text="Notes: 0", font=("Consolas", 10)
         )
         self.notes_label.pack(anchor="w", padx=8, pady=2)
+
+    # ── Recorder Panel ────────────────────────────────────────────────────
+
+    def _build_recorder_panel(self):
+        """Record/playback toolbar above the input area."""
+        try:
+            from gui.recorder_panel import RecorderPanel
+            self.recorder_panel = RecorderPanel(parent=self.root, app=self)
+            # Panel packs itself above the input area
+        except ImportError:
+            logger.warning("Recorder panel not available — recorder_panel.py missing")
 
     # ── Input ───────────────────────────────────────────────────────────
 

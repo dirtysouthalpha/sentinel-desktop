@@ -129,6 +129,12 @@ class SentinelServer:
         app.put("/config")(self._handle_put_config)
         app.get("/log")(self._handle_log)
         app.post("/stop")(self._handle_stop)
+        # v3.0 — Script Recorder, Script Engine, PowerShell
+        app.get("/scripts")(self._handle_scripts_list)
+        app.post("/scripts/run")(self._handle_script_run)
+        app.post("/powershell")(self._handle_powershell)
+        app.post("/recorder/start")(self._handle_recorder_start)
+        app.post("/recorder/stop")(self._handle_recorder_stop)
         app.websocket("/ws")(self._handle_ws)
 
         return app
@@ -258,6 +264,82 @@ class SentinelServer:
         if self.engine:
             return {"log": self.engine.forensic_log}
         return {"log": []}
+
+    # ── Script / Recorder / PowerShell endpoints ──────────────────────
+
+    async def _handle_scripts_list(self,
+                                    authorization: Optional[str] = Header(default=None)):
+        """List all available scripts in the scripts/ directory."""
+        self._check_auth(authorization)
+        try:
+            from core.recorder import ActionRecorder
+            import os
+            scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
+            scripts = ActionRecorder.list_scripts(scripts_dir)
+            return {"scripts": scripts}
+        except Exception as exc:
+            return {"scripts": [], "error": str(exc)}
+
+    async def _handle_script_run(self, req: Dict,
+                                  authorization: Optional[str] = Header(default=None)):
+        """Run a script by path with optional parameters."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        from core.script_engine import ScriptEngine
+        engine = ScriptEngine(self.engine.executor)
+        result = engine.run_script(req.get("path", ""), req.get("params"))
+        return {
+            "success": result.success,
+            "steps_completed": result.steps_completed,
+            "steps_total": result.steps_total,
+            "error": result.error,
+        }
+
+    async def _handle_powershell(self, req: Dict,
+                                  authorization: Optional[str] = Header(default=None)):
+        """Run a PowerShell command."""
+        self._check_auth(authorization)
+        try:
+            from core.powershell import get_default_runner
+            runner = get_default_runner()
+            ps_result = runner.run_command(req.get("command", ""))
+            return {
+                "success": ps_result.success,
+                "stdout": ps_result.stdout[:5000],
+                "stderr": ps_result.stderr[:2000],
+                "exit_code": ps_result.exit_code,
+                "objects": ps_result.objects[:100],
+            }
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_recorder_start(self,
+                                      authorization: Optional[str] = Header(default=None)):
+        """Start recording actions."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        self.engine.recorder.start_recording("")
+        return {"status": "recording"}
+
+    async def _handle_recorder_stop(self, req: Dict,
+                                     authorization: Optional[str] = Header(default=None)):
+        """Stop recording and save the script."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        script = self.engine.recorder.stop_recording()
+        name = req.get("name", "Untitled")
+        desc = req.get("description", "")
+        script.name = name
+        script.description = desc or script.description
+        import os
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
+        os.makedirs(scripts_dir, exist_ok=True)
+        path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
+        script.save(path)
+        return {"status": "saved", "path": path, "steps": len(script.steps)}
 
     # ── WebSocket broadcasting ──────────────────────────────────────
 

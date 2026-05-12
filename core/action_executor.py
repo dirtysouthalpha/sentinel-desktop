@@ -564,6 +564,37 @@ class ActionExecutor:
         """Signal that the agent is done."""
         return {"success": True, "output": summary, "done": True}
 
+    def _powershell(self, *, command: str, **_) -> Dict:
+        """Run a PowerShell command and return output."""
+        try:
+            from core.powershell import get_default_runner
+            runner = get_default_runner()
+            result = runner.run_command(command)
+            return {
+                "success": result.success,
+                "output": result.stdout[:2000] if result.success else result.stderr[:1000],
+                "exit_code": result.exit_code,
+                "objects": result.objects[:50] if result.objects else [],
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"PowerShell error: {exc}"}
+
+    def _run_script(self, *, path: str, params: dict = None, **_) -> Dict:
+        """Replay a recorded script from a JSON file."""
+        try:
+            from core.script_engine import ScriptEngine
+            engine = ScriptEngine(self)
+            result = engine.run_script(path, params)
+            return {
+                "success": result.success,
+                "output": f"Script completed: {result.steps_completed}/{result.steps_total} steps",
+                "steps_completed": result.steps_completed,
+                "steps_total": result.steps_total,
+                "error": result.error,
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"Script error: {exc}"}
+
     # Dispatch table
     _dispatch_table: Dict[str, Callable] = {
         "click": _click,
@@ -603,6 +634,8 @@ class ActionExecutor:
         "kill_process": _kill_process,
         "note": _note,
         "finish": _finish,
+        "powershell": _powershell,
+        "run_script": _run_script,
     }
 
 
