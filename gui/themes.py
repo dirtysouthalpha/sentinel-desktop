@@ -1,7 +1,7 @@
 """
 Sentinel Desktop v2 — Theme definitions for CustomTkinter.
 
-14 built-in themes matching Sentinel Override's visual identity.
+15 built-in themes matching Sentinel Override's visual identity.
 Each theme defines: appearance mode, color theme, accent color, and
 additional color overrides for chat tags, status indicators, etc.
 """
@@ -17,6 +17,31 @@ logger = logging.getLogger(__name__)
 # Color palette constants
 # ---------------------------------------------------------------------------
 THEMES: Dict[str, Dict[str, Any]] = {
+    # ── Sentinel (default) — Override-inspired GitHub Dark ──────────────
+    "sentinel": {
+        "label": "🛡️ Sentinel",
+        "appearance": "dark",
+        "color_theme": "dark-blue",
+        "accent": "#58a6ff",
+        "accent_hover": "#79b8ff",
+        "bg_primary": "#0d1117",
+        "bg_secondary": "#161b22",
+        "bg_input": "#21262d",
+        "bg_hover": "#30363d",
+        "text_primary": "#c9d1d9",
+        "text_secondary": "#8b949e",
+        "status_idle": "#8b949e",
+        "status_running": "#39d353",
+        "status_error": "#f85149",
+        "tag_user": "#58a6ff",
+        "tag_assistant": "#39d353",
+        "tag_action": "#d29922",
+        "tag_error": "#f85149",
+        "tag_system": "#8b949e",
+        "overlay_ring": "#58a6ff",
+        "overlay_fill": "#58a6ff",
+    },
+
     # ── Dark family ─────────────────────────────────────────────────────
     "midnight": {
         "label": "🌌 Midnight",
@@ -27,6 +52,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#1a1a2e",
         "bg_secondary": "#16213e",
         "bg_input": "#0f3460",
+        "bg_hover": "#1e2e52",
         "text_primary": "#e0e0e0",
         "text_secondary": "#a0a0b0",
         "status_idle": "#666666",
@@ -49,6 +75,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#2b2b2b",
         "bg_secondary": "#333333",
         "bg_input": "#404040",
+        "bg_hover": "#444444",
         "text_primary": "#d0d0d0",
         "text_secondary": "#909090",
         "status_idle": "#666666",
@@ -71,6 +98,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#0a0a0a",
         "bg_secondary": "#0d1a0d",
         "bg_input": "#0f2a0f",
+        "bg_hover": "#1a3a1a",
         "text_primary": "#00ff41",
         "text_secondary": "#009926",
         "status_idle": "#004d00",
@@ -93,6 +121,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#0a0e14",
         "bg_secondary": "#0d1520",
         "bg_input": "#101c2a",
+        "bg_hover": "#182535",
         "text_primary": "#c0e8ff",
         "text_secondary": "#5a8aa5",
         "status_idle": "#2a4a5a",
@@ -115,6 +144,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#0a0014",
         "bg_secondary": "#150020",
         "bg_input": "#200030",
+        "bg_hover": "#280040",
         "text_primary": "#ff2a6d",
         "text_secondary": "#cc2288",
         "status_idle": "#660033",
@@ -137,6 +167,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#0d001a",
         "bg_secondary": "#140026",
         "bg_input": "#1f0033",
+        "bg_hover": "#280045",
         "text_primary": "#e0b0ff",
         "text_secondary": "#9966cc",
         "status_idle": "#4d0080",
@@ -159,6 +190,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#000000",
         "bg_secondary": "#0a0a0a",
         "bg_input": "#141414",
+        "bg_hover": "#1e1e1e",
         "text_primary": "#00ff00",
         "text_secondary": "#008800",
         "status_idle": "#004400",
@@ -181,6 +213,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#0a0000",
         "bg_secondary": "#140000",
         "bg_input": "#200000",
+        "bg_hover": "#2a0000",
         "text_primary": "#ff3333",
         "text_secondary": "#993333",
         "status_idle": "#4d0000",
@@ -203,6 +236,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#001122",
         "bg_secondary": "#001a33",
         "bg_input": "#002244",
+        "bg_hover": "#002a50",
         "text_primary": "#c0ddef",
         "text_secondary": "#5a8ea8",
         "status_idle": "#003355",
@@ -227,6 +261,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#f0f0f0",
         "bg_secondary": "#e0e0e0",
         "bg_input": "#ffffff",
+        "bg_hover": "#d0d0d0",
         "text_primary": "#222222",
         "text_secondary": "#666666",
         "status_idle": "#999999",
@@ -249,6 +284,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#1a0a00",
         "bg_secondary": "#2a1500",
         "bg_input": "#3a2000",
+        "bg_hover": "#4a2a00",
         "text_primary": "#ffd4b8",
         "text_secondary": "#b07040",
         "status_idle": "#663300",
@@ -271,6 +307,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#f5f0e8",
         "bg_secondary": "#ebe5d8",
         "bg_input": "#ffffff",
+        "bg_hover": "#ddd5c8",
         "text_primary": "#3a3226",
         "text_secondary": "#7a6e5e",
         "status_idle": "#b0a890",
@@ -293,6 +330,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#0a1208",
         "bg_secondary": "#0f1a0c",
         "bg_input": "#142210",
+        "bg_hover": "#1a2e16",
         "text_primary": "#a8d5a0",
         "text_secondary": "#5a8a50",
         "status_idle": "#2a4a22",
@@ -315,6 +353,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "bg_primary": "#111111",
         "bg_secondary": "#1a1a1a",
         "bg_input": "#222222",
+        "bg_hover": "#2a2a2a",
         "text_primary": "#cccccc",
         "text_secondary": "#777777",
         "status_idle": "#444444",
@@ -332,8 +371,8 @@ THEMES: Dict[str, Dict[str, Any]] = {
 
 
 def get_theme(name: str) -> Dict[str, Any]:
-    """Get a theme by name, falling back to midnight."""
-    return THEMES.get(name, THEMES["midnight"])
+    """Get a theme by name, falling back to sentinel."""
+    return THEMES.get(name, THEMES["sentinel"])
 
 
 def get_theme_names() -> list:
@@ -346,9 +385,9 @@ def apply_theme(name_or_dict) -> Dict[str, Any]:
     try:
         import customtkinter as ctk
     except ImportError:
-        return THEMES["midnight"]
+        return THEMES["sentinel"]
 
-    theme = THEMES.get(name_or_dict, THEMES["midnight"]) if isinstance(name_or_dict, str) else name_or_dict
+    theme = THEMES.get(name_or_dict, THEMES["sentinel"]) if isinstance(name_or_dict, str) else name_or_dict
 
     ctk.set_appearance_mode(theme.get("appearance", "dark"))
     ctk.set_default_color_theme(theme.get("color_theme", "dark-blue"))

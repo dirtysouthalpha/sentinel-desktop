@@ -13,7 +13,7 @@ from typing import Optional
 
 import customtkinter as ctk
 
-from gui.themes import THEMES, apply_theme
+from gui.themes import THEMES, apply_theme, get_theme
 from gui.overlay import ActionOverlay
 from gui.tray import SentinelTray, is_available as _tray_available
 from config import Config
@@ -29,10 +29,12 @@ class SentinelApp:
         self.cfg = config.load()
 
         # Theme
-        ctk.set_appearance_mode("dark")
-        theme_name = self.cfg.get("theme", "midnight")
-        if theme_name in THEMES:
-            apply_theme(THEMES[theme_name])
+        theme_name = self.cfg.get("theme", "sentinel")
+        self.current_theme = get_theme(theme_name)
+        apply_theme(theme_name)
+
+        # Theme color helper
+        self._t = lambda key, fb="": self.current_theme.get(key, fb)
 
         # Window
         self.root = ctk.CTk()
@@ -44,6 +46,13 @@ class SentinelApp:
         self.engine = None
         self.engine_thread = None
         self._approval_event = threading.Event()
+
+        # Widget refs for live theme switching
+        self._stop_btn = None
+        self._run_btn = None
+        self._chip_btns = []
+        self._autonomous_chip = None
+        self._stealth_chip = None
 
         # Visible-action overlay (transparent click ring over each action).
         self.overlay = ActionOverlay(self.root)
@@ -76,7 +85,7 @@ class SentinelApp:
 
         self.status_label = ctk.CTkLabel(
             header, text="● IDLE", font=("Segoe UI", 12),
-            text_color="#888888"
+            text_color=self._t("status_idle", "#888888")
         )
         self.status_label.pack(side="left", padx=20)
 
@@ -85,7 +94,7 @@ class SentinelApp:
         if self.cfg.get("dry_run"):
             ctk.CTkLabel(
                 header, text="DRY-RUN", font=("Segoe UI", 11, "bold"),
-                text_color="#000000", fg_color="#f1c40f",
+                text_color="#000000", fg_color=self._t("tag_action", "#f1c40f"),
                 corner_radius=6, padx=8,
             ).pack(side="left", padx=10)
         # Show AUTONOMOUS chip in red so users always know when approvals
@@ -93,13 +102,13 @@ class SentinelApp:
         if self.cfg.get("autonomous"):
             ctk.CTkLabel(
                 header, text="AUTONOMOUS", font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff", fg_color="#c0392b",
+                text_color="#ffffff", fg_color=self._t("status_error", "#c0392b"),
                 corner_radius=6, padx=8,
             ).pack(side="left", padx=10)
         if self.cfg.get("stealth_input"):
             ctk.CTkLabel(
                 header, text="STEALTH", font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff", fg_color="#1f6feb",
+                text_color="#ffffff", fg_color=self._t("accent", "#1f6feb"),
                 corner_radius=6, padx=8,
             ).pack(side="left", padx=10)
 
@@ -110,7 +119,7 @@ class SentinelApp:
             header,
             text=f"{provider} / {model}",
             font=("Segoe UI", 10),
-            text_color="#666666",
+            text_color=self._t("text_secondary", "#666666"),
         )
         self.provider_label.pack(side="right", padx=12)
 
@@ -190,7 +199,7 @@ class SentinelApp:
             ctk.CTkButton(
                 chips, text=short, height=24,
                 font=("Segoe UI", 10),
-                fg_color="#21262d", hover_color="#30363d", text_color="#e6edf3",
+                fg_color=self._t("bg_input", "#21262d"), hover_color=self._t("bg_hover", "#30363d"), text_color=self._t("text_primary", "#e6edf3"),
                 corner_radius=12,
                 command=lambda p=preset: self._set_prompt(p),
             ).pack(side="left", padx=2, pady=2)
@@ -220,7 +229,7 @@ class SentinelApp:
             "Describe what you want done…   (Ctrl+Enter to run, Enter for newline)"
         )
         self.goal_entry.insert("1.0", self._placeholder_text)
-        self.goal_entry.configure(text_color="#6e7681")
+        self.goal_entry.configure(text_color=self._t("text_secondary", "#6e7681"))
         self.goal_entry.bind("<FocusIn>", self._clear_placeholder)
         self.goal_entry.bind("<FocusOut>", self._restore_placeholder)
         # Ctrl+Enter (or Cmd+Enter on Mac) submits; plain Enter inserts newline.
@@ -238,7 +247,7 @@ class SentinelApp:
             input_frame, text="■ Stop", width=80, height=80,
             font=("Segoe UI", 13, "bold"),
             command=self._on_stop,
-            fg_color="#c0392b", hover_color="#e74c3c",
+            fg_color=self._t("status_error", "#c0392b"), hover_color=self._t("tag_error", "#e74c3c"),
         ).grid(row=2, column=2, padx=(0, 8), pady=(4, 8))
 
     # -- Placeholder + recent-prompt helpers ------------------------------
@@ -252,18 +261,18 @@ class SentinelApp:
     def _set_prompt(self, text: str) -> None:
         self.goal_entry.delete("1.0", "end")
         self.goal_entry.insert("1.0", text)
-        self.goal_entry.configure(text_color="#e6edf3")
+        self.goal_entry.configure(text_color=self._t("text_primary", "#e6edf3"))
         self.goal_entry.focus_set()
 
     def _clear_placeholder(self, _event=None):
         if self.goal_entry.get("1.0", "end").strip() == self._placeholder_text:
             self.goal_entry.delete("1.0", "end")
-            self.goal_entry.configure(text_color="#e6edf3")
+            self.goal_entry.configure(text_color=self._t("text_primary", "#e6edf3"))
 
     def _restore_placeholder(self, _event=None):
         if not self.goal_entry.get("1.0", "end").strip():
             self.goal_entry.insert("1.0", self._placeholder_text)
-            self.goal_entry.configure(text_color="#6e7681")
+            self.goal_entry.configure(text_color=self._t("text_secondary", "#6e7681"))
 
     def _on_recent_pick(self, choice: str):
         # The dropdown shows truncated text — find the full prompt by prefix.
@@ -445,11 +454,11 @@ class SentinelApp:
                 self.root.after(
                     0,
                     lambda: self.status_label.configure(
-                        text="● IDLE", text_color="#888888",
+                        text="● IDLE", text_color=self._t("status_idle", "#888888"),
                     ),
                 )
 
-        self.status_label.configure(text="● RUNNING", text_color="#2ecc71")
+        self.status_label.configure(text="● RUNNING", text_color=self._t("status_running", "#2ecc71"))
         self.engine_thread = threading.Thread(target=_run, daemon=True)
         self.engine_thread.start()
 
@@ -510,11 +519,11 @@ class SentinelApp:
 
                 ctk.CTkButton(
                     btn_frame, text="✓ Approve", command=_approve,
-                    fg_color="#2ecc71", hover_color="#27ae60",
+                    fg_color=self._t("status_running", "#2ecc71"), hover_color=self._t("tag_assistant", "#27ae60"),
                 ).pack(side="right", padx=4)
                 ctk.CTkButton(
                     btn_frame, text="✗ Reject", command=_reject,
-                    fg_color="#c0392b", hover_color="#e74c3c",
+                    fg_color=self._t("status_error", "#c0392b"), hover_color=self._t("tag_error", "#e74c3c"),
                 ).pack(side="right", padx=4)
 
                 top.protocol("WM_DELETE_WINDOW", _reject)
@@ -845,7 +854,7 @@ class SettingsWindow:
                 "Leave as the catalog default for most providers. For Z.ai's "
                 "Max Coding Plan use: https://api.z.ai/api/coding/paas/v4"
             ),
-            font=("Segoe UI", 10), text_color="#8b949e", wraplength=540,
+            font=("Segoe UI", 10), text_color=self.app._t("text_secondary", "#8b949e"), wraplength=540,
             justify="left",
         ).pack(anchor="w", padx=20, pady=(2, 4))
 
@@ -885,10 +894,20 @@ class SettingsWindow:
         ctk.CTkLabel(self.win, text="Theme", font=("Segoe UI", 13, "bold")).pack(
             anchor="w", padx=20, pady=(12, 4)
         )
-        self.theme_var = ctk.StringVar(value=self.cfg.get("theme", "midnight"))
+        self.theme_var = ctk.StringVar(value=self.cfg.get("theme", "sentinel"))
         ctk.CTkOptionMenu(
             self.win, variable=self.theme_var, values=list(THEMES.keys()),
+            command=self._on_theme_change,
         ).pack(fill="x", padx=20, pady=4)
+
+    def _on_theme_change(self, choice):
+        """Live theme switch from settings."""
+        self.app.current_theme = get_theme(choice)
+        apply_theme(choice)
+        self.app._t = lambda key, fb="": self.app.current_theme.get(key, fb)
+        # Reconfigure status label
+        self.app.status_label.configure(text_color=self.app._t("status_idle", "#888888"))
+        self.app.provider_label.configure(text_color=self.app._t("text_secondary", "#666666"))
 
         # Monitor selection (multi-screen)
         from core.screenshot import list_monitors
@@ -971,7 +990,7 @@ class SettingsWindow:
                 "games) may ignore synthesized input; falls back to "
                 "physical mouse when that happens."
             ),
-            font=("Segoe UI", 9), text_color="#8b949e",
+            font=("Segoe UI", 9), text_color=self.app._t("text_secondary", "#8b949e"),
             wraplength=540, justify="left",
         ).pack(anchor="w", padx=20, pady=(0, 4))
 
