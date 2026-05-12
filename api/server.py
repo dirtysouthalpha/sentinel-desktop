@@ -145,6 +145,16 @@ class SentinelServer:
         app.post("/notify")(self._handle_notify)
         app.get("/plugins")(self._handle_plugins_list)
         app.post("/plugins/reload")(self._handle_plugins_reload)
+        # v3.0 Phase 3+4 — Agent Pool, Auth, Audit, Vault
+        app.get("/agents")(self._handle_agents_list)
+        app.post("/agents/submit")(self._handle_agents_submit)
+        app.post("/agents/cancel")(self._handle_agents_cancel)
+        app.get("/agents/{session_id}")(self._handle_agent_status)
+        app.post("/auth/login")(self._handle_auth_login)
+        app.post("/auth/logout")(self._handle_auth_logout)
+        app.get("/auth/users")(self._handle_auth_users)
+        app.get("/audit/export")(self._handle_audit_export)
+        app.get("/vault/keys")(self._handle_vault_keys)
         app.websocket("/ws")(self._handle_ws)
 
         return app
@@ -447,6 +457,100 @@ class SentinelServer:
         name = req.get("name", "")
         success = self.engine.plugin_loader.reload_plugin(name)
         return {"success": success, "name": name}
+
+    # ── v3.0 Phase 3+4 endpoints ──────────────────────────────────────
+
+    async def _handle_agents_list(self,
+                                   authorization: Optional[str] = Header(default=None)):
+        """List all agent pool sessions."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        return {"sessions": self.engine.agent_pool.list_sessions()}
+
+    async def _handle_agents_submit(self, req: Dict,
+                                     authorization: Optional[str] = Header(default=None)):
+        """Submit a goal to the agent pool."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        session_id = self.engine.agent_pool.submit(
+            goal=req.get("goal", ""),
+            config=req.get("config"),
+            priority=req.get("priority", "normal"),
+        )
+        return {"session_id": session_id, "status": "queued"}
+
+    async def _handle_agents_cancel(self, req: Dict,
+                                     authorization: Optional[str] = Header(default=None)):
+        """Cancel an agent session."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        success = self.engine.agent_pool.cancel(req.get("session_id", ""))
+        return {"success": success}
+
+    async def _handle_agent_status(self, session_id: str,
+                                    authorization: Optional[str] = Header(default=None)):
+        """Get status of a specific agent session."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        status = self.engine.agent_pool.get_status(session_id)
+        if not status:
+            raise HTTPException(404, "Session not found")
+        return status
+
+    async def _handle_auth_login(self, req: Dict,
+                                  authorization: Optional[str] = Header(default=None)):
+        """Authenticate and get a session token."""
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        user = self.engine.auth_manager.authenticate(
+            req.get("username", ""), req.get("password", "")
+        )
+        if not user:
+            raise HTTPException(401, "Invalid credentials")
+        token = self.engine.auth_manager.create_session(user)
+        return {"token": token, "role": user.role.value, "username": user.username}
+
+    async def _handle_auth_logout(self, req: Dict,
+                                   authorization: Optional[str] = Header(default=None)):
+        """Revoke a session token."""
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        token = req.get("token", "")
+        self.engine.auth_manager.revoke_session(token)
+        return {"status": "logged_out"}
+
+    async def _handle_auth_users(self,
+                                  authorization: Optional[str] = Header(default=None)):
+        """List users (admin only)."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        return {"users": self.engine.auth_manager.list_users()}
+
+    async def _handle_audit_export(self,
+                                    authorization: Optional[str] = Header(default=None),
+                                    format: str = "html"):
+        """Export audit log as HTML/JSON/CSV/Text."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        log = self.engine.forensic_log if hasattr(self.engine, 'forensic_log') else []
+        path = self.engine.audit_exporter.generate_report(
+            log, metadata={"goal": "audit"}, format=format
+        )
+        return {"path": path, "format": format}
+
+    async def _handle_vault_keys(self,
+                                  authorization: Optional[str] = Header(default=None)):
+        """List credential vault keys."""
+        self._check_auth(authorization)
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        return {"keys": self.engine.vault.list_keys()}
 
     # ── WebSocket broadcasting ──────────────────────────────────────
 
