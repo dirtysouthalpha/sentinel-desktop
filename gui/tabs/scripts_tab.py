@@ -240,7 +240,7 @@ class ScriptsTab:
                          ).grid(row=0, column=1, rowspan=2, padx=(0, 10))
 
             path = script.get("_path", "")
-            for widget in (card,) + card.winfo_children():
+            for widget in (card,) + tuple(card.winfo_children()):
                 widget.bind("<Button-1>", lambda _e, p=path: self.select_script(p))
 
     # ── Script selection / detail ──────────────────────────────────────
