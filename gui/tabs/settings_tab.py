@@ -16,16 +16,16 @@ logger = logging.getLogger(__name__)
 class SettingsTab:
     """Settings tab — full configuration panel for Sentinel Desktop."""
 
-    # Theme color keys with fallbacks
+    # Theme color keys with Override fallbacks
     COLORS = {
-        "bg": ("bg_primary", "#0d1117"),
-        "bg2": ("bg_secondary", "#161b22"),
-        "bg_input": ("bg_input", "#21262d"),
-        "accent": ("accent", "#58a6ff"),
-        "green": ("status_running", "#39d353"),
-        "red": ("status_error", "#f85149"),
-        "text": ("text_primary", "#c9d1d9"),
-        "text2": ("text_secondary", "#8b949e"),
+        "bg": ("bg_primary", "#050608"),
+        "bg2": ("bg_secondary", "#0A0C10"),
+        "bg_input": ("bg_input", "#111418"),
+        "accent": ("accent", "#00F0FF"),
+        "green": ("status_running", "#95E400"),
+        "red": ("status_error", "#ff3b3b"),
+        "text": ("text_primary", "#e2e2e8"),
+        "text2": ("text_secondary", "#b9cacb"),
     }
 
     def __init__(self, parent, app):
@@ -45,7 +45,7 @@ class SettingsTab:
         """Build the scrollable settings panel."""
         self.scroll = ctk.CTkScrollableFrame(
             self.root,
-            fg_color=self._t("bg_primary", "#0d1117"),
+            fg_color=self._t("bg_primary", "#050608"),
         )
         self.scroll.pack(fill="both", expand=True, padx=8, pady=4)
 
@@ -63,8 +63,8 @@ class SettingsTab:
         """Create a labeled section frame."""
         frame = ctk.CTkFrame(
             self.scroll,
-            fg_color=self._t("bg_secondary", "#161b22"),
-            corner_radius=8,
+            fg_color=self._t("bg_secondary", "#0A0C10"),
+            corner_radius=4,
         )
         frame.pack(fill="x", padx=4, pady=6)
 
@@ -72,7 +72,7 @@ class SettingsTab:
             frame,
             text=title,
             font=ctk.CTkFont(size=14, weight="bold"),
-            text_color=self._t("accent", "#58a6ff"),
+            text_color=self._t("accent", "#00F0FF"),
         ).pack(anchor="w", padx=12, pady=(10, 4))
 
         content = ctk.CTkFrame(frame, fg_color="transparent")
@@ -87,7 +87,7 @@ class SettingsTab:
         ctk.CTkLabel(
             parent,
             text=label,
-            text_color=self._t("text_secondary", "#8b949e"),
+            text_color=self._t("text_secondary", "#b9cacb"),
             font=ctk.CTkFont(size=12),
         ).grid(row=row, column=0, sticky="w", padx=(0, 10), pady=3)
 
@@ -96,9 +96,9 @@ class SettingsTab:
             widget = ctk.CTkEntry(
                 parent,
                 textvariable=var,
-                fg_color=self._t("bg_input", "#21262d"),
-                text_color=self._t("text_primary", "#c9d1d9"),
-                corner_radius=6,
+                fg_color=self._t("bg_input", "#111418"),
+                text_color=self._t("text_primary", "#e2e2e8"),
+                corner_radius=3,
                 width=300,
             )
             self._vars[var_name] = var
@@ -108,9 +108,9 @@ class SettingsTab:
                 parent,
                 variable=var,
                 values=values or [default],
-                fg_color=self._t("bg_input", "#21262d"),
-                text_color=self._t("text_primary", "#c9d1d9"),
-                button_color=self._t("accent", "#58a6ff"),
+                fg_color=self._t("bg_input", "#111418"),
+                text_color=self._t("text_primary", "#e2e2e8"),
+                button_color=self._t("accent", "#00F0FF"),
                 width=300,
             )
             self._vars[var_name] = var
@@ -122,7 +122,7 @@ class SettingsTab:
                 from_=values[0] if values else 0,
                 to=values[1] if values else 1,
                 number_of_steps=values[2] if values and len(values) > 2 else 100,
-                button_color=self._t("accent", "#58a6ff"),
+                button_color=self._t("accent", "#00F0FF"),
                 width=300,
             )
             self._vars[var_name] = var
@@ -132,8 +132,8 @@ class SettingsTab:
                 parent,
                 text="",
                 variable=var,
-                fg_color=self._t("accent", "#58a6ff"),
-                checkmark_color=self._t("bg_primary", "#0d1117"),
+                fg_color=self._t("accent", "#00F0FF"),
+                checkmark_color=self._t("bg_primary", "#050608"),
             )
             self._vars[var_name] = var
         else:
@@ -203,9 +203,9 @@ class SettingsTab:
         ctk.CTkButton(
             s,
             text="🔄 Reload Plugins",
-            fg_color=self._t("accent", "#58a6ff"),
+            fg_color=self._t("accent", "#00F0FF"),
             text_color="#ffffff",
-            corner_radius=6,
+            corner_radius=3,
             command=self._reload_plugins,
         ).pack(anchor="w", pady=4)
 
@@ -229,29 +229,29 @@ class SettingsTab:
             ctk.CTkLabel(
                 self.plugin_list_frame,
                 text="No plugins loaded",
-                text_color=self._t("text_secondary", "#8b949e"),
+                text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(anchor="w")
             return
 
         for p in plugins:
             row = ctk.CTkFrame(
                 self.plugin_list_frame,
-                fg_color=self._t("bg_input", "#21262d"),
-                corner_radius=6,
+                fg_color=self._t("bg_input", "#111418"),
+                corner_radius=3,
             )
             row.pack(fill="x", pady=2)
 
             ctk.CTkLabel(
                 row,
                 text=f"{p.get('name', '?')} v{p.get('version', '?')}",
-                text_color=self._t("text_primary", "#c9d1d9"),
+                text_color=self._t("text_primary", "#e2e2e8"),
                 font=ctk.CTkFont(size=12, weight="bold"),
             ).pack(side="left", padx=8, pady=4)
 
             ctk.CTkLabel(
                 row,
                 text=p.get("description", ""),
-                text_color=self._t("text_secondary", "#8b949e"),
+                text_color=self._t("text_secondary", "#b9cacb"),
                 font=ctk.CTkFont(size=11),
             ).pack(side="left", padx=8, pady=4)
 
@@ -273,9 +273,9 @@ class SettingsTab:
         ctk.CTkButton(
             btn_frame,
             text="💾 Save Settings",
-            fg_color=self._t("status_running", "#39d353"),
+            fg_color=self._t("status_running", "#95E400"),
             text_color="#ffffff",
-            corner_radius=8,
+            corner_radius=4,
             font=ctk.CTkFont(size=13, weight="bold"),
             command=self._save,
         ).pack(side="left", padx=4)
@@ -283,9 +283,9 @@ class SettingsTab:
         ctk.CTkButton(
             btn_frame,
             text="↩ Reset Defaults",
-            fg_color=self._t("bg_input", "#21262d"),
-            text_color=self._t("text_primary", "#c9d1d9"),
-            corner_radius=8,
+            fg_color=self._t("bg_input", "#111418"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            corner_radius=4,
             command=self._reset,
         ).pack(side="left", padx=4)
 

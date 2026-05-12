@@ -27,7 +27,7 @@ class RecorderPanel(ctk.CTkFrame):
     """Toolbar with Record ⏺ / Stop ⏹ / Play ▶ and Script Library 📋 buttons."""
 
     def __init__(self, parent: ctk.CTkFrame, app: Any) -> None:
-        super().__init__(parent, height=40, corner_radius=8)
+        super().__init__(parent, height=40, corner_radius=4)
         self.app = app
         self._t = app._t
         self._pulse_job: Optional[str] = None
@@ -40,31 +40,31 @@ class RecorderPanel(ctk.CTkFrame):
         t = self._t
         self.btn_record = ctk.CTkButton(
             self, text="⏺ Record", width=100, height=30, font=("Segoe UI", 11, "bold"),
-            fg_color=t("status_error", "#f85149"), hover_color="#d73a3a",
-            text_color="#ffffff", corner_radius=6, command=self._on_record)
+            fg_color=t("status_error", "#ff3b3b"), hover_color=t("status_error", "#ff3b3b"),
+            text_color="#ffffff", corner_radius=3, command=self._on_record)
         self.btn_record.pack(side="left", padx=(8, 2), pady=4)
 
         self.btn_stop = ctk.CTkButton(
             self, text="⏹ Stop", width=80, height=30, font=("Segoe UI", 11, "bold"),
-            fg_color=t("bg_input", "#21262d"), hover_color=t("bg_hover", "#30363d"),
-            text_color=t("text_primary", "#c9d1d9"), corner_radius=6, command=self._on_stop)
+            fg_color=t("bg_input", "#111418"), hover_color=t("bg_hover", "#333539"),
+            text_color=t("text_primary", "#e2e2e8"), corner_radius=3, command=self._on_stop)
         self.btn_stop.pack(side="left", padx=2, pady=4)
 
         self.btn_play = ctk.CTkButton(
             self, text="▶ Play", width=80, height=30, font=("Segoe UI", 11, "bold"),
-            fg_color=t("status_running", "#39d353"), hover_color="#2ea043",
-            text_color="#ffffff", corner_radius=6, command=self._on_play)
+            fg_color=t("status_running", "#95E400"), hover_color="#6ed400",
+            text_color="#ffffff", corner_radius=3, command=self._on_play)
         self.btn_play.pack(side="left", padx=2, pady=4)
 
         self.btn_library = ctk.CTkButton(
             self, text="📋 Library", width=100, height=30, font=("Segoe UI", 11),
-            fg_color=t("bg_input", "#21262d"), hover_color=t("bg_hover", "#30363d"),
-            text_color=t("text_primary", "#c9d1d9"), corner_radius=6, command=self._on_library)
+            fg_color=t("bg_input", "#111418"), hover_color=t("bg_hover", "#333539"),
+            text_color=t("text_primary", "#e2e2e8"), corner_radius=3, command=self._on_library)
         self.btn_library.pack(side="left", padx=2, pady=4)
 
         self.status_label = ctk.CTkLabel(
             self, text="Ready", font=("Segoe UI", 11),
-            text_color=t("text_secondary", "#8b949e"))
+            text_color=t("text_secondary", "#b9cacb"))
         self.status_label.pack(side="right", padx=12, pady=4)
 
     # ── Record ─────────────────────────────────────────────────────────
@@ -80,20 +80,20 @@ class RecorderPanel(ctk.CTkFrame):
         except RuntimeError as exc:
             messagebox.showwarning("Recorder", str(exc)); return
         self.status_label.configure(text="Recording… (0 steps)",
-                                    text_color=self._t("status_error", "#f85149"))
+                                    text_color=self._t("status_error", "#ff3b3b"))
         self.btn_record.configure(fg_color="#ff0000")
         self._start_pulse()
 
     def _start_pulse(self) -> None:
         self._pulse_on = not self._pulse_on
         self.btn_record.configure(fg_color="#ff0000" if self._pulse_on
-                                  else self._t("status_error", "#f85149"))
+                                  else self._t("status_error", "#ff3b3b"))
         self._pulse_job = self.after(600, self._start_pulse)
 
     def _stop_pulse(self) -> None:
         if self._pulse_job:
             self.after_cancel(self._pulse_job); self._pulse_job = None
-        self.btn_record.configure(fg_color=self._t("status_error", "#f85149"))
+        self.btn_record.configure(fg_color=self._t("status_error", "#ff3b3b"))
 
     # ── Stop ───────────────────────────────────────────────────────────
 
@@ -127,7 +127,7 @@ class RecorderPanel(ctk.CTkFrame):
         tags_e.grid(row=2, column=1, **pad)
 
         ctk.CTkLabel(dlg, text=f"Captured {len(script.steps)} step(s)", font=("Segoe UI", 10),
-                      text_color=self._t("text_secondary", "#8b949e")).grid(
+                      text_color=self._t("text_secondary", "#b9cacb")).grid(
             row=3, column=0, columnspan=2, pady=(8, 2))
 
         bf = ctk.CTkFrame(dlg, fg_color="transparent"); bf.grid(row=4, column=0, columnspan=2, pady=10)
@@ -200,7 +200,7 @@ class RecorderPanel(ctk.CTkFrame):
         total = len(script_data.get("steps", []))
         self._is_playing = True
         self.status_label.configure(text=f"Playing step 0/{total}…",
-                                    text_color=self._t("status_running", "#39d353"))
+                                    text_color=self._t("status_running", "#95E400"))
         engine.set_progress_callback(
             lambda s, t, a, r: self.after(0, lambda: self.status_label.configure(
                 text=f"Playing step {s}/{t}…")))
@@ -214,11 +214,11 @@ class RecorderPanel(ctk.CTkFrame):
         self._is_playing = False
         if result.success:
             msg = f"Script completed ({result.steps_completed}/{result.steps_total} steps)"
-            self.status_label.configure(text=msg, text_color=self._t("status_running", "#39d353"))
+            self.status_label.configure(text=msg, text_color=self._t("status_running", "#95E400"))
             messagebox.showinfo("Playback", msg)
         else:
             self.status_label.configure(text=f"Playback failed: {result.error}",
-                                        text_color=self._t("status_error", "#f85149"))
+                                        text_color=self._t("status_error", "#ff3b3b"))
             messagebox.showerror("Playback Error", result.error or "Unknown error")
         self.after(5000, self._set_ready)
 
@@ -251,7 +251,7 @@ class RecorderPanel(ctk.CTkFrame):
         sv.trace_add("write", _refresh)
 
         for info in scripts:
-            row = ctk.CTkFrame(lf, height=50, corner_radius=6)
+            row = ctk.CTkFrame(lf, height=50, corner_radius=3)
             row.pack(fill="x", pady=2, padx=2)
             p = info.get("path", "")
             sc = 0
@@ -264,23 +264,23 @@ class RecorderPanel(ctk.CTkFrame):
             inner = ctk.CTkFrame(row, fg_color="transparent")
             inner.pack(side="left", fill="x", expand=True, padx=4, pady=4)
             ctk.CTkLabel(inner, text=info.get("name", "Untitled"), font=("Segoe UI", 12, "bold"),
-                          text_color=self._t("text_primary", "#c9d1d9")).pack(anchor="w")
+                          text_color=self._t("text_primary", "#e2e2e8")).pack(anchor="w")
             det = f"{sc} step(s)"
             desc = info.get("description", "")
             if desc: det += f" — {desc[:60]}"
             ctk.CTkLabel(inner, text=det, font=("Segoe UI", 10),
-                          text_color=self._t("text_secondary", "#8b949e")).pack(anchor="w")
+                          text_color=self._t("text_secondary", "#b9cacb")).pack(anchor="w")
             tags = info.get("tags", [])
             if tags:
                 ctk.CTkLabel(inner, text=" ".join(f"#{t}" for t in tags), font=("Segoe UI", 9),
-                              text_color=self._t("accent", "#58a6ff")).pack(anchor="w")
+                              text_color=self._t("accent", "#00F0FF")).pack(anchor="w")
 
             def _run(pp=p):
                 dlg.destroy(); self._run_script(pp, {}, {})
             ctk.CTkButton(row, text="▶", width=36, height=36,
-                           fg_color=self._t("status_running", "#39d353"),
-                           hover_color="#2ea043", text_color="#ffffff",
-                           corner_radius=6, command=_run).pack(side="right", padx=6, pady=4)
+                           fg_color=self._t("status_running", "#95E400"),
+                           hover_color="#6ed400", text_color="#ffffff",
+                           corner_radius=3, command=_run).pack(side="right", padx=6, pady=4)
             menu = tk.Menu(row, tearoff=0)
             menu.add_command(label="▶ Run", command=_run)
             menu.add_command(label="🗑 Delete", command=lambda pp=p: self._delete_script(pp, dlg))
@@ -291,7 +291,7 @@ class RecorderPanel(ctk.CTkFrame):
         if not scripts:
             ctk.CTkLabel(lf, text="No scripts found.\nRecord an automation or drop .json into scripts/.",
                           font=("Segoe UI", 12),
-                          text_color=self._t("text_secondary", "#8b949e")).pack(pady=40)
+                          text_color=self._t("text_secondary", "#b9cacb")).pack(pady=40)
 
         ctk.CTkButton(dlg, text="Close", width=80, fg_color="transparent",
                        command=dlg.destroy).grid(row=3, column=0, pady=(4, 12))
@@ -305,7 +305,7 @@ class RecorderPanel(ctk.CTkFrame):
     # ── Helpers / Public API ───────────────────────────────────────────
 
     def _set_ready(self) -> None:
-        self.status_label.configure(text="Ready", text_color=self._t("text_secondary", "#8b949e"))
+        self.status_label.configure(text="Ready", text_color=self._t("text_secondary", "#b9cacb"))
 
     def update_step_count(self, count: int) -> None:
         """Called from the agent loop to refresh the 'Recording… (N steps)' label."""

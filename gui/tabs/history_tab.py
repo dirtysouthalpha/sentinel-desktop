@@ -38,7 +38,7 @@ class HistoryTab(ctk.CTkFrame):
     # ── Left panel ────────────────────────────────────────────────────
 
     def _build_left(self):
-        left = ctk.CTkFrame(self, fg_color=self._t("bg_secondary", "#161b22"), corner_radius=8)
+        left = ctk.CTkFrame(self, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=4)
         left.grid(row=0, column=0, sticky="nsew", padx=(4, 2), pady=4)
         left.grid_columnconfigure(0, weight=1)
         left.grid_rowconfigure(2, weight=1)
@@ -48,16 +48,16 @@ class HistoryTab(ctk.CTkFrame):
         filter_frame.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
         ctk.CTkLabel(filter_frame, text="📁 Run History",
                      font=("Segoe UI", 14, "bold"),
-                     text_color=self._t("text_primary", "#c9d1d9")).pack(side="left")
+                     text_color=self._t("text_primary", "#e2e2e8")).pack(side="left")
 
         self.filter_var = ctk.StringVar(value="All")
         filter_menu = ctk.CTkOptionMenu(
             filter_frame, variable=self.filter_var,
             values=["All", "Today", "This Week", "Failed"],
             width=100, height=28,
-            fg_color=self._t("bg_input", "#21262d"),
-            button_color=self._t("accent", "#58a6ff"),
-            text_color=self._t("text_primary", "#c9d1d9"),
+            fg_color=self._t("bg_input", "#111418"),
+            button_color=self._t("accent", "#00F0FF"),
+            text_color=self._t("text_primary", "#e2e2e8"),
             command=lambda _: self.refresh_history(),
         )
         filter_menu.pack(side="right")
@@ -66,9 +66,9 @@ class HistoryTab(ctk.CTkFrame):
         self.search_entry = ctk.CTkEntry(
             left, placeholder_text="Search sessions...",
             height=32,
-            fg_color=self._t("bg_input", "#21262d"),
-            text_color=self._t("text_primary", "#c9d1d9"),
-            border_color=self._t("border", "#30363d"),
+            fg_color=self._t("bg_input", "#111418"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            border_color=self._t("border", "#333539"),
         )
         self.search_entry.grid(row=1, column=0, sticky="ew", padx=8, pady=4)
         self.search_entry.bind("<KeyRelease>", lambda _: self.refresh_history())
@@ -80,7 +80,7 @@ class HistoryTab(ctk.CTkFrame):
     # ── Right panel ───────────────────────────────────────────────────
 
     def _build_right(self):
-        right = ctk.CTkFrame(self, fg_color=self._t("bg_secondary", "#161b22"), corner_radius=8)
+        right = ctk.CTkFrame(self, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=4)
         right.grid(row=0, column=1, sticky="nsew", padx=(2, 4), pady=4)
         right.grid_columnconfigure(0, weight=1)
         right.grid_rowconfigure(2, weight=1)
@@ -91,7 +91,7 @@ class HistoryTab(ctk.CTkFrame):
         self.goal_label = ctk.CTkLabel(
             header, text="Select a session to view details",
             font=("Segoe UI", 16, "bold"),
-            text_color=self._t("text_primary", "#c9d1d9"),
+            text_color=self._t("text_primary", "#e2e2e8"),
             wraplength=600, justify="left",
         )
         self.goal_label.pack(side="left", fill="x", expand=True)
@@ -106,17 +106,17 @@ class HistoryTab(ctk.CTkFrame):
 
         self.replay_btn = ctk.CTkButton(
             actions, text="🔄 Replay", width=90, height=30,
-            fg_color=self._t("accent", "#58a6ff"),
-            hover_color=self._t("bg_hover", "#30363d"),
+            fg_color=self._t("accent", "#00F0FF"),
+            hover_color=self._t("bg_hover", "#333539"),
             command=self._replay_session,
         )
         self.replay_btn.pack(side="right", padx=4)
 
         self.export_btn = ctk.CTkButton(
             actions, text="📋 Export Log", width=100, height=30,
-            fg_color=self._t("bg_input", "#21262d"),
-            hover_color=self._t("bg_hover", "#30363d"),
-            text_color=self._t("text_primary", "#c9d1d9"),
+            fg_color=self._t("bg_input", "#111418"),
+            hover_color=self._t("bg_hover", "#333539"),
+            text_color=self._t("text_primary", "#e2e2e8"),
             command=self._export_log,
         )
         self.export_btn.pack(side="right", padx=4)
@@ -129,8 +129,8 @@ class HistoryTab(ctk.CTkFrame):
         self.output_text = ctk.CTkTextbox(
             right, height=120,
             font=("Consolas", 11),
-            fg_color=self._t("bg_primary", "#0d1117"),
-            text_color=self._t("text_secondary", "#8b949e"),
+            fg_color=self._t("bg_primary", "#050608"),
+            text_color=self._t("text_secondary", "#b9cacb"),
         )
         self.output_text.grid(row=3, column=0, sticky="ew", padx=12, pady=(4, 12))
 
@@ -213,14 +213,14 @@ class HistoryTab(ctk.CTkFrame):
 
             card = ctk.CTkFrame(
                 self.session_list,
-                fg_color=self._t("bg_input", "#21262d") if i != self.selected_index else self._t("accent", "#58a6ff"),
-                corner_radius=6, height=60,
+                fg_color=self._t("bg_input", "#111418") if i != self.selected_index else self._t("accent", "#00F0FF"),
+                corner_radius=3, height=60,
             )
             card.pack(fill="x", pady=2, padx=4)
             card.pack_propagate(False)
 
-            text_color = self._t("text_primary", "#c9d1d9")
-            sub_color = self._t("text_secondary", "#8b949e")
+            text_color = self._t("text_primary", "#e2e2e8")
+            sub_color = self._t("text_secondary", "#b9cacb")
 
             ctk.CTkLabel(
                 card, text=f"{icon} {goal[:50]}",
@@ -246,14 +246,14 @@ class HistoryTab(ctk.CTkFrame):
 
         status = session.get("status", "unknown")
         status_colors = {
-            "completed": self._t("status_running", "#39d353"),
-            "failed": self._t("status_error", "#f85149"),
-            "running": self._t("accent", "#58a6ff"),
-            "empty": self._t("text_secondary", "#8b949e"),
+            "completed": self._t("status_running", "#95E400"),
+            "failed": self._t("status_error", "#ff3b3b"),
+            "running": self._t("accent", "#00F0FF"),
+            "empty": self._t("text_secondary", "#b9cacb"),
         }
         self.status_badge.configure(
             text=f"● {status.upper()}",
-            text_color=status_colors.get(status, "#8b949e"),
+            text_color=status_colors.get(status, "#b9cacb"),
         )
 
         # Render timeline
@@ -267,7 +267,7 @@ class HistoryTab(ctk.CTkFrame):
             ok = step_data.get("ok", True)
             ts = step_data.get("timestamp", "")[11:19]
 
-            color = self._t("status_running", "#39d353") if ok else self._t("status_error", "#f85149")
+            color = self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
             icon = "✓" if ok else "✗"
 
             row = ctk.CTkFrame(self.timeline, fg_color="transparent", height=28)
@@ -281,7 +281,7 @@ class HistoryTab(ctk.CTkFrame):
 
             ctk.CTkLabel(
                 row, text=ts,
-                font=("Consolas", 9), text_color=self._t("text_secondary", "#8b949e"),
+                font=("Consolas", 9), text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(side="right")
 
         # Output

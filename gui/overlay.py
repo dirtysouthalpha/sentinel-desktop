@@ -121,10 +121,10 @@ class _Indicator:
             text_y = h - 14
             self.canvas.create_rectangle(
                 4, text_y - 11, w - 4, text_y + 10,
-                fill="#161b22", outline=color, width=1,
+                fill="#0A0C10", outline=color, width=1,
             )
             self.canvas.create_text(
-                cx, text_y, text=label, fill="#e6edf3",
+                cx, text_y, text=label, fill="#e2e2e8",
                 font=("Segoe UI", 9, "bold"),
             )
 
@@ -182,11 +182,11 @@ def _label_for_action(action: Dict[str, Any]) -> str:
 
 def _color_for_kind(kind: str) -> str:
     if kind in ("click_text", "click_control"):
-        return "#3fb950"     # green — high-confidence actions
+        return "#95E400"     # lime green (Override success) — high-confidence
     if kind == "type_text" or kind == "set_text":
-        return "#58a6ff"     # blue — input
+        return "#00F0FF"     # cyan (Override accent) — input
     if kind in ("hotkey", "press_key"):
-        return "#d29922"     # amber — keys
+        return "#FBBC00"     # amber (Override warning) — keys
     return "#e8793a"          # sentinel orange — default
 
 

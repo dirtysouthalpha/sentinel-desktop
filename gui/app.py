@@ -38,7 +38,7 @@ class SentinelApp:
 
         # Window
         self.root = ctk.CTk()
-        self.root.title("Sentinel Desktop v2")
+        self.root.title("SENTINEL DESKTOP v3.0")
         self.root.geometry("1200x800")
         self.root.minsize(900, 600)
 
@@ -86,7 +86,7 @@ class SentinelApp:
 
         self.status_label = ctk.CTkLabel(
             header, text="● IDLE", font=("Segoe UI", 12),
-            text_color=self._t("status_idle", "#888888")
+            text_color=self._t("status_idle", "#849495")
         )
         self.status_label.pack(side="left", padx=20)
 
@@ -95,22 +95,22 @@ class SentinelApp:
         if self.cfg.get("dry_run"):
             ctk.CTkLabel(
                 header, text="DRY-RUN", font=("Segoe UI", 11, "bold"),
-                text_color="#000000", fg_color=self._t("tag_action", "#f1c40f"),
-                corner_radius=6, padx=8,
+                text_color="#000000", fg_color=self._t("tag_action", "#FBBC00"),
+                corner_radius=3, padx=8,
             ).pack(side="left", padx=10)
         # Show AUTONOMOUS chip in red so users always know when approvals
         # are off and the agent is acting without confirmation.
         if self.cfg.get("autonomous"):
             ctk.CTkLabel(
                 header, text="AUTONOMOUS", font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff", fg_color=self._t("status_error", "#c0392b"),
-                corner_radius=6, padx=8,
+                text_color="#ffffff", fg_color=self._t("status_error", "#ff3b3b"),
+                corner_radius=3, padx=8,
             ).pack(side="left", padx=10)
         if self.cfg.get("stealth_input"):
             ctk.CTkLabel(
                 header, text="STEALTH", font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff", fg_color=self._t("accent", "#1f6feb"),
-                corner_radius=6, padx=8,
+                text_color="#ffffff", fg_color=self._t("accent", "#00F0FF"),
+                corner_radius=3, padx=8,
             ).pack(side="left", padx=10)
 
         # Provider / model
@@ -120,7 +120,7 @@ class SentinelApp:
             header,
             text=f"{provider} / {model}",
             font=("Segoe UI", 10),
-            text_color=self._t("text_secondary", "#666666"),
+            text_color=self._t("text_secondary", "#849495"),
         )
         self.provider_label.pack(side="right", padx=12)
 
@@ -136,11 +136,11 @@ class SentinelApp:
         """Build tabbed interface: Dashboard | Scripts | Workflows | History."""
         self.tabview = ctk.CTkTabview(
             self.root,
-            fg_color=self._t("bg_secondary", "#161b22"),
-            segmented_button_fg_color=self._t("bg_input", "#21262d"),
-            segmented_button_selected_color=self._t("accent", "#58a6ff"),
-            segmented_button_unselected_color=self._t("bg_input", "#21262d"),
-            corner_radius=8,
+            fg_color=self._t("bg_secondary", "#0A0C10"),
+            segmented_button_fg_color=self._t("bg_input", "#111418"),
+            segmented_button_selected_color=self._t("accent", "#00F0FF"),
+            segmented_button_unselected_color=self._t("bg_input", "#111418"),
+            corner_radius=4,
         )
         self.tabview.pack(fill="both", expand=True, padx=8, pady=4)
 
@@ -160,7 +160,7 @@ class SentinelApp:
             self.scripts_tab = ScriptsTab(tab_scripts, self)
         except ImportError:
             ctk.CTkLabel(tab_scripts, text="Scripts tab unavailable",
-                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
 
         # Workflows tab
         try:
@@ -168,7 +168,7 @@ class SentinelApp:
             self.workflows_tab = WorkflowsTab(tab_workflows, self)
         except ImportError:
             ctk.CTkLabel(tab_workflows, text="Workflows tab unavailable",
-                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
 
         # History tab
         try:
@@ -176,7 +176,7 @@ class SentinelApp:
             self.history_tab = HistoryTab(tab_history, self)
         except ImportError:
             ctk.CTkLabel(tab_history, text="History tab unavailable",
-                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
 
         # Settings tab
         try:
@@ -184,7 +184,7 @@ class SentinelApp:
             self.settings_tab = SettingsTab(tab_settings, self)
         except ImportError:
             ctk.CTkLabel(tab_settings, text="Settings tab unavailable",
-                         text_color=self._t("text_secondary", "#8b949e")).pack(pady=20)
+                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
 
     def _build_main_area_into(self, parent):
         """Build the original main area content into a given parent frame."""
@@ -202,7 +202,7 @@ class SentinelApp:
 
         self.chat_display = ctk.CTkTextbox(
             chat_frame, wrap="word", font=("Consolas", 12),
-            state="disabled", corner_radius=8,
+            state="disabled", corner_radius=4,
         )
         self.chat_display.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
 
@@ -266,8 +266,8 @@ class SentinelApp:
             ctk.CTkButton(
                 chips, text=short, height=24,
                 font=("Segoe UI", 10),
-                fg_color=self._t("bg_input", "#21262d"), hover_color=self._t("bg_hover", "#30363d"), text_color=self._t("text_primary", "#e6edf3"),
-                corner_radius=12,
+                fg_color=self._t("bg_input", "#111418"), hover_color=self._t("bg_hover", "#333539"), text_color=self._t("text_primary", "#e2e2e8"),
+                corner_radius=6,
                 command=lambda p=preset: self._set_prompt(p),
             ).pack(side="left", padx=2, pady=2)
 
@@ -288,7 +288,7 @@ class SentinelApp:
         # --- Multi-line prompt textbox -------------------------------
         self.goal_entry = ctk.CTkTextbox(
             input_frame, height=80, font=("Segoe UI", 13),
-            wrap="word", corner_radius=8,
+            wrap="word", corner_radius=4,
         )
         self.goal_entry.grid(row=2, column=0, sticky="ew", padx=8, pady=(4, 8))
         # Placeholder behaviour (CTkTextbox doesn't have native placeholder).
@@ -296,7 +296,7 @@ class SentinelApp:
             "Describe what you want done…   (Ctrl+Enter to run, Enter for newline)"
         )
         self.goal_entry.insert("1.0", self._placeholder_text)
-        self.goal_entry.configure(text_color=self._t("text_secondary", "#6e7681"))
+        self.goal_entry.configure(text_color=self._t("text_secondary", "#849495"))
         self.goal_entry.bind("<FocusIn>", self._clear_placeholder)
         self.goal_entry.bind("<FocusOut>", self._restore_placeholder)
         # Ctrl+Enter (or Cmd+Enter on Mac) submits; plain Enter inserts newline.
@@ -314,7 +314,7 @@ class SentinelApp:
             input_frame, text="■ Stop", width=80, height=80,
             font=("Segoe UI", 13, "bold"),
             command=self._on_stop,
-            fg_color=self._t("status_error", "#c0392b"), hover_color=self._t("tag_error", "#e74c3c"),
+            fg_color=self._t("status_error", "#ff3b3b"), hover_color=self._t("tag_error", "#ff3b3b"),
         ).grid(row=2, column=2, padx=(0, 8), pady=(4, 8))
 
     # -- Placeholder + recent-prompt helpers ------------------------------
@@ -328,18 +328,18 @@ class SentinelApp:
     def _set_prompt(self, text: str) -> None:
         self.goal_entry.delete("1.0", "end")
         self.goal_entry.insert("1.0", text)
-        self.goal_entry.configure(text_color=self._t("text_primary", "#e6edf3"))
+        self.goal_entry.configure(text_color=self._t("text_primary", "#e2e2e8"))
         self.goal_entry.focus_set()
 
     def _clear_placeholder(self, _event=None):
         if self.goal_entry.get("1.0", "end").strip() == self._placeholder_text:
             self.goal_entry.delete("1.0", "end")
-            self.goal_entry.configure(text_color=self._t("text_primary", "#e6edf3"))
+            self.goal_entry.configure(text_color=self._t("text_primary", "#e2e2e8"))
 
     def _restore_placeholder(self, _event=None):
         if not self.goal_entry.get("1.0", "end").strip():
             self.goal_entry.insert("1.0", self._placeholder_text)
-            self.goal_entry.configure(text_color=self._t("text_secondary", "#6e7681"))
+            self.goal_entry.configure(text_color=self._t("text_secondary", "#849495"))
 
     def _on_recent_pick(self, choice: str):
         # The dropdown shows truncated text — find the full prompt by prefix.
@@ -521,11 +521,11 @@ class SentinelApp:
                 self.root.after(
                     0,
                     lambda: self.status_label.configure(
-                        text="● IDLE", text_color=self._t("status_idle", "#888888"),
+                        text="● IDLE", text_color=self._t("status_idle", "#849495"),
                     ),
                 )
 
-        self.status_label.configure(text="● RUNNING", text_color=self._t("status_running", "#2ecc71"))
+        self.status_label.configure(text="● RUNNING", text_color=self._t("status_running", "#95E400"))
         self.engine_thread = threading.Thread(target=_run, daemon=True)
         self.engine_thread.start()
 
@@ -586,11 +586,11 @@ class SentinelApp:
 
                 ctk.CTkButton(
                     btn_frame, text="✓ Approve", command=_approve,
-                    fg_color=self._t("status_running", "#2ecc71"), hover_color=self._t("tag_assistant", "#27ae60"),
+                    fg_color=self._t("status_running", "#95E400"), hover_color=self._t("tag_assistant", "#95E400"),
                 ).pack(side="right", padx=4)
                 ctk.CTkButton(
                     btn_frame, text="✗ Reject", command=_reject,
-                    fg_color=self._t("status_error", "#c0392b"), hover_color=self._t("tag_error", "#e74c3c"),
+                    fg_color=self._t("status_error", "#ff3b3b"), hover_color=self._t("tag_error", "#ff3b3b"),
                 ).pack(side="right", padx=4)
 
                 top.protocol("WM_DELETE_WINDOW", _reject)
@@ -738,7 +738,7 @@ class SentinelApp:
 
         self.history_display = ctk.CTkTextbox(
             history_frame, wrap="none", font=("Consolas", 10),
-            state="disabled", width=200, corner_radius=6,
+            state="disabled", width=200, corner_radius=3,
         )
         self.history_display.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
         return history_frame
@@ -921,7 +921,7 @@ class SettingsWindow:
                 "Leave as the catalog default for most providers. For Z.ai's "
                 "Max Coding Plan use: https://api.z.ai/api/coding/paas/v4"
             ),
-            font=("Segoe UI", 10), text_color=self.app._t("text_secondary", "#8b949e"), wraplength=540,
+            font=("Segoe UI", 10), text_color=self.app._t("text_secondary", "#b9cacb"), wraplength=540,
             justify="left",
         ).pack(anchor="w", padx=20, pady=(2, 4))
 
@@ -973,8 +973,8 @@ class SettingsWindow:
         apply_theme(choice)
         self.app._t = lambda key, fb="": self.app.current_theme.get(key, fb)
         # Reconfigure status label
-        self.app.status_label.configure(text_color=self.app._t("status_idle", "#888888"))
-        self.app.provider_label.configure(text_color=self.app._t("text_secondary", "#666666"))
+        self.app.status_label.configure(text_color=self.app._t("status_idle", "#849495"))
+        self.app.provider_label.configure(text_color=self.app._t("text_secondary", "#849495"))
 
         # Monitor selection (multi-screen)
         from core.screenshot import list_monitors
@@ -1057,7 +1057,7 @@ class SettingsWindow:
                 "games) may ignore synthesized input; falls back to "
                 "physical mouse when that happens."
             ),
-            font=("Segoe UI", 9), text_color=self.app._t("text_secondary", "#8b949e"),
+            font=("Segoe UI", 9), text_color=self.app._t("text_secondary", "#b9cacb"),
             wraplength=540, justify="left",
         ).pack(anchor="w", padx=20, pady=(0, 4))
 
