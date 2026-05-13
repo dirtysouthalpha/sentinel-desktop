@@ -36,6 +36,36 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "double_click",
+            "description": "Double-click at screen coordinates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "integer", "description": "X pixel"},
+                    "y": {"type": "integer", "description": "Y pixel"},
+                },
+                "required": ["x", "y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "right_click",
+            "description": "Right-click at screen coordinates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "integer", "description": "X pixel"},
+                    "y": {"type": "integer", "description": "Y pixel"},
+                },
+                "required": ["x", "y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "type_text",
             "description": "Type a string at the current cursor focus.",
             "parameters": {

@@ -47,6 +47,9 @@ DEFAULT_IMAGE_HISTORY = 3
 # note, find_image, etc. are not gated.
 APPROVAL_REQUIRED_ACTIONS = {
     "click",
+    "double_click",
+    "right_click",
+    "drag",
     "click_image",
     "type_text",
     "press_key",
