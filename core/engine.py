@@ -196,101 +196,130 @@ class AgentEngine:
         self.on_step_callback: Callable | None = None
         self.finish_summary: str = ""
 
-        # ── Enhanced subsystems ───────────────────────────────────────
+        # ── Core subsystems (always needed) ──────────────────────────
         self.logger = ForensicLog()
         self.checkpoint = CheckpointManager()
         self.gate = ApprovalGate(
             enabled=bool(self.config.get("approval_mode") and not self.config.get("autonomous"))
         )
-        # Wire approval gate callback to the legacy approval_callback if set
         if self.approval_callback:
             self.gate.set_callback(self.approval_callback)
-
-        # MFA/UAC detection — pauses agent when auth prompts appear
         self.mfa_detector = MFADetector()
         self._mfa_paused = False
-
-        # Smart wait — visual-diff-based waiting instead of fixed timers
         self.smart_waiter = SmartWait()
 
-        # Script recorder — captures actions for replay
-        from core.recorder import ActionRecorder
+        # ── Lazy-loaded subsystems (only created when accessed) ──────
+        self._recorder = None
+        self._script_engine = None
+        self._powershell = None
+        self._workflow_engine = None
+        self._scheduler = None
+        self._notifications = None
+        self._plugin_loader = None
+        self._recovery = None
+        self._auth_manager = None
+        self._vault = None
+        self._audit_exporter = None
+        self._agent_pool = None
 
-        self.recorder = ActionRecorder()
+    # ── Lazy subsystem accessors ─────────────────────────────────────
 
-        # Script engine — replays recorded scripts
-        from core.script_engine import ScriptEngine
+    @property
+    def recorder(self):
+        if self._recorder is None:
+            from core.recorder import ActionRecorder
+            self._recorder = ActionRecorder()
+        return self._recorder
 
-        self.script_engine = ScriptEngine(self.executor)
+    @property
+    def script_engine(self):
+        if self._script_engine is None:
+            from core.script_engine import ScriptEngine
+            self._script_engine = ScriptEngine(self.executor)
+        return self._script_engine
 
-        # PowerShell runner — execute PS scripts/commands
-        from core.powershell import PowerShellRunner
+    @property
+    def powershell(self):
+        if self._powershell is None:
+            from core.powershell import PowerShellRunner
+            self._powershell = PowerShellRunner()
+        return self._powershell
 
-        self.powershell = PowerShellRunner()
+    @property
+    def workflow_engine(self):
+        if self._workflow_engine is None:
+            from core.workflow import WorkflowEngine
+            self._workflow_engine = WorkflowEngine(self.executor, self.script_engine)
+        return self._workflow_engine
 
-        # Workflow engine — multi-step workflows with conditions/loops
-        from core.workflow import WorkflowEngine
+    @property
+    def scheduler(self):
+        if self._scheduler is None:
+            from core.scheduler import TaskScheduler
+            self._scheduler = TaskScheduler(self)
+        return self._scheduler
 
-        self.workflow_engine = WorkflowEngine(self.executor, self.script_engine)
+    @property
+    def notifications(self):
+        if self._notifications is None:
+            from core.notifications import NotificationManager
+            notify_config = {
+                "enabled_channels": self.config.get("notify_channels", ["toast", "log"]),
+                "webhook_url": self.config.get("notify_webhook_url", ""),
+                "discord_webhook": self.config.get("notify_discord_webhook", ""),
+            }
+            self._notifications = NotificationManager(notify_config)
+        return self._notifications
 
-        # Task scheduler — cron-like scheduling
-        from core.scheduler import TaskScheduler
+    @property
+    def plugin_loader(self):
+        if self._plugin_loader is None:
+            from core.plugin_loader import PluginLoader
+            self._plugin_loader = PluginLoader(
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
+            )
+            try:
+                loaded = self._plugin_loader.load_all()
+                for p in loaded:
+                    logger.info("Plugin loaded: %s v%s", p.get("name"), p.get("version"))
+            except Exception as exc:
+                logger.warning("Plugin loading failed: %s", exc)
+        return self._plugin_loader
 
-        self.scheduler = TaskScheduler(self)
+    @property
+    def recovery(self):
+        if self._recovery is None:
+            from core.recovery import RecoveryManager
+            self._recovery = RecoveryManager(self.executor, self.config)
+        return self._recovery
 
-        # Notification manager — toast/email/webhook
-        from core.notifications import NotificationManager
+    @property
+    def auth_manager(self):
+        if self._auth_manager is None:
+            from core.auth import AuthManager
+            self._auth_manager = AuthManager()
+        return self._auth_manager
 
-        notify_config = {
-            "enabled_channels": self.config.get("notify_channels", ["toast", "log"]),
-            "webhook_url": self.config.get("notify_webhook_url", ""),
-            "discord_webhook": self.config.get("notify_discord_webhook", ""),
-        }
-        self.notifications = NotificationManager(notify_config)
+    @property
+    def vault(self):
+        if self._vault is None:
+            from core.encryption import CredentialVault
+            self._vault = CredentialVault()
+        return self._vault
 
-        # Plugin loader — drop-in extensibility
-        from core.plugin_loader import PluginLoader
+    @property
+    def audit_exporter(self):
+        if self._audit_exporter is None:
+            from core.audit_export import AuditExporter
+            self._audit_exporter = AuditExporter()
+        return self._audit_exporter
 
-        self.plugin_loader = PluginLoader(
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
-        )
-
-        # Recovery manager — self-healing + popup auto-dismiss
-        from core.recovery import RecoveryManager
-
-        self.recovery = RecoveryManager(self.executor, self.config)
-
-        # Load plugins
-        try:
-            loaded = self.plugin_loader.load_all()
-            for p in loaded:
-                logger.info("Plugin loaded: %s v%s", p.get("name"), p.get("version"))
-        except Exception as exc:
-            logger.warning("Plugin loading failed: %s", exc)
-
-        # Start scheduler if configured
-        if self.config.get("scheduler_enabled"):
-            self.scheduler.start()
-
-        # Auth manager — RBAC + session tokens
-        from core.auth import AuthManager
-
-        self.auth_manager = AuthManager()
-
-        # Credential vault — DPAPI encryption for API keys
-        from core.encryption import CredentialVault
-
-        self.vault = CredentialVault()
-
-        # Audit exporter — professional reports
-        from core.audit_export import AuditExporter
-
-        self.audit_exporter = AuditExporter()
-
-        # Agent pool — multi-agent parallel execution
-        from core.agent_pool import AgentPool
-
-        self.agent_pool = AgentPool(max_agents=self.config.get("max_agents", 3))
+    @property
+    def agent_pool(self):
+        if self._agent_pool is None:
+            from core.agent_pool import AgentPool
+            self._agent_pool = AgentPool(max_agents=self.config.get("max_agents", 3))
+        return self._agent_pool
 
     # ── Sync entry point ────────────────────────────────────────────────
 
@@ -301,6 +330,13 @@ class AgentEngine:
         self.notes = []
         self.forensic_log = []
         self.finish_summary = ""
+
+        # Auto-start scheduler if configured
+        if self.config.get("scheduler_enabled"):
+            try:
+                self.scheduler.start()
+            except Exception as exc:
+                logger.warning("Scheduler auto-start failed: %s", exc)
 
         # Optional: switch to a virtual desktop so agent doesn't interrupt user
         vd = None
