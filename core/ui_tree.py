@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import platform
+from collections import deque
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -96,7 +97,7 @@ def click_control(
     """Find and click a control by accessibility metadata.
 
     Returns the (x, y) it clicked, or ``None`` if no match was found.
-    Matching is OR across the provided keys (any can be omitted).
+    Matching is AND across the provided keys (all provided must match).
     """
     if not _have_uia():
         return None
@@ -287,10 +288,11 @@ def _find_control(
         return score
 
     # Breadth-first to prefer shallower (more visible) matches.
-    queue = [root]
+    queue: deque = deque([(root, 0)])
     visited = 0
+    max_depth = 12
     while queue and visited < 2000:
-        node = queue.pop(0)
+        node, depth = queue.popleft()
         visited += 1
         try:
             score = _matches(node)
@@ -299,8 +301,10 @@ def _find_control(
         if score > best_score:
             best_score = score
             best = node
-        try:
-            queue.extend(node.GetChildren())
-        except Exception:
-            continue
+        if depth < max_depth:
+            try:
+                for child in node.GetChildren():
+                    queue.append((child, depth + 1))
+            except Exception:
+                continue
     return best

@@ -26,6 +26,7 @@ from core.screenshot import (
     capture_focused_window_with_title,
     capture_screen,
     capture_window,
+    get_capture_offset,
 )
 
 # Set to False (via config) to OCR the raw screenshot. Default-on because
@@ -198,15 +199,18 @@ def find_text(
         return None
 
     boxes = _boxes_from_data(data)
+    offset_x, offset_y = get_capture_offset(monitor)
 
     # 1) Exact substring on the joined line text.
     hit = _exact_substring_hit(boxes, needle)
     if hit is not None:
-        return hit
+        return (hit[0] + offset_x, hit[1] + offset_y)
 
     # 2) Fuzzy on each line.
     if fuzzy:
-        return _fuzzy_line_hit(boxes, needle, min_score)
+        hit = _fuzzy_line_hit(boxes, needle, min_score)
+        if hit is not None:
+            return (hit[0] + offset_x, hit[1] + offset_y)
     return None
 
 
@@ -261,7 +265,9 @@ def _exact_substring_hit(
         if needle in joined:
             # Find which word(s) cover the needle and return their centroid.
             covering = _words_covering_substring(words, needle)
-            return _centroid(covering)
+            result = _centroid(covering)
+            if result is not None:
+                return result
     return None
 
 
@@ -308,13 +314,15 @@ def _fuzzy_line_hit(
             best_words = words
 
     if best_words is not None and best_score >= min_score:
-        return _centroid(best_words)
+        result = _centroid(best_words)
+        if result is not None:
+            return result
     return None
 
 
-def _centroid(boxes: list[dict[str, Any]]) -> tuple[int, int]:
+def _centroid(boxes: list[dict[str, Any]]) -> tuple[int, int] | None:
     if not boxes:
-        return (0, 0)
+        return None
     x0 = min(b["x"] for b in boxes)
     y0 = min(b["y"] for b in boxes)
     x1 = max(b["x"] + b["w"] for b in boxes)
