@@ -690,49 +690,79 @@ class AgentEngine:
     def _generate_report(self, goal: str, elapsed: float) -> dict[str, Any]:
         """Generate a structured run report for MSP work notes.
 
-        Returns a dict with both machine-readable fields and a human-readable
-        text summary suitable for pasting into ticketing systems.
+        Machine-parseable JSON with a human-readable text block for ticketing.
+        An MSP tech reading this at 8am should know: what was attempted, what
+        succeeded, what failed, and what to do next.
         """
+        now = datetime.now()
         success = bool(self.finish_summary)
         errors = [e for e in self.forensic_log if not e.get("result", {}).get("ok", True)]
+        provider = self.config.get("provider", "unknown")
+        model = self.config.get("model", "unknown")
 
-        # Count action types
         action_counts: dict[str, int] = {}
         for entry in self.forensic_log:
             a = entry.get("action", "unknown")
             action_counts[a] = action_counts.get(a, 0) + 1
 
+        step_trace = [
+            {
+                "step": e.get("step"),
+                "action": e.get("action"),
+                "params": {k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)},
+                "ok": e.get("result", {}).get("ok", True),
+                "output_preview": str(e.get("result", {}).get("msg", ""))[:200],
+                "timestamp": e.get("timestamp"),
+            }
+            for e in self.forensic_log
+        ]
+
         report = {
+            "session_id": now.strftime("%Y%m%d-%H%M%S"),
             "status": "success" if success else "failed",
+            "started_at": step_trace[0]["timestamp"] if step_trace else now.isoformat(),
+            "finished_at": now.isoformat(),
+            "elapsed_seconds": round(elapsed, 2),
             "goal": goal,
+            "provider": provider,
+            "model": model,
             "steps_total": self.step,
             "steps_failed": len(errors),
-            "elapsed_seconds": round(elapsed, 2),
             "actions": action_counts,
             "summary": self.finish_summary or "Run ended without completion",
+            "notes": self.notes,
+            "step_trace": step_trace,
             "error_list": [
                 {
                     "step": e.get("step"),
                     "action": e.get("action"),
-                    "error": e.get("result", {}).get("msg", "")[:200],
+                    "params": {k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)},
+                    "error": e.get("result", {}).get("msg", "")[:300],
+                    "timestamp": e.get("timestamp"),
                 }
-                for e in errors[:10]
+                for e in errors[:20]
             ],
         }
 
         # Human-readable text for ticketing
         lines = [
-            f"SENTINEL DESKTOP — AUTOMATION REPORT",
+            "SENTINEL DESKTOP — AUTOMATION REPORT",
+            f"Session: {report['session_id']}",
             f"Status: {'COMPLETED' if success else 'FAILED'}",
+            f"Time: {report['started_at']} → {report['finished_at']} ({elapsed:.1f}s)",
+            f"Provider: {provider} / {model}",
             f"Goal: {goal}",
             f"Steps: {self.step} ({len(errors)} failed)",
-            f"Duration: {elapsed:.1f}s",
             f"Summary: {report['summary']}",
         ]
+        if self.notes:
+            lines.append("Notes:")
+            for n in self.notes[:10]:
+                lines.append(f"  - {n[:200]}")
         if errors:
             lines.append("Errors:")
             for e in errors[:5]:
-                lines.append(f"  Step {e.get('step')}: {e.get('action')} — {e.get('result', {}).get('msg', '')[:100]}")
+                lines.append(f"  Step {e.get('step')}: {e.get('action')} — {e.get('result', {}).get('msg', '')[:150]}")
         report["text"] = "\n".join(lines)
         return report
 
