@@ -23,6 +23,7 @@ from core import failsafe
 from core import system_info as sysinfo
 from core import window_manager as wm
 from core.action_executor import ActionExecutor
+from core.action_schemas import validate_action
 from core.app_profiles import detect_profile
 from core.approval_gate import ApprovalDecision, ApprovalGate
 from core.checkpoint import CheckpointManager
@@ -430,6 +431,20 @@ class AgentEngine:
                         }
                     )
                     continue
+
+                # Schema-validate against per-action pydantic models. Modeled
+                # actions get defaults filled in and out-of-range numeric fields
+                # rejected. Unmodeled actions pass through. We warn-and-continue
+                # on errors so the engine keeps making progress — tighten to
+                # reject later once telemetry is clean.
+                action, _schema_errors = validate_action(action)
+                if _schema_errors:
+                    err_msg = (
+                        f"Step {self.step}: action {action.get('action')!r} failed schema validation: "
+                        f"{'; '.join(_schema_errors)}"
+                    )
+                    logger.warning(err_msg)
+                    self.notes.append(err_msg)
 
                 action_name = action.get("action", "")
 
