@@ -1,4 +1,5 @@
 """Window management: list, find, focus, resize, close windows."""
+
 import logging
 import platform
 
@@ -6,13 +7,15 @@ logger = logging.getLogger(__name__)
 
 if platform.system() == "Windows":
     try:
-        import win32gui
         import win32con
+        import win32gui
+
         HAS_WIN32 = True
     except ImportError:
         HAS_WIN32 = False
     try:
         import pygetwindow as pgw
+
         HAS_PGW = True
     except ImportError:
         HAS_PGW = False
@@ -25,30 +28,39 @@ def list_windows() -> list:
     """List all visible windows with title, position, size, focused state."""
     windows = []
     if HAS_WIN32:
+
         def _enum(hwnd, _):
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
                 if title:
                     rect = win32gui.GetWindowRect(hwnd)
-                    windows.append({
-                        "title": title,
-                        "x": rect[0], "y": rect[1],
-                        "width": rect[2] - rect[0],
-                        "height": rect[3] - rect[1],
-                        "is_focused": hwnd == win32gui.GetForegroundWindow(),
-                        "hwnd": hwnd,
-                    })
+                    windows.append(
+                        {
+                            "title": title,
+                            "x": rect[0],
+                            "y": rect[1],
+                            "width": rect[2] - rect[0],
+                            "height": rect[3] - rect[1],
+                            "is_focused": hwnd == win32gui.GetForegroundWindow(),
+                            "hwnd": hwnd,
+                        }
+                    )
+
         win32gui.EnumWindows(_enum, None)
     elif HAS_PGW:
         try:
             for w in pgw.getAllWindows():
                 if w.title:
-                    windows.append({
-                        "title": w.title,
-                        "x": w.left, "y": w.top,
-                        "width": w.width, "height": w.height,
-                        "is_focused": w.isActive,
-                    })
+                    windows.append(
+                        {
+                            "title": w.title,
+                            "x": w.left,
+                            "y": w.top,
+                            "width": w.width,
+                            "height": w.height,
+                            "is_focused": w.isActive,
+                        }
+                    )
         except Exception as e:
             logger.error("list_windows via pygetwindow failed: %s", e)
     else:
@@ -83,8 +95,9 @@ def focus_window(title: str) -> bool:
             # primes the input state.
             try:
                 import ctypes
-                ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)         # Alt down
-                ctypes.windll.user32.keybd_event(0x12, 0, 0x0002, 0)    # Alt up
+
+                ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)  # Alt down
+                ctypes.windll.user32.keybd_event(0x12, 0, 0x0002, 0)  # Alt up
             except Exception:
                 pass
             win32gui.SetForegroundWindow(hwnd)
@@ -263,12 +276,14 @@ def restore_window(title: str) -> bool:
 def close_window(title: str) -> bool:
     """Close a window by partial title match."""
     if HAS_WIN32:
+
         def _find(hwnd, _):
             if win32gui.IsWindowVisible(hwnd):
                 if title.lower() in win32gui.GetWindowText(hwnd).lower():
                     win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
                     return True
             return False
+
         try:
             win32gui.EnumWindows(_find, None)
             return True

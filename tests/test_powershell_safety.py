@@ -4,6 +4,7 @@ These tests do NOT execute PowerShell — they assert that the helper
 functions and high-level methods refuse or escape dangerous inputs
 before any subprocess is spawned.
 """
+
 import pytest
 
 from core import powershell
@@ -75,7 +76,8 @@ def test_run_command_refuses_when_allow_raw_false(monkeypatch):
 def test_run_inline_refuses_when_allow_raw_false(monkeypatch):
     runner = PowerShellRunner(allow_raw=False)
     monkeypatch.setattr(
-        powershell.subprocess, "run",
+        powershell.subprocess,
+        "run",
         lambda *a, **kw: (_ for _ in ()).throw(
             AssertionError("subprocess should not be invoked when allow_raw=False")
         ),

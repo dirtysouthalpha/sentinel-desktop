@@ -18,7 +18,7 @@ Usage::
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Provider catalog — every entry describes how to reach the provider's API.
 # ---------------------------------------------------------------------------
-PROVIDERS: Dict[str, Dict[str, Any]] = {
+PROVIDERS: dict[str, dict[str, Any]] = {
     "openai": {
         "name": "OpenAI",
         "base_url": "https://api.openai.com/v1",
@@ -292,12 +292,13 @@ PROVIDERS: Dict[str, Dict[str, Any]] = {
 # Public helpers
 # ---------------------------------------------------------------------------
 
-def get_provider(name: str) -> Optional[Dict[str, Any]]:
+
+def get_provider(name: str) -> dict[str, Any] | None:
     """Return the config dict for *name*, or ``None`` if unknown."""
     return PROVIDERS.get(name)
 
 
-def get_provider_names() -> List[str]:
+def get_provider_names() -> list[str]:
     """Sorted list of every provider key in the catalog."""
     return sorted(PROVIDERS.keys())
 
@@ -307,7 +308,7 @@ def get_provider_display_name(name: str) -> str:
     return PROVIDERS.get(name, {}).get("name", name)
 
 
-def get_base_url(provider_key: str, custom_url: Optional[str] = None) -> str:
+def get_base_url(provider_key: str, custom_url: str | None = None) -> str:
     """Resolve the effective base URL for *provider_key*.
 
     If *custom_url* is truthy, it overrides the catalog URL for **any**
@@ -326,11 +327,12 @@ def get_base_url(provider_key: str, custom_url: Optional[str] = None) -> str:
 # Model discovery
 # ---------------------------------------------------------------------------
 
+
 def fetch_models(
     provider_key: str,
     api_key: str = "",
-    custom_url: Optional[str] = None,
-) -> List[str]:
+    custom_url: str | None = None,
+) -> list[str]:
     """Fetch available model IDs from a provider.
 
     * For providers whose ``models_endpoint`` is ``None`` the function
@@ -369,7 +371,7 @@ def fetch_models(
     url = f"{base_url}{models_endpoint}"
 
     # Build headers (same logic as LLMClient.chat).
-    headers: Dict[str, str] = {}
+    headers: dict[str, str] = {}
     if not provider.get("no_auth") and api_key:
         headers[provider["auth_header"]] = f"{provider['auth_prefix']}{api_key}"
 
@@ -386,7 +388,9 @@ def fetch_models(
     except requests.exceptions.HTTPError as exc:
         logger.warning(
             "fetch_models(%s): HTTP %s — %s",
-            provider_key, exc.response.status_code, exc,
+            provider_key,
+            exc.response.status_code,
+            exc,
         )
         return []
     except Exception as exc:  # noqa: BLE001 — defensive
@@ -401,11 +405,12 @@ def fetch_models(
             models_list = data
         else:
             logger.warning(
-                "fetch_models(%s): unexpected response shape", provider_key,
+                "fetch_models(%s): unexpected response shape",
+                provider_key,
             )
             return []
 
-    ids: List[str] = []
+    ids: list[str] = []
     for entry in models_list:
         if isinstance(entry, dict):
             mid = entry.get("id") or entry.get("name") or entry.get("model", "")

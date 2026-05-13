@@ -10,15 +10,17 @@ import json
 import logging
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ScriptResult:
@@ -27,8 +29,8 @@ class ScriptResult:
     success: bool
     steps_completed: int
     steps_total: int
-    results: List[Dict[str, Any]] = field(default_factory=list)
-    error: Optional[str] = None
+    results: list[dict[str, Any]] = field(default_factory=list)
+    error: str | None = None
     duration_ms: int = 0
 
 
@@ -38,10 +40,10 @@ class _StepPreview:
 
     step_number: int
     action: str
-    params: Dict[str, Any]
+    params: dict[str, Any]
     wait_after_ms: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "step_number": self.step_number,
             "action": self.action,
@@ -57,7 +59,7 @@ class _StepPreview:
 _PARAM_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 
 
-def _substitute_params(value: Any, params: Dict[str, Any]) -> Any:
+def _substitute_params(value: Any, params: dict[str, Any]) -> Any:
     """Replace ``{{param_name}}`` placeholders in *value* using *params*.
 
     Only strings are scanned; other types are returned unchanged.
@@ -75,8 +77,7 @@ def _substitute_params(value: Any, params: Dict[str, Any]) -> Any:
     return _PARAM_RE.sub(_replacer, value)
 
 
-def _substitute_step(step_params: Dict[str, Any],
-                     params: Dict[str, Any]) -> Dict[str, Any]:
+def _substitute_step(step_params: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of *step_params* with all placeholders resolved."""
     return {k: _substitute_params(v, params) for k, v in step_params.items()}
 
@@ -84,6 +85,7 @@ def _substitute_step(step_params: Dict[str, Any],
 # ---------------------------------------------------------------------------
 # Validation helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_required_params(script: dict) -> set:
     """Scan all steps and return the set of param names inside ``{{…}}``."""
@@ -96,11 +98,9 @@ def _extract_required_params(script: dict) -> set:
     return required
 
 
-def _validate_script(script: dict,
-                     params: Optional[Dict[str, Any]],
-                     executor: Any) -> List[str]:
+def _validate_script(script: dict, params: dict[str, Any] | None, executor: Any) -> list[str]:
     """Return a list of validation error strings (empty == valid)."""
-    errors: List[str] = []
+    errors: list[str] = []
 
     if "steps" not in script or not isinstance(script["steps"], list):
         errors.append("Script must contain a 'steps' list.")
@@ -118,7 +118,7 @@ def _validate_script(script: dict,
         errors.append(f"Missing required parameters: {sorted(missing)}")
 
     # Action type existence
-    known_actions: Optional[set] = None
+    known_actions: set | None = None
     if executor is not None and hasattr(executor, "_dispatch_table"):
         known_actions = set(executor._dispatch_table.keys())
 
@@ -127,9 +127,7 @@ def _validate_script(script: dict,
             errors.append(f"Step {idx + 1} missing 'action' field.")
             continue
         if known_actions is not None and step["action"] not in known_actions:
-            errors.append(
-                f"Step {idx + 1}: unknown action '{step['action']}'."
-            )
+            errors.append(f"Step {idx + 1}: unknown action '{step['action']}'.")
         if "params" not in step:
             errors.append(f"Step {idx + 1} missing 'params' field.")
 
@@ -139,6 +137,7 @@ def _validate_script(script: dict,
 # ---------------------------------------------------------------------------
 # ScriptEngine
 # ---------------------------------------------------------------------------
+
 
 class ScriptEngine:
     """Replay recorded scripts through an :class:`ActionExecutor`.
@@ -151,16 +150,14 @@ class ScriptEngine:
 
     def __init__(self, action_executor: Any) -> None:
         self._executor = action_executor
-        self._progress_callback: Optional[
-            Callable[[int, int, str, Dict[str, Any]], None]
-        ] = None
+        self._progress_callback: Callable[[int, int, str, dict[str, Any]], None] | None = None
         self._on_error: str = "stop"  # 'stop' | 'skip' | 'retry_once'
 
     # -- configuration ------------------------------------------------------
 
     def set_progress_callback(
         self,
-        fn: Callable[[int, int, str, Dict[str, Any]], None],
+        fn: Callable[[int, int, str, dict[str, Any]], None],
     ) -> None:
         """Register *fn(step_num, total, action, result)* called after each step."""
         self._progress_callback = fn
@@ -169,8 +166,7 @@ class ScriptEngine:
         """Set error policy: ``'stop'``, ``'skip'``, or ``'retry_once'``."""
         if policy not in ("stop", "skip", "retry_once"):
             raise ValueError(
-                f"Invalid on_error policy '{policy}'; "
-                "expected 'stop', 'skip', or 'retry_once'."
+                f"Invalid on_error policy '{policy}'; expected 'stop', 'skip', or 'retry_once'."
             )
         self._on_error = policy
 
@@ -179,7 +175,7 @@ class ScriptEngine:
     def run_script(
         self,
         script_path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
     ) -> ScriptResult:
         """Load a JSON script from *script_path* and replay it.
 
@@ -207,7 +203,7 @@ class ScriptEngine:
     def run_script_from_dict(
         self,
         script: dict,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
     ) -> ScriptResult:
         """Replay a script provided as a *dict*."""
         start = time.monotonic()
@@ -225,11 +221,11 @@ class ScriptEngine:
                 duration_ms=duration_ms,
             )
 
-        steps: List[dict] = script["steps"]
+        steps: list[dict] = script["steps"]
         total = len(steps)
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         steps_completed = 0
-        first_error: Optional[str] = None
+        first_error: str | None = None
         success = True
 
         for idx, step in enumerate(steps):
@@ -291,8 +287,8 @@ class ScriptEngine:
     def dry_run(
         self,
         script: dict,
-        params: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        params: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Validate *script* without executing and return the step list.
 
         Each entry is a dict with ``step_number``, ``action``, ``params``
@@ -303,11 +299,9 @@ class ScriptEngine:
         params = params or {}
         validation_errors = _validate_script(script, params, self._executor)
         if validation_errors:
-            raise ValueError(
-                "Script validation failed: " + "; ".join(validation_errors)
-            )
+            raise ValueError("Script validation failed: " + "; ".join(validation_errors))
 
-        previews: List[Dict[str, Any]] = []
+        previews: list[dict[str, Any]] = []
         for idx, step in enumerate(script.get("steps", [])):
             resolved = _substitute_step(step.get("params", {}), params)
             preview = _StepPreview(
@@ -324,9 +318,9 @@ class ScriptEngine:
     def _execute_step(
         self,
         action: str,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         step_num: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Dispatch one step through the executor, retrying once if needed."""
         action_dict = {"action": action, **params}
         result = self._executor.execute_sync(action_dict)

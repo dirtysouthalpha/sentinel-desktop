@@ -6,16 +6,16 @@ or ~/.sentinel-desktop/ on other platforms.
 """
 
 import json
-import os
 import logging
-from typing import Any, Dict, Optional
+import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Default configuration
 # ---------------------------------------------------------------------------
-DEFAULTS: Dict[str, Any] = {
+DEFAULTS: dict[str, Any] = {
     "provider": "openai",
     "api_key": "",
     "model": "",
@@ -28,8 +28,14 @@ DEFAULTS: Dict[str, Any] = {
     "tenant_name": "",
     "tenant_lockdown": False,
     "sensitive_fields": [
-        "password", "passwd", "secret", "token", "api_key",
-        "credit_card", "ssn", "social_security",
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "credit_card",
+        "ssn",
+        "social_security",
     ],
     "api_host": "0.0.0.0",
     "api_port": 8091,
@@ -92,7 +98,7 @@ class Config:
     """Thin wrapper around a settings dict with save/load."""
 
     def __init__(self):
-        self._data: Dict[str, Any] = {**DEFAULTS}
+        self._data: dict[str, Any] = {**DEFAULTS}
         self._path = _CONFIG_PATH
 
     # -- dict-like access ----------------------------------------------------
@@ -112,16 +118,16 @@ class Config:
     def __contains__(self, key: str) -> bool:
         return key in self._data
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {**self._data}
 
     # -- persistence ---------------------------------------------------------
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load config from disk, merge with defaults. Returns the dict."""
         if os.path.isfile(self._path):
             try:
-                with open(self._path, "r", encoding="utf-8") as fh:
+                with open(self._path, encoding="utf-8") as fh:
                     data = json.load(fh)
                 self._data.update(data)
                 logger.info("Config loaded from %s", self._path)
@@ -129,7 +135,7 @@ class Config:
                 logger.warning("Failed to load config (%s) — using defaults", exc)
         return self._data
 
-    def save(self, data: Optional[Dict[str, Any]] = None) -> None:
+    def save(self, data: dict[str, Any] | None = None) -> None:
         """Persist config to disk. Optionally merge in new data first."""
         if data:
             self._data.update(data)

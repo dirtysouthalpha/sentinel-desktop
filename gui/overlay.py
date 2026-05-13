@@ -18,12 +18,12 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-_SHOW_MS = 420       # how long the indicator stays visible
+_SHOW_MS = 420  # how long the indicator stays visible
 _RING_RADIUS = 28
 
 
@@ -33,9 +33,9 @@ class ActionOverlay:
     def __init__(self, master) -> None:
         self.master = master
         self._lock = threading.Lock()
-        self._current: Optional["_Indicator"] = None
+        self._current: _Indicator | None = None
 
-    def show_action(self, action: Dict[str, Any]) -> None:
+    def show_action(self, action: dict[str, Any]) -> None:
         """Render a brief indicator for *action*. Safe from any thread."""
         coords = _coords_from_action(action)
         if coords is None:
@@ -76,6 +76,7 @@ class _Indicator:
 
     def __init__(self, master, *, x: int, y: int, label: str, kind: str) -> None:
         import tkinter as tk
+
         self.tk = tk
 
         diameter = _RING_RADIUS * 2
@@ -97,7 +98,10 @@ class _Indicator:
         self.win.geometry(f"{w}x{h}+{gx}+{gy}")
 
         self.canvas = tk.Canvas(
-            self.win, width=w, height=h, highlightthickness=0,
+            self.win,
+            width=w,
+            height=h,
+            highlightthickness=0,
             bg="#010203",  # the transparent color
         )
         self.canvas.pack(fill="both", expand=True)
@@ -108,9 +112,12 @@ class _Indicator:
 
         # Ring
         self.canvas.create_oval(
-            cx - _RING_RADIUS, cy - _RING_RADIUS,
-            cx + _RING_RADIUS, cy + _RING_RADIUS,
-            outline=color, width=4,
+            cx - _RING_RADIUS,
+            cy - _RING_RADIUS,
+            cx + _RING_RADIUS,
+            cy + _RING_RADIUS,
+            outline=color,
+            width=4,
         )
         # Crosshair dot
         self.canvas.create_oval(cx - 3, cy - 3, cx + 3, cy + 3, fill=color, outline=color)
@@ -120,11 +127,19 @@ class _Indicator:
         if label:
             text_y = h - 14
             self.canvas.create_rectangle(
-                4, text_y - 11, w - 4, text_y + 10,
-                fill="#0A0C10", outline=color, width=1,
+                4,
+                text_y - 11,
+                w - 4,
+                text_y + 10,
+                fill="#0A0C10",
+                outline=color,
+                width=1,
             )
             self.canvas.create_text(
-                cx, text_y, text=label, fill="#e2e2e8",
+                cx,
+                text_y,
+                text=label,
+                fill="#e2e2e8",
                 font=("Segoe UI", 9, "bold"),
             )
 
@@ -142,7 +157,8 @@ class _Indicator:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _coords_from_action(action: Dict[str, Any]):
+
+def _coords_from_action(action: dict[str, Any]):
     """Pull (x, y) from an action dict if it has them."""
     if "x" in action and "y" in action:
         try:
@@ -158,36 +174,36 @@ def _coords_from_action(action: Dict[str, Any]):
     return None
 
 
-def _label_for_action(action: Dict[str, Any]) -> str:
+def _label_for_action(action: dict[str, Any]) -> str:
     name = action.get("action", "")
     if name == "click":
-        return f"click ({action.get('x','?')}, {action.get('y','?')})"
+        return f"click ({action.get('x', '?')}, {action.get('y', '?')})"
     if name == "click_text":
-        return f"click text: {str(action.get('text',''))[:40]}"
+        return f"click text: {str(action.get('text', ''))[:40]}"
     if name == "click_control":
-        return f"click control: {str(action.get('name',''))[:40]}"
+        return f"click control: {str(action.get('name', ''))[:40]}"
     if name == "type_text":
-        return f"type: {str(action.get('text',''))[:40]}"
+        return f"type: {str(action.get('text', ''))[:40]}"
     if name == "set_text":
-        return f"set text: {str(action.get('name',''))[:40]}"
+        return f"set text: {str(action.get('name', ''))[:40]}"
     if name == "hotkey":
         keys = action.get("keys") or []
         return "hotkey: " + "+".join(map(str, keys))[:40]
     if name == "press_key":
-        return f"press: {action.get('key','')}"
+        return f"press: {action.get('key', '')}"
     if name == "scroll":
-        return f"scroll: {action.get('amount','')}"
+        return f"scroll: {action.get('amount', '')}"
     return name or "action"
 
 
 def _color_for_kind(kind: str) -> str:
     if kind in ("click_text", "click_control"):
-        return "#95E400"     # lime green (Override success) — high-confidence
+        return "#95E400"  # lime green (Override success) — high-confidence
     if kind == "type_text" or kind == "set_text":
-        return "#00F0FF"     # cyan (Override accent) — input
+        return "#00F0FF"  # cyan (Override accent) — input
     if kind in ("hotkey", "press_key"):
-        return "#FBBC00"     # amber (Override warning) — keys
-    return "#e8793a"          # sentinel orange — default
+        return "#FBBC00"  # amber (Override warning) — keys
+    return "#e8793a"  # sentinel orange — default
 
 
 def _make_clickthrough(window) -> None:
@@ -198,10 +214,10 @@ def _make_clickthrough(window) -> None:
     """
     try:
         import sys
+
         if sys.platform != "win32":
             return
         import ctypes
-        from ctypes import wintypes
 
         GWL_EXSTYLE = -20
         WS_EX_LAYERED = 0x00080000

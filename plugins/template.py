@@ -45,6 +45,7 @@ PLUGIN_DESCRIPTION = "Starter template demonstrating the plugin interface."
 
 # -- registration entry point ------------------------------------------------
 
+
 def register(api):
     """Called by PluginLoader when the plugin is loaded."""
 
@@ -59,7 +60,7 @@ def register(api):
         name="template_test",
         handler=template_test_handler,
         description="A dummy action that always succeeds.  Use as a reference "
-                    "when building real plugin actions.",
+        "when building real plugin actions.",
     )
 
     api.register_setting(

@@ -7,7 +7,7 @@ Workflow management tab with left-panel list and right-panel detail view.
 import json
 import os
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import customtkinter as ctk
 
@@ -19,8 +19,13 @@ WORKFLOWS_DIR = os.path.join(
 )
 
 STEP_ICONS = {
-    "script": "📜", "action": "⚡", "condition": "🔀",
-    "loop": "🔄", "sub_workflow": "📦", "delay": "⏱", "notify": "🔔",
+    "script": "📜",
+    "action": "⚡",
+    "condition": "🔀",
+    "loop": "🔄",
+    "sub_workflow": "📦",
+    "delay": "⏱",
+    "notify": "🔔",
 }
 
 
@@ -31,9 +36,9 @@ class WorkflowsTab(ctk.CTkFrame):
         super().__init__(parent_frame, corner_radius=0)
         self.app = app
         self._t = app._t
-        self._selected_path: Optional[str] = None
-        self._workflow_data: Optional[Dict[str, Any]] = None
-        self._workflows: List[Dict[str, Any]] = []
+        self._selected_path: str | None = None
+        self._workflow_data: dict[str, Any] | None = None
+        self._workflows: list[dict[str, Any]] = []
         self._running = False
 
         self.grid_columnconfigure(0, weight=1)
@@ -57,9 +62,14 @@ class WorkflowsTab(ctk.CTkFrame):
         # Search bar
         self._search_var = ctk.StringVar()
         search = ctk.CTkEntry(
-            left, placeholder_text="🔍 Search workflows…", textvariable=self._search_var,
-            font=("Segoe UI", 12), height=32, corner_radius=4,
-            fg_color=t("bg_input", "#111418"), text_color=t("text_primary", "#e2e2e8"),
+            left,
+            placeholder_text="🔍 Search workflows…",
+            textvariable=self._search_var,
+            font=("Segoe UI", 12),
+            height=32,
+            corner_radius=4,
+            fg_color=t("bg_input", "#111418"),
+            text_color=t("text_primary", "#e2e2e8"),
             border_color=t("bg_hover", "#333539"),
         )
         search.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
@@ -67,14 +77,21 @@ class WorkflowsTab(ctk.CTkFrame):
 
         # New Workflow button
         ctk.CTkButton(
-            left, text="＋ New Workflow", height=32, font=("Segoe UI", 12, "bold"),
-            fg_color=t("accent", "#00F0FF"), hover_color=t("accent_hover", "#00c8d4"),
-            corner_radius=4, command=self._new_workflow,
+            left,
+            text="＋ New Workflow",
+            height=32,
+            font=("Segoe UI", 12, "bold"),
+            fg_color=t("accent", "#00F0FF"),
+            hover_color=t("accent_hover", "#00c8d4"),
+            corner_radius=4,
+            command=self._new_workflow,
         ).grid(row=1, column=0, sticky="ew", padx=8, pady=(4, 4))
 
         # Scrollable workflow list
         self._list_container = ctk.CTkScrollableFrame(
-            left, corner_radius=4, fg_color=t("bg_secondary", "#0A0C10"),
+            left,
+            corner_radius=4,
+            fg_color=t("bg_secondary", "#0A0C10"),
         )
         self._list_container.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 8))
         self._list_container.grid_columnconfigure(0, weight=1)
@@ -92,35 +109,50 @@ class WorkflowsTab(ctk.CTkFrame):
 
         # Workflow name + description
         self._name_label = ctk.CTkLabel(
-            right, text="Select a workflow", font=("Segoe UI", 18, "bold"),
+            right,
+            text="Select a workflow",
+            font=("Segoe UI", 18, "bold"),
             text_color=t("text_primary", "#e2e2e8"),
         )
         self._name_label.grid(row=0, column=0, sticky="w", padx=12, pady=(10, 0))
 
         self._desc_label = ctk.CTkLabel(
-            right, text="", font=("Segoe UI", 12),
-            text_color=t("text_secondary", "#b9cacb"), wraplength=600,
+            right,
+            text="",
+            font=("Segoe UI", 12),
+            text_color=t("text_secondary", "#b9cacb"),
+            wraplength=600,
         )
         self._desc_label.grid(row=1, column=0, sticky="w", padx=12, pady=(0, 6))
 
         # Step flow visualization
         self._steps_frame = ctk.CTkScrollableFrame(
-            right, corner_radius=4, fg_color=t("bg_secondary", "#0A0C10"),
+            right,
+            corner_radius=4,
+            fg_color=t("bg_secondary", "#0A0C10"),
         )
         self._steps_frame.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 4))
         self._steps_frame.grid_columnconfigure(0, weight=1)
 
         # Run button
         self._run_btn = ctk.CTkButton(
-            right, text="▶ Run Workflow", height=36, font=("Segoe UI", 13, "bold"),
-            fg_color=t("status_running", "#95E400"), hover_color=t("tag_assistant", "#95E400"),
-            text_color="#ffffff", corner_radius=4, command=self.run_selected_workflow,
+            right,
+            text="▶ Run Workflow",
+            height=36,
+            font=("Segoe UI", 13, "bold"),
+            fg_color=t("status_running", "#95E400"),
+            hover_color=t("tag_assistant", "#95E400"),
+            text_color="#ffffff",
+            corner_radius=4,
+            command=self.run_selected_workflow,
         )
         self._run_btn.grid(row=3, column=0, sticky="ew", padx=8, pady=4)
 
         # Variables section header + frame
         ctk.CTkLabel(
-            right, text="🔧 Variables", font=("Segoe UI", 12, "bold"),
+            right,
+            text="🔧 Variables",
+            font=("Segoe UI", 12, "bold"),
             text_color=t("text_primary", "#e2e2e8"),
         ).grid(row=4, column=0, sticky="nw", padx=12, pady=(4, 0))
         self._vars_frame = ctk.CTkFrame(right, corner_radius=4, fg_color=t("bg_input", "#111418"))
@@ -129,13 +161,20 @@ class WorkflowsTab(ctk.CTkFrame):
 
         # Output area header + textbox
         ctk.CTkLabel(
-            right, text="📋 Output", font=("Segoe UI", 12, "bold"),
+            right,
+            text="📋 Output",
+            font=("Segoe UI", 12, "bold"),
             text_color=t("text_primary", "#e2e2e8"),
         ).grid(row=5, column=0, sticky="nw", padx=12, pady=(4, 0))
         self._output_text = ctk.CTkTextbox(
-            right, height=100, wrap="word", font=("Consolas", 11),
-            state="disabled", corner_radius=4,
-            fg_color=t("bg_input", "#111418"), text_color=t("text_primary", "#e2e2e8"),
+            right,
+            height=100,
+            wrap="word",
+            font=("Consolas", 11),
+            state="disabled",
+            corner_radius=4,
+            fg_color=t("bg_input", "#111418"),
+            text_color=t("text_primary", "#e2e2e8"),
         )
         self._output_text.grid(row=5, column=0, sticky="nsew", padx=8, pady=(28, 8))
 
@@ -151,29 +190,39 @@ class WorkflowsTab(ctk.CTkFrame):
             w.destroy()
 
         filtered = [
-            w for w in self._workflows
+            w
+            for w in self._workflows
             if query in w.get("name", "").lower() or query in w.get("description", "").lower()
         ]
 
         for idx, wf in enumerate(filtered):
             card = ctk.CTkFrame(
-                self._list_container, corner_radius=4, height=60,
-                fg_color=t("bg_input", "#111418"), cursor="hand2",
+                self._list_container,
+                corner_radius=4,
+                height=60,
+                fg_color=t("bg_input", "#111418"),
+                cursor="hand2",
             )
             card.grid(row=idx, column=0, sticky="ew", padx=2, pady=2)
             card.grid_columnconfigure(0, weight=1)
 
             name_lbl = ctk.CTkLabel(
-                card, text=wf.get("name", "Untitled"),
-                font=("Segoe UI", 12, "bold"), text_color=t("text_primary", "#e2e2e8"), anchor="w",
+                card,
+                text=wf.get("name", "Untitled"),
+                font=("Segoe UI", 12, "bold"),
+                text_color=t("text_primary", "#e2e2e8"),
+                anchor="w",
             )
             name_lbl.grid(row=0, column=0, sticky="w", padx=8, pady=(4, 0))
 
             desc = wf.get("description", "")
             steps = wf.get("steps", 0)
             sub = ctk.CTkLabel(
-                card, text=f"{desc}  •  {steps} step{'s' if steps != 1 else ''}",
-                font=("Segoe UI", 10), text_color=t("text_secondary", "#b9cacb"), anchor="w",
+                card,
+                text=f"{desc}  •  {steps} step{'s' if steps != 1 else ''}",
+                font=("Segoe UI", 10),
+                text_color=t("text_secondary", "#b9cacb"),
+                anchor="w",
             )
             sub.grid(row=1, column=0, sticky="w", padx=8, pady=(0, 4))
 
@@ -191,10 +240,9 @@ class WorkflowsTab(ctk.CTkFrame):
     def select_workflow(self, path: str) -> None:
         """Load and display a workflow from the given file path."""
         self._selected_path = path
-        t = self._t
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 self._workflow_data = json.load(f)
         except Exception as exc:
             self._name_label.configure(text="Error loading workflow")
@@ -208,7 +256,7 @@ class WorkflowsTab(ctk.CTkFrame):
         self._render_variables(wf.get("variables", {}))
         self.refresh_workflows()
 
-    def _render_steps(self, steps: List[Dict[str, Any]]) -> None:
+    def _render_steps(self, steps: list[dict[str, Any]]) -> None:
         """Build step-flow cards inside the steps scrollable frame."""
         t = self._t
         for w in self._steps_frame.winfo_children():
@@ -220,18 +268,27 @@ class WorkflowsTab(ctk.CTkFrame):
             icon = STEP_ICONS.get(stype, "❓")
             summary = self._step_summary(step)
 
-            card = ctk.CTkFrame(self._steps_frame, corner_radius=3, fg_color=t("bg_input", "#111418"))
+            card = ctk.CTkFrame(
+                self._steps_frame, corner_radius=3, fg_color=t("bg_input", "#111418")
+            )
             card.grid(row=idx * 2, column=0, sticky="ew", padx=4, pady=(4, 0))
             card.grid_columnconfigure(1, weight=1)
 
             ctk.CTkLabel(
-                card, text=f"{icon} {sid}", font=("Segoe UI", 11, "bold"),
-                text_color=t("accent", "#00F0FF"), width=120, anchor="w",
+                card,
+                text=f"{icon} {sid}",
+                font=("Segoe UI", 11, "bold"),
+                text_color=t("accent", "#00F0FF"),
+                width=120,
+                anchor="w",
             ).grid(row=0, column=0, padx=(8, 4), pady=4)
 
             ctk.CTkLabel(
-                card, text=summary, font=("Segoe UI", 11),
-                text_color=t("text_primary", "#e2e2e8"), anchor="w",
+                card,
+                text=summary,
+                font=("Segoe UI", 11),
+                text_color=t("text_primary", "#e2e2e8"),
+                anchor="w",
             ).grid(row=0, column=1, sticky="ew", padx=4, pady=4)
 
             # Condition branch arrows
@@ -239,22 +296,30 @@ class WorkflowsTab(ctk.CTkFrame):
                 bf = ctk.CTkFrame(self._steps_frame, fg_color="transparent", height=24)
                 bf.grid(row=idx * 2 + 1, column=0, sticky="ew", padx=4)
                 ctk.CTkLabel(
-                    bf, text=f"   ├─ ✅ true → {step.get('true_next', '—')}",
-                    font=("Consolas", 10), text_color=t("status_running", "#95E400"), anchor="w",
+                    bf,
+                    text=f"   ├─ ✅ true → {step.get('true_next', '—')}",
+                    font=("Consolas", 10),
+                    text_color=t("status_running", "#95E400"),
+                    anchor="w",
                 ).pack(anchor="w")
                 ctk.CTkLabel(
-                    bf, text=f"   └─ ❌ false → {step.get('false_next', '—')}",
-                    font=("Consolas", 10), text_color=t("status_error", "#ff3b3b"), anchor="w",
+                    bf,
+                    text=f"   └─ ❌ false → {step.get('false_next', '—')}",
+                    font=("Consolas", 10),
+                    text_color=t("status_error", "#ff3b3b"),
+                    anchor="w",
                 ).pack(anchor="w")
             elif idx < len(steps) - 1:
                 # Connector line between steps
                 ctk.CTkLabel(
-                    self._steps_frame, text="│", font=("Consolas", 12),
+                    self._steps_frame,
+                    text="│",
+                    font=("Consolas", 12),
                     text_color=t("text_secondary", "#b9cacb"),
                 ).grid(row=idx * 2 + 1, column=0, sticky="w", padx=18)
 
     @staticmethod
-    def _step_summary(step: Dict[str, Any]) -> str:
+    def _step_summary(step: dict[str, Any]) -> str:
         """Build a one-line summary for a step."""
         stype = step.get("type", "action")
         if stype == "script":
@@ -277,7 +342,7 @@ class WorkflowsTab(ctk.CTkFrame):
 
     # ── Variables editing ─────────────────────────────────────────────
 
-    def _render_variables(self, variables: Dict[str, Any]) -> None:
+    def _render_variables(self, variables: dict[str, Any]) -> None:
         """Show editable variable entries."""
         t = self._t
         for w in self._vars_frame.winfo_children():
@@ -285,27 +350,36 @@ class WorkflowsTab(ctk.CTkFrame):
 
         if not variables:
             ctk.CTkLabel(
-                self._vars_frame, text="No variables defined", font=("Segoe UI", 10),
+                self._vars_frame,
+                text="No variables defined",
+                font=("Segoe UI", 10),
                 text_color=t("text_secondary", "#b9cacb"),
             ).grid(row=0, column=0, columnspan=2, padx=8, pady=4)
             return
 
-        self._var_entries: Dict[str, ctk.CTkEntry] = {}
+        self._var_entries: dict[str, ctk.CTkEntry] = {}
         for row, (key, val) in enumerate(variables.items()):
             ctk.CTkLabel(
-                self._vars_frame, text=key, font=("Consolas", 11, "bold"),
-                text_color=t("accent", "#00F0FF"), width=120, anchor="e",
+                self._vars_frame,
+                text=key,
+                font=("Consolas", 11, "bold"),
+                text_color=t("accent", "#00F0FF"),
+                width=120,
+                anchor="e",
             ).grid(row=row, column=0, padx=(8, 4), pady=2)
             entry = ctk.CTkEntry(
-                self._vars_frame, font=("Consolas", 11), height=28,
-                fg_color=t("bg_primary", "#050608"), text_color=t("text_primary", "#e2e2e8"),
+                self._vars_frame,
+                font=("Consolas", 11),
+                height=28,
+                fg_color=t("bg_primary", "#050608"),
+                text_color=t("text_primary", "#e2e2e8"),
                 border_color=t("bg_hover", "#333539"),
             )
             entry.grid(row=row, column=1, sticky="ew", padx=(4, 8), pady=2)
             entry.insert(0, str(val))
             self._var_entries[key] = entry
 
-    def _collect_variables(self) -> Dict[str, str]:
+    def _collect_variables(self) -> dict[str, str]:
         """Read current values from variable entry widgets."""
         return {k: e.get() for k, e in getattr(self, "_var_entries", {}).items()}
 
@@ -330,8 +404,7 @@ class WorkflowsTab(ctk.CTkFrame):
             engine = WorkflowEngine()
             result = engine.run_workflow(path, variables)
             lines = [
-                f"\n{'✅' if result.success else '❌'} "
-                f"{'Success' if result.success else 'Failed'}",
+                f"\n{'✅' if result.success else '❌'} {'Success' if result.success else 'Failed'}",
                 f"Steps: {result.steps_completed}/{result.steps_total}",
                 f"Time: {result.elapsed_seconds:.1f}s",
             ]

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Argument escaping
 # ---------------------------------------------------------------------------
 
+
 def _ps_escape_single_quoted(s: str) -> str:
     """Quote *s* as a PowerShell single-quoted literal.
 
@@ -47,9 +48,11 @@ def _ps_escape_single_quoted(s: str) -> str:
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PSResult:
     """Encapsulates the result of a PowerShell execution."""
+
     success: bool
     exit_code: int
     stdout: str
@@ -65,13 +68,16 @@ class PSResult:
 # Platform guard
 # ---------------------------------------------------------------------------
 
+
 def _is_windows() -> bool:
     return platform.system() == "Windows"
 
 
 def _non_windows_result() -> PSResult:
     return PSResult(
-        success=False, exit_code=-1, stdout="",
+        success=False,
+        exit_code=-1,
+        stdout="",
         stderr="PowerShell execution is only supported on Windows.",
         objects=[],
     )
@@ -80,6 +86,7 @@ def _non_windows_result() -> PSResult:
 # ---------------------------------------------------------------------------
 # PowerShellRunner
 # ---------------------------------------------------------------------------
+
 
 class PowerShellRunner:
     """Execute PowerShell scripts, commands, and inline snippets.
@@ -134,8 +141,10 @@ class PowerShellRunner:
         for candidate in (self.PS_CORE_EXE, self.POWERSHELL_EXE):
             try:
                 r = subprocess.run(
-                    ["where", candidate], capture_output=True,
-                    text=True, timeout=5,
+                    ["where", candidate],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if r.returncode == 0:
                     return candidate
@@ -149,8 +158,7 @@ class PowerShellRunner:
         return env
 
     def _base_args(self) -> list:
-        return [self._ps_exe, "-NoProfile", "-NonInteractive",
-                "-OutputFormat", "JSON"]
+        return [self._ps_exe, "-NoProfile", "-NonInteractive", "-OutputFormat", "JSON"]
 
     @staticmethod
     def _parse_json_output(stdout: str) -> list:
@@ -175,9 +183,7 @@ class PowerShellRunner:
         args = self._base_args()
 
         if self.run_as_admin:
-            tmp_out = os.path.join(
-                self.working_dir, f"_ps_elev_{int(time.time())}.tmp"
-            )
+            tmp_out = os.path.join(self.working_dir, f"_ps_elev_{int(time.time())}.tmp")
             wrapped = (
                 f'Start-Process -Verb RunAs -FilePath "{self._ps_exe}" '
                 f'-ArgumentList "-NoProfile -NonInteractive -Command '
@@ -193,8 +199,11 @@ class PowerShellRunner:
 
         try:
             proc = subprocess.run(
-                args, capture_output=True, text=True,
-                timeout=self.timeout, cwd=self.working_dir,
+                args,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout,
+                cwd=self.working_dir,
                 env=self._build_env(),
             )
             exit_code = proc.returncode
@@ -210,8 +219,7 @@ class PowerShellRunner:
                 else:
                     tmp_out = ""
                 if tmp_out and os.path.isfile(tmp_out):
-                    with open(tmp_out, encoding="utf-8",
-                              errors="replace") as fh:
+                    with open(tmp_out, encoding="utf-8", errors="replace") as fh:
                         stdout = fh.read()
                     try:
                         os.remove(tmp_out)
@@ -220,29 +228,39 @@ class PowerShellRunner:
 
             objects = self._parse_json_output(stdout)
             return PSResult(
-                success=(exit_code == 0), exit_code=exit_code,
-                stdout=stdout, stderr=stderr, objects=objects,
+                success=(exit_code == 0),
+                exit_code=exit_code,
+                stdout=stdout,
+                stderr=stderr,
+                objects=objects,
             )
 
         except subprocess.TimeoutExpired:
             logger.warning("PowerShell timed out after %ds", self.timeout)
             return PSResult(
-                success=False, exit_code=-2, stdout="",
+                success=False,
+                exit_code=-2,
+                stdout="",
                 stderr=f"Process timed out after {self.timeout} seconds.",
                 objects=[],
             )
         except FileNotFoundError:
             logger.error("PowerShell not found: %s", self._ps_exe)
             return PSResult(
-                success=False, exit_code=-3, stdout="",
+                success=False,
+                exit_code=-3,
+                stdout="",
                 stderr=f"PowerShell executable not found: {self._ps_exe}",
                 objects=[],
             )
         except Exception as exc:
             logger.exception("Unexpected error running PowerShell")
             return PSResult(
-                success=False, exit_code=-4, stdout="",
-                stderr=str(exc), objects=[],
+                success=False,
+                exit_code=-4,
+                stdout="",
+                stderr=str(exc),
+                objects=[],
             )
 
     # -- public API ---------------------------------------------------------
@@ -251,8 +269,11 @@ class PowerShellRunner:
         """Execute a .ps1 script file with optional -Key Value args."""
         if not os.path.isfile(script_path):
             return PSResult(
-                success=False, exit_code=-1, stdout="",
-                stderr=f"Script not found: {script_path}", objects=[],
+                success=False,
+                exit_code=-1,
+                stdout="",
+                stderr=f"Script not found: {script_path}",
+                objects=[],
             )
         params = ""
         if args:
@@ -269,7 +290,9 @@ class PowerShellRunner:
         """
         if not self.allow_raw:
             return PSResult(
-                success=False, exit_code=-5, stdout="",
+                success=False,
+                exit_code=-5,
+                stdout="",
                 stderr="run_command refused: allow_raw=False on this runner.",
                 objects=[],
             )
@@ -283,12 +306,14 @@ class PowerShellRunner:
         """
         if not self.allow_raw:
             return PSResult(
-                success=False, exit_code=-5, stdout="",
+                success=False,
+                exit_code=-5,
+                stdout="",
                 stderr="run_inline refused: allow_raw=False on this runner.",
                 objects=[],
             )
         escaped = script_body.replace('"', '\\"')
-        return self._run(f'{{{escaped}}}')
+        return self._run(f"{{{escaped}}}")
 
     # -- built-in helpers ---------------------------------------------------
 
@@ -323,8 +348,13 @@ class PowerShellRunner:
         try:
             ps_name = _ps_escape_single_quoted(name)
         except (TypeError, ValueError) as exc:
-            return {"Name": name, "Status": "Unknown", "StartType": "Unknown",
-                    "DisplayName": "", "error": f"invalid service name: {exc}"}
+            return {
+                "Name": name,
+                "Status": "Unknown",
+                "StartType": "Unknown",
+                "DisplayName": "",
+                "error": f"invalid service name: {exc}",
+            }
         cmd = (
             f"Get-Service -Name {ps_name} -ErrorAction Stop "
             "| Select-Object Name,Status,StartType,DisplayName"
@@ -332,16 +362,26 @@ class PowerShellRunner:
         result = self._run(cmd)
         if result.success and result.objects:
             return result.objects[0]
-        return {"Name": name, "Status": "Unknown", "StartType": "Unknown",
-                "DisplayName": "", "error": result.stderr}
+        return {
+            "Name": name,
+            "Status": "Unknown",
+            "StartType": "Unknown",
+            "DisplayName": "",
+            "error": result.stderr,
+        }
 
     def restart_service(self, name: str) -> dict:
         """Restart a Windows service safely (stop then start)."""
         try:
             ps_name = _ps_escape_single_quoted(name)
         except (TypeError, ValueError) as exc:
-            return {"Name": name, "Status": "Error", "Action": "Restart",
-                    "Success": False, "error": f"invalid service name: {exc}"}
+            return {
+                "Name": name,
+                "Status": "Error",
+                "Action": "Restart",
+                "Success": False,
+                "error": f"invalid service name: {exc}",
+            }
         cmd = (
             f"try{{"
             f" Restart-Service -Name {ps_name} -Force -ErrorAction Stop;"
@@ -356,8 +396,13 @@ class PowerShellRunner:
         result = self._run(cmd)
         if result.success and result.objects:
             return result.objects[0]
-        return {"Name": name, "Status": "Error", "Action": "Restart",
-                "Success": False, "error": result.stderr}
+        return {
+            "Name": name,
+            "Status": "Error",
+            "Action": "Restart",
+            "Success": False,
+            "error": result.stderr,
+        }
 
     def get_disk_usage(self) -> list:
         """Disk space info for all local drives."""
@@ -388,8 +433,13 @@ class PowerShellRunner:
         try:
             ps_host = _ps_escape_single_quoted(host)
         except (TypeError, ValueError) as exc:
-            return {"Host": host, "PingSucceeded": False, "PingMs": 0,
-                    "Hops": [], "error": f"invalid host: {exc}"}
+            return {
+                "Host": host,
+                "PingSucceeded": False,
+                "PingMs": 0,
+                "Hops": [],
+                "error": f"invalid host: {exc}",
+            }
         cmd = (
             f"$p=Test-Connection -ComputerName {ps_host} -Count 4 "
             f"-ErrorAction SilentlyContinue;"
@@ -402,8 +452,13 @@ class PowerShellRunner:
         result = self._run(cmd)
         if result.success and result.objects:
             return result.objects[0]
-        return {"Host": host, "PingSucceeded": False, "PingMs": 0,
-                "Hops": [], "error": result.stderr}
+        return {
+            "Host": host,
+            "PingSucceeded": False,
+            "PingMs": 0,
+            "Hops": [],
+            "error": result.stderr,
+        }
 
 
 # ---------------------------------------------------------------------------

@@ -31,10 +31,11 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import IntEnum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -42,31 +43,34 @@ logger = logging.getLogger(__name__)
 # Priority definition
 # ---------------------------------------------------------------------------
 
+
 class _Priority(IntEnum):
     """Numeric priority so that sorting is trivial (lower = higher urgency)."""
-    URGENT     = 0
-    NORMAL     = 1
+
+    URGENT = 0
+    NORMAL = 1
     BACKGROUND = 2
 
 
-_PRIORITY_MAP: Dict[str, _Priority] = {
-    "urgent":     _Priority.URGENT,
-    "normal":     _Priority.NORMAL,
+_PRIORITY_MAP: dict[str, _Priority] = {
+    "urgent": _Priority.URGENT,
+    "normal": _Priority.NORMAL,
     "background": _Priority.BACKGROUND,
 }
 
 _VALID_PRIORITIES = set(_PRIORITY_MAP.keys())
 
 # Session status constants (also used by callers / API)
-STATUS_QUEUED   = "queued"
-STATUS_RUNNING  = "running"
+STATUS_QUEUED = "queued"
+STATUS_RUNNING = "running"
 STATUS_COMPLETED = "completed"
-STATUS_FAILED   = "failed"
+STATUS_FAILED = "failed"
 STATUS_CANCELLED = "cancelled"
 
 # ---------------------------------------------------------------------------
 # AgentSession dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AgentSession:
@@ -77,21 +81,19 @@ class AgentSession:
     status: str = STATUS_QUEUED
     priority: str = "normal"
     desktop_name: str = ""
-    config: Optional[Dict[str, Any]] = None
+    config: dict[str, Any] | None = None
 
     # Populated at runtime
-    thread: Optional[threading.Thread] = field(default=None, repr=False)
-    result: Optional[Dict[str, Any]] = field(default=None, repr=False)
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    thread: threading.Thread | None = field(default=None, repr=False)
+    result: dict[str, Any] | None = field(default=None, repr=False)
+    start_time: datetime | None = None
+    end_time: datetime | None = None
     step_count: int = 0
 
     # Internal cancellation flag
-    _cancel_requested: threading.Event = field(
-        default_factory=threading.Event, repr=False
-    )
+    _cancel_requested: threading.Event = field(default_factory=threading.Event, repr=False)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise the session to a plain dict suitable for JSON / API."""
         return {
             "id": self.id,
@@ -109,6 +111,7 @@ class AgentSession:
 # ---------------------------------------------------------------------------
 # AgentPool
 # ---------------------------------------------------------------------------
+
 
 class AgentPool:
     """Manage simultaneous agent sessions with a capped concurrency limit.
@@ -128,7 +131,7 @@ class AgentPool:
     def __init__(
         self,
         max_agents: int = 3,
-        on_session_complete: Optional[Callable[[Dict[str, Any]], None]] = None,
+        on_session_complete: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         if max_agents < 1:
             raise ValueError("max_agents must be >= 1")
@@ -136,9 +139,9 @@ class AgentPool:
         self._on_session_complete = on_session_complete
 
         # Session storage: id -> AgentSession
-        self._sessions: Dict[str, AgentSession] = {}
+        self._sessions: dict[str, AgentSession] = {}
         # Priority queue: list of (priority_value, creation_order, session_id)
-        self._queue: List[tuple] = []
+        self._queue: list[tuple] = []
         # Monotonic counter for ordering equal-priority entries (FIFO)
         self._seq = 0
         # Monotonic counter for naming virtual desktops
@@ -167,7 +170,7 @@ class AgentPool:
     def submit(
         self,
         goal: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         priority: str = "normal",
     ) -> str:
         """Submit a new agent goal.  Returns the session ID.
@@ -183,9 +186,7 @@ class AgentPool:
             One of ``"urgent"``, ``"normal"``, ``"background"``.
         """
         if priority not in _VALID_PRIORITIES:
-            raise ValueError(
-                f"Invalid priority {priority!r}; choose from {_VALID_PRIORITIES}"
-            )
+            raise ValueError(f"Invalid priority {priority!r}; choose from {_VALID_PRIORITIES}")
         if self._shutdown:
             raise RuntimeError("AgentPool is shut down; cannot submit new goals")
 
@@ -199,16 +200,16 @@ class AgentPool:
 
         with self._lock:
             self._sessions[session_id] = session
-            self._queue.append(
-                (_PRIORITY_MAP[priority], self._seq, session_id)
-            )
+            self._queue.append((_PRIORITY_MAP[priority], self._seq, session_id))
             self._seq += 1
             # Keep the queue sorted so the dispatcher can pop from the front
             self._queue.sort()
 
         logger.info(
             "Session %s submitted (goal=%r, priority=%s)",
-            session_id, goal[:80], priority,
+            session_id,
+            goal[:80],
+            priority,
         )
         self._dispatcher_event.set()
         return session_id
@@ -229,15 +230,14 @@ class AgentPool:
             if session.status in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED):
                 logger.info(
                     "cancel: session %s already in terminal state '%s'",
-                    session_id, session.status,
+                    session_id,
+                    session.status,
                 )
                 return False
 
             if session.status == STATUS_QUEUED:
                 # Remove from queue and mark cancelled immediately
-                self._queue = [
-                    entry for entry in self._queue if entry[2] != session_id
-                ]
+                self._queue = [entry for entry in self._queue if entry[2] != session_id]
                 session.status = STATUS_CANCELLED
                 session.end_time = datetime.now(timezone.utc)
                 logger.info("cancel: session %s removed from queue", session_id)
@@ -248,7 +248,7 @@ class AgentPool:
             logger.info("cancel: cancellation requested for running session %s", session_id)
             return True
 
-    def get_status(self, session_id: str) -> Dict[str, Any]:
+    def get_status(self, session_id: str) -> dict[str, Any]:
         """Return a status dict for a session, or raise ``KeyError``."""
         with self._lock:
             session = self._sessions.get(session_id)
@@ -256,7 +256,7 @@ class AgentPool:
                 raise KeyError(f"No such session: {session_id}")
             return session.to_dict()
 
-    def list_sessions(self) -> List[Dict[str, Any]]:
+    def list_sessions(self) -> list[dict[str, Any]]:
         """Return status dicts for all sessions, newest first."""
         with self._lock:
             sessions = list(self._sessions.values())
@@ -264,7 +264,7 @@ class AgentPool:
         sessions.sort(key=lambda s: s.id, reverse=True)
         return [s.to_dict() for s in sessions]
 
-    def get_result(self, session_id: str) -> Dict[str, Any]:
+    def get_result(self, session_id: str) -> dict[str, Any]:
         """Return the full result dict for a completed/failed session.
 
         Raises ``KeyError`` if the session does not exist, and
@@ -276,8 +276,7 @@ class AgentPool:
                 raise KeyError(f"No such session: {session_id}")
             if session.status not in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED):
                 raise ValueError(
-                    f"Session {session_id} has status '{session.status}', "
-                    f"not a terminal state"
+                    f"Session {session_id} has status '{session.status}', not a terminal state"
                 )
             return session.to_dict()
 
@@ -319,7 +318,8 @@ class AgentPool:
             # Join all running agent threads
             with self._lock:
                 running = [
-                    s for s in self._sessions.values()
+                    s
+                    for s in self._sessions.values()
                     if s.thread is not None and s.thread.is_alive()
                 ]
             for s in running:
@@ -400,7 +400,8 @@ class AgentPool:
         thread.start()
         logger.info(
             "Agent thread started for session %s (desktop=%s)",
-            session.id, desktop_name,
+            session.id,
+            desktop_name,
         )
 
     def _agent_worker(self, session_id: str, desktop_name: str) -> None:
@@ -414,8 +415,8 @@ class AgentPool:
             logger.error("Worker: session %s not found", session_id)
             return
 
-        vd: Optional[VirtualDesktop] = None
-        engine: Optional[AgentEngine] = None
+        vd: VirtualDesktop | None = None
+        engine: AgentEngine | None = None
         try:
             # Create a virtual desktop for isolation
             vd = VirtualDesktop(name=desktop_name)
@@ -424,13 +425,14 @@ class AgentPool:
                 vd.switch_to()
                 logger.info(
                     "Session %s: switched to virtual desktop '%s'",
-                    session_id, desktop_name,
+                    session_id,
+                    desktop_name,
                 )
             else:
                 logger.warning(
-                    "Session %s: virtual desktop '%s' unavailable, "
-                    "running on current desktop",
-                    session_id, desktop_name,
+                    "Session %s: virtual desktop '%s' unavailable, running on current desktop",
+                    session_id,
+                    desktop_name,
                 )
 
             # Merge pool-level config with per-session config
@@ -449,7 +451,8 @@ class AgentPool:
 
             logger.info(
                 "Session %s completed (%d steps)",
-                session_id, session.step_count,
+                session_id,
+                session.step_count,
             )
 
         except Exception as exc:
@@ -467,12 +470,15 @@ class AgentPool:
                     vd.close()
                     logger.debug(
                         "Session %s: virtual desktop '%s' cleaned up",
-                        session_id, desktop_name,
+                        session_id,
+                        desktop_name,
                     )
                 except Exception as exc:
                     logger.warning(
                         "Session %s: error cleaning up desktop '%s': %s",
-                        session_id, desktop_name, exc,
+                        session_id,
+                        desktop_name,
+                        exc,
                     )
 
             # Notify callback
@@ -483,7 +489,8 @@ class AgentPool:
                     self._on_session_complete(snapshot)
                 except Exception as exc:
                     logger.warning(
-                        "on_session_complete callback raised: %s", exc,
+                        "on_session_complete callback raised: %s",
+                        exc,
                     )
 
             # Wake dispatcher in case a slot freed up

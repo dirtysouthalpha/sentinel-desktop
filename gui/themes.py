@@ -10,14 +10,14 @@ Blood, Ember, Frost, Phantom.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Color palette constants
 # ---------------------------------------------------------------------------
-THEMES: Dict[str, Dict[str, Any]] = {
+THEMES: dict[str, dict[str, Any]] = {
     # ── Sentinel (default) — Override Cyberpunk HUD ────────────────────
     #    Matches sentinel-override/popup.css design tokens exactly.
     #    Cyan neon #00F0FF, near-black surfaces, lime/amber accents.
@@ -46,7 +46,6 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "border_color": "#3b494b",
         "border_active": "#00F0FF",
     },
-
     # ── Dark family ─────────────────────────────────────────────────────
     "midnight": {
         "label": "🌌 Midnight",
@@ -267,7 +266,6 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "overlay_ring": "#0077be",
         "overlay_fill": "#0077be",
     },
-
     # ── Override-exclusive presets (from popup.css body.theme-*) ──────
     "ember": {
         "label": "🔥 Ember",
@@ -344,7 +342,6 @@ THEMES: Dict[str, Dict[str, Any]] = {
         "border_color": "#3b494b",
         "border_active": "#8a5cff",
     },
-
     # ── Light / warm family ─────────────────────────────────────────────
     "light": {
         "label": "☀️ Light",
@@ -464,7 +461,7 @@ THEMES: Dict[str, Dict[str, Any]] = {
 }
 
 
-def get_theme(name: str) -> Dict[str, Any]:
+def get_theme(name: str) -> dict[str, Any]:
     """Get a theme by name, falling back to sentinel."""
     return THEMES.get(name, THEMES["sentinel"])
 
@@ -474,14 +471,18 @@ def get_theme_names() -> list:
     return [(k, v["label"]) for k, v in THEMES.items()]
 
 
-def apply_theme(name_or_dict) -> Dict[str, Any]:
+def apply_theme(name_or_dict) -> dict[str, Any]:
     """Apply a named theme or theme dict to customtkinter. Returns the theme dict."""
     try:
         import customtkinter as ctk
     except ImportError:
         return THEMES["sentinel"]
 
-    theme = THEMES.get(name_or_dict, THEMES["sentinel"]) if isinstance(name_or_dict, str) else name_or_dict
+    theme = (
+        THEMES.get(name_or_dict, THEMES["sentinel"])
+        if isinstance(name_or_dict, str)
+        else name_or_dict
+    )
 
     ctk.set_appearance_mode(theme.get("appearance", "dark"))
     ctk.set_default_color_theme(theme.get("color_theme", "dark-blue"))

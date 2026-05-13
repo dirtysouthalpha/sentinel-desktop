@@ -18,69 +18,69 @@ Endpoints:
 """
 
 import asyncio
-import base64
 import json
 import logging
-import io
 import os
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from core.engine import AgentEngine
-from core.screenshot import capture_to_base64, capture_screen
-from core import window_manager as wm
+from config import Config
 from core import process_manager as pm
 from core import system_info as sysinfo
-from core import clipboard as clip
-from core import file_ops
-from config import Config
+from core import window_manager as wm
+from core.engine import AgentEngine
+from core.screenshot import capture_to_base64
 
 logger = logging.getLogger(__name__)
 
 # Optional shared-secret auth. Set SENTINEL_API_TOKEN in the environment to
 # require an Authorization: Bearer <token> header on every request. Unset →
 # no auth (legacy behaviour, OK for localhost-only use).
-API_TOKEN_ENV = "SENTINEL_API_TOKEN"
+API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # noqa: S105  (env var name, not a token value)
 
 
 # ── Request models ──────────────────────────────────────────────────────
 
+
 class GoalRequest(BaseModel):
     goal: str
-    max_steps: Optional[int] = None
-    approval_mode: Optional[bool] = None
+    max_steps: int | None = None
+    approval_mode: bool | None = None
+
 
 class CommandRequest(BaseModel):
     command: str  # JSON action dict or natural language
 
+
 class ConfigUpdate(BaseModel):
-    provider: Optional[str] = None
-    api_key: Optional[str] = None
-    model: Optional[str] = None
-    max_steps: Optional[int] = None
-    approval_mode: Optional[bool] = None
-    theme: Optional[str] = None
+    provider: str | None = None
+    api_key: str | None = None
+    model: str | None = None
+    max_steps: int | None = None
+    approval_mode: bool | None = None
+    theme: str | None = None
 
 
 # ── Server class ────────────────────────────────────────────────────────
 
+
 class SentinelServer:
     def __init__(self, config: Config):
         self.config = config
-        self.engine: Optional[AgentEngine] = None
-        self._run_thread: Optional[threading.Thread] = None
-        self._ws_clients: List[WebSocket] = []
+        self.engine: AgentEngine | None = None
+        self._run_thread: threading.Thread | None = None
+        self._ws_clients: list[WebSocket] = []
         self._ws_lock = threading.Lock()
         # Cache the loop so worker threads can schedule broadcasts onto it.
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     # -- auth ------------------------------------------------------------
 
-    def _check_auth(self, authorization: Optional[str]) -> None:
+    def _check_auth(self, authorization: str | None) -> None:
         token = os.environ.get(API_TOKEN_ENV)
         if not token:
             return  # auth disabled
@@ -104,8 +104,12 @@ class SentinelServer:
         elif os.environ.get(API_TOKEN_ENV):
             origins = ["*"]
         else:
-            origins = ["http://localhost", "http://127.0.0.1",
-                       "http://localhost:*", "http://127.0.0.1:*"]
+            origins = [
+                "http://localhost",
+                "http://127.0.0.1",
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+            ]
         app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
@@ -161,8 +165,9 @@ class SentinelServer:
 
     # ── Agent control ───────────────────────────────────────────────
 
-    async def _handle_goal(self, req: GoalRequest,
-                           authorization: Optional[str] = Header(default=None)):
+    async def _handle_goal(
+        self, req: GoalRequest, authorization: str | None = Header(default=None)
+    ):
         self._check_auth(authorization)
         if self.engine and self.engine.running:
             raise HTTPException(409, "Agent already running — stop it first")
@@ -181,13 +186,15 @@ class SentinelServer:
             try:
                 result = self.engine.run(req.goal)
                 logger.info("Agent finished: %d steps", result.get("steps", 0))
-                self._broadcast_event({
-                    "type": "done",
-                    "result": {
-                        "steps": result.get("steps", 0),
-                        "summary": result.get("finish_summary", ""),
-                    },
-                })
+                self._broadcast_event(
+                    {
+                        "type": "done",
+                        "result": {
+                            "steps": result.get("steps", 0),
+                            "summary": result.get("finish_summary", ""),
+                        },
+                    }
+                )
             except Exception as exc:
                 logger.exception("Agent run crashed")
                 self._broadcast_event({"type": "error", "message": str(exc)})
@@ -197,8 +204,9 @@ class SentinelServer:
 
         return {"status": "started", "goal": req.goal}
 
-    async def _handle_command(self, req: CommandRequest,
-                              authorization: Optional[str] = Header(default=None)):
+    async def _handle_command(
+        self, req: CommandRequest, authorization: str | None = Header(default=None)
+    ):
         self._check_auth(authorization)
         cfg = self.config.load()
         engine = AgentEngine(cfg)
@@ -208,7 +216,7 @@ class SentinelServer:
             try:
                 payload = json.loads(text)
             except json.JSONDecodeError as exc:
-                raise HTTPException(400, f"Invalid JSON action: {exc}")
+                raise HTTPException(400, f"Invalid JSON action: {exc}") from exc
             if not isinstance(payload, dict) or "action" not in payload:
                 raise HTTPException(400, "JSON payload must be an object with an 'action' key")
         else:
@@ -216,7 +224,7 @@ class SentinelServer:
 
         return engine.executor.execute_sync(payload)
 
-    async def _handle_stop(self, authorization: Optional[str] = Header(default=None)):
+    async def _handle_stop(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         if self.engine and self.engine.running:
             self.engine.stop()
@@ -225,14 +233,12 @@ class SentinelServer:
 
     # ── Information endpoints ───────────────────────────────────────
 
-    async def _handle_screenshot(self,
-                                 authorization: Optional[str] = Header(default=None)):
+    async def _handle_screenshot(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         b64 = capture_to_base64()
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
-    async def _handle_status(self,
-                             authorization: Optional[str] = Header(default=None)):
+    async def _handle_status(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         if self.engine:
             return {
@@ -243,23 +249,19 @@ class SentinelServer:
             }
         return {"running": False, "step": 0}
 
-    async def _handle_windows(self,
-                              authorization: Optional[str] = Header(default=None)):
+    async def _handle_windows(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         return {"windows": wm.list_windows()}
 
-    async def _handle_processes(self,
-                                authorization: Optional[str] = Header(default=None)):
+    async def _handle_processes(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         return {"processes": pm.list_processes(limit=100)}
 
-    async def _handle_system(self,
-                             authorization: Optional[str] = Header(default=None)):
+    async def _handle_system(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         return {"system": sysinfo.system_info()}
 
-    async def _handle_get_config(self,
-                                 authorization: Optional[str] = Header(default=None)):
+    async def _handle_get_config(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         # Never leak the API key over the wire.
         cfg = dict(self.config.load())
@@ -267,8 +269,9 @@ class SentinelServer:
             cfg["api_key"] = "***"
         return cfg
 
-    async def _handle_put_config(self, req: ConfigUpdate,
-                                 authorization: Optional[str] = Header(default=None)):
+    async def _handle_put_config(
+        self, req: ConfigUpdate, authorization: str | None = Header(default=None)
+    ):
         self._check_auth(authorization)
         cfg = self.config.load()
         # Pydantic v2 prefers model_dump; v1 only has .dict(). Support both.
@@ -278,8 +281,7 @@ class SentinelServer:
         self.config.save(cfg)
         return {"status": "saved"}
 
-    async def _handle_log(self,
-                          authorization: Optional[str] = Header(default=None)):
+    async def _handle_log(self, authorization: str | None = Header(default=None)):
         self._check_auth(authorization)
         if self.engine:
             return {"log": self.engine.forensic_log}
@@ -287,26 +289,27 @@ class SentinelServer:
 
     # ── Script / Recorder / PowerShell endpoints ──────────────────────
 
-    async def _handle_scripts_list(self,
-                                    authorization: Optional[str] = Header(default=None)):
+    async def _handle_scripts_list(self, authorization: str | None = Header(default=None)):
         """List all available scripts in the scripts/ directory."""
         self._check_auth(authorization)
         try:
-            from core.recorder import ActionRecorder
             import os
+
+            from core.recorder import ActionRecorder
+
             scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
             scripts = ActionRecorder.list_scripts(scripts_dir)
             return {"scripts": scripts}
         except Exception as exc:
             return {"scripts": [], "error": str(exc)}
 
-    async def _handle_script_run(self, req: Dict,
-                                  authorization: Optional[str] = Header(default=None)):
+    async def _handle_script_run(self, req: dict, authorization: str | None = Header(default=None)):
         """Run a script by path with optional parameters."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         from core.script_engine import ScriptEngine
+
         engine = ScriptEngine(self.engine.executor)
         result = engine.run_script(req.get("path", ""), req.get("params"))
         return {
@@ -316,12 +319,12 @@ class SentinelServer:
             "error": result.error,
         }
 
-    async def _handle_powershell(self, req: Dict,
-                                  authorization: Optional[str] = Header(default=None)):
+    async def _handle_powershell(self, req: dict, authorization: str | None = Header(default=None)):
         """Run a PowerShell command."""
         self._check_auth(authorization)
         try:
             from core.powershell import get_default_runner
+
             runner = get_default_runner()
             ps_result = runner.run_command(req.get("command", ""))
             return {
@@ -334,8 +337,7 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_recorder_start(self,
-                                      authorization: Optional[str] = Header(default=None)):
+    async def _handle_recorder_start(self, authorization: str | None = Header(default=None)):
         """Start recording actions."""
         self._check_auth(authorization)
         if not self.engine:
@@ -343,8 +345,9 @@ class SentinelServer:
         self.engine.recorder.start_recording("")
         return {"status": "recording"}
 
-    async def _handle_recorder_stop(self, req: Dict,
-                                     authorization: Optional[str] = Header(default=None)):
+    async def _handle_recorder_stop(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Stop recording and save the script."""
         self._check_auth(authorization)
         if not self.engine:
@@ -355,6 +358,7 @@ class SentinelServer:
         script.name = name
         script.description = desc or script.description
         import os
+
         scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
         os.makedirs(scripts_dir, exist_ok=True)
         path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
@@ -363,25 +367,28 @@ class SentinelServer:
 
     # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
 
-    async def _handle_workflows_list(self,
-                                      authorization: Optional[str] = Header(default=None)):
+    async def _handle_workflows_list(self, authorization: str | None = Header(default=None)):
         """List available workflows."""
         self._check_auth(authorization)
         try:
-            from core.workflow import WorkflowEngine
             import os
+
+            from core.workflow import WorkflowEngine
+
             wf_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workflows")
             return {"workflows": WorkflowEngine.list_workflows(wf_dir)}
         except Exception as exc:
             return {"workflows": [], "error": str(exc)}
 
-    async def _handle_workflow_run(self, req: Dict,
-                                    authorization: Optional[str] = Header(default=None)):
+    async def _handle_workflow_run(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Run a workflow."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         from core.workflow import WorkflowEngine
+
         wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
         result = wf.run_workflow(req.get("path", ""), req.get("variables"))
         return {
@@ -392,16 +399,16 @@ class SentinelServer:
             "elapsed": result.elapsed_seconds,
         }
 
-    async def _handle_schedule_list(self,
-                                     authorization: Optional[str] = Header(default=None)):
+    async def _handle_schedule_list(self, authorization: str | None = Header(default=None)):
         """List scheduled tasks."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         return {"tasks": self.engine.scheduler.list_tasks()}
 
-    async def _handle_schedule_add(self, req: Dict,
-                                    authorization: Optional[str] = Header(default=None)):
+    async def _handle_schedule_add(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Add a scheduled task."""
         self._check_auth(authorization)
         if not self.engine:
@@ -409,8 +416,9 @@ class SentinelServer:
         task_id = self.engine.scheduler.add_task(req)
         return {"status": "added", "task_id": task_id}
 
-    async def _handle_schedule_remove(self, req: Dict,
-                                       authorization: Optional[str] = Header(default=None)):
+    async def _handle_schedule_remove(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Remove a scheduled task."""
         self._check_auth(authorization)
         if not self.engine:
@@ -418,8 +426,9 @@ class SentinelServer:
         removed = self.engine.scheduler.remove_task(req.get("task_id", ""))
         return {"status": "removed" if removed else "not_found"}
 
-    async def _handle_schedule_run(self, req: Dict,
-                                    authorization: Optional[str] = Header(default=None)):
+    async def _handle_schedule_run(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Run a scheduled task immediately."""
         self._check_auth(authorization)
         if not self.engine:
@@ -427,8 +436,7 @@ class SentinelServer:
         result = self.engine.scheduler.run_task_now(req.get("task_id", ""))
         return result
 
-    async def _handle_notify(self, req: Dict,
-                              authorization: Optional[str] = Header(default=None)):
+    async def _handle_notify(self, req: dict, authorization: str | None = Header(default=None)):
         """Send a notification."""
         self._check_auth(authorization)
         if not self.engine:
@@ -440,16 +448,16 @@ class SentinelServer:
         )
         return {"success": success}
 
-    async def _handle_plugins_list(self,
-                                    authorization: Optional[str] = Header(default=None)):
+    async def _handle_plugins_list(self, authorization: str | None = Header(default=None)):
         """List loaded plugins."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         return {"plugins": self.engine.plugin_loader.list_plugins()}
 
-    async def _handle_plugins_reload(self, req: Dict,
-                                      authorization: Optional[str] = Header(default=None)):
+    async def _handle_plugins_reload(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Reload a plugin."""
         self._check_auth(authorization)
         if not self.engine:
@@ -460,16 +468,16 @@ class SentinelServer:
 
     # ── v3.0 Phase 3+4 endpoints ──────────────────────────────────────
 
-    async def _handle_agents_list(self,
-                                   authorization: Optional[str] = Header(default=None)):
+    async def _handle_agents_list(self, authorization: str | None = Header(default=None)):
         """List all agent pool sessions."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         return {"sessions": self.engine.agent_pool.list_sessions()}
 
-    async def _handle_agents_submit(self, req: Dict,
-                                     authorization: Optional[str] = Header(default=None)):
+    async def _handle_agents_submit(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Submit a goal to the agent pool."""
         self._check_auth(authorization)
         if not self.engine:
@@ -481,8 +489,9 @@ class SentinelServer:
         )
         return {"session_id": session_id, "status": "queued"}
 
-    async def _handle_agents_cancel(self, req: Dict,
-                                     authorization: Optional[str] = Header(default=None)):
+    async def _handle_agents_cancel(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Cancel an agent session."""
         self._check_auth(authorization)
         if not self.engine:
@@ -490,8 +499,9 @@ class SentinelServer:
         success = self.engine.agent_pool.cancel(req.get("session_id", ""))
         return {"success": success}
 
-    async def _handle_agent_status(self, session_id: str,
-                                    authorization: Optional[str] = Header(default=None)):
+    async def _handle_agent_status(
+        self, session_id: str, authorization: str | None = Header(default=None)
+    ):
         """Get status of a specific agent session."""
         self._check_auth(authorization)
         if not self.engine:
@@ -501,8 +511,7 @@ class SentinelServer:
             raise HTTPException(404, "Session not found")
         return status
 
-    async def _handle_auth_login(self, req: Dict,
-                                  authorization: Optional[str] = Header(default=None)):
+    async def _handle_auth_login(self, req: dict, authorization: str | None = Header(default=None)):
         """Authenticate and get a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
@@ -514,8 +523,9 @@ class SentinelServer:
         token = self.engine.auth_manager.create_session(user)
         return {"token": token, "role": user.role.value, "username": user.username}
 
-    async def _handle_auth_logout(self, req: Dict,
-                                   authorization: Optional[str] = Header(default=None)):
+    async def _handle_auth_logout(
+        self, req: dict, authorization: str | None = Header(default=None)
+    ):
         """Revoke a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
@@ -523,29 +533,27 @@ class SentinelServer:
         self.engine.auth_manager.revoke_session(token)
         return {"status": "logged_out"}
 
-    async def _handle_auth_users(self,
-                                  authorization: Optional[str] = Header(default=None)):
+    async def _handle_auth_users(self, authorization: str | None = Header(default=None)):
         """List users (admin only)."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         return {"users": self.engine.auth_manager.list_users()}
 
-    async def _handle_audit_export(self,
-                                    authorization: Optional[str] = Header(default=None),
-                                    format: str = "html"):
+    async def _handle_audit_export(
+        self, authorization: str | None = Header(default=None), format: str = "html"
+    ):
         """Export audit log as HTML/JSON/CSV/Text."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        log = self.engine.forensic_log if hasattr(self.engine, 'forensic_log') else []
+        log = self.engine.forensic_log if hasattr(self.engine, "forensic_log") else []
         path = self.engine.audit_exporter.generate_report(
             log, metadata={"goal": "audit"}, format=format
         )
         return {"path": path, "format": format}
 
-    async def _handle_vault_keys(self,
-                                  authorization: Optional[str] = Header(default=None)):
+    async def _handle_vault_keys(self, authorization: str | None = Header(default=None)):
         """List credential vault keys."""
         self._check_auth(authorization)
         if not self.engine:
@@ -560,14 +568,14 @@ class SentinelServer:
         kwargs.pop("screenshot", None)
         self._broadcast_event({"type": "step", **kwargs})
 
-    def _broadcast_event(self, event: Dict[str, Any]):
+    def _broadcast_event(self, event: dict[str, Any]):
         """Thread-safe broadcast to all WebSocket clients."""
         loop = self._loop
         if loop is None:
             return
         asyncio.run_coroutine_threadsafe(self._async_broadcast(event), loop)
 
-    async def _async_broadcast(self, event: Dict[str, Any]):
+    async def _async_broadcast(self, event: dict[str, Any]):
         with self._ws_lock:
             clients = list(self._ws_clients)
         dead = []

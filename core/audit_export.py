@@ -7,13 +7,11 @@ Sensitive fields (password, token, key, secret) are automatically masked.
 """
 
 import csv
-import io
 import json
 import os
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Sensitive-field masking
@@ -28,10 +26,7 @@ _SENSITIVE_KEYS = re.compile(
 def _mask_value(value: Any) -> Any:
     """Recursively mask sensitive values inside nested dicts/lists."""
     if isinstance(value, dict):
-        return {
-            k: "***" if _SENSITIVE_KEYS.search(k) else _mask_value(v)
-            for k, v in value.items()
-        }
+        return {k: "***" if _SENSITIVE_KEYS.search(k) else _mask_value(v) for k, v in value.items()}
     if isinstance(value, list):
         return [_mask_value(item) for item in value]
     if isinstance(value, str) and _SENSITIVE_KEYS.search(value):
@@ -39,7 +34,7 @@ def _mask_value(value: Any) -> Any:
     return value
 
 
-def _mask_log(log: List[Dict]) -> List[Dict]:
+def _mask_log(log: list[dict]) -> list[dict]:
     """Return a copy of *log* with sensitive fields masked."""
     masked = []
     for entry in log:
@@ -56,18 +51,20 @@ def _mask_log(log: List[Dict]) -> List[Dict]:
 # Summary statistics helper
 # ---------------------------------------------------------------------------
 
-def _compute_summary(masked_log: List[Dict], metadata: Dict) -> Dict:
+
+def _compute_summary(masked_log: list[dict], metadata: dict) -> dict:
     """Compute success rate, per-action counts, and total elapsed time."""
     total = len(masked_log)
     success_count = sum(
-        1 for e in masked_log
+        1
+        for e in masked_log
         if str(e.get("result", "")).lower() not in ("fail", "error", "false", "none")
-           and e.get("result") is not None
+        and e.get("result") is not None
     )
     fail_count = total - success_count
     success_rate = (success_count / total * 100) if total else 0.0
 
-    action_counts: Dict[str, int] = {}
+    action_counts: dict[str, int] = {}
     for entry in masked_log:
         action = entry.get("action", "unknown")
         action_counts[action] = action_counts.get(action, 0) + 1
@@ -93,6 +90,7 @@ def _now_iso() -> str:
 # AuditExporter
 # ===================================================================
 
+
 class AuditExporter:
     """Export forensic / audit logs to HTML, text, CSV, or JSON.
 
@@ -112,8 +110,8 @@ class AuditExporter:
 
     def generate_report(
         self,
-        log: List[Dict],
-        metadata: Dict,
+        log: list[dict],
+        metadata: dict,
         format: str = "html",
     ) -> str:
         """Dispatch to the appropriate exporter and return the file path.
@@ -141,16 +139,14 @@ class AuditExporter:
         }
         handler = dispatch.get(format.lower())
         if handler is None:
-            raise ValueError(
-                f"Unsupported format '{format}'. Choose from: {', '.join(dispatch)}"
-            )
+            raise ValueError(f"Unsupported format '{format}'. Choose from: {', '.join(dispatch)}")
         return handler(log, metadata)
 
     # ------------------------------------------------------------------
     # JSON
     # ------------------------------------------------------------------
 
-    def export_json(self, log: List[Dict], metadata: Dict) -> str:
+    def export_json(self, log: list[dict], metadata: dict) -> str:
         """Export audit data as a pretty-printed JSON file."""
         masked = _mask_log(log)
         summary = _compute_summary(masked, metadata)
@@ -172,7 +168,7 @@ class AuditExporter:
     # CSV  (RFC 4180)
     # ------------------------------------------------------------------
 
-    def export_csv(self, log: List[Dict], metadata: Dict) -> str:
+    def export_csv(self, log: list[dict], metadata: dict) -> str:
         """Export audit data as an RFC-4180-compliant CSV file."""
         masked = _mask_log(log)
         filename = self._filename("audit_report", "csv")
@@ -205,11 +201,11 @@ class AuditExporter:
     # Text (ASCII tables)
     # ------------------------------------------------------------------
 
-    def export_text(self, log: List[Dict], metadata: Dict) -> str:
+    def export_text(self, log: list[dict], metadata: dict) -> str:
         """Export audit data as a plain-text report with ASCII tables."""
         masked = _mask_log(log)
         summary = _compute_summary(masked, metadata)
-        lines: List[str] = []
+        lines: list[str] = []
 
         # Header
         lines.append("=" * 72)
@@ -287,7 +283,7 @@ class AuditExporter:
     # HTML (dark sentinel theme)
     # ------------------------------------------------------------------
 
-    def export_html(self, log: List[Dict], metadata: Dict) -> str:
+    def export_html(self, log: list[dict], metadata: dict) -> str:
         """Export audit data as a styled HTML report (dark sentinel theme)."""
         masked = _mask_log(log)
         summary = _compute_summary(masked, metadata)
@@ -313,8 +309,8 @@ class AuditExporter:
             '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
             '<meta charset="UTF-8">\n'
             '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-            '<title>Sentinel Desktop — Audit Report</title>\n'
-            '<style>\n'
+            "<title>Sentinel Desktop — Audit Report</title>\n"
+            "<style>\n"
             "  /* ---- Dark Sentinel Theme ---- */\n"
             "  :root {\n"
             "    --bg: #0d1117;\n"
@@ -408,7 +404,7 @@ class AuditExporter:
         )
 
     @staticmethod
-    def _html_metadata_section(metadata: Dict) -> str:
+    def _html_metadata_section(metadata: dict) -> str:
         gen_ts = _now_iso()
         cards = [
             ("Goal", metadata.get("goal", "N/A")),
@@ -424,55 +420,54 @@ class AuditExporter:
         )
         return (
             f'<div class="timestamp">Generated: {gen_ts}</div>\n'
-            '<h2>Session Metadata</h2>\n'
+            "<h2>Session Metadata</h2>\n"
             '<div class="meta-grid">\n'
-            f'{cards_html}\n'
-            '</div>\n'
+            f"{cards_html}\n"
+            "</div>\n"
         )
 
     @staticmethod
-    def _html_timeline(masked_log: List[Dict]) -> str:
+    def _html_timeline(masked_log: list[dict]) -> str:
         rows = []
         for entry in masked_log:
             result_raw = str(entry.get("result", ""))
-            is_fail = result_raw.lower() in ("fail", "error", "false", "none") or result_raw == "None"
+            is_fail = (
+                result_raw.lower() in ("fail", "error", "false", "none") or result_raw == "None"
+            )
             badge_cls = "badge-fail" if is_fail else "badge-success"
             badge_label = "FAIL" if is_fail else "OK"
             result_display = (
-                f'<span class="badge {badge_cls}">{badge_label}</span> '
-                f'{_esc(result_raw[:60])}'
+                f'<span class="badge {badge_cls}">{badge_label}</span> {_esc(result_raw[:60])}'
             )
             params_str = _esc(json.dumps(entry.get("params", {}), default=str)[:80])
             rows.append(
                 f"<tr>"
-                f'<td>{entry.get("step", "")}</td>'
-                f'<td>{_esc(str(entry.get("timestamp", "")))}</td>'
-                f'<td>{_esc(entry.get("action", ""))}</td>'
+                f"<td>{entry.get('step', '')}</td>"
+                f"<td>{_esc(str(entry.get('timestamp', '')))}</td>"
+                f"<td>{_esc(entry.get('action', ''))}</td>"
                 f'<td class="params-cell">{params_str}</td>'
                 f'<td class="result-cell">{result_display}</td>'
-                f'<td>{entry.get("duration", "")}s</td>'
+                f"<td>{entry.get('duration', '')}s</td>"
                 f"</tr>"
             )
         return (
             "<h2>Step Timeline</h2>\n"
-            '<table>\n'
+            "<table>\n"
             "<thead><tr>"
             "<th>#</th><th>Timestamp</th><th>Action</th>"
             "<th>Params</th><th>Result</th><th>Duration</th>"
             "</tr></thead>\n"
-            "<tbody>\n"
-            + "\n".join(rows)
-            + "\n</tbody>\n</table>\n"
+            "<tbody>\n" + "\n".join(rows) + "\n</tbody>\n</table>\n"
         )
 
     @staticmethod
-    def _html_summary(summary: Dict) -> str:
+    def _html_summary(summary: dict) -> str:
         cards = [
             (str(summary["total_steps"]), "Total Steps"),
             (str(summary["success_count"]), "Successful"),
             (str(summary["fail_count"]), "Failed"),
-            (f'{summary["success_rate"]}%', "Success Rate"),
-            (f'{summary["total_duration"]}s', "Total Duration"),
+            (f"{summary['success_rate']}%", "Success Rate"),
+            (f"{summary['total_duration']}s", "Total Duration"),
             (str(summary["status"]), "Status"),
         ]
         cards_html = "\n".join(
@@ -487,12 +482,12 @@ class AuditExporter:
         return (
             "<h2>Summary Statistics</h2>\n"
             '<div class="summary-grid">\n'
-            f'{cards_html}\n'
-            '</div>\n'
+            f"{cards_html}\n"
+            "</div>\n"
             "<h2>Action Breakdown</h2>\n"
             '<ul class="action-list">\n'
-            f'{action_items}\n'
-            '</ul>\n'
+            f"{action_items}\n"
+            "</ul>\n"
         )
 
     @staticmethod
@@ -517,11 +512,11 @@ class AuditExporter:
 # HTML entity escaping
 # ---------------------------------------------------------------------------
 
+
 def _esc(text: str) -> str:
     """Escape HTML special characters."""
     return (
-        text
-        .replace("&", "&amp;")
+        text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
@@ -533,9 +528,10 @@ def _esc(text: str) -> str:
 # Convenience function
 # ---------------------------------------------------------------------------
 
+
 def export_audit(
-    log: List[Dict],
-    metadata: Dict,
+    log: list[dict],
+    metadata: dict,
     fmt: str = "html",
     output_dir: str = "reports",
 ) -> str:

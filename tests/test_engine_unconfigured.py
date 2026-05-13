@@ -1,5 +1,4 @@
 """Engine must surface clear errors AND reset state when not configured."""
-import pytest
 
 from core.engine import AgentEngine
 

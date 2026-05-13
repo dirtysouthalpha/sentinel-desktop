@@ -3,10 +3,8 @@
 These don't require Tesseract or uiautomation to be installed — they verify
 that the modules gracefully no-op when their backends are unavailable.
 """
-import pytest
 
-from core import ocr
-from core import ui_tree
+from core import ocr, ui_tree
 
 
 def test_ocr_find_text_no_tesseract_returns_none(monkeypatch):

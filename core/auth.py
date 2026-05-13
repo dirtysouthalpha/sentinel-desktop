@@ -15,7 +15,9 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
+import bcrypt
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +29,13 @@ SALT_LENGTH: int = 32
 API_KEY_LENGTH: int = 32  # secrets.token_hex(32) → 64-char hex string
 SESSION_EXPIRY_SECONDS: int = 86_400  # 24 hours
 DEFAULT_ADMIN_USERNAME: str = "admin"
-DEFAULT_ADMIN_PASSWORD: str = "[REDACTED]"
+DEFAULT_ADMIN_PASSWORD: str = "[REDACTED]"  # noqa: S105  (rotation required on first login)
 
 
 # ---------------------------------------------------------------------------
 # Role Enum & Permission Tables
 # ---------------------------------------------------------------------------
+
 
 class Role(str, Enum):
     """User roles ordered by ascending privilege."""
@@ -41,25 +44,25 @@ class Role(str, Enum):
     OPERATOR = "operator"
     ADMIN = "admin"
 
-    def __ge__(self, other: "Role") -> bool:
+    def __ge__(self, other: Role) -> bool:
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] >= order[other]
 
-    def __gt__(self, other: "Role") -> bool:
+    def __gt__(self, other: Role) -> bool:
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] > order[other]
 
-    def __le__(self, other: "Role") -> bool:
+    def __le__(self, other: Role) -> bool:
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] <= order[other]
 
-    def __lt__(self, other: "Role") -> bool:
+    def __lt__(self, other: Role) -> bool:
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] < order[other]
 
 
 # OPERATOR-allowed POST path prefixes (checked with startswith)
-_OPERATOR_POST_PREFIXES: Tuple[str, ...] = (
+_OPERATOR_POST_PREFIXES: tuple[str, ...] = (
     "/api/goal",
     "/api/command",
     "/api/stop",
@@ -75,6 +78,7 @@ _VIEWER_METHODS: frozenset = frozenset({"GET", "HEAD", "OPTIONS"})
 # User Data Class
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class User:
     """Represents a single user account."""
@@ -85,9 +89,9 @@ class User:
     role: str  # stored as string for JSON serialisation
     api_key: str
     created: float  # unix timestamp
-    last_login: Optional[float] = None
+    last_login: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-friendly dict."""
         return {
             "username": self.username,
@@ -100,7 +104,7 @@ class User:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "User":
+    def from_dict(cls, data: dict[str, Any]) -> User:
         """Deserialise from a dict (e.g. loaded from JSON)."""
         return cls(
             username=data["username"],
@@ -115,21 +119,54 @@ class User:
 
 # ---------------------------------------------------------------------------
 # Password Helpers
+#
+# New users are hashed with bcrypt — the resulting string starts with
+# ``$2b$`` and embeds the salt + cost factor. ``User.salt`` becomes an
+# empty string for these users.
+#
+# Legacy users from the pre-bcrypt era use SHA-256(salt || password)
+# stored as a 64-char hex digest with a separate hex salt. They continue
+# to verify via _verify_password, and on the next successful login the
+# hash is transparently upgraded to bcrypt.
 # ---------------------------------------------------------------------------
 
+
 def _generate_salt() -> str:
-    """Return a hex-encoded random salt."""
+    """Return a hex-encoded random salt. Kept for legacy callers only."""
     return secrets.token_hex(SALT_LENGTH)
 
 
 def _hash_password(password: str, salt: str) -> str:
-    """Hash *password* with *salt* using SHA-256."""
-    return hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
+    """Hash *password* with *salt* using SHA-256 (legacy verification path)."""
+    return hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
+
+
+def _hash_password_bcrypt(password: str) -> str:
+    """Hash *password* with bcrypt. Returns a ``$2b$...`` string."""
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("ascii")
+
+
+def _is_bcrypt_hash(stored_hash: str) -> bool:
+    """``True`` for bcrypt-format hashes (``$2a$``, ``$2b$``, ``$2y$``)."""
+    return stored_hash.startswith(("$2a$", "$2b$", "$2y$"))
+
+
+def _verify_password(password: str, stored_hash: str, legacy_salt: str = "") -> bool:
+    """Constant-time verify *password* against a bcrypt or legacy SHA-256 hash."""
+    if _is_bcrypt_hash(stored_hash):
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("ascii"))
+        except (ValueError, TypeError):
+            return False
+    legacy = _hash_password(password, legacy_salt)
+    return secrets.compare_digest(legacy, stored_hash)
 
 
 # ---------------------------------------------------------------------------
 # AuthManager
 # ---------------------------------------------------------------------------
+
 
 class AuthManager:
     """
@@ -138,7 +175,8 @@ class AuthManager:
     Features
     --------
     * User CRUD backed by a JSON file
-    * Password verification (SHA-256 + random salt)
+    * Password verification (bcrypt; transparent rehash from legacy SHA-256
+      on next successful login)
     * API-key based authentication
     * Role-based permission checks (VIEWER / OPERATOR / ADMIN)
     * Time-limited session tokens with create / validate / revoke lifecycle
@@ -146,9 +184,9 @@ class AuthManager:
 
     def __init__(self, config_path: str = "config/users.json") -> None:
         self.config_path: Path = Path(config_path)
-        self._users: Dict[str, User] = {}          # username → User
-        self._api_key_index: Dict[str, str] = {}    # api_key → username
-        self._sessions: Dict[str, Dict[str, Any]] = {}  # token → session info
+        self._users: dict[str, User] = {}  # username → User
+        self._api_key_index: dict[str, str] = {}  # api_key → username
+        self._sessions: dict[str, dict[str, Any]] = {}  # token → session info
 
         # Ensure parent directory exists
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -174,7 +212,7 @@ class AuthManager:
             return
 
         try:
-            with open(self.config_path, "r", encoding="utf-8") as fh:
+            with open(self.config_path, encoding="utf-8") as fh:
                 data = json.load(fh)
         except (json.JSONDecodeError, OSError) as exc:
             logger.error("Failed to read user config: %s", exc)
@@ -221,11 +259,10 @@ class AuthManager:
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
 
-        salt = _generate_salt()
         user = User(
             username=username,
-            password_hash=_hash_password(password, salt),
-            salt=salt,
+            password_hash=_hash_password_bcrypt(password),
+            salt="",  # bcrypt embeds the salt; field kept for legacy compat
             role=role.value,
             api_key=secrets.token_hex(API_KEY_LENGTH),
             created=time.time(),
@@ -248,8 +285,7 @@ class AuthManager:
 
         # Revoke any active sessions for this user
         tokens_to_revoke = [
-            tok for tok, sess in self._sessions.items()
-            if sess.get("username") == username
+            tok for tok, sess in self._sessions.items() if sess.get("username") == username
         ]
         for tok in tokens_to_revoke:
             del self._sessions[tok]
@@ -262,10 +298,10 @@ class AuthManager:
         self,
         username: str,
         *,
-        password: Optional[str] = None,
-        role: Optional[Role] = None,
+        password: str | None = None,
+        role: Role | None = None,
         regenerate_api_key: bool = False,
-    ) -> Optional[User]:
+    ) -> User | None:
         """Update mutable fields of an existing user.
 
         Returns the updated ``User``, or ``None`` if the user was not found.
@@ -275,9 +311,8 @@ class AuthManager:
             return None
 
         if password is not None:
-            salt = _generate_salt()
-            user.salt = salt
-            user.password_hash = _hash_password(password, salt)
+            user.password_hash = _hash_password_bcrypt(password)
+            user.salt = ""
 
         if role is not None:
             user.role = role.value
@@ -291,11 +326,11 @@ class AuthManager:
         logger.info("Updated user '%s'", username)
         return user
 
-    def list_users(self) -> List[User]:
+    def list_users(self) -> list[User]:
         """Return a list of all registered users."""
         return list(self._users.values())
 
-    def get_user(self, username: str) -> Optional[User]:
+    def get_user(self, username: str) -> User | None:
         """Look up a user by username."""
         return self._users.get(username)
 
@@ -303,7 +338,7 @@ class AuthManager:
     # Authentication
     # ------------------------------------------------------------------
 
-    def authenticate(self, username: str, password: str) -> Optional[User]:
+    def authenticate(self, username: str, password: str) -> User | None:
         """Verify a username/password pair.
 
         Returns the ``User`` on success or ``None`` on failure.
@@ -314,17 +349,23 @@ class AuthManager:
             logger.warning("Authentication failed: unknown user '%s'", username)
             return None
 
-        computed = _hash_password(password, user.salt)
-        if not secrets.compare_digest(computed, user.password_hash):
+        if not _verify_password(password, user.password_hash, user.salt):
             logger.warning("Authentication failed: bad password for '%s'", username)
             return None
+
+        # Transparently upgrade legacy SHA-256 hashes to bcrypt on first
+        # successful login so the at-rest hash strengthens over time.
+        if not _is_bcrypt_hash(user.password_hash):
+            user.password_hash = _hash_password_bcrypt(password)
+            user.salt = ""
+            logger.info("Upgraded user '%s' hash from legacy SHA-256 to bcrypt", username)
 
         user.last_login = time.time()
         self._save()
         logger.info("User '%s' authenticated successfully", username)
         return user
 
-    def authenticate_api_key(self, key: str) -> Optional[User]:
+    def authenticate_api_key(self, key: str) -> User | None:
         """Look up the user that owns *key*.
 
         Returns the ``User`` or ``None`` if the key is unknown.
@@ -401,7 +442,7 @@ class AuthManager:
         logger.info("Session created for user '%s'", user.username)
         return token
 
-    def validate_session(self, token: str) -> Optional[User]:
+    def validate_session(self, token: str) -> User | None:
         """Validate *token* and return the associated ``User``.
 
         Returns ``None`` if the token is missing, expired, or revoked.
@@ -441,21 +482,18 @@ class AuthManager:
         Returns the number of sessions revoked.
         """
         to_remove = [
-            tok for tok, sess in self._sessions.items()
-            if sess.get("username") == username
+            tok for tok, sess in self._sessions.items() if sess.get("username") == username
         ]
         for tok in to_remove:
             del self._sessions[tok]
-        logger.info(
-            "Revoked %d session(s) for user '%s'", len(to_remove), username
-        )
+        logger.info("Revoked %d session(s) for user '%s'", len(to_remove), username)
         return len(to_remove)
 
     # ------------------------------------------------------------------
     # Utility
     # ------------------------------------------------------------------
 
-    def get_session_info(self, token: str) -> Optional[Dict[str, Any]]:
+    def get_session_info(self, token: str) -> dict[str, Any] | None:
         """Return raw session metadata (for debugging) or ``None``."""
         return self._sessions.get(token)
 
@@ -464,11 +502,11 @@ class AuthManager:
         return len(self._sessions)
 
     @staticmethod
-    def hash_password(password: str, salt: str) -> str:
-        """Public helper to hash a password with a given salt."""
-        return _hash_password(password, salt)
+    def hash_password(password: str) -> str:
+        """Public helper to hash a password with bcrypt."""
+        return _hash_password_bcrypt(password)
 
     @staticmethod
-    def generate_salt() -> str:
-        """Public helper to generate a random salt."""
-        return _generate_salt()
+    def verify_password(password: str, stored_hash: str, legacy_salt: str = "") -> bool:
+        """Public helper to verify a password against a stored hash."""
+        return _verify_password(password, stored_hash, legacy_salt)

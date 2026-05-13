@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 # Availability probes
 # ---------------------------------------------------------------------------
 
-_UIA_AVAILABLE: Optional[bool] = None
+_UIA_AVAILABLE: bool | None = None
 _auto = None  # uiautomation module ref
 
 
@@ -43,6 +44,7 @@ def _probe_uia() -> bool:
         return _UIA_AVAILABLE
     try:
         import uiautomation as auto  # type: ignore
+
         _auto = auto
         _UIA_AVAILABLE = True
     except Exception as exc:
@@ -51,7 +53,7 @@ def _probe_uia() -> bool:
     return bool(_UIA_AVAILABLE)
 
 
-_POSTMESSAGE_AVAILABLE: Optional[bool] = None
+_POSTMESSAGE_AVAILABLE: bool | None = None
 _win32gui = None
 _win32api = None
 _win32con = None
@@ -63,9 +65,10 @@ def _probe_postmessage() -> bool:
     if _POSTMESSAGE_AVAILABLE is not None:
         return _POSTMESSAGE_AVAILABLE
     try:
-        import win32gui  # type: ignore
         import win32api  # type: ignore
         import win32con  # type: ignore
+        import win32gui  # type: ignore
+
         _win32gui = win32gui
         _win32api = win32api
         _win32con = win32con
@@ -76,7 +79,7 @@ def _probe_postmessage() -> bool:
     return bool(_POSTMESSAGE_AVAILABLE)
 
 
-def _result(success: bool, output: Any, method: str) -> Dict[str, Any]:
+def _result(success: bool, output: Any, method: str) -> dict[str, Any]:
     """Normalised result dict."""
     return {"success": success, "output": output, "method_used": method}
 
@@ -84,6 +87,7 @@ def _result(success: bool, output: Any, method: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
+
 
 class UIAActionPipeline:
     """Three-tier action pipeline: UIA → PostMessage → pyautogui.
@@ -114,6 +118,7 @@ class UIAActionPipeline:
     def _get_physical_desktop(self):
         """Lazy getter for the core.desktop DesktopController."""
         from core.desktop import _get_controller
+
         return _get_controller()
 
     # ------------------------------------------------------------------
@@ -123,11 +128,11 @@ class UIAActionPipeline:
     def click_element(
         self,
         name: str,
-        control_type: Optional[str] = None,
-        window_title: Optional[str] = None,
+        control_type: str | None = None,
+        window_title: str | None = None,
         *,
         button: str = "left",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Click a control identified by *name* (and optionally *control_type*).
 
         Tries UIA Invoke / SelectionItem / physical click on the control first,
@@ -137,6 +142,7 @@ class UIAActionPipeline:
         if self._uia_ok():
             try:
                 from core.ui_tree import click_control
+
                 result = click_control(
                     name=name,
                     control_type=control_type,
@@ -154,6 +160,7 @@ class UIAActionPipeline:
                 bounds = self._uia_bounds(name, control_type, window_title)
                 if bounds is not None:
                     from core.stealth_input import post_click
+
                     ok = post_click(bounds["center_x"], bounds["center_y"], button=button)
                     if ok:
                         return _result(
@@ -169,7 +176,9 @@ class UIAActionPipeline:
             bounds = self._uia_bounds(name, control_type, window_title)
             if bounds is not None:
                 self._get_physical_desktop().click(
-                    bounds["center_x"], bounds["center_y"], button=button,
+                    bounds["center_x"],
+                    bounds["center_y"],
+                    button=button,
                 )
                 return _result(
                     True,
@@ -185,8 +194,8 @@ class UIAActionPipeline:
         self,
         name: str,
         text: str,
-        window_title: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        window_title: str | None = None,
+    ) -> dict[str, Any]:
         """Set *text* into a named edit/text field.
 
         Tier 1 uses UIA ValuePattern. Tier 2 falls back to PostMessage WM_CHAR.
@@ -196,6 +205,7 @@ class UIAActionPipeline:
         if self._uia_ok():
             try:
                 from core.ui_tree import set_text
+
                 if set_text(text, name=name, window_title=window_title):
                     return _result(True, text, "uia")
             except Exception as exc:
@@ -207,6 +217,7 @@ class UIAActionPipeline:
                 hwnd = self._hwnd_for_element(name, window_title)
                 if hwnd is not None:
                     from core.stealth_input import post_text
+
                     if post_text(text, hwnd=hwnd):
                         return _result(True, text, "postmessage")
             except Exception as exc:
@@ -229,8 +240,8 @@ class UIAActionPipeline:
     def select_menu_item(
         self,
         path: str,
-        window_title: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        window_title: str | None = None,
+    ) -> dict[str, Any]:
         """Navigate a menu by *path* like ``"File > Export > Runtime Model"``.
 
         Uses UIA menu / menuItem traversal. Each segment is matched by name.
@@ -253,6 +264,7 @@ class UIAActionPipeline:
         if self._postmessage_ok():
             try:
                 from core.stealth_input import post_hotkey
+
                 # Press Alt to activate menu bar, then arrow down through items.
                 # This is a best-effort approach; PostMessage menus are fragile.
                 if post_hotkey(["alt"], hwnd=None):
@@ -265,7 +277,8 @@ class UIAActionPipeline:
         # --- Tier 3: pyautogui fallback ---
         try:
             import pyautogui
-            desktop = self._get_physical_desktop()
+
+            self._get_physical_desktop()
             # Press Alt to activate the menu bar, then navigate with arrows.
             pyautogui.press("alt")
             time.sleep(0.1)
@@ -294,11 +307,11 @@ class UIAActionPipeline:
         self,
         x: int,
         y: int,
-        hwnd: Optional[int] = None,
+        hwnd: int | None = None,
         *,
         button: str = "left",
         clicks: int = 1,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Click at screen coordinates (*x*, *y*).
 
         Tries PostMessage to the HWND under the point first, then pyautogui.
@@ -307,6 +320,7 @@ class UIAActionPipeline:
         if self._postmessage_ok():
             try:
                 from core.stealth_input import post_click
+
                 if post_click(x, y, button=button, clicks=clicks):
                     return _result(True, {"x": x, "y": y}, "postmessage")
             except Exception as exc:
@@ -324,8 +338,8 @@ class UIAActionPipeline:
     def type_text(
         self,
         text: str,
-        hwnd: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        hwnd: int | None = None,
+    ) -> dict[str, Any]:
         """Type *text* character-by-character.
 
         Tries PostMessage WM_CHAR first, then pyautogui.
@@ -337,6 +351,7 @@ class UIAActionPipeline:
         if self._postmessage_ok():
             try:
                 from core.stealth_input import post_text
+
                 if post_text(text, hwnd=hwnd):
                     return _result(True, text, "postmessage")
             except Exception as exc:
@@ -354,8 +369,8 @@ class UIAActionPipeline:
     def press_key(
         self,
         key: str,
-        hwnd: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        hwnd: int | None = None,
+    ) -> dict[str, Any]:
         """Press a named key (e.g. ``"enter"``, ``"f5"``).
 
         Tries PostMessage WM_KEYDOWN/UP first, then pyautogui.
@@ -364,6 +379,7 @@ class UIAActionPipeline:
         if self._postmessage_ok():
             try:
                 from core.stealth_input import post_named_key
+
                 if post_named_key(key, hwnd=hwnd):
                     return _result(True, key, "postmessage")
             except Exception as exc:
@@ -381,8 +397,8 @@ class UIAActionPipeline:
     def hotkey(
         self,
         keys: Sequence[str],
-        hwnd: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        hwnd: int | None = None,
+    ) -> dict[str, Any]:
         """Send a chorded hotkey (e.g. ``["ctrl", "c"]``).
 
         Tries PostMessage WM_KEYDOWN/UP first, then pyautogui.
@@ -394,6 +410,7 @@ class UIAActionPipeline:
         if self._postmessage_ok():
             try:
                 from core.stealth_input import post_hotkey
+
                 if post_hotkey(keys, hwnd=hwnd):
                     return _result(True, list(keys), "postmessage")
             except Exception as exc:
@@ -413,7 +430,7 @@ class UIAActionPipeline:
         x: int,
         y: int,
         amount: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Scroll at (*x*, *y*) by *amount* clicks.
 
         Positive *amount* scrolls up, negative scrolls down.
@@ -432,8 +449,10 @@ class UIAActionPipeline:
                     repeats = abs(amount)
                     for _ in range(max(1, repeats)):
                         _win32api.PostMessage(
-                            hwnd, _win32con.WM_VSCROLL,
-                            scroll_cmd, 0,
+                            hwnd,
+                            _win32con.WM_VSCROLL,
+                            scroll_cmd,
+                            0,
                         )
                     return _result(
                         True,
@@ -463,9 +482,9 @@ class UIAActionPipeline:
     def find_element(
         self,
         name: str,
-        control_type: Optional[str] = None,
-        window_title: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        control_type: str | None = None,
+        window_title: str | None = None,
+    ) -> dict[str, Any]:
         """Return element info dict for the first matching control.
 
         Returns ``{success, output, method_used}`` where *output* is the
@@ -473,7 +492,8 @@ class UIAActionPipeline:
         """
         if self._uia_ok():
             try:
-                from core.ui_tree import _find_control, _find_window
+                from core.ui_tree import _find_control
+
                 ctrl = _find_control(
                     name=name,
                     control_type=control_type,
@@ -489,8 +509,8 @@ class UIAActionPipeline:
 
     def list_controls(
         self,
-        window_title: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        window_title: str | None = None,
+    ) -> dict[str, Any]:
         """Return all interactive controls in the focused or named window.
 
         Delegates to ``core.ui_tree.list_controls``.
@@ -498,6 +518,7 @@ class UIAActionPipeline:
         if self._uia_ok():
             try:
                 from core.ui_tree import list_controls as _list_controls
+
                 controls = _list_controls(window_title)
                 return _result(True, controls, "uia")
             except Exception as exc:
@@ -508,8 +529,8 @@ class UIAActionPipeline:
     def get_element_bounds(
         self,
         name: str,
-        window_title: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        window_title: str | None = None,
+    ) -> dict[str, Any]:
         """Return ``{x, y, width, height, center_x, center_y}`` for a control.
 
         Uses UIA bounding rectangle.
@@ -524,7 +545,7 @@ class UIAActionPipeline:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _control_to_dict(ctrl) -> Dict[str, Any]:
+    def _control_to_dict(ctrl) -> dict[str, Any]:
         """Convert a uiautomation Control to an info dict."""
         try:
             rect = ctrl.BoundingRectangle
@@ -549,14 +570,15 @@ class UIAActionPipeline:
     @staticmethod
     def _uia_bounds(
         name: str,
-        control_type: Optional[str] = None,
-        window_title: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        control_type: str | None = None,
+        window_title: str | None = None,
+    ) -> dict[str, Any] | None:
         """Try to get bounding rectangle for a named control via UIA."""
         if not _probe_uia():
             return None
         try:
             from core.ui_tree import _find_control
+
             ctrl = _find_control(
                 name=name,
                 control_type=control_type,
@@ -579,8 +601,8 @@ class UIAActionPipeline:
     @staticmethod
     def _hwnd_for_element(
         name: str,
-        window_title: Optional[str] = None,
-    ) -> Optional[int]:
+        window_title: str | None = None,
+    ) -> int | None:
         """Best-effort: find the HWND of the native window containing an element."""
         if not _probe_postmessage():
             return None
@@ -597,8 +619,8 @@ class UIAActionPipeline:
 
     def _uia_menu_walk(
         self,
-        segments: List[str],
-        window_title: Optional[str] = None,
+        segments: list[str],
+        window_title: str | None = None,
     ) -> bool:
         """Walk a menu path via UIA, expanding / invoking each segment.
 

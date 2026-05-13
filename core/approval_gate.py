@@ -14,35 +14,35 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class ApprovalDecision(Enum):
     APPROVE = "approve"
-    MODIFY = "modify"      # user changed params before approving
-    SKIP = "skip"          # skip this action, continue agent loop
-    ABORT = "abort"        # stop the entire run
+    MODIFY = "modify"  # user changed params before approving
+    SKIP = "skip"  # skip this action, continue agent loop
+    ABORT = "abort"  # stop the entire run
 
 
 class ApprovalRequest:
     """Represents a pending action awaiting user approval."""
 
-    def __init__(self, action: Dict[str, Any], step_num: int):
+    def __init__(self, action: dict[str, Any], step_num: int):
         self.action = action
         self.step_num = step_num
-        self.decision: Optional[ApprovalDecision] = None
-        self.modified_action: Optional[Dict[str, Any]] = None
+        self.decision: ApprovalDecision | None = None
+        self.modified_action: dict[str, Any] | None = None
         self._event = threading.Event()
 
     def wait(self, timeout: float = 300) -> bool:
         """Block until the user responds or timeout. Returns True if decided."""
         return self._event.wait(timeout=timeout)
 
-    def respond(self, decision: ApprovalDecision,
-                modified_action: Optional[Dict[str, Any]] = None):
+    def respond(self, decision: ApprovalDecision, modified_action: dict[str, Any] | None = None):
         """Called by the UI/API to submit the user's decision."""
         self.decision = decision
         self.modified_action = modified_action
@@ -68,15 +68,15 @@ class ApprovalGate:
 
     def __init__(self, enabled: bool = False):
         self.enabled = enabled
-        self._callback: Optional[Callable] = None
-        self._current_request: Optional[ApprovalRequest] = None
+        self._callback: Callable | None = None
+        self._current_request: ApprovalRequest | None = None
         self._stats = {"approved": 0, "skipped": 0, "modified": 0, "aborted": 0}
 
     def set_callback(self, callback: Callable[[ApprovalRequest], None]):
         """Set a callback to notify the UI when a request is pending."""
         self._callback = callback
 
-    def evaluate(self, action: Dict[str, Any], step_num: int) -> tuple:
+    def evaluate(self, action: dict[str, Any], step_num: int) -> tuple:
         """
         Evaluate an action through the approval gate.
 
@@ -88,8 +88,15 @@ class ApprovalGate:
             return ApprovalDecision.APPROVE, action
 
         # Auto-approve safe read-only actions
-        safe_actions = {"screenshot", "wait", "read_text", "list_controls",
-                        "find_element", "get_element_bounds", "brief_system_info"}
+        safe_actions = {
+            "screenshot",
+            "wait",
+            "read_text",
+            "list_controls",
+            "find_element",
+            "get_element_bounds",
+            "brief_system_info",
+        }
         if action.get("action") in safe_actions:
             return ApprovalDecision.APPROVE, action
 
@@ -130,17 +137,16 @@ class ApprovalGate:
         else:
             return ApprovalDecision.APPROVE, action
 
-    def respond_current(self, decision: ApprovalDecision,
-                        modified_action: Optional[Dict] = None):
+    def respond_current(self, decision: ApprovalDecision, modified_action: dict | None = None):
         """Respond to the currently pending request (for API use)."""
         if self._current_request and not self._current_request.resolved:
             self._current_request.respond(decision, modified_action)
 
     @property
-    def pending_request(self) -> Optional[ApprovalRequest]:
+    def pending_request(self) -> ApprovalRequest | None:
         return self._current_request
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         return dict(self._stats)
 
     def reset_stats(self):

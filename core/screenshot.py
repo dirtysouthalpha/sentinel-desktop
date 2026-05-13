@@ -11,7 +11,6 @@ import base64
 import io
 import logging
 import time
-from typing import List, Optional, Tuple
 
 import pyautogui
 from PIL import Image
@@ -21,6 +20,7 @@ logger = logging.getLogger(__name__)
 # Try to load mss once; fall back to pyautogui if unavailable.
 try:
     import mss  # type: ignore
+
     _HAS_MSS = True
 except Exception:
     _HAS_MSS = False
@@ -30,7 +30,8 @@ except Exception:
 # Monitor discovery
 # ---------------------------------------------------------------------------
 
-def resolve_monitor(monitor) -> Optional[int]:
+
+def resolve_monitor(monitor) -> int | None:
     """Resolve a config ``monitor`` value (possibly ``"auto"``) to a real index.
 
     ``"auto"`` returns the index of the monitor containing the foreground
@@ -46,6 +47,7 @@ def resolve_monitor(monitor) -> Optional[int]:
         return None
     try:
         from core import window_manager as wm
+
         rect = wm.get_focused_window_rect()
         if rect is None:
             return 1
@@ -53,8 +55,10 @@ def resolve_monitor(monitor) -> Optional[int]:
         cy = rect[1] + rect[3] // 2
         with mss.mss() as sct:
             for i, m in enumerate(sct.monitors[1:], start=1):  # skip [0]=virtual
-                if (m["left"] <= cx < m["left"] + m["width"]
-                        and m["top"] <= cy < m["top"] + m["height"]):
+                if (
+                    m["left"] <= cx < m["left"] + m["width"]
+                    and m["top"] <= cy < m["top"] + m["height"]
+                ):
                     return i
         return 1
     except Exception as exc:
@@ -62,7 +66,7 @@ def resolve_monitor(monitor) -> Optional[int]:
         return 1
 
 
-def get_capture_offset(monitor=None) -> Tuple[int, int]:
+def get_capture_offset(monitor=None) -> tuple[int, int]:
     """Return the (x, y) absolute-screen offset of a captured image's origin.
 
     Accepts the same values as ``monitor`` config: int index, ``"auto"``,
@@ -86,7 +90,7 @@ def get_capture_offset(monitor=None) -> Tuple[int, int]:
     return (0, 0)
 
 
-def list_monitors() -> List[dict]:
+def list_monitors() -> list[dict]:
     """Return a list of monitors as ``{index, x, y, width, height, is_primary}``.
 
     When mss is available we use its monitor table (index 0 is the union of
@@ -99,15 +103,17 @@ def list_monitors() -> List[dict]:
                 mons = sct.monitors
             out = []
             for i, m in enumerate(mons):
-                out.append({
-                    "index": i,
-                    "x": m.get("left", 0),
-                    "y": m.get("top", 0),
-                    "width": m.get("width", 0),
-                    "height": m.get("height", 0),
-                    "is_primary": i == 1,  # mss convention
-                    "is_virtual": i == 0,  # union-of-all
-                })
+                out.append(
+                    {
+                        "index": i,
+                        "x": m.get("left", 0),
+                        "y": m.get("top", 0),
+                        "width": m.get("width", 0),
+                        "height": m.get("height", 0),
+                        "is_primary": i == 1,  # mss convention
+                        "is_virtual": i == 0,  # union-of-all
+                    }
+                )
             return out
         except Exception as exc:
             logger.debug("mss.monitors failed, falling back: %s", exc)
@@ -116,16 +122,23 @@ def list_monitors() -> List[dict]:
         w, h = pyautogui.size()
     except Exception:
         w, h = 0, 0
-    return [{
-        "index": 1, "x": 0, "y": 0,
-        "width": w, "height": h,
-        "is_primary": True, "is_virtual": False,
-    }]
+    return [
+        {
+            "index": 1,
+            "x": 0,
+            "y": 0,
+            "width": w,
+            "height": h,
+            "is_primary": True,
+            "is_virtual": False,
+        }
+    ]
 
 
 # ---------------------------------------------------------------------------
 # Capture
 # ---------------------------------------------------------------------------
+
 
 def capture_screen(monitor=None) -> Image.Image:
     """Capture the screen → PIL Image.
@@ -147,14 +160,15 @@ def capture_screen(monitor=None) -> Image.Image:
                     return Image.frombytes("RGB", raw.size, raw.rgb)
                 logger.warning(
                     "monitor index %s out of range (have %d) — using primary",
-                    monitor, len(mons),
+                    monitor,
+                    len(mons),
                 )
         except Exception as exc:
             logger.warning("mss capture failed, falling back: %s", exc)
     return pyautogui.screenshot()
 
 
-def capture_focused_window() -> Optional[Image.Image]:
+def capture_focused_window() -> Image.Image | None:
     """Capture the *target* window's pixels — the foreground window, unless
     that's the Sentinel Desktop GUI itself (in which case fall back to the
     most recent other app).
@@ -162,6 +176,7 @@ def capture_focused_window() -> Optional[Image.Image]:
     Returns None only when no suitable window can be found.
     """
     from core import window_manager as wm
+
     target = wm.get_target_window_rect()
     if target is None:
         # Last-resort fallback: try the raw focused window even if it's self.
@@ -176,12 +191,13 @@ def capture_focused_window() -> Optional[Image.Image]:
     return capture_region(x, y, w, h)
 
 
-def capture_focused_window_with_title() -> Optional[tuple]:
+def capture_focused_window_with_title() -> tuple | None:
     """Like capture_focused_window but also returns the title we picked.
 
     Returns (PIL.Image, title) or None.
     """
     from core import window_manager as wm
+
     target = wm.get_target_window_rect()
     if target is None:
         rect = wm.get_focused_window_rect()
@@ -196,16 +212,18 @@ def capture_focused_window_with_title() -> Optional[tuple]:
     return (capture_region(x, y, w, h), title)
 
 
-def capture_window(title: str) -> Optional[Image.Image]:
+def capture_window(title: str) -> Image.Image | None:
     """Capture pixels belonging to a window whose title contains *title*.
 
     Auto-restores the window if it's minimized so we don't capture blank
     pixels from the off-screen minimized rect (-32000, -32000).
     """
     from core import window_manager as wm
+
     # Pre-flight: try to surface the window first.
     wm.restore_window(title)
     import time
+
     time.sleep(0.15)  # tiny grace period for the window manager to apply.
     rect = wm.get_window_rect(title)
     if rect is None:
@@ -228,8 +246,7 @@ def capture_region(x: int, y: int, w: int, h: int) -> Image.Image:
     return pyautogui.screenshot(region=(x, y, w, h))
 
 
-def capture_to_base64(quality: int = 85, fmt: str = "PNG",
-                      monitor: Optional[int] = None) -> str:
+def capture_to_base64(quality: int = 85, fmt: str = "PNG", monitor: int | None = None) -> str:
     """Capture screen → base64-encoded image string.
 
     Defaults to PNG so the bytes match the ``image/png`` media type used by
@@ -242,8 +259,9 @@ def capture_to_base64(quality: int = 85, fmt: str = "PNG",
     return image_to_base64(img, quality=quality, fmt=fmt)
 
 
-def capture_region_to_base64(x: int, y: int, w: int, h: int,
-                             quality: int = 85, fmt: str = "PNG") -> str:
+def capture_region_to_base64(
+    x: int, y: int, w: int, h: int, quality: int = 85, fmt: str = "PNG"
+) -> str:
     """Capture a screen region → base64 image (PNG by default)."""
     img = capture_region(x, y, w, h)
     return image_to_base64(img, quality=quality, fmt=fmt)
@@ -269,8 +287,10 @@ def base64_to_image(b64_str: str) -> Image.Image:
 # Template matching
 # ---------------------------------------------------------------------------
 
-def find_template(template_path: str, confidence: float = 0.8,
-                  monitor: Optional[int] = None) -> Optional[Tuple[int, int]]:
+
+def find_template(
+    template_path: str, confidence: float = 0.8, monitor: int | None = None
+) -> tuple[int, int] | None:
     """Find a template image on screen. Returns center (x, y) or None."""
     try:
         import cv2
@@ -299,10 +319,13 @@ def find_template(template_path: str, confidence: float = 0.8,
     return None
 
 
-def wait_for_template(template_path: str, timeout: float = 30,
-                      confidence: float = 0.8,
-                      poll_interval: float = 1.0,
-                      monitor: Optional[int] = None) -> Optional[Tuple[int, int]]:
+def wait_for_template(
+    template_path: str,
+    timeout: float = 30,
+    confidence: float = 0.8,
+    poll_interval: float = 1.0,
+    monitor: int | None = None,
+) -> tuple[int, int] | None:
     """Poll until a template appears on screen or timeout."""
     start = time.time()
     while time.time() - start < timeout:

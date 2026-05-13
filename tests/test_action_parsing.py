@@ -1,7 +1,6 @@
 """Tests for AgentEngine._parse_action across the formats LLMs return."""
-import json
 
-import pytest
+import json
 
 from core.engine import AgentEngine, _find_balanced_json_with_key
 
@@ -33,32 +32,40 @@ def test_parse_json_with_nested_braces():
 
 
 def test_parse_openai_tool_calls_envelope():
-    payload = json.dumps({
-        "tool_calls": [{
-            "id": "call_1",
-            "type": "function",
-            "function": {
-                "name": "hotkey",
-                "arguments": json.dumps({"keys": ["ctrl", "c"]}),
-            },
-        }],
-    })
+    payload = json.dumps(
+        {
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": "hotkey",
+                        "arguments": json.dumps({"keys": ["ctrl", "c"]}),
+                    },
+                }
+            ],
+        }
+    )
     out = parse(payload)
     assert out == {"action": "hotkey", "keys": ["ctrl", "c"]}
 
 
 def test_parse_anthropic_style_tool_call():
     # LLMClient normalises Anthropic tool_use blocks into the OpenAI envelope.
-    payload = json.dumps({
-        "tool_calls": [{
-            "id": "x",
-            "type": "function",
-            "function": {
-                "name": "finish",
-                "arguments": json.dumps({"summary": "all done"}),
-            },
-        }],
-    })
+    payload = json.dumps(
+        {
+            "tool_calls": [
+                {
+                    "id": "x",
+                    "type": "function",
+                    "function": {
+                        "name": "finish",
+                        "arguments": json.dumps({"summary": "all done"}),
+                    },
+                }
+            ],
+        }
+    )
     out = parse(payload)
     assert out["action"] == "finish"
     assert out["summary"] == "all done"

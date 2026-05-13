@@ -1,10 +1,9 @@
 """Tests for ActionExecutor — sensitive filter, dry-run, unknown actions."""
-import pytest
-
 # Avoid importing pyautogui-touching modules by patching DesktopEngine at
 # import time. The test executes only the routing logic that doesn't call
 # into pyautogui.
-from unittest import mock
+
+import pytest
 
 import core.desktop as desktop_mod
 
@@ -33,6 +32,7 @@ class FakeDesktop:
 def fake_executor(monkeypatch):
     monkeypatch.setattr(desktop_mod, "DesktopEngine", FakeDesktop)
     from core.action_executor import ActionExecutor
+
     return ActionExecutor
 
 
@@ -84,16 +84,17 @@ def test_pre_action_callback_fires_before_dispatch(fake_executor):
 def test_pre_action_callback_failure_does_not_break_dispatch(fake_executor):
     def boom(_a):
         raise RuntimeError("kaboom")
+
     ex = fake_executor(pre_action_callback=boom)
     out = ex.execute_sync({"action": "click", "x": 1, "y": 2})
     assert out["success"] is True
 
 
-def test_click_text_handler_returns_text_not_found_without_ocr(fake_executor,
-                                                               monkeypatch):
+def test_click_text_handler_returns_text_not_found_without_ocr(fake_executor, monkeypatch):
     # When Tesseract isn't available, find_text returns None and the
     # handler must report a clean error rather than crashing.
     from core import ocr
+
     monkeypatch.setattr(ocr, "_have_tesseract", lambda: False)
     ex = fake_executor()
     out = ex.execute_sync({"action": "click_text", "text": "Send"})

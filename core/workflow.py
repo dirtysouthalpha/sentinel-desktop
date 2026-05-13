@@ -10,10 +10,10 @@ import logging
 import os
 import re
 import time
-import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,29 +40,29 @@ class WorkflowResult:
     steps_completed: int = 0
     steps_total: int = 0
     error: str = ""
-    outputs: Dict[str, Any] = field(default_factory=dict)
+    outputs: dict[str, Any] = field(default_factory=dict)
     elapsed_seconds: float = 0.0
-    step_results: List[Dict[str, Any]] = field(default_factory=list)
+    step_results: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
 class WorkflowStep:
     id: str
     type: str
-    path: Optional[str] = None
-    params: Dict[str, Any] = field(default_factory=dict)
-    action: Optional[Dict[str, Any]] = None
-    check: Optional[str] = None
-    true_next: Optional[str] = None
-    false_next: Optional[str] = None
-    over: Optional[str] = None
-    body_step: Optional[str] = None
+    path: str | None = None
+    params: dict[str, Any] = field(default_factory=dict)
+    action: dict[str, Any] | None = None
+    check: str | None = None
+    true_next: str | None = None
+    false_next: str | None = None
+    over: str | None = None
+    body_step: str | None = None
     delay_seconds: float = 0.0
     message: str = ""
     level: str = "info"
     error_policy: str = "stop"
     max_retries: int = 0
-    next_step: Optional[str] = None
+    next_step: str | None = None
 
 
 class WorkflowEngine:
@@ -71,9 +71,9 @@ class WorkflowEngine:
     def __init__(self, action_executor=None, script_engine=None):
         self.executor = action_executor
         self.script_engine = script_engine
-        self._variables: Dict[str, Any] = {}
-        self._step_outputs: Dict[str, Any] = {}
-        self._callbacks: Dict[str, Callable] = {}
+        self._variables: dict[str, Any] = {}
+        self._step_outputs: dict[str, Any] = {}
+        self._callbacks: dict[str, Callable] = {}
 
     def set_callback(self, event: str, fn: Callable):
         self._callbacks[event] = fn
@@ -87,7 +87,7 @@ class WorkflowEngine:
                 logger.warning("Callback %s error: %s", event, exc)
 
     @staticmethod
-    def resolve_variables(text: str, variables: Dict, step_outputs: Dict) -> str:
+    def resolve_variables(text: str, variables: dict, step_outputs: dict) -> str:
         """Replace {{var}} and {{step.sN.output.field}} references."""
         if not isinstance(text, str):
             return text
@@ -165,7 +165,7 @@ class WorkflowEngine:
 
         return bool(expr)
 
-    def run_workflow(self, path: str, variables: Dict[str, Any] = None) -> WorkflowResult:
+    def run_workflow(self, path: str, variables: dict[str, Any] = None) -> WorkflowResult:
         """Execute a workflow from a JSON file."""
         start_time = time.time()
 
@@ -173,7 +173,7 @@ class WorkflowEngine:
             return WorkflowResult(success=False, error=f"Workflow not found: {path}")
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 wf_data = json.load(f)
         except (json.JSONDecodeError, OSError) as exc:
             return WorkflowResult(success=False, error=f"Failed to load workflow: {exc}")
@@ -188,24 +188,26 @@ class WorkflowEngine:
 
         steps = []
         for s in steps_data:
-            steps.append(WorkflowStep(
-                id=s.get("id", f"s{len(steps)+1}"),
-                type=s.get("type", "action"),
-                path=s.get("path"),
-                params=s.get("params", {}),
-                action=s.get("action"),
-                check=s.get("check"),
-                true_next=s.get("true_next"),
-                false_next=s.get("false_next"),
-                over=s.get("over"),
-                body_step=s.get("body_step"),
-                delay_seconds=s.get("delay_seconds", 0),
-                message=s.get("message", ""),
-                level=s.get("level", "info"),
-                error_policy=s.get("error_policy", "stop"),
-                max_retries=s.get("max_retries", 0),
-                next_step=s.get("next_step"),
-            ))
+            steps.append(
+                WorkflowStep(
+                    id=s.get("id", f"s{len(steps) + 1}"),
+                    type=s.get("type", "action"),
+                    path=s.get("path"),
+                    params=s.get("params", {}),
+                    action=s.get("action"),
+                    check=s.get("check"),
+                    true_next=s.get("true_next"),
+                    false_next=s.get("false_next"),
+                    over=s.get("over"),
+                    body_step=s.get("body_step"),
+                    delay_seconds=s.get("delay_seconds", 0),
+                    message=s.get("message", ""),
+                    level=s.get("level", "info"),
+                    error_policy=s.get("error_policy", "stop"),
+                    max_retries=s.get("max_retries", 0),
+                    next_step=s.get("next_step"),
+                )
+            )
 
         result = WorkflowResult(
             steps_total=len(steps),
@@ -238,13 +240,17 @@ class WorkflowEngine:
                 next_id = step.next_step
 
                 if step.type == StepType.CONDITION:
-                    expr = self.resolve_variables(step.check or "", self._variables, self._step_outputs)
+                    expr = self.resolve_variables(
+                        step.check or "", self._variables, self._step_outputs
+                    )
                     cond_result = self.evaluate_condition(expr)
                     next_id = step.true_next if cond_result else step.false_next
                     logger.info("Condition [%s] = %s → next=%s", expr, cond_result, next_id)
 
                 elif step.type == StepType.LOOP:
-                    over_ref = self.resolve_variables(step.over or "", self._variables, self._step_outputs)
+                    over_ref = self.resolve_variables(
+                        step.over or "", self._variables, self._step_outputs
+                    )
                     items = self._parse_list(over_ref)
                     body = step_map.get(step.body_step)
                     if body and items:
@@ -255,11 +261,14 @@ class WorkflowEngine:
                             try:
                                 lr = self._execute_step(body)
                                 self._step_outputs[f"{step.id}_loop_{items.index(item)}"] = lr
-                            except Exception as exc:
+                            except Exception:
                                 if body.error_policy == "stop":
                                     loop_success = False
                                     break
-                        self._step_outputs[step.id] = {"success": loop_success, "items_processed": len(items)}
+                        self._step_outputs[step.id] = {
+                            "success": loop_success,
+                            "items_processed": len(items),
+                        }
 
                 current = next_id
 
@@ -278,7 +287,9 @@ class WorkflowEngine:
                     retried = False
                     while retries < step.max_retries:
                         retries += 1
-                        logger.info("Retrying step [%s] attempt %d/%d", step.id, retries, step.max_retries)
+                        logger.info(
+                            "Retrying step [%s] attempt %d/%d", step.id, retries, step.max_retries
+                        )
                         try:
                             sr = self._execute_step(step)
                             self._step_outputs[step.id] = sr
@@ -300,7 +311,7 @@ class WorkflowEngine:
         self._fire("on_workflow_complete", result)
         return result
 
-    def _execute_step(self, step: WorkflowStep) -> Dict[str, Any]:
+    def _execute_step(self, step: WorkflowStep) -> dict[str, Any]:
         """Execute a single workflow step."""
         if step.type == StepType.SCRIPT:
             return self._exec_script(step)
@@ -320,7 +331,7 @@ class WorkflowEngine:
         else:
             return {"success": False, "error": f"Unknown step type: {step.type}"}
 
-    def _exec_script(self, step: WorkflowStep) -> Dict[str, Any]:
+    def _exec_script(self, step: WorkflowStep) -> dict[str, Any]:
         """Run a recorded script."""
         if not self.script_engine:
             return {"success": False, "error": "No script engine available"}
@@ -338,7 +349,7 @@ class WorkflowEngine:
             "error": result.error,
         }
 
-    def _exec_action(self, step: WorkflowStep) -> Dict[str, Any]:
+    def _exec_action(self, step: WorkflowStep) -> dict[str, Any]:
         """Execute a single action via the action executor."""
         if not self.executor:
             return {"success": False, "error": "No action executor available"}
@@ -350,7 +361,7 @@ class WorkflowEngine:
 
         return self.executor.execute_sync(action)
 
-    def _exec_sub_workflow(self, step: WorkflowStep) -> Dict[str, Any]:
+    def _exec_sub_workflow(self, step: WorkflowStep) -> dict[str, Any]:
         """Run a nested workflow."""
         path = self.resolve_variables(step.path or "", self._variables, self._step_outputs)
         params = {}
@@ -365,10 +376,11 @@ class WorkflowEngine:
             "error": sub_result.error,
         }
 
-    def _exec_notify(self, step: WorkflowStep) -> Dict[str, Any]:
+    def _exec_notify(self, step: WorkflowStep) -> dict[str, Any]:
         """Send a notification."""
         try:
             from core.notifications import get_notification_manager
+
             nm = get_notification_manager()
             msg = self.resolve_variables(step.message, self._variables, self._step_outputs)
             nm.notify(title="Workflow", message=msg, level=step.level)
@@ -392,14 +404,14 @@ class WorkflowEngine:
         return [value] if value else []
 
     @staticmethod
-    def save_workflow(path: str, workflow_data: Dict[str, Any]) -> None:
+    def save_workflow(path: str, workflow_data: dict[str, Any]) -> None:
         """Save a workflow definition to JSON."""
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(workflow_data, f, indent=2, ensure_ascii=False)
 
     @staticmethod
-    def list_workflows(directory: str = "workflows") -> List[Dict[str, Any]]:
+    def list_workflows(directory: str = "workflows") -> list[dict[str, Any]]:
         """List all workflow files in a directory."""
         workflows = []
         if not os.path.isdir(directory):
@@ -409,15 +421,17 @@ class WorkflowEngine:
                 continue
             fpath = os.path.join(directory, fname)
             try:
-                with open(fpath, "r", encoding="utf-8") as f:
+                with open(fpath, encoding="utf-8") as f:
                     data = json.load(f)
-                workflows.append({
-                    "name": data.get("name", fname),
-                    "description": data.get("description", ""),
-                    "path": fpath,
-                    "steps": len(data.get("steps", [])),
-                    "variables": list(data.get("variables", {}).keys()),
-                })
+                workflows.append(
+                    {
+                        "name": data.get("name", fname),
+                        "description": data.get("description", ""),
+                        "path": fpath,
+                        "steps": len(data.get("steps", [])),
+                        "variables": list(data.get("variables", {}).keys()),
+                    }
+                )
             except Exception:
                 logger.warning("Skipping invalid workflow: %s", fpath)
         return workflows

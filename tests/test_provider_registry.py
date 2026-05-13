@@ -1,5 +1,4 @@
 """Tests for the provider registry catalog."""
-import pytest
 
 from core.provider_registry import (
     PROVIDERS,
@@ -12,11 +11,31 @@ from core.provider_registry import (
 
 def test_catalog_has_expected_providers():
     expected = {
-        "openai", "anthropic", "google", "xai", "deepseek", "openrouter",
-        "groq", "mistral", "together", "fireworks", "cerebras", "perplexity",
-        "zai", "minimax", "moonshot", "qwen", "cohere", "nvidia",
-        "huggingface", "github", "deepinfra", "azure_openai",
-        "ollama", "lmstudio", "custom",
+        "openai",
+        "anthropic",
+        "google",
+        "xai",
+        "deepseek",
+        "openrouter",
+        "groq",
+        "mistral",
+        "together",
+        "fireworks",
+        "cerebras",
+        "perplexity",
+        "zai",
+        "minimax",
+        "moonshot",
+        "qwen",
+        "cohere",
+        "nvidia",
+        "huggingface",
+        "github",
+        "deepinfra",
+        "azure_openai",
+        "ollama",
+        "lmstudio",
+        "custom",
     }
     assert expected.issubset(set(PROVIDERS.keys()))
 

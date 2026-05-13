@@ -27,10 +27,9 @@ from __future__ import annotations
 
 import json
 import logging
-import base64
 import random
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -91,11 +90,11 @@ class LLMClient:
         provider: str,
         api_key: str,
         model: str,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.1,
-        custom_url: Optional[str] = None,
+        custom_url: str | None = None,
         timeout: int = DEFAULT_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
@@ -150,7 +149,7 @@ class LLMClient:
 
         headers = self._build_headers(provider_config, api_key)
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "max_tokens": max_tokens,
@@ -162,12 +161,19 @@ class LLMClient:
 
         logger.info(
             "chat → %s/%s (%d msgs, %d tools)",
-            provider, model, len(messages), len(tools or []),
+            provider,
+            model,
+            len(messages),
+            len(tools or []),
         )
 
         data = self._post_with_retry(
-            chat_url, headers, payload, timeout,
-            max_retries=max_retries, base_delay=retry_base_delay,
+            chat_url,
+            headers,
+            payload,
+            timeout,
+            max_retries=max_retries,
+            base_delay=retry_base_delay,
             provider_label=provider,
         )
 
@@ -176,9 +182,7 @@ class LLMClient:
         # "choices" key — we surface a clear LLMError instead of letting a
         # KeyError bubble up to the GUI.
         if not isinstance(data, dict):
-            raise LLMError(
-                f"{provider}: unexpected response type {type(data).__name__}"
-            )
+            raise LLMError(f"{provider}: unexpected response type {type(data).__name__}")
         if "error" in data and not data.get("choices"):
             err = data["error"]
             if isinstance(err, dict):
@@ -187,10 +191,7 @@ class LLMClient:
 
         choices = data.get("choices") or []
         if not choices:
-            raise LLMError(
-                f"{provider}: response had no 'choices'. Body: "
-                f"{json.dumps(data)[:300]}"
-            )
+            raise LLMError(f"{provider}: response had no 'choices'. Body: {json.dumps(data)[:300]}")
 
         choice = choices[0] if isinstance(choices[0], dict) else {}
         msg = choice.get("message") or choice.get("delta") or {}
@@ -204,9 +205,7 @@ class LLMClient:
         # Some providers nest the text under "content" as a list of blocks.
         content = msg.get("content", "")
         if isinstance(content, list):
-            content = " ".join(
-                str(b.get("text", "")) for b in content if isinstance(b, dict)
-            )
+            content = " ".join(str(b.get("text", "")) for b in content if isinstance(b, dict))
         return content or ""
 
     def chat_with_vision(
@@ -214,12 +213,12 @@ class LLMClient:
         provider: str,
         api_key: str,
         model: str,
-        messages: List[Dict[str, Any]],
+        messages: list[dict[str, Any]],
         image_base64: str,
         prompt: str = "Describe this screenshot.",
         max_tokens: int = 4096,
         temperature: float = 0.1,
-        custom_url: Optional[str] = None,
+        custom_url: str | None = None,
     ) -> str:
         """Send a chat request with a screenshot image.
 
@@ -247,7 +246,8 @@ class LLMClient:
 
         if provider_config.get("anthropic_native"):
             vision_message = self._make_anthropic_vision_message(
-                image_base64, prompt,
+                image_base64,
+                prompt,
             )
         else:
             vision_message = {
@@ -279,8 +279,8 @@ class LLMClient:
         self,
         provider: str,
         api_key: str = "",
-        custom_url: Optional[str] = None,
-    ) -> List[str]:
+        custom_url: str | None = None,
+    ) -> list[str]:
         """Convenience wrapper around :func:`fetch_models`.
 
         Returns a sorted list of model ID strings for the given provider.
@@ -295,8 +295,8 @@ class LLMClient:
         self,
         api_key: str,
         model: str,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
         max_tokens: int,
         temperature: float,
         timeout: int,
@@ -316,7 +316,7 @@ class LLMClient:
 
         # Convert messages: extract system prompt, build Anthropic-style list.
         system_msg = ""
-        converted_messages: List[Dict[str, Any]] = []
+        converted_messages: list[dict[str, Any]] = []
         for m in messages:
             role = m.get("role", "")
             content = m.get("content", "")
@@ -325,7 +325,7 @@ class LLMClient:
             elif role in ("user", "assistant"):
                 converted_messages.append({"role": role, "content": content})
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": model,
             "messages": converted_messages,
             "max_tokens": max_tokens,
@@ -339,15 +339,19 @@ class LLMClient:
         logger.info("chat → anthropic/%s", model)
 
         data = self._post_with_retry(
-            chat_url, headers, payload, timeout,
-            max_retries=max_retries, base_delay=retry_base_delay,
+            chat_url,
+            headers,
+            payload,
+            timeout,
+            max_retries=max_retries,
+            base_delay=retry_base_delay,
             provider_label="anthropic",
         )
 
         # Extract text / tool-use from the response.
         content_blocks = data.get("content", [])
-        text_parts: List[str] = []
-        tool_use_blocks: List[Dict[str, Any]] = []
+        text_parts: list[str] = []
+        tool_use_blocks: list[dict[str, Any]] = []
 
         for block in content_blocks:
             block_type = block.get("type", "")
@@ -360,14 +364,16 @@ class LLMClient:
             # Normalise to OpenAI-style tool_calls payload.
             openai_tool_calls = []
             for tb in tool_use_blocks:
-                openai_tool_calls.append({
-                    "id": tb.get("id", ""),
-                    "type": "function",
-                    "function": {
-                        "name": tb.get("name", ""),
-                        "arguments": json.dumps(tb.get("input", {})),
-                    },
-                })
+                openai_tool_calls.append(
+                    {
+                        "id": tb.get("id", ""),
+                        "type": "function",
+                        "function": {
+                            "name": tb.get("name", ""),
+                            "arguments": json.dumps(tb.get("input", {})),
+                        },
+                    }
+                )
             return json.dumps({"tool_calls": openai_tool_calls})
 
         return "\n".join(text_parts).strip()
@@ -383,14 +389,14 @@ class LLMClient:
     def _post_with_retry(
         self,
         url: str,
-        headers: Dict[str, str],
-        payload: Dict[str, Any],
+        headers: dict[str, str],
+        payload: dict[str, Any],
         timeout: int,
         *,
         max_retries: int,
         base_delay: float,
         provider_label: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """POST a JSON payload with exponential backoff for transient errors.
 
         Raises:
@@ -398,8 +404,8 @@ class LLMClient:
                 or on a non-retriable error.
         """
         attempt = 0
-        last_exc: Optional[Exception] = None
-        last_status: Optional[int] = None
+        last_exc: Exception | None = None
+        last_status: int | None = None
         last_body: str = ""
 
         while attempt <= max_retries:
@@ -409,13 +415,18 @@ class LLMClient:
                 last_exc = exc
                 logger.warning(
                     "%s: request timed out (attempt %d/%d)",
-                    provider_label, attempt + 1, max_retries + 1,
+                    provider_label,
+                    attempt + 1,
+                    max_retries + 1,
                 )
             except requests.exceptions.ConnectionError as exc:
                 last_exc = exc
                 logger.warning(
                     "%s: connection error (attempt %d/%d): %s",
-                    provider_label, attempt + 1, max_retries + 1, exc,
+                    provider_label,
+                    attempt + 1,
+                    max_retries + 1,
+                    exc,
                 )
             else:
                 if resp.status_code < 400:
@@ -432,15 +443,18 @@ class LLMClient:
                     raise LLMError(_friendly_http_error(resp.status_code, last_body))
                 logger.warning(
                     "%s: HTTP %d (attempt %d/%d) — %s",
-                    provider_label, resp.status_code,
-                    attempt + 1, max_retries + 1, last_body[:120],
+                    provider_label,
+                    resp.status_code,
+                    attempt + 1,
+                    max_retries + 1,
+                    last_body[:120],
                 )
 
             if attempt >= max_retries:
                 break
             # Exponential backoff with jitter (capped at 30s).
-            delay = min(30.0, base_delay * (2 ** attempt))
-            delay += random.uniform(0, base_delay)
+            delay = min(30.0, base_delay * (2**attempt))
+            delay += random.uniform(0, base_delay)  # noqa: S311  (jitter, not security)
             time.sleep(delay)
             attempt += 1
 
@@ -453,11 +467,11 @@ class LLMClient:
 
     @staticmethod
     def _build_headers(
-        provider_config: Dict[str, Any],
+        provider_config: dict[str, Any],
         api_key: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Construct HTTP headers from the provider config and API key."""
-        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {"Content-Type": "application/json"}
         if not provider_config.get("no_auth") and api_key:
             auth_header = provider_config.get("auth_header", "Authorization")
             auth_prefix = provider_config.get("auth_prefix", "Bearer ")
@@ -466,8 +480,8 @@ class LLMClient:
 
     @staticmethod
     def _convert_tools_to_anthropic(
-        tools: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+        tools: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         """Convert OpenAI-style tool definitions to Anthropic format.
 
         OpenAI::
@@ -479,24 +493,29 @@ class LLMClient:
 
             {"name": ..., "description": ..., "input_schema": {...}}
         """
-        anthropic_tools: List[Dict[str, Any]] = []
+        anthropic_tools: list[dict[str, Any]] = []
         for tool in tools:
             func = tool.get("function", {})
-            anthropic_tools.append({
-                "name": func.get("name", ""),
-                "description": func.get("description", ""),
-                "input_schema": func.get("parameters", {
-                    "type": "object",
-                    "properties": {},
-                }),
-            })
+            anthropic_tools.append(
+                {
+                    "name": func.get("name", ""),
+                    "description": func.get("description", ""),
+                    "input_schema": func.get(
+                        "parameters",
+                        {
+                            "type": "object",
+                            "properties": {},
+                        },
+                    ),
+                }
+            )
         return anthropic_tools
 
     @staticmethod
     def _make_anthropic_vision_message(
         image_base64: str,
         prompt: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build a user message with a base64 image for Anthropic vision."""
         return {
             "role": "user",

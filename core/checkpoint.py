@@ -15,8 +15,8 @@ import logging
 import os
 import threading
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def _checkpoint_path(checkpoint_id: str) -> str:
     return os.path.join(_CHECKPOINT_DIR, f"{checkpoint_id}.json")
 
 
-def _discover_checkpoint_files() -> List[str]:
+def _discover_checkpoint_files() -> list[str]:
     """Return all checkpoint JSON files sorted newest-first by mtime."""
     if not os.path.isdir(_CHECKPOINT_DIR):
         return []
@@ -65,7 +65,7 @@ def _discover_checkpoint_files() -> List[str]:
     return files
 
 
-def _parse_timestamp(ts: str) -> Optional[datetime]:
+def _parse_timestamp(ts: str) -> datetime | None:
     """Safely parse an ISO-8601 timestamp string."""
     try:
         return datetime.fromisoformat(ts)
@@ -102,7 +102,7 @@ class CheckpointManager:
     All public methods are thread-safe.
     """
 
-    def __init__(self, checkpoint_dir: Optional[str] = None):
+    def __init__(self, checkpoint_dir: str | None = None):
         self._lock = threading.Lock()
         self._dir = checkpoint_dir or _CHECKPOINT_DIR
         os.makedirs(self._dir, exist_ok=True)
@@ -115,11 +115,11 @@ class CheckpointManager:
         self,
         goal: str,
         step_num: int,
-        agent_memory: List[Any],
-        last_screenshot_path: Optional[str],
-        config: Dict[str, Any],
+        agent_memory: list[Any],
+        last_screenshot_path: str | None,
+        config: dict[str, Any],
         status: str = "running",
-        messages: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]] | None = None,
     ) -> str:
         """Persist a checkpoint to disk.
 
@@ -146,7 +146,7 @@ class CheckpointManager:
         timestamp = _iso_now()
         goal_preview = goal[:200] if goal else ""
 
-        record: Dict[str, Any] = {
+        record: dict[str, Any] = {
             "id": checkpoint_id,
             "timestamp": timestamp,
             "goal": goal,
@@ -165,11 +165,12 @@ class CheckpointManager:
         with self._lock:
             try:
                 with open(dest, "w", encoding="utf-8") as fh:
-                    json.dump(record, fh, indent=2, default=str,
-                              ensure_ascii=False)
+                    json.dump(record, fh, indent=2, default=str, ensure_ascii=False)
                 logger.info(
                     "Checkpoint saved: %s  step=%d  status=%s",
-                    checkpoint_id[:8], step_num, status,
+                    checkpoint_id[:8],
+                    step_num,
+                    status,
                 )
             except Exception as exc:
                 logger.error("Failed to save checkpoint %s: %s", checkpoint_id[:8], exc)
@@ -180,7 +181,7 @@ class CheckpointManager:
     # Load helpers
     # ------------------------------------------------------------------
 
-    def load_latest(self) -> Optional[Dict[str, Any]]:
+    def load_latest(self) -> dict[str, Any] | None:
         """Load the most recent **non-stale** checkpoint.
 
         Returns ``None`` when there are no checkpoints, all are stale
@@ -196,7 +197,7 @@ class CheckpointManager:
 
         for fpath in files:
             try:
-                with open(fpath, "r", encoding="utf-8") as fh:
+                with open(fpath, encoding="utf-8") as fh:
                     record = json.load(fh)
             except Exception as exc:
                 logger.warning("Skipping corrupt checkpoint %s: %s", fpath, exc)
@@ -234,18 +235,18 @@ class CheckpointManager:
     # List / load / delete
     # ------------------------------------------------------------------
 
-    def list_checkpoints(self) -> List[Dict[str, Any]]:
+    def list_checkpoints(self) -> list[dict[str, Any]]:
         """Return a summary list of all checkpoints, newest-first.
 
         Each element is a dict with keys:
         ``id``, ``goal_preview``, ``step_num``, ``timestamp``, ``status``.
         """
         files = _discover_checkpoint_files()
-        result: List[Dict[str, Any]] = []
+        result: list[dict[str, Any]] = []
 
         for fpath in files:
             try:
-                with open(fpath, "r", encoding="utf-8") as fh:
+                with open(fpath, encoding="utf-8") as fh:
                     record = json.load(fh)
             except Exception:
                 continue
@@ -253,17 +254,19 @@ class CheckpointManager:
             if not isinstance(record, dict) or "id" not in record:
                 continue
 
-            result.append({
-                "id": record["id"],
-                "goal_preview": record.get("goal_preview", ""),
-                "step_num": record.get("step_num", 0),
-                "timestamp": record.get("timestamp", ""),
-                "status": record.get("status", "unknown"),
-            })
+            result.append(
+                {
+                    "id": record["id"],
+                    "goal_preview": record.get("goal_preview", ""),
+                    "step_num": record.get("step_num", 0),
+                    "timestamp": record.get("timestamp", ""),
+                    "status": record.get("status", "unknown"),
+                }
+            )
 
         return result
 
-    def load(self, checkpoint_id: str) -> Optional[Dict[str, Any]]:
+    def load(self, checkpoint_id: str) -> dict[str, Any] | None:
         """Load a full checkpoint by its ``id``.
 
         Returns the checkpoint dict, or ``None`` if not found or corrupt.
@@ -277,7 +280,7 @@ class CheckpointManager:
             return None
 
         try:
-            with open(fpath, "r", encoding="utf-8") as fh:
+            with open(fpath, encoding="utf-8") as fh:
                 record = json.load(fh)
             logger.info("Checkpoint loaded: %s", safe_id[:8])
             return record

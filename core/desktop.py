@@ -1,10 +1,12 @@
 """Core desktop automation: mouse, keyboard, screen capture."""
+
+import base64
+import io
+import logging
+import time
+
 import pyautogui
 from PIL import Image
-import io
-import base64
-import time
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,9 @@ class DesktopController:
         return pyautogui.position()
 
     def type_text(self, text, interval=0.02):
-        pyautogui.typewrite(text, interval=interval) if text.isascii() else pyautogui.write(text, interval=interval)
+        pyautogui.typewrite(text, interval=interval) if text.isascii() else pyautogui.write(
+            text, interval=interval
+        )
 
     def press_key(self, key):
         pyautogui.press(key)
@@ -68,6 +72,7 @@ class DesktopController:
         try:
             import cv2
             import numpy as np
+
             template = cv2.imread(template_path, 0)
             screen = cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2GRAY)
             result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)

@@ -10,19 +10,19 @@ reads state from the main thread.
 """
 
 import base64
-import json
-import time
-import hashlib
-import os
 import glob
+import hashlib
+import json
+import os
 import threading
+import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Script data model
 # ---------------------------------------------------------------------------
+
 
 class Script:
     """Represents a recorded (or loaded) automation script."""
@@ -32,24 +32,24 @@ class Script:
         name: str = "Untitled Script",
         description: str = "",
         author: str = "sentinel-desktop",
-        created: Optional[str] = None,
+        created: str | None = None,
         version: str = "3.0",
-        tags: Optional[List[str]] = None,
-        parameters: Optional[List[Dict[str, str]]] = None,
-        steps: Optional[List[Dict[str, Any]]] = None,
+        tags: list[str] | None = None,
+        parameters: list[dict[str, str]] | None = None,
+        steps: list[dict[str, Any]] | None = None,
     ) -> None:
         self.name = name
         self.description = description
         self.author = author
         self.created = created or datetime.now(timezone.utc).isoformat()
         self.version = version
-        self.tags: List[str] = tags or []
-        self.parameters: List[Dict[str, str]] = parameters or []
-        self.steps: List[Dict[str, Any]] = steps or []
+        self.tags: list[str] = tags or []
+        self.parameters: list[dict[str, str]] = parameters or []
+        self.steps: list[dict[str, Any]] = steps or []
 
     # -- serialisation -----------------------------------------------------
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return the script as a plain dict matching the canonical JSON schema."""
         return {
             "name": self.name,
@@ -76,7 +76,7 @@ class Script:
     @classmethod
     def load(cls, path: str) -> "Script":
         """Load a Script from a JSON file on disk."""
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         return cls(
             name=data.get("name", "Untitled Script"),
@@ -93,6 +93,7 @@ class Script:
 # ---------------------------------------------------------------------------
 # Action Recorder
 # ---------------------------------------------------------------------------
+
 
 class ActionRecorder:
     """
@@ -113,7 +114,7 @@ class ActionRecorder:
         self._lock = threading.Lock()
         self._recording: bool = False
         self._goal: str = ""
-        self._steps: List[Dict[str, Any]] = []
+        self._steps: list[dict[str, Any]] = []
         self._start_time: float = 0.0
         self._last_action_time: float = 0.0
 
@@ -144,7 +145,7 @@ class ActionRecorder:
             self._start_time = time.monotonic()
             self._last_action_time = self._start_time
 
-    def capture_action(self, action: Dict[str, Any], result: Dict[str, Any]) -> None:
+    def capture_action(self, action: dict[str, Any], result: dict[str, Any]) -> None:
         """
         Record a single action + its result captured from the agent loop.
 
@@ -177,7 +178,7 @@ class ActionRecorder:
             # Screenshot hash — first 8 hex chars of base64-encoded MD5
             screenshot_hash = self._compute_screenshot_hash(result.get("screenshot"))
 
-            step: Dict[str, Any] = {
+            step: dict[str, Any] = {
                 "timestamp": timestamp,
                 "action": action_type,
                 "params": dict(params),
@@ -230,25 +231,27 @@ class ActionRecorder:
         return Script.load(path)
 
     @staticmethod
-    def list_scripts(directory: str) -> List[Dict[str, Any]]:
+    def list_scripts(directory: str) -> list[dict[str, Any]]:
         """
         Scan *directory* for ``.json`` files and return a list of dicts
         ``{"name": ..., "description": ..., "tags": [...], "path": ...}``.
         """
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         pattern = os.path.join(directory, "*.json")
         for filepath in sorted(glob.glob(pattern)):
             try:
-                with open(filepath, "r", encoding="utf-8") as fh:
+                with open(filepath, encoding="utf-8") as fh:
                     data = json.load(fh)
                 if not isinstance(data, dict):
                     continue
-                results.append({
-                    "name": data.get("name", os.path.basename(filepath)),
-                    "description": data.get("description", ""),
-                    "tags": data.get("tags", []),
-                    "path": filepath,
-                })
+                results.append(
+                    {
+                        "name": data.get("name", os.path.basename(filepath)),
+                        "description": data.get("description", ""),
+                        "tags": data.get("tags", []),
+                        "path": filepath,
+                    }
+                )
             except (json.JSONDecodeError, OSError):
                 continue
         return results
@@ -256,7 +259,7 @@ class ActionRecorder:
     # -- description generation --------------------------------------------
 
     @staticmethod
-    def generate_description(steps: List[Dict[str, Any]]) -> str:
+    def generate_description(steps: list[dict[str, Any]]) -> str:
         """
         Auto-generate a natural-language description from recorded steps.
 
@@ -267,7 +270,7 @@ class ActionRecorder:
         if not steps:
             return "Empty recording — no actions captured."
 
-        action_parts: List[str] = []
+        action_parts: list[str] = []
         for idx, step in enumerate(steps):
             action = step.get("action", "unknown")
             params = step.get("params", {})
@@ -298,13 +301,12 @@ class ActionRecorder:
         if screenshot is None:
             return ""
         raw = screenshot if isinstance(screenshot, bytes) else str(screenshot).encode("utf-8")
-        md5_digest = hashlib.md5(raw).digest()
+        md5_digest = hashlib.md5(raw, usedforsecurity=False).digest()
         b64 = base64.b64encode(md5_digest).decode("ascii")
         return b64[:8]
 
     @staticmethod
-    def _summarise_result(action_type: str, params: Dict[str, Any],
-                          result: Dict[str, Any]) -> str:
+    def _summarise_result(action_type: str, params: dict[str, Any], result: dict[str, Any]) -> str:
         """Build a very short result summary when none is provided."""
         status = result.get("status", result.get("success", "done"))
         element = params.get("text", params.get("label", params.get("selector", "")))
@@ -313,8 +315,7 @@ class ActionRecorder:
         return f"{action_type} — {status}"
 
     @staticmethod
-    def _describe_step(action_type: str, params: Dict[str, Any],
-                       result_summary: str) -> str:
+    def _describe_step(action_type: str, params: dict[str, Any], result_summary: str) -> str:
         """One-line human description of a single step."""
         verbs = {
             "click": "Click",
@@ -351,7 +352,7 @@ class ActionRecorder:
         return verb
 
     @staticmethod
-    def _describe_step_static(action_type: str, params: Dict[str, Any]) -> str:
+    def _describe_step_static(action_type: str, params: dict[str, Any]) -> str:
         return ActionRecorder._describe_step(action_type, params, "")
 
     @staticmethod
@@ -366,7 +367,7 @@ class ActionRecorder:
         return slug or "untitled_script"
 
     @staticmethod
-    def _detect_parameters(steps: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    def _detect_parameters(steps: list[dict[str, Any]]) -> list[dict[str, str]]:
         """
         Auto-detect repeated text values across steps and suggest
         parameterizing them.
@@ -374,45 +375,44 @@ class ActionRecorder:
         If the same string appears in two or more steps (inside ``params``
         values), it is promoted to a script parameter.
         """
-        text_counts: Dict[str, int] = {}
+        text_counts: dict[str, int] = {}
         for step in steps:
             for val in step.get("params", {}).values():
                 if isinstance(val, str) and len(val) >= 2:
                     text_counts[val] = text_counts.get(val, 0) + 1
 
-        parameters: List[Dict[str, str]] = []
+        parameters: list[dict[str, str]] = []
         for text, count in sorted(text_counts.items(), key=lambda kv: -kv[1]):
             if count >= 2:
-                param_name = (
-                    text.lower()
-                    .replace(" ", "_")
-                    .replace("'", "")
-                    .replace('"', "")[:32]
-                )
+                param_name = text.lower().replace(" ", "_").replace("'", "").replace('"', "")[:32]
                 param_name = "".join(c if c.isalnum() or c == "_" else "" for c in param_name)
                 if param_name and not any(p["name"] == param_name for p in parameters):
-                    parameters.append({
-                        "name": param_name,
-                        "type": "string",
-                        "default": text,
-                        "prompt": f"Enter value for '{param_name}'",
-                    })
+                    parameters.append(
+                        {
+                            "name": param_name,
+                            "type": "string",
+                            "default": text,
+                            "prompt": f"Enter value for '{param_name}'",
+                        }
+                    )
         return parameters
 
     @staticmethod
-    def _finalise_steps(steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _finalise_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Strip internal-only fields so the serialized JSON matches the
         canonical schema (``action``, ``params``, ``description``,
         ``wait_after_ms``, ``screenshot_hash``).
         """
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for step in steps:
-            out.append({
-                "action": step.get("action", "unknown"),
-                "params": step.get("params", {}),
-                "description": step.get("description", ""),
-                "wait_after_ms": step.get("wait_after_ms", 500),
-                "screenshot_hash": step.get("screenshot_hash", ""),
-            })
+            out.append(
+                {
+                    "action": step.get("action", "unknown"),
+                    "params": step.get("params", {}),
+                    "description": step.get("description", ""),
+                    "wait_after_ms": step.get("wait_after_ms", 500),
+                    "screenshot_hash": step.get("screenshot_hash", ""),
+                }
+            )
         return out

@@ -7,16 +7,15 @@ Dark-themed customtkinter interface with chat, live screenshot, and settings.
 import json
 import logging
 import threading
-import tkinter as tk
 from datetime import datetime
-from typing import Optional
 
 import customtkinter as ctk
 
-from gui.themes import THEMES, apply_theme, get_theme
-from gui.overlay import ActionOverlay
-from gui.tray import SentinelTray, is_available as _tray_available
 from config import Config
+from gui.overlay import ActionOverlay
+from gui.themes import THEMES, apply_theme, get_theme
+from gui.tray import SentinelTray
+from gui.tray import is_available as _tray_available
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +79,15 @@ class SentinelApp:
         header.pack(fill="x", padx=8, pady=(8, 4))
         header.pack_propagate(False)
 
-        ctk.CTkLabel(
-            header, text="⬡ Sentinel Desktop", font=("Segoe UI", 16, "bold")
-        ).pack(side="left", padx=12)
+        ctk.CTkLabel(header, text="⬡ Sentinel Desktop", font=("Segoe UI", 16, "bold")).pack(
+            side="left", padx=12
+        )
 
         self.status_label = ctk.CTkLabel(
-            header, text="● IDLE", font=("Segoe UI", 12),
-            text_color=self._t("status_idle", "#849495")
+            header,
+            text="● IDLE",
+            font=("Segoe UI", 12),
+            text_color=self._t("status_idle", "#849495"),
         )
         self.status_label.pack(side="left", padx=20)
 
@@ -94,23 +95,35 @@ class SentinelApp:
         # not actually firing.
         if self.cfg.get("dry_run"):
             ctk.CTkLabel(
-                header, text="DRY-RUN", font=("Segoe UI", 11, "bold"),
-                text_color="#000000", fg_color=self._t("tag_action", "#FBBC00"),
-                corner_radius=3, padx=8,
+                header,
+                text="DRY-RUN",
+                font=("Segoe UI", 11, "bold"),
+                text_color="#000000",
+                fg_color=self._t("tag_action", "#FBBC00"),
+                corner_radius=3,
+                padx=8,
             ).pack(side="left", padx=10)
         # Show AUTONOMOUS chip in red so users always know when approvals
         # are off and the agent is acting without confirmation.
         if self.cfg.get("autonomous"):
             ctk.CTkLabel(
-                header, text="AUTONOMOUS", font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff", fg_color=self._t("status_error", "#ff3b3b"),
-                corner_radius=3, padx=8,
+                header,
+                text="AUTONOMOUS",
+                font=("Segoe UI", 11, "bold"),
+                text_color="#ffffff",
+                fg_color=self._t("status_error", "#ff3b3b"),
+                corner_radius=3,
+                padx=8,
             ).pack(side="left", padx=10)
         if self.cfg.get("stealth_input"):
             ctk.CTkLabel(
-                header, text="STEALTH", font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff", fg_color=self._t("accent", "#00F0FF"),
-                corner_radius=3, padx=8,
+                header,
+                text="STEALTH",
+                font=("Segoe UI", 11, "bold"),
+                text_color="#ffffff",
+                fg_color=self._t("accent", "#00F0FF"),
+                corner_radius=3,
+                padx=8,
             ).pack(side="left", padx=10)
 
         # Provider / model
@@ -126,7 +139,10 @@ class SentinelApp:
 
         # Settings button
         ctk.CTkButton(
-            header, text="⚙", width=32, height=32,
+            header,
+            text="⚙",
+            width=32,
+            height=32,
             command=self._open_settings,
         ).pack(side="right", padx=4)
 
@@ -157,34 +173,50 @@ class SentinelApp:
         # Scripts tab
         try:
             from gui.tabs.scripts_tab import ScriptsTab
+
             self.scripts_tab = ScriptsTab(tab_scripts, self)
         except ImportError:
-            ctk.CTkLabel(tab_scripts, text="Scripts tab unavailable",
-                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
+            ctk.CTkLabel(
+                tab_scripts,
+                text="Scripts tab unavailable",
+                text_color=self._t("text_secondary", "#b9cacb"),
+            ).pack(pady=20)
 
         # Workflows tab
         try:
             from gui.tabs.workflows_tab import WorkflowsTab
+
             self.workflows_tab = WorkflowsTab(tab_workflows, self)
         except ImportError:
-            ctk.CTkLabel(tab_workflows, text="Workflows tab unavailable",
-                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
+            ctk.CTkLabel(
+                tab_workflows,
+                text="Workflows tab unavailable",
+                text_color=self._t("text_secondary", "#b9cacb"),
+            ).pack(pady=20)
 
         # History tab
         try:
             from gui.tabs.history_tab import HistoryTab
+
             self.history_tab = HistoryTab(tab_history, self)
         except ImportError:
-            ctk.CTkLabel(tab_history, text="History tab unavailable",
-                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
+            ctk.CTkLabel(
+                tab_history,
+                text="History tab unavailable",
+                text_color=self._t("text_secondary", "#b9cacb"),
+            ).pack(pady=20)
 
         # Settings tab
         try:
             from gui.tabs.settings_tab import SettingsTab
+
             self.settings_tab = SettingsTab(tab_settings, self)
         except ImportError:
-            ctk.CTkLabel(tab_settings, text="Settings tab unavailable",
-                         text_color=self._t("text_secondary", "#b9cacb")).pack(pady=20)
+            ctk.CTkLabel(
+                tab_settings,
+                text="Settings tab unavailable",
+                text_color=self._t("text_secondary", "#b9cacb"),
+            ).pack(pady=20)
 
     def _build_main_area_into(self, parent):
         """Build the original main area content into a given parent frame."""
@@ -201,8 +233,11 @@ class SentinelApp:
         chat_frame.grid_columnconfigure(0, weight=1)
 
         self.chat_display = ctk.CTkTextbox(
-            chat_frame, wrap="word", font=("Consolas", 12),
-            state="disabled", corner_radius=4,
+            chat_frame,
+            wrap="word",
+            font=("Consolas", 12),
+            state="disabled",
+            corner_radius=4,
         )
         self.chat_display.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
 
@@ -211,9 +246,9 @@ class SentinelApp:
         right.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
         right.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(
-            right, text="Live View", font=("Segoe UI", 12, "bold")
-        ).grid(row=0, column=0, sticky="w", padx=8, pady=4)
+        ctk.CTkLabel(right, text="Live View", font=("Segoe UI", 12, "bold")).grid(
+            row=0, column=0, sticky="w", padx=8, pady=4
+        )
 
         self.screenshot_label = ctk.CTkLabel(right, text="No screenshot")
         self.screenshot_label.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
@@ -222,14 +257,10 @@ class SentinelApp:
         info_frame = ctk.CTkFrame(right)
         info_frame.grid(row=2, column=0, sticky="ew", padx=4, pady=4)
 
-        self.step_label = ctk.CTkLabel(
-            info_frame, text="Step: 0/100", font=("Consolas", 10)
-        )
+        self.step_label = ctk.CTkLabel(info_frame, text="Step: 0/100", font=("Consolas", 10))
         self.step_label.pack(anchor="w", padx=8, pady=2)
 
-        self.notes_label = ctk.CTkLabel(
-            info_frame, text="Notes: 0", font=("Consolas", 10)
-        )
+        self.notes_label = ctk.CTkLabel(info_frame, text="Notes: 0", font=("Consolas", 10))
         self.notes_label.pack(anchor="w", padx=8, pady=2)
 
     # ── Recorder Panel ────────────────────────────────────────────────────
@@ -238,6 +269,7 @@ class SentinelApp:
         """Record/playback toolbar above the input area."""
         try:
             from gui.recorder_panel import RecorderPanel
+
             self.recorder_panel = RecorderPanel(parent=self.root, app=self)
             # Panel packs itself above the input area
         except ImportError:
@@ -264,31 +296,39 @@ class SentinelApp:
         for preset in (self.cfg.get("quick_actions") or [])[:6]:
             short = preset if len(preset) <= 36 else preset[:33] + "…"
             ctk.CTkButton(
-                chips, text=short, height=24,
+                chips,
+                text=short,
+                height=24,
                 font=("Segoe UI", 10),
-                fg_color=self._t("bg_input", "#111418"), hover_color=self._t("bg_hover", "#333539"), text_color=self._t("text_primary", "#e2e2e8"),
+                fg_color=self._t("bg_input", "#111418"),
+                hover_color=self._t("bg_hover", "#333539"),
+                text_color=self._t("text_primary", "#e2e2e8"),
                 corner_radius=6,
                 command=lambda p=preset: self._set_prompt(p),
             ).pack(side="left", padx=2, pady=2)
 
         # --- Recent-prompts dropdown (top-right corner of input row) -
-        recent = (self.cfg.get("recent_prompts") or [])
+        recent = self.cfg.get("recent_prompts") or []
         if recent:
-            recent_short = [
-                (r if len(r) <= 50 else r[:47] + "…") for r in recent[:10]
-            ]
+            recent_short = [(r if len(r) <= 50 else r[:47] + "…") for r in recent[:10]]
             self.recent_var = ctk.StringVar(value="↻ Recent")
             ctk.CTkOptionMenu(
-                input_frame, variable=self.recent_var,
-                values=recent_short, width=140, height=28,
+                input_frame,
+                variable=self.recent_var,
+                values=recent_short,
+                width=140,
+                height=28,
                 font=("Segoe UI", 10),
                 command=self._on_recent_pick,
             ).grid(row=1, column=0, sticky="e", padx=(0, 4), pady=(4, 0))
 
         # --- Multi-line prompt textbox -------------------------------
         self.goal_entry = ctk.CTkTextbox(
-            input_frame, height=80, font=("Segoe UI", 13),
-            wrap="word", corner_radius=4,
+            input_frame,
+            height=80,
+            font=("Segoe UI", 13),
+            wrap="word",
+            corner_radius=4,
         )
         self.goal_entry.grid(row=2, column=0, sticky="ew", padx=8, pady=(4, 8))
         # Placeholder behaviour (CTkTextbox doesn't have native placeholder).
@@ -305,16 +345,23 @@ class SentinelApp:
 
         # --- Run / Stop buttons --------------------------------------
         ctk.CTkButton(
-            input_frame, text="▶ Run", width=80, height=80,
+            input_frame,
+            text="▶ Run",
+            width=80,
+            height=80,
             font=("Segoe UI", 13, "bold"),
             command=self._on_submit,
         ).grid(row=2, column=1, padx=(0, 4), pady=(4, 8))
 
         ctk.CTkButton(
-            input_frame, text="■ Stop", width=80, height=80,
+            input_frame,
+            text="■ Stop",
+            width=80,
+            height=80,
             font=("Segoe UI", 13, "bold"),
             command=self._on_stop,
-            fg_color=self._t("status_error", "#ff3b3b"), hover_color=self._t("tag_error", "#ff3b3b"),
+            fg_color=self._t("status_error", "#ff3b3b"),
+            hover_color=self._t("tag_error", "#ff3b3b"),
         ).grid(row=2, column=2, padx=(0, 8), pady=(4, 8))
 
     # -- Placeholder + recent-prompt helpers ------------------------------
@@ -345,9 +392,12 @@ class SentinelApp:
         # The dropdown shows truncated text — find the full prompt by prefix.
         recent = self.cfg.get("recent_prompts") or []
         target = next(
-            (r for r in recent
-             if r.startswith(choice.rstrip("…"))
-             or (choice.endswith("…") and r.startswith(choice[:-1]))),
+            (
+                r
+                for r in recent
+                if r.startswith(choice.rstrip("…"))
+                or (choice.endswith("…") and r.startswith(choice[:-1]))
+            ),
             choice,
         )
         self._set_prompt(target)
@@ -424,6 +474,7 @@ class SentinelApp:
         cfg = self.config.load()
 
         from core.engine import AgentEngine
+
         self.engine = AgentEngine(
             cfg,
             approval_callback=self._approve_action,
@@ -448,8 +499,13 @@ class SentinelApp:
             self.root.after(0, self._update_step_labels, step)
 
             # Feed action history sidebar
-            self.root.after(0, self._add_history_entry, step, action_name,
-                            {"ok": result.get("ok", True), "msg": result.get("msg", "")})
+            self.root.after(
+                0,
+                self._add_history_entry,
+                step,
+                action_name,
+                {"ok": result.get("ok", True), "msg": result.get("msg", "")},
+            )
 
             # Update screenshot if provided
             screenshot_b64 = kwargs.get("screenshot")
@@ -492,7 +548,9 @@ class SentinelApp:
             except Exception as e:
                 # Show the exception type + message, and dump the full traceback
                 # to a debug log so the user can paste it for diagnosis.
-                import traceback, os
+                import os
+                import traceback
+
                 tb = traceback.format_exc()
                 self._add_chat(
                     f"❌ {type(e).__name__}: {e}",
@@ -500,7 +558,8 @@ class SentinelApp:
                 )
                 log_path = os.path.join(
                     os.environ.get("APPDATA", os.path.expanduser("~")),
-                    "SentinelDesktop", "last_error.log",
+                    "SentinelDesktop",
+                    "last_error.log",
                 )
                 try:
                     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -521,11 +580,14 @@ class SentinelApp:
                 self.root.after(
                     0,
                     lambda: self.status_label.configure(
-                        text="● IDLE", text_color=self._t("status_idle", "#849495"),
+                        text="● IDLE",
+                        text_color=self._t("status_idle", "#849495"),
                     ),
                 )
 
-        self.status_label.configure(text="● RUNNING", text_color=self._t("status_running", "#95E400"))
+        self.status_label.configure(
+            text="● RUNNING", text_color=self._t("status_running", "#95E400")
+        )
         self.engine_thread = threading.Thread(target=_run, daemon=True)
         self.engine_thread.start()
 
@@ -567,8 +629,11 @@ class SentinelApp:
 
                 detail = json.dumps(params, indent=2)[:600]
                 ctk.CTkLabel(
-                    top, text=detail, font=("Consolas", 10),
-                    justify="left", anchor="w",
+                    top,
+                    text=detail,
+                    font=("Consolas", 10),
+                    justify="left",
+                    anchor="w",
                 ).pack(fill="both", expand=True, padx=16, pady=4)
 
                 btn_frame = ctk.CTkFrame(top)
@@ -585,12 +650,18 @@ class SentinelApp:
                     top.destroy()
 
                 ctk.CTkButton(
-                    btn_frame, text="✓ Approve", command=_approve,
-                    fg_color=self._t("status_running", "#95E400"), hover_color=self._t("tag_assistant", "#95E400"),
+                    btn_frame,
+                    text="✓ Approve",
+                    command=_approve,
+                    fg_color=self._t("status_running", "#95E400"),
+                    hover_color=self._t("tag_assistant", "#95E400"),
                 ).pack(side="right", padx=4)
                 ctk.CTkButton(
-                    btn_frame, text="✗ Reject", command=_reject,
-                    fg_color=self._t("status_error", "#ff3b3b"), hover_color=self._t("tag_error", "#ff3b3b"),
+                    btn_frame,
+                    text="✗ Reject",
+                    command=_reject,
+                    fg_color=self._t("status_error", "#ff3b3b"),
+                    hover_color=self._t("tag_error", "#ff3b3b"),
                 ).pack(side="right", padx=4)
 
                 top.protocol("WM_DELETE_WINDOW", _reject)
@@ -607,8 +678,9 @@ class SentinelApp:
         """Update the screenshot preview."""
         try:
             import base64
-            from PIL import Image, ImageTk
             import io
+
+            from PIL import Image
 
             img_data = base64.b64decode(b64_data)
             img = Image.open(io.BytesIO(img_data))
@@ -645,10 +717,15 @@ class SentinelApp:
         entry.pack(fill="x", padx=12, pady=12)
 
         commands = [
-            ("New Chat", lambda: (self.chat_display.configure(state="normal"),
-                                   self.chat_display.delete("1.0", "end"),
-                                   self.chat_display.configure(state="disabled"),
-                                   palette.destroy())),
+            (
+                "New Chat",
+                lambda: (
+                    self.chat_display.configure(state="normal"),
+                    self.chat_display.delete("1.0", "end"),
+                    self.chat_display.configure(state="disabled"),
+                    palette.destroy(),
+                ),
+            ),
             ("Settings", lambda: (palette.destroy(), self._open_settings())),
             ("Screenshot", lambda: (self._take_screenshot(), palette.destroy())),
             ("Export Log", lambda: (self._export_log(), palette.destroy())),
@@ -665,6 +742,7 @@ class SentinelApp:
 
     def _take_screenshot(self):
         from core.screenshot import capture_to_base64
+
         b64 = capture_to_base64()
         self._update_screenshot(b64)
         self._add_chat("Screenshot captured.", "system")
@@ -688,6 +766,7 @@ class SentinelApp:
         """Check for resumable checkpoints and show banner."""
         try:
             from core.checkpoint import CheckpointManager
+
             cp = CheckpointManager()
             latest = cp.load_latest()
             if not latest:
@@ -708,6 +787,7 @@ class SentinelApp:
         """Resume from the latest checkpoint."""
         try:
             from core.checkpoint import CheckpointManager
+
             cp = CheckpointManager()
             latest = cp.load_latest()
             if not latest:
@@ -732,13 +812,18 @@ class SentinelApp:
         history_frame.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
-            history_frame, text="Action History",
+            history_frame,
+            text="Action History",
             font=("Segoe UI", 11, "bold"),
         ).grid(row=0, column=0, sticky="w", padx=8, pady=4)
 
         self.history_display = ctk.CTkTextbox(
-            history_frame, wrap="none", font=("Consolas", 10),
-            state="disabled", width=200, corner_radius=3,
+            history_frame,
+            wrap="none",
+            font=("Consolas", 10),
+            state="disabled",
+            width=200,
+            corner_radius=3,
         )
         self.history_display.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
         return history_frame
@@ -746,6 +831,7 @@ class SentinelApp:
     def _add_history_entry(self, step: int, action_name: str, result: dict):
         """Add an entry to the action history sidebar."""
         import time as _t
+
         timestamp = _t.strftime("%H:%M:%S")
         ok = result.get("ok", True)
         icon = "✅" if ok else "❌"
@@ -765,7 +851,9 @@ class SentinelApp:
     def _update_screenshot_with_diff(self, before_b64: str, after_b64: str):
         """Show before/after screenshots side by side in the right panel."""
         try:
-            import base64, io
+            import base64
+            import io
+
             from PIL import Image, ImageTk
 
             before_img = Image.open(io.BytesIO(base64.b64decode(before_b64)))
@@ -778,12 +866,15 @@ class SentinelApp:
 
             # Combine side by side
             total_w = before_img.width + after_img.width + 4
-            combined = Image.new("RGB", (total_w, max(before_img.height, after_img.height) + 20), (30, 30, 30))
+            combined = Image.new(
+                "RGB", (total_w, max(before_img.height, after_img.height) + 20), (30, 30, 30)
+            )
             combined.paste(before_img, (0, 0))
             combined.paste(after_img, (before_img.width + 4, 0))
 
             # Add labels
             from PIL import ImageDraw
+
             draw = ImageDraw.Draw(combined)
             draw.text((5, before_img.height + 3), "Before", fill=(150, 150, 150))
             draw.text((before_img.width + 9, after_img.height + 3), "After", fill=(150, 150, 150))
@@ -808,7 +899,9 @@ class SentinelApp:
         self.tray = SentinelTray(
             on_show=self._show_from_tray,
             on_hide=self._hide_to_tray,
-            on_stop_agent=lambda: (self.engine.stop() if self.engine and self.engine.running else None),
+            on_stop_agent=lambda: (
+                self.engine.stop() if self.engine and self.engine.running else None
+            ),
             on_quit=lambda: self.root.after(0, self.root.destroy),
         )
         if self.tray.run() and self.cfg.get("start_in_tray"):
@@ -843,15 +936,16 @@ class SentinelApp:
         self._add_chat(
             "Sentinel Desktop v3.0 ready. Describe a goal and press Enter.\n"
             "Ctrl+K for command palette. ⚙ for settings.",
-            "system"
+            "system",
         )
         # Check for resumable checkpoints
         self._check_resume_checkpoint()
         # Warn loudly if no LLM is configured — the most common first-run snag.
         cfg = self.config.load()
         provider = cfg.get("provider", "")
-        if (not cfg.get("api_key") and provider not in ("ollama", "lmstudio", "custom")) \
-                or not cfg.get("model"):
+        if (
+            not cfg.get("api_key") and provider not in ("ollama", "lmstudio", "custom")
+        ) or not cfg.get("model"):
             self._add_chat(
                 "⚠ No LLM configured yet. Click ⚙ in the top-right to choose a "
                 "provider, paste your API key, and pick a model.",
@@ -888,31 +982,39 @@ class SettingsWindow:
         self.provider_var = ctk.StringVar(value=self.cfg.get("provider", "openai"))
         providers = get_provider_names()
         self.provider_menu = ctk.CTkOptionMenu(
-            self.win, variable=self.provider_var, values=providers,
+            self.win,
+            variable=self.provider_var,
+            values=providers,
             command=self._on_provider_change,
         )
         self.provider_menu.pack(fill="x", padx=20, pady=4)
 
         # Base URL (editable per-provider — defaults to catalog value)
         ctk.CTkLabel(
-            self.win, text="Base URL", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Base URL",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         url_frame = ctk.CTkFrame(self.win)
         url_frame.pack(fill="x", padx=20, pady=4)
         url_frame.grid_columnconfigure(0, weight=1)
 
         # Show whatever the user already overrode, else the catalog default.
-        catalog_url = (PROVIDERS.get(self.provider_var.get(), {})
-                       .get("base_url", ""))
+        catalog_url = PROVIDERS.get(self.provider_var.get(), {}).get("base_url", "")
         initial_url = self.cfg.get("custom_base_url") or catalog_url
         self.base_url_var = ctk.StringVar(value=initial_url)
         self.base_url_entry = ctk.CTkEntry(
-            url_frame, textvariable=self.base_url_var, height=36,
+            url_frame,
+            textvariable=self.base_url_var,
+            height=36,
             placeholder_text="Override the provider's base URL (optional)",
         )
         self.base_url_entry.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         ctk.CTkButton(
-            url_frame, text="↺ Reset", width=90, height=36,
+            url_frame,
+            text="↺ Reset",
+            width=90,
+            height=36,
             command=self._reset_base_url,
         ).grid(row=0, column=1)
         ctk.CTkLabel(
@@ -921,7 +1023,9 @@ class SettingsWindow:
                 "Leave as the catalog default for most providers. For Z.ai's "
                 "Max Coding Plan use: https://api.z.ai/api/coding/paas/v4"
             ),
-            font=("Segoe UI", 10), text_color=self.app._t("text_secondary", "#b9cacb"), wraplength=540,
+            font=("Segoe UI", 10),
+            text_color=self.app._t("text_secondary", "#b9cacb"),
+            wraplength=540,
             justify="left",
         ).pack(anchor="w", padx=20, pady=(2, 4))
 
@@ -930,7 +1034,9 @@ class SettingsWindow:
             anchor="w", padx=20, pady=(12, 4)
         )
         self.api_key_entry = ctk.CTkEntry(
-            self.win, show="•", height=36,
+            self.win,
+            show="•",
+            height=36,
             placeholder_text="Paste your API key…",
         )
         self.api_key_entry.pack(fill="x", padx=20, pady=4)
@@ -947,13 +1053,18 @@ class SettingsWindow:
 
         self.model_var = ctk.StringVar(value=self.cfg.get("model", ""))
         self.model_entry = ctk.CTkEntry(
-            model_frame, textvariable=self.model_var, height=36,
+            model_frame,
+            textvariable=self.model_var,
+            height=36,
             placeholder_text="Model name or auto-detect…",
         )
         self.model_entry.grid(row=0, column=0, sticky="ew", padx=(0, 4))
 
         ctk.CTkButton(
-            model_frame, text="🔍 Detect", width=90, height=36,
+            model_frame,
+            text="🔍 Detect",
+            width=90,
+            height=36,
             command=self._detect_models,
         ).grid(row=0, column=1)
 
@@ -963,7 +1074,9 @@ class SettingsWindow:
         )
         self.theme_var = ctk.StringVar(value=self.cfg.get("theme", "sentinel"))
         ctk.CTkOptionMenu(
-            self.win, variable=self.theme_var, values=list(THEMES.keys()),
+            self.win,
+            variable=self.theme_var,
+            values=list(THEMES.keys()),
             command=self._on_theme_change,
         ).pack(fill="x", padx=20, pady=4)
 
@@ -978,8 +1091,11 @@ class SettingsWindow:
 
         # Monitor selection (multi-screen)
         from core.screenshot import list_monitors
+
         ctk.CTkLabel(
-            self.win, text="Monitor", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Monitor",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         monitor_choices: list[str] = [
             "auto — monitor with focused window (recommended)",
@@ -991,63 +1107,76 @@ class SettingsWindow:
             for m in mons:
                 if m.get("is_virtual"):
                     continue
-                label = (f"{m['index']} — {m['width']}×{m['height']}"
-                         f"{' (primary)' if m.get('is_primary') else ''}")
+                label = (
+                    f"{m['index']} — {m['width']}×{m['height']}"
+                    f"{' (primary)' if m.get('is_primary') else ''}"
+                )
                 monitor_choices.append(label)
         except Exception:
-            monitor_choices.extend([
-                "0 — All monitors (virtual desktop)", "1 — Primary",
-            ])
+            monitor_choices.extend(
+                [
+                    "0 — All monitors (virtual desktop)",
+                    "1 — Primary",
+                ]
+            )
 
         current_monitor = self.cfg.get("monitor")
         default_label = next(
-            (s for s in monitor_choices
-             if str(current_monitor) == s.split(" ", 1)[0]),
+            (s for s in monitor_choices if str(current_monitor) == s.split(" ", 1)[0]),
             monitor_choices[0],
         )
         self.monitor_var = ctk.StringVar(value=default_label)
         ctk.CTkOptionMenu(
-            self.win, variable=self.monitor_var, values=monitor_choices,
+            self.win,
+            variable=self.monitor_var,
+            values=monitor_choices,
         ).pack(fill="x", padx=20, pady=4)
 
         # Autonomous mode toggle
         ctk.CTkLabel(
-            self.win, text="Run mode", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Run mode",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         self.autonomous_var = ctk.BooleanVar(value=bool(self.cfg.get("autonomous")))
         ctk.CTkSwitch(
             self.win,
             text="Fully autonomous (no approval prompts)",
             variable=self.autonomous_var,
-            onvalue=True, offvalue=False,
+            onvalue=True,
+            offvalue=False,
         ).pack(anchor="w", padx=20, pady=4)
         self.dry_run_var = ctk.BooleanVar(value=bool(self.cfg.get("dry_run")))
         ctk.CTkSwitch(
             self.win,
             text="Dry-run (log actions, don't execute)",
             variable=self.dry_run_var,
-            onvalue=True, offvalue=False,
+            onvalue=True,
+            offvalue=False,
         ).pack(anchor="w", padx=20, pady=4)
         self.stealth_var = ctk.BooleanVar(value=bool(self.cfg.get("stealth_input")))
         ctk.CTkSwitch(
             self.win,
             text="Stealth input (don't move my mouse/keyboard)",
             variable=self.stealth_var,
-            onvalue=True, offvalue=False,
+            onvalue=True,
+            offvalue=False,
         ).pack(anchor="w", padx=20, pady=4)
         self.tray_var = ctk.BooleanVar(value=bool(self.cfg.get("minimize_to_tray")))
         ctk.CTkSwitch(
             self.win,
             text="Minimize to system tray (closes to tray instead of taskbar)",
             variable=self.tray_var,
-            onvalue=True, offvalue=False,
+            onvalue=True,
+            offvalue=False,
         ).pack(anchor="w", padx=20, pady=4)
         self.start_tray_var = ctk.BooleanVar(value=bool(self.cfg.get("start_in_tray")))
         ctk.CTkSwitch(
             self.win,
             text="Start hidden in tray (background-only launch)",
             variable=self.start_tray_var,
-            onvalue=True, offvalue=False,
+            onvalue=True,
+            offvalue=False,
         ).pack(anchor="w", padx=20, pady=4)
         ctk.CTkLabel(
             self.win,
@@ -1057,8 +1186,10 @@ class SettingsWindow:
                 "games) may ignore synthesized input; falls back to "
                 "physical mouse when that happens."
             ),
-            font=("Segoe UI", 9), text_color=self.app._t("text_secondary", "#b9cacb"),
-            wraplength=540, justify="left",
+            font=("Segoe UI", 9),
+            text_color=self.app._t("text_secondary", "#b9cacb"),
+            wraplength=540,
+            justify="left",
         ).pack(anchor="w", padx=20, pady=(0, 4))
 
         # Step budget
@@ -1066,7 +1197,8 @@ class SettingsWindow:
             anchor="w", padx=20, pady=(12, 4)
         )
         self.steps_entry = ctk.CTkEntry(
-            self.win, height=36,
+            self.win,
+            height=36,
             placeholder_text="100",
         )
         self.steps_entry.pack(fill="x", padx=20, pady=4)
@@ -1074,24 +1206,26 @@ class SettingsWindow:
 
         # Save
         ctk.CTkButton(
-            self.win, text="💾 Save Settings", height=40,
+            self.win,
+            text="💾 Save Settings",
+            height=40,
             command=self._save,
         ).pack(fill="x", padx=20, pady=(20, 20))
 
     def _on_provider_change(self, choice):
         """When the provider changes, refresh the Base URL placeholder."""
         from core.provider_registry import PROVIDERS
+
         catalog_url = PROVIDERS.get(choice, {}).get("base_url", "")
         # Only auto-fill the URL if the user hasn't typed a custom one.
         current = self.base_url_var.get().strip()
-        if not current or current in {
-            p.get("base_url", "") for p in PROVIDERS.values()
-        }:
+        if not current or current in {p.get("base_url", "") for p in PROVIDERS.values()}:
             self.base_url_var.set(catalog_url)
 
     def _reset_base_url(self):
         """Restore the selected provider's catalog default base URL."""
         from core.provider_registry import PROVIDERS
+
         provider = self.provider_var.get()
         self.base_url_var.set(PROVIDERS.get(provider, {}).get("base_url", ""))
 
@@ -1114,9 +1248,7 @@ class SettingsWindow:
             )
         else:
             self.model_var.set("")
-            self.model_entry.configure(
-                placeholder_text="No models found. Enter manually."
-            )
+            self.model_entry.configure(placeholder_text="No models found. Enter manually.")
 
     def _save(self):
         from core.provider_registry import PROVIDERS
@@ -1130,8 +1262,7 @@ class SettingsWindow:
         # Only persist a custom base URL if it differs from the catalog
         # default — otherwise we'd freeze old URLs into config forever.
         url = self.base_url_var.get().strip().rstrip("/")
-        catalog_url = (PROVIDERS.get(provider, {})
-                       .get("base_url", "").rstrip("/"))
+        catalog_url = PROVIDERS.get(provider, {}).get("base_url", "").rstrip("/")
         self.cfg["custom_base_url"] = url if url and url != catalog_url else ""
 
         try:

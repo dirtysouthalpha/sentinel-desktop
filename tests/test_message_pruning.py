@@ -1,5 +1,4 @@
 """Tests for screenshot history pruning and message cleaning."""
-import pytest
 
 from core.engine import AgentEngine, _clean_messages_for_api
 
@@ -9,8 +8,7 @@ def make_image_msg(step, text="", payload="<b64>"):
         "role": "user",
         "content": [
             {"type": "text", "text": text or f"step {step}"},
-            {"type": "image_url",
-             "image_url": {"url": f"data:image/png;base64,{payload}"}},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{payload}"}},
         ],
         "_sentinel_has_image": True,
         "_sentinel_step": step,
@@ -29,8 +27,7 @@ def test_prune_keeps_recent_screenshots():
     assert len(image_kept) == 2
     # The pruned messages become plain user text messages.
     stubs = [
-        m for m in messages
-        if isinstance(m.get("content"), str) and "[screenshot" in m["content"]
+        m for m in messages if isinstance(m.get("content"), str) and "[screenshot" in m["content"]
     ]
     assert len(stubs) == 3
 
@@ -60,12 +57,14 @@ def test_prune_preserves_text_content_in_first_message():
     assert len(image_kept) == 1
     # But the original goal text MUST still be in the conversation somewhere.
     serialized = " ".join(
-        str(m.get("content")) if isinstance(m.get("content"), str) else
-        " ".join(str(b) for b in m.get("content", []))
+        str(m.get("content"))
+        if isinstance(m.get("content"), str)
+        else " ".join(str(b) for b in m.get("content", []))
         for m in messages
     )
-    assert "open Outlook" in serialized, \
+    assert "open Outlook" in serialized, (
         "pruning erased the user's goal — the agent would forget what to do"
+    )
 
 
 def test_clean_messages_strips_sentinel_keys():
