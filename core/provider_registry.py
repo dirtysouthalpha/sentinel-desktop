@@ -62,6 +62,15 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-1.5-pro",
+            "gemini-1.5-flash",
+        ],
     },
     "xai": {
         "name": "xAI Grok",
@@ -70,6 +79,12 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "grok-4.20-0309-reasoning",
+            "grok-4.20-0309-non-reasoning",
+            "grok-4-1-fast-reasoning",
+            "grok-4-1-fast-non-reasoning",
+        ],
     },
     "deepseek": {
         "name": "DeepSeek",
@@ -78,6 +93,12 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-chat",
+            "deepseek-reasoner",
+        ],
     },
     "openrouter": {
         "name": "OpenRouter",
@@ -94,6 +115,12 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "qwen/qwen3-32b",
+        ],
     },
     "mistral": {
         "name": "Mistral AI",
@@ -139,6 +166,7 @@ PROVIDERS: dict[str, dict[str, Any]] = {
             "sonar",
             "sonar-reasoning",
             "sonar-reasoning-pro",
+            "sonar-deep-research",
         ],
     },
     "zai": {
@@ -200,12 +228,14 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
         "manual_models": [
-            "qwen-max",
+            "qwen3-max",
+            "qwen3.5-plus",
+            "qwen3.5-flash",
+            "qwen3-coder-plus",
+            "qwen3-coder-flash",
             "qwen-plus",
             "qwen-turbo",
-            "qwen2.5-72b-instruct",
-            "qwen2.5-coder-32b-instruct",
-            "qwen2-vl-72b-instruct",
+            "qwq-plus",
         ],
     },
     "cohere": {
