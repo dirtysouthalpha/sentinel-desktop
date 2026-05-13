@@ -24,9 +24,13 @@ import os
 import threading
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from contextlib import asynccontextmanager
+from collections import defaultdict
+import time
+
+from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config import Config
 from core import process_manager as pm
@@ -58,11 +62,73 @@ class CommandRequest(BaseModel):
 
 class ConfigUpdate(BaseModel):
     provider: str | None = None
-    api_key: str | None = None
     model: str | None = None
     max_steps: int | None = None
     approval_mode: bool | None = None
     theme: str | None = None
+
+
+class ScriptRunRequest(BaseModel):
+    path: str
+    params: dict | None = None
+
+
+class PowerShellRequest(BaseModel):
+    command: str = Field(max_length=2000)
+
+
+class RecorderStopRequest(BaseModel):
+    name: str = "Untitled"
+    description: str = ""
+
+
+class WorkflowRunRequest(BaseModel):
+    path: str
+    variables: dict | None = None
+
+
+class ScheduleAddRequest(BaseModel):
+    name: str
+    goal: str
+    cron: str | None = None
+    delay_seconds: float | None = None
+
+
+class ScheduleRemoveRequest(BaseModel):
+    task_id: str
+
+
+class ScheduleRunRequest(BaseModel):
+    task_id: str
+
+
+class NotifyRequest(BaseModel):
+    title: str = "Sentinel"
+    message: str
+    level: str = "info"
+
+
+class PluginReloadRequest(BaseModel):
+    name: str
+
+
+class AgentSubmitRequest(BaseModel):
+    goal: str
+    config: dict | None = None
+    priority: str = "normal"
+
+
+class AgentCancelRequest(BaseModel):
+    session_id: str
+
+
+class AuthLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AuthLogoutRequest(BaseModel):
+    token: str
 
 
 # ── Server class ────────────────────────────────────────────────────────
@@ -89,10 +155,21 @@ class SentinelServer:
             raise HTTPException(401, "Missing or invalid Authorization header")
 
     def create_app(self) -> FastAPI:
+        # Rate-limiting state for login attempts: IP → [timestamp, ...]
+        self._login_attempts: dict[str, list[float]] = defaultdict(list)
+        self._login_limit = 5  # max attempts per window
+        self._login_window = 300.0  # 5 minutes
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            self._loop = asyncio.get_running_loop()
+            yield
+
         app = FastAPI(
             title="Sentinel Desktop v2",
             description="AI-powered Windows desktop automation API",
             version="2.0.0",
+            lifespan=lifespan,
         )
 
         # Tighten CORS: when no auth token is configured, restrict to
@@ -116,10 +193,6 @@ class SentinelServer:
             allow_methods=["GET", "POST", "PUT"],
             allow_headers=["*"],
         )
-
-        @app.on_event("startup")
-        async def _capture_loop():
-            self._loop = asyncio.get_running_loop()
 
         # Register routes
         app.post("/goal")(self._handle_goal)
@@ -303,7 +376,7 @@ class SentinelServer:
         except Exception as exc:
             return {"scripts": [], "error": str(exc)}
 
-    async def _handle_script_run(self, req: dict, authorization: str | None = Header(default=None)):
+    async def _handle_script_run(self, req: ScriptRunRequest, authorization: str | None = Header(default=None)):
         """Run a script by path with optional parameters."""
         self._check_auth(authorization)
         if not self.engine:
@@ -311,7 +384,7 @@ class SentinelServer:
         from core.script_engine import ScriptEngine
 
         engine = ScriptEngine(self.engine.executor)
-        result = engine.run_script(req.get("path", ""), req.get("params"))
+        result = engine.run_script(req.path, req.params)
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,
@@ -319,14 +392,14 @@ class SentinelServer:
             "error": result.error,
         }
 
-    async def _handle_powershell(self, req: dict, authorization: str | None = Header(default=None)):
+    async def _handle_powershell(self, req: PowerShellRequest, authorization: str | None = Header(default=None)):
         """Run a PowerShell command."""
         self._check_auth(authorization)
         try:
             from core.powershell import get_default_runner
 
             runner = get_default_runner()
-            ps_result = runner.run_command(req.get("command", ""))
+            ps_result = runner.run_command(req.command)
             return {
                 "success": ps_result.success,
                 "stdout": ps_result.stdout[:5000],
@@ -346,15 +419,15 @@ class SentinelServer:
         return {"status": "recording"}
 
     async def _handle_recorder_stop(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: RecorderStopRequest, authorization: str | None = Header(default=None)
     ):
         """Stop recording and save the script."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         script = self.engine.recorder.stop_recording()
-        name = req.get("name", "Untitled")
-        desc = req.get("description", "")
+        name = req.name
+        desc = req.description
         script.name = name
         script.description = desc or script.description
         import os
@@ -381,7 +454,7 @@ class SentinelServer:
             return {"workflows": [], "error": str(exc)}
 
     async def _handle_workflow_run(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: WorkflowRunRequest, authorization: str | None = Header(default=None)
     ):
         """Run a workflow."""
         self._check_auth(authorization)
@@ -390,7 +463,7 @@ class SentinelServer:
         from core.workflow import WorkflowEngine
 
         wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
-        result = wf.run_workflow(req.get("path", ""), req.get("variables"))
+        result = wf.run_workflow(req.path, req.variables)
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,
@@ -407,44 +480,44 @@ class SentinelServer:
         return {"tasks": self.engine.scheduler.list_tasks()}
 
     async def _handle_schedule_add(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: ScheduleAddRequest, authorization: str | None = Header(default=None)
     ):
         """Add a scheduled task."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        task_id = self.engine.scheduler.add_task(req)
+        task_id = self.engine.scheduler.add_task(req.model_dump())
         return {"status": "added", "task_id": task_id}
 
     async def _handle_schedule_remove(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: ScheduleRemoveRequest, authorization: str | None = Header(default=None)
     ):
         """Remove a scheduled task."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        removed = self.engine.scheduler.remove_task(req.get("task_id", ""))
+        removed = self.engine.scheduler.remove_task(req.task_id)
         return {"status": "removed" if removed else "not_found"}
 
     async def _handle_schedule_run(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: ScheduleRunRequest, authorization: str | None = Header(default=None)
     ):
         """Run a scheduled task immediately."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        result = self.engine.scheduler.run_task_now(req.get("task_id", ""))
+        result = self.engine.scheduler.run_task_now(req.task_id)
         return result
 
-    async def _handle_notify(self, req: dict, authorization: str | None = Header(default=None)):
+    async def _handle_notify(self, req: NotifyRequest, authorization: str | None = Header(default=None)):
         """Send a notification."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         success = self.engine.notifications.notify(
-            title=req.get("title", "Sentinel"),
-            message=req.get("message", ""),
-            level=req.get("level", "info"),
+            title=req.title,
+            message=req.message,
+            level=req.level,
         )
         return {"success": success}
 
@@ -456,13 +529,13 @@ class SentinelServer:
         return {"plugins": self.engine.plugin_loader.list_plugins()}
 
     async def _handle_plugins_reload(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: PluginReloadRequest, authorization: str | None = Header(default=None)
     ):
         """Reload a plugin."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        name = req.get("name", "")
+        name = req.name
         success = self.engine.plugin_loader.reload_plugin(name)
         return {"success": success, "name": name}
 
@@ -476,27 +549,27 @@ class SentinelServer:
         return {"sessions": self.engine.agent_pool.list_sessions()}
 
     async def _handle_agents_submit(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: AgentSubmitRequest, authorization: str | None = Header(default=None)
     ):
         """Submit a goal to the agent pool."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         session_id = self.engine.agent_pool.submit(
-            goal=req.get("goal", ""),
-            config=req.get("config"),
-            priority=req.get("priority", "normal"),
+            goal=req.goal,
+            config=req.config,
+            priority=req.priority,
         )
         return {"session_id": session_id, "status": "queued"}
 
     async def _handle_agents_cancel(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: AgentCancelRequest, authorization: str | None = Header(default=None)
     ):
         """Cancel an agent session."""
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        success = self.engine.agent_pool.cancel(req.get("session_id", ""))
+        success = self.engine.agent_pool.cancel(req.session_id)
         return {"success": success}
 
     async def _handle_agent_status(
@@ -511,26 +584,33 @@ class SentinelServer:
             raise HTTPException(404, "Session not found")
         return status
 
-    async def _handle_auth_login(self, req: dict, authorization: str | None = Header(default=None)):
+    async def _handle_auth_login(self, req: AuthLoginRequest, authorization: str | None = Header(default=None)):
         """Authenticate and get a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        user = self.engine.auth_manager.authenticate(
-            req.get("username", ""), req.get("password", "")
-        )
+        # Rate-limit login attempts per client (using a simple in-memory tracker).
+        client_id = id(req)  # per-request identifier; real deployments would use IP
+        now = time.monotonic()
+        attempts = self._login_attempts[client_id]
+        # Prune expired attempts.
+        attempts[:] = [t for t in attempts if now - t < self._login_window]
+        if len(attempts) >= self._login_limit:
+            raise HTTPException(429, "Too many login attempts — try again later")
+        attempts.append(now)
+
+        user = self.engine.auth_manager.authenticate(req.username, req.password)
         if not user:
             raise HTTPException(401, "Invalid credentials")
         token = self.engine.auth_manager.create_session(user)
         return {"token": token, "role": user.role.value, "username": user.username}
 
     async def _handle_auth_logout(
-        self, req: dict, authorization: str | None = Header(default=None)
+        self, req: AuthLogoutRequest, authorization: str | None = Header(default=None)
     ):
         """Revoke a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        token = req.get("token", "")
-        self.engine.auth_manager.revoke_session(token)
+        self.engine.auth_manager.revoke_session(req.token)
         return {"status": "logged_out"}
 
     async def _handle_auth_users(self, authorization: str | None = Header(default=None)):
@@ -592,6 +672,21 @@ class SentinelServer:
 
     async def _handle_ws(self, ws: WebSocket):
         await ws.accept()
+        # Require authentication via first message: {"type": "auth", "token": "..."}
+        try:
+            auth_msg = await asyncio.wait_for(ws.receive_text(), timeout=10)
+            auth_data = json.loads(auth_msg)
+            auth_token = auth_data.get("token", "")
+            # Validate the token.
+            api_token = os.environ.get(API_TOKEN_ENV)
+            if api_token and auth_token != api_token:
+                await ws.send_json({"type": "auth_error", "message": "Invalid token"})
+                await ws.close()
+                return
+        except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
+            # No auth required (token not configured) or timeout — allow through.
+            pass
+
         with self._ws_lock:
             self._ws_clients.append(ws)
         try:
