@@ -1,38 +1,47 @@
-# Sentinel Desktop v2 — AI-powered Windows desktop automation
-# Core
-customtkinter>=5.0.0
-pyautogui>=0.9.54
-psutil>=5.9.0
-Pillow>=10.0.0
-pyperclip>=1.8.2
-requests>=2.31.0
-httpx>=0.25.0
+# Sentinel Desktop — AI-powered Windows desktop automation
+# Version is sourced from core.__version__ (pyproject.toml [tool.setuptools.dynamic]).
+#
+# Pinning policy: compatible-release (~=). Allows patch updates, blocks
+# breaking minor bumps. To regenerate after a deliberate upgrade:
+#     pip install -U <pkg> && pip freeze | grep -i <pkg>
 
-# API server
-fastapi>=0.104.0
-uvicorn>=0.24.0
-websockets>=12.0
-pydantic>=2.0.0
+# ── Core ─────────────────────────────────────────────────────────────────
+customtkinter ~= 5.2
+pyautogui ~= 0.9.54
+psutil ~= 5.9
+Pillow ~= 10.0
+pyperclip ~= 1.8
+requests ~= 2.31
+httpx ~= 0.27
 
-# Screen analysis (optional but recommended)
-opencv-python>=4.8.0
+# ── API server ───────────────────────────────────────────────────────────
+fastapi ~= 0.110
+uvicorn ~= 0.27
+websockets ~= 12.0
+pydantic ~= 2.5
 
-# Fast multi-monitor capture (optional — falls back to pyautogui)
-mss>=9.0.0
+# ── Screen analysis (optional but recommended) ──────────────────────────
+opencv-python ~= 4.8
 
-# Global Esc-x3 failsafe hotkey (optional — agent runs without it)
-keyboard>=0.13.5
+# ── Fast multi-monitor capture (optional — falls back to pyautogui) ─────
+mss ~= 9.0
 
-# OCR for click_text / read_text (optional — also requires the Tesseract binary)
+# ── Global Esc-x3 failsafe hotkey (optional — agent runs without it) ────
+keyboard ~= 0.13.5; sys_platform == "win32"
+
+# ── OCR for click_text / read_text (optional — also requires the Tesseract binary)
 # Windows install: choco install tesseract  OR  download from https://github.com/UB-Mannheim/tesseract
-pytesseract>=0.3.10
+pytesseract ~= 0.3.10
 
-# Native Windows accessibility (optional — enables click_control / set_text / list_controls)
-uiautomation>=2.0.18; sys_platform == "win32"
+# ── Native Windows accessibility (optional — enables click_control / set_text / list_controls)
+uiautomation ~= 2.0; sys_platform == "win32"
 
-# System-tray support (optional — enables minimize-to-tray + background mode)
-pystray>=0.19.5
+# ── System-tray support (optional — enables minimize-to-tray + background mode)
+pystray ~= 0.19
 
-# Windows-specific
-pygetwindow>=0.0.9
-pywin32>=306; sys_platform == "win32"
+# ── Windows-specific ────────────────────────────────────────────────────
+# pygetwindow only works on Windows and its dependency pyrect ships a
+# distutils-based setup.py that fails to build on Python 3.12+. Gate it
+# on win32 so Linux/macOS test runners don't choke.
+pygetwindow ~= 0.0.9; sys_platform == "win32"
+pywin32 >= 306; sys_platform == "win32"

@@ -1,6 +1,6 @@
 """
-Sentinel Desktop v3.0 — RBAC Authentication Module
-===================================================
+Sentinel Desktop — RBAC Authentication Module
+=============================================
 Role-Based Access Control with session management, API key auth,
 and password hashing for the Sentinel Desktop FastAPI server.
 """

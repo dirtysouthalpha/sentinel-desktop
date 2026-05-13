@@ -15,9 +15,10 @@ def test_defaults_have_expected_keys():
         assert key in DEFAULTS, f"missing default: {key}"
 
 
-def test_monitor_defaults_to_virtual_desktop():
-    # Default is 0 so the agent sees every screen out of the box.
-    assert DEFAULTS["monitor"] == 0
+def test_monitor_default_is_auto():
+    # "auto" picks the monitor with the focused window; falls back to
+    # the virtual desktop union (0) on multi-monitor setups.
+    assert DEFAULTS["monitor"] == "auto"
 
 
 def test_autonomous_defaults_to_off():

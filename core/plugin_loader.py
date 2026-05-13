@@ -457,26 +457,26 @@ class PluginLoader:
         self._plugin_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def _plugin_info(loaded: _LoadedPlugin, *, loaded: bool) -> Dict[str, Any]:
+    def _plugin_info(plugin: _LoadedPlugin, *, loaded: bool) -> Dict[str, Any]:
         """Serialise a ``_LoadedPlugin`` into a public-facing dict."""
         return {
-            "name": loaded.name,
-            "version": loaded.version,
-            "description": loaded.description,
-            "filepath": loaded.filepath,
+            "name": plugin.name,
+            "version": plugin.version,
+            "description": plugin.description,
+            "filepath": plugin.filepath,
             "loaded": loaded,
-            "error": loaded.error,
+            "error": plugin.error,
             "actions": [
                 {"name": a.name, "description": a.description}
-                for a in loaded.api.actions
+                for a in plugin.api.actions
             ],
             "commands": [
                 {"name": c.name, "keywords": c.keywords}
-                for c in loaded.api.commands
+                for c in plugin.api.commands
             ],
             "settings": [
                 {"key": s.key, "default": s.default, "label": s.label}
-                for s in loaded.api.settings
+                for s in plugin.api.settings
             ],
         }
 

@@ -44,6 +44,10 @@ config.json
 sentinel_log_*.json
 logs/
 forensic_*.json
+# AuthManager bootstraps an admin user into config/users.json on first
+# AgentEngine instantiation; that file is per-deployment and contains
+# password hashes + API keys.
+/config/users.json
 
 # Local screenshots / templates used for click_image
 screenshots/

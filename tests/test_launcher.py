@@ -77,3 +77,59 @@ def test_alias_table_has_outlook_and_chrome():
     for app in ("outlook", "chrome", "edge", "excel", "word",
                 "notepad", "explorer", "calc", "teams"):
         assert app in launcher.APP_ALIASES, f"missing alias: {app}"
+
+
+# ---------------------------------------------------------------------------
+# Shell-metacharacter rejection on the unknown-name fallback path.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", [
+    "foo & calc",       # & chains commands in cmd.exe
+    "; rm -rf /",       # semicolon command separator
+    "app|other",        # pipe
+    "name`whoami`",     # backticks
+    "$(whoami)",        # command substitution
+    "foo>out.txt",      # redirection
+    "foo<in.txt",       # redirection
+    "evil\nname",       # embedded newline
+    "name with space",  # space splits args
+    "evil%PATH%",       # %VAR% expansion in cmd
+])
+def test_smart_open_rejects_shell_metachars(name, monkeypatch):
+    """Unknown app names with shell metacharacters must not be spawned."""
+    spawned = []
+    monkeypatch.setattr(wm, "list_windows", lambda: [])
+    monkeypatch.setattr(
+        launcher.subprocess, "Popen",
+        lambda cmd, *a, **kw: spawned.append(cmd) or type("P", (), {"pid": 1})(),
+    )
+
+    result = launcher.smart_open(name)
+    assert result["success"] is False
+    assert result["error"] == "unsafe_app_name"
+    assert spawned == [], f"refused to spawn but got: {spawned}"
+
+
+def test_smart_open_known_alias_with_uri_protocol_still_works(monkeypatch):
+    """Curated APP_ALIASES (e.g. ``ms-settings:``) must keep working."""
+    spawned = []
+    monkeypatch.setattr(wm, "list_windows", lambda: [])
+    monkeypatch.setattr(
+        launcher.subprocess, "Popen",
+        lambda cmd, *a, **kw: spawned.append(cmd) or type("P", (), {"pid": 1})(),
+    )
+
+    result = launcher.smart_open("settings")
+    assert result["success"] is True
+    assert any("ms-settings" in token for token in spawned[0])
+
+
+def test_is_safe_launch_token_unit():
+    assert launcher._is_safe_launch_token("chrome")
+    assert launcher._is_safe_launch_token("notepad++")
+    assert launcher._is_safe_launch_token("v1.2.3-rc")
+    assert not launcher._is_safe_launch_token("")
+    assert not launcher._is_safe_launch_token("foo bar")
+    assert not launcher._is_safe_launch_token("foo&bar")
+    assert not launcher._is_safe_launch_token("ms-settings:")  # colon not allowed for unknowns
