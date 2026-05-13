@@ -222,33 +222,47 @@ class ActionExecutor:
         return {"success": True, "output": f"Clicked ({sx}, {sy})"}
 
     def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_) -> dict:
-        """OCR-backed click: locate visible text and click its centre."""
+        """OCR-backed click: locate visible text and click its centre.
+
+        Self-healing: if OCR fails, tries UIAutomation click by name.
+        """
         pos = ocr.find_text(text, fuzzy=fuzzy)
-        if pos is None:
+        if pos is not None:
+            x, y = pos
+            sx = x + self.click_offset[0]
+            sy = y + self.click_offset[1]
+            if self.stealth and stealth_input.is_available():
+                if stealth_input.post_click(sx, sy, button=button):
+                    return {
+                        "success": True,
+                        "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
+                        "position": [sx, sy],
+                    }
+            self._desktop.click(sx, sy, button=button)
             return {
-                "success": False,
-                "output": (
-                    f"Text {text!r} not found on screen (or Tesseract OCR is not installed)."
-                ),
-                "error": "text_not_found",
+                "success": True,
+                "output": f"Clicked text {text!r} at ({sx}, {sy})",
+                "position": [sx, sy],
             }
-        x, y = pos
-        sx = x + self.click_offset[0]
-        sy = y + self.click_offset[1]
-        # Stealth path: send the click via Win32 PostMessage so the cursor
-        # stays put while the user keeps using their mouse/keyboard.
-        if self.stealth and stealth_input.is_available():
-            if stealth_input.post_click(sx, sy, button=button):
+
+        # Fallback 1: UIAutomation click by name
+        try:
+            ui_pos = ui_tree.click_control(name=text, button=button)
+            if ui_pos is not None:
                 return {
                     "success": True,
-                    "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
-                    "position": [sx, sy],
+                    "output": f"Clicked text {text!r} via UIAutomation at {ui_pos}",
+                    "position": list(ui_pos),
+                    "fallback": "uia",
                 }
-        self._desktop.click(sx, sy, button=button)
+        except Exception as exc:
+            logger.debug("click_text UIA fallback failed: %s", exc)
+
         return {
-            "success": True,
-            "output": f"Clicked text {text!r} at ({sx}, {sy})",
-            "position": [sx, sy],
+            "success": False,
+            "output": f"Text {text!r} not found via OCR or UIAutomation",
+            "error": "text_not_found",
+            "hint": "Try list_controls() to find the element, or use click(x,y) with coordinates from the screenshot",
         }
 
     def _read_text(self, *, scope: str = "focused", window: str | None = None, **_) -> dict:
@@ -324,7 +338,10 @@ class ActionExecutor:
         button: str = "left",
         **_,
     ) -> dict:
-        """Click a native Windows control by its accessibility name/id/type."""
+        """Click a native Windows control by its accessibility name/id/type.
+
+        Self-healing: if UIAutomation fails, tries OCR text click.
+        """
         pos = ui_tree.click_control(
             name=name,
             automation_id=automation_id,
@@ -332,16 +349,33 @@ class ActionExecutor:
             window_title=window_title,
             button=button,
         )
-        if pos is None:
-            return {
-                "success": False,
-                "output": (
-                    f"No control matched (name={name!r}, automation_id={automation_id!r}, "
-                    f"control_type={control_type!r}). UIAutomation may be unavailable."
-                ),
-                "error": "control_not_found",
-            }
-        return {"success": True, "output": f"Clicked control at {pos}", "position": list(pos)}
+        if pos is not None:
+            return {"success": True, "output": f"Clicked control at {pos}", "position": list(pos)}
+
+        # Fallback: if name was provided, try OCR text click
+        if name:
+            try:
+                ocr_pos = ocr.find_text(name, fuzzy=True)
+                if ocr_pos:
+                    sx = ocr_pos[0] + self.click_offset[0]
+                    sy = ocr_pos[1] + self.click_offset[1]
+                    self._desktop.click(sx, sy, button=button)
+                    return {
+                        "success": True,
+                        "output": f"Clicked control {name!r} via OCR at ({sx},{sy})",
+                        "position": [sx, sy],
+                        "fallback": "ocr",
+                    }
+            except Exception as exc:
+                logger.debug("click_control OCR fallback failed: %s", exc)
+
+        return {
+            "success": False,
+            "output": f"No control matched (name={name!r}, automation_id={automation_id!r}, "
+            f"control_type={control_type!r})",
+            "error": "control_not_found",
+            "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
+        }
 
     def _list_controls(
         self, *, window_title: str | None = None, max_results: int = 60, **_
@@ -379,7 +413,10 @@ class ActionExecutor:
         window_title: str | None = None,
         **_,
     ) -> dict:
-        """Set the value of a named edit/textbox control deterministically."""
+        """Set the value of a named edit/textbox control deterministically.
+
+        Self-healing: if UIAutomation set_text fails, tries click+Ctrl+A+type.
+        """
         if _contains_sensitive(text):
             return {
                 "success": False,
@@ -392,13 +429,50 @@ class ActionExecutor:
             automation_id=automation_id,
             window_title=window_title,
         )
-        if not ok:
-            return {
-                "success": False,
-                "output": f"No editable control matched (name={name!r}).",
-                "error": "control_not_found",
-            }
-        return {"success": True, "output": f"Set text on {name or automation_id!r}"}
+        if ok:
+            return {"success": True, "output": f"Set text on {name or automation_id!r}"}
+
+        # Fallback: try finding the control position, click it, select-all, type
+        try:
+            controls = ui_tree.list_controls(window_title=window_title, max_results=30)
+            target = None
+            for c in controls:
+                cname = (c.get("name") or "").lower()
+                cid = (c.get("automation_id") or "").lower()
+                if name and name.lower() in cname:
+                    target = c
+                    break
+                if automation_id and automation_id.lower() in cid:
+                    target = c
+                    break
+                if c.get("control_type") == "Edit" and not name and not automation_id:
+                    target = c
+                    break
+            if target and not target.get("is_offscreen"):
+                cx = target["x"] + target["width"] // 2
+                cy = target["y"] + target["height"] // 2
+                sx = cx + self.click_offset[0]
+                sy = cy + self.click_offset[1]
+                self._desktop.click(sx, sy)
+                import time as _t
+                _t.sleep(0.15)
+                self._desktop.hotkey("ctrl", "a")
+                _t.sleep(0.1)
+                self._desktop.type_text(text)
+                return {
+                    "success": True,
+                    "output": f"Set text via click+type on control at ({sx},{sy})",
+                    "fallback": "click_and_type",
+                }
+        except Exception as exc:
+            logger.debug("set_text click+type fallback failed: %s", exc)
+
+        return {
+            "success": False,
+            "output": f"No editable control matched (name={name!r})",
+            "error": "control_not_found",
+            "hint": "Try click_text() on the field label, then type_text()",
+        }
 
     def _click_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
         # Find the template position; click via stealth if enabled so the
@@ -605,8 +679,33 @@ class ActionExecutor:
         return {"success": False, "output": "Failed to start process"}
 
     def _smart_open(self, *, name: str, **_) -> dict:
-        """Focus an existing window if the app is already running, else launch."""
-        return launcher.smart_open(name)
+        """Focus an existing window if the app is already running, else launch.
+
+        Self-healing: if normal launch fails, tries PowerShell Start-Process.
+        """
+        result = launcher.smart_open(name)
+        if result.get("success"):
+            return result
+
+        # Fallback: PowerShell Start-Process
+        import subprocess
+
+        try:
+            subprocess.Popen(
+                ["powershell", "-Command", f"Start-Process '{name}'"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return {
+                "success": True,
+                "output": f"Launched {name!r} via PowerShell Start-Process",
+                "fallback": "powershell",
+            }
+        except Exception as exc:
+            logger.debug("smart_open PowerShell fallback failed: %s", exc)
+
+        result["hint"] = "Try open_app() with the full executable path"
+        return result
 
     def _close_app(self, *, name: str = None, pid: int = None, **_) -> dict:
         target = pid or name
@@ -619,8 +718,39 @@ class ActionExecutor:
         }
 
     def _focus_window(self, *, title: str, **_) -> dict:
+        """Focus a window by partial title match.
+
+        Self-healing: if exact focus fails, scans visible windows for
+        the best partial match and tries harder (Alt-Tab style).
+        """
         ok = wm.focus_window(title)
-        return {"success": ok, "output": f"Window '{title}' {'focused' if ok else 'not found'}"}
+        if ok:
+            return {"success": True, "output": f"Window '{title}' focused"}
+
+        # Fallback: search all windows and try closest match
+        windows = wm.list_windows()
+        candidates = []
+        needle = title.lower()
+        for w in windows:
+            wtitle = (w.get("title") or "").lower()
+            if needle in wtitle or wtitle in needle:
+                candidates.append(w)
+        if candidates:
+            # Try focusing the best candidate directly
+            best = candidates[0]
+            if wm.focus_window(best["title"]):
+                return {
+                    "success": True,
+                    "output": f"Focused window '{best['title']}' (partial match for '{title}')",
+                    "matched_title": best["title"],
+                }
+
+        return {
+            "success": False,
+            "output": f"Window '{title}' not found",
+            "error": "window_not_found",
+            "hint": "Try list_windows() to see what's actually open",
+        }
 
     def _close_window(self, *, title: str, **_) -> dict:
         ok = wm.close_window(title)

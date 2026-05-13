@@ -648,7 +648,57 @@ class AgentEngine:
             "log": self.forensic_log,
             "finish_summary": self.finish_summary,
             "elapsed_seconds": round(elapsed, 2),
+            "report": self._generate_report(goal, elapsed),
         }
+
+    def _generate_report(self, goal: str, elapsed: float) -> dict[str, Any]:
+        """Generate a structured run report for MSP work notes.
+
+        Returns a dict with both machine-readable fields and a human-readable
+        text summary suitable for pasting into ticketing systems.
+        """
+        success = bool(self.finish_summary)
+        errors = [e for e in self.forensic_log if not e.get("result", {}).get("ok", True)]
+
+        # Count action types
+        action_counts: dict[str, int] = {}
+        for entry in self.forensic_log:
+            a = entry.get("action", "unknown")
+            action_counts[a] = action_counts.get(a, 0) + 1
+
+        report = {
+            "status": "success" if success else "failed",
+            "goal": goal,
+            "steps_total": self.step,
+            "steps_failed": len(errors),
+            "elapsed_seconds": round(elapsed, 2),
+            "actions": action_counts,
+            "summary": self.finish_summary or "Run ended without completion",
+            "error_list": [
+                {
+                    "step": e.get("step"),
+                    "action": e.get("action"),
+                    "error": e.get("result", {}).get("msg", "")[:200],
+                }
+                for e in errors[:10]
+            ],
+        }
+
+        # Human-readable text for ticketing
+        lines = [
+            f"SENTINEL DESKTOP — AUTOMATION REPORT",
+            f"Status: {'COMPLETED' if success else 'FAILED'}",
+            f"Goal: {goal}",
+            f"Steps: {self.step} ({len(errors)} failed)",
+            f"Duration: {elapsed:.1f}s",
+            f"Summary: {report['summary']}",
+        ]
+        if errors:
+            lines.append("Errors:")
+            for e in errors[:5]:
+                lines.append(f"  Step {e.get('step')}: {e.get('action')} — {e.get('result', {}).get('msg', '')[:100]}")
+        report["text"] = "\n".join(lines)
+        return report
 
     def stop(self):
         """Stop the agent loop."""
