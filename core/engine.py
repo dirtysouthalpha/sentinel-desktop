@@ -207,7 +207,7 @@ class AgentEngine:
         )
         # Wire approval gate callback to the legacy approval_callback if set
         if self.approval_callback:
-            self.gate.set_callback(lambda req: None)  # UI handles display
+            self.gate.set_callback(self.approval_callback)
 
         # MFA/UAC detection — pauses agent when auth prompts appear
         self.mfa_detector = MFADetector()

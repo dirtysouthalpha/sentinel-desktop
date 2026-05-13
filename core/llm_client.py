@@ -141,6 +141,7 @@ class LLMClient:
                 timeout=timeout,
                 max_retries=max_retries,
                 retry_base_delay=retry_base_delay,
+                custom_url=custom_url,
             )
 
         # --- OpenAI-compatible path ------------------------------------
@@ -302,16 +303,17 @@ class LLMClient:
         timeout: int,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
+        custom_url: str | None = None,
     ) -> str:
         """Send a chat request using Anthropic's native ``/messages`` API."""
         provider_config = PROVIDERS["anthropic"]
-        base_url = get_base_url("anthropic")
+        base_url = get_base_url("anthropic", custom_url)
         chat_url = f"{base_url}{provider_config['chat_endpoint']}"
 
         headers = {
             "Content-Type": "application/json",
             "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
+            "anthropic-version": "2025-01-01",
         }
 
         # Convert messages: extract system prompt, build Anthropic-style list.

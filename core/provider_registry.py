@@ -45,6 +45,9 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "chat_endpoint": "/messages",
         "anthropic_native": True,
         "manual_models": [
+            "claude-opus-4-7",
+            "claude-sonnet-4-6",
+            "claude-haiku-4-5-20251001",
             "claude-sonnet-4-20250514",
             "claude-opus-4-20250514",
             "claude-3-7-sonnet-20250219",

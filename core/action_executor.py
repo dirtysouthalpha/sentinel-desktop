@@ -779,11 +779,9 @@ def _dry_run_result(action_type: str, params: dict) -> dict:
 def _contains_sensitive(text: str) -> bool:
     """Check if text looks like it contains sensitive data.
     Used to prevent accidental typing of secrets."""
-    # This is a lightweight check; the real protection is context-aware.
     lower = text.lower()
     for keyword in SENSITIVE_FIELDS:
-        if keyword in lower and len(text) < 100:
-            # Short text containing a sensitive keyword — likely a credential
+        if keyword in lower:
             return True
     return False
 

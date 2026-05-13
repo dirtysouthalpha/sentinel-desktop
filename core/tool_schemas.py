@@ -407,6 +407,201 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "drag",
+            "description": "Drag from one point to another.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_x": {"type": "integer", "description": "Start X pixel"},
+                    "from_y": {"type": "integer", "description": "Start Y pixel"},
+                    "to_x": {"type": "integer", "description": "End X pixel"},
+                    "to_y": {"type": "integer", "description": "End Y pixel"},
+                    "duration": {"type": "number", "default": 0.5, "description": "Drag duration in seconds"},
+                    "button": {"type": "string", "enum": ["left", "right"], "default": "left"},
+                },
+                "required": ["from_x", "from_y", "to_x", "to_y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "smart_wait",
+            "description": "Wait until the screen changes (visual diff). Faster than fixed wait.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {"type": "number", "default": 10, "description": "Max wait in seconds"},
+                    "region": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Optional [x, y, w, h] region to watch",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait_for_stable",
+            "description": "Wait until the screen stops changing (e.g. page load complete).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {"type": "number", "default": 10},
+                    "stable_time": {"type": "number", "default": 1.5, "description": "Seconds of no change"},
+                    "region": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Optional [x, y, w, h] region to watch",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait_for_text",
+            "description": "Wait until specific text appears on screen via OCR.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to wait for"},
+                    "timeout": {"type": "number", "default": 10},
+                    "region": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Optional [x, y, w, h] region to watch",
+                    },
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait_for_image",
+            "description": "Wait for a template image to appear on screen.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "template_path": {"type": "string"},
+                    "timeout": {"type": "integer", "default": 30},
+                    "confidence": {"type": "number", "default": 0.8},
+                },
+                "required": ["template_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "system_info",
+            "description": "Get system details (OS, resolution, memory, etc.).",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_processes",
+            "description": "List running processes.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "start_process",
+            "description": "Start a process by path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "args": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "kill_process",
+            "description": "Kill a process by PID or name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pid": {"type": "integer"},
+                    "name": {"type": "string"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "powershell",
+            "description": "Run a PowerShell command and return output.",
+            "parameters": {
+                "type": "object",
+                "properties": {"command": {"type": "string"}},
+                "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_script",
+            "description": "Replay a recorded script from a JSON file.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "params": {"type": "object"},
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "close_app",
+            "description": "Close an app by name or PID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "pid": {"type": "integer"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_directory",
+            "description": "List directory contents.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "default": "."},
+                },
+            },
+        },
+    },
 ]
 
 
