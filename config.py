@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v2 — Settings persistence layer.
+Sentinel Desktop — Settings persistence layer.
 
 Config is stored as JSON in the user's AppData directory (Windows)
 or ~/.sentinel-desktop/ on other platforms.

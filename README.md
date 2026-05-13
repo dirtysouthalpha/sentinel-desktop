@@ -1,12 +1,12 @@
 <div align="center">
 
-# ⬡ Sentinel Desktop v2
+# ⬡ Sentinel Desktop
 
 **AI-powered Windows desktop automation agent.**
 
 Give it a goal in plain English. It sees your screen, moves the mouse, types, and interacts with any application — autonomously.
 
-[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue)](https://python.org)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 </div>

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Sentinel Desktop v2 — AI-powered Windows desktop automation agent.
+Sentinel Desktop — AI-powered Windows desktop automation agent.
 
 Modes:
   GUI  (default)     : CustomTkinter dark-themed chat interface
   API  (--api)       : FastAPI server on port 8091
   CLI  (--command)   : Single goal, execute, exit
+
+The package version is sourced from ``core.__version__``.
 """
 
 import argparse
@@ -32,10 +34,12 @@ if PROJECT_ROOT not in sys.path:
 
 
 def parse_args():
+    from core import __version__
     parser = argparse.ArgumentParser(
         prog="sentinel-desktop",
-        description="Sentinel Desktop v2 — AI-powered Windows desktop automation",
+        description=f"Sentinel Desktop v{__version__} — AI-powered Windows desktop automation",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--api", action="store_true",
         help="Launch in headless API mode (FastAPI on port 8091)",

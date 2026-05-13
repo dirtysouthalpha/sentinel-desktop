@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v3.0 — PowerShell Script Execution Module
+Sentinel Desktop — PowerShell Script Execution Module
 
 Provides PowerShellRunner for executing PowerShell scripts, commands,
 and inline snippets on Windows with JSON output parsing, timeout
@@ -8,18 +8,39 @@ handling, admin elevation support, and built-in diagnostic helpers.
 Gracefully degrades on non-Windows platforms.
 """
 
-import subprocess
 import json
-import os
-import sys
-import time
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
-
+import os
 import platform
+import subprocess
+import time
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Argument escaping
+# ---------------------------------------------------------------------------
+
+def _ps_escape_single_quoted(s: str) -> str:
+    """Quote *s* as a PowerShell single-quoted literal.
+
+    PowerShell single-quoted strings are verbatim — the only escape is the
+    single quote itself, which is doubled (``'foo''bar'`` → ``foo'bar``).
+    Control characters (NUL, CR, LF) are rejected with ``ValueError``
+    because they could let a caller break out of a quoted context in
+    nested command construction.
+
+    Use this whenever a caller-supplied value (service name, host, etc.)
+    is interpolated into a command string built by this module.
+    """
+    if not isinstance(s, str):
+        raise TypeError(f"expected str, got {type(s).__name__}")
+    for ch in ("\x00", "\r", "\n"):
+        if ch in s:
+            raise ValueError(f"control character {ch!r} not allowed in PS argument")
+    return "'" + s.replace("'", "''") + "'"
 
 
 # ---------------------------------------------------------------------------
@@ -77,13 +98,32 @@ class PowerShellRunner:
         self,
         timeout: int = 300,
         run_as_admin: bool = False,
-        working_dir: Optional[str] = None,
-        env_vars: Optional[dict] = None,
+        working_dir: str | None = None,
+        env_vars: dict | None = None,
+        allow_raw: bool = True,
     ):
+        """Configure a PowerShell runner.
+
+        Args:
+            timeout: Maximum seconds to wait for the child process.
+            run_as_admin: Launch with UAC elevation. The elevated path
+                builds a wrapping ``Start-Process -Verb RunAs`` command;
+                keep this behind an approval gate when callers can be
+                influenced by an LLM.
+            working_dir: cwd for the spawned process.
+            env_vars: extra environment variables.
+            allow_raw: When ``False``, :meth:`run_command` and
+                :meth:`run_inline` refuse to execute (they expose a
+                surface that takes arbitrary PowerShell). Set to
+                ``False`` whenever the input may have come from an LLM
+                tool call or unauthenticated API user; built-in helpers
+                like :meth:`get_service_status` continue to work.
+        """
         self.timeout = timeout
         self.run_as_admin = run_as_admin
         self.working_dir = working_dir or os.getcwd()
         self.env_vars = env_vars or {}
+        self.allow_raw = allow_raw
         self._ps_exe = self._resolve_ps_exe()
 
     # -- internal -----------------------------------------------------------
@@ -170,7 +210,7 @@ class PowerShellRunner:
                 else:
                     tmp_out = ""
                 if tmp_out and os.path.isfile(tmp_out):
-                    with open(tmp_out, "r", encoding="utf-8",
+                    with open(tmp_out, encoding="utf-8",
                               errors="replace") as fh:
                         stdout = fh.read()
                     try:
@@ -221,11 +261,32 @@ class PowerShellRunner:
         return self._run(f'& "{script_path}"{params}')
 
     def run_command(self, command: str) -> PSResult:
-        """Execute an arbitrary PowerShell command string."""
+        """Execute an arbitrary PowerShell command string.
+
+        This is a power-user surface: the caller is fully responsible for
+        sanitising *command*. When the runner was created with
+        ``allow_raw=False`` this method refuses to execute.
+        """
+        if not self.allow_raw:
+            return PSResult(
+                success=False, exit_code=-5, stdout="",
+                stderr="run_command refused: allow_raw=False on this runner.",
+                objects=[],
+            )
         return self._run(command)
 
     def run_inline(self, script_body: str) -> PSResult:
-        """Execute a multi-line PowerShell script block."""
+        """Execute a multi-line PowerShell script block.
+
+        Same caveat as :meth:`run_command` — the caller owns the safety
+        of *script_body*. Refuses to execute when ``allow_raw=False``.
+        """
+        if not self.allow_raw:
+            return PSResult(
+                success=False, exit_code=-5, stdout="",
+                stderr="run_inline refused: allow_raw=False on this runner.",
+                objects=[],
+            )
         escaped = script_body.replace('"', '\\"')
         return self._run(f'{{{escaped}}}')
 
@@ -259,8 +320,13 @@ class PowerShellRunner:
 
     def get_service_status(self, name: str) -> dict:
         """Check the status of a Windows service."""
+        try:
+            ps_name = _ps_escape_single_quoted(name)
+        except (TypeError, ValueError) as exc:
+            return {"Name": name, "Status": "Unknown", "StartType": "Unknown",
+                    "DisplayName": "", "error": f"invalid service name: {exc}"}
         cmd = (
-            f"Get-Service -Name '{name}' -ErrorAction Stop "
+            f"Get-Service -Name {ps_name} -ErrorAction Stop "
             "| Select-Object Name,Status,StartType,DisplayName"
         )
         result = self._run(cmd)
@@ -271,14 +337,19 @@ class PowerShellRunner:
 
     def restart_service(self, name: str) -> dict:
         """Restart a Windows service safely (stop then start)."""
+        try:
+            ps_name = _ps_escape_single_quoted(name)
+        except (TypeError, ValueError) as exc:
+            return {"Name": name, "Status": "Error", "Action": "Restart",
+                    "Success": False, "error": f"invalid service name: {exc}"}
         cmd = (
             f"try{{"
-            f" Restart-Service -Name '{name}' -Force -ErrorAction Stop;"
-            f" $s=Get-Service -Name '{name}';"
+            f" Restart-Service -Name {ps_name} -Force -ErrorAction Stop;"
+            f" $s=Get-Service -Name {ps_name};"
             f" @{{Name=$s.Name;Status=$s.Status.ToString();"
             f"   Action='Restarted';Success=$true}}"
             f"}}catch{{"
-            f" @{{Name='{name}';Status='Error';Action='Restart';"
+            f" @{{Name={ps_name};Status='Error';Action='Restart';"
             f"   Success=$false;Error=$_.Exception.Message}}"
             f"}}"
         )
@@ -314,12 +385,17 @@ class PowerShellRunner:
 
     def test_connection(self, host: str) -> dict:
         """Ping and traceroute to *host*."""
+        try:
+            ps_host = _ps_escape_single_quoted(host)
+        except (TypeError, ValueError) as exc:
+            return {"Host": host, "PingSucceeded": False, "PingMs": 0,
+                    "Hops": [], "error": f"invalid host: {exc}"}
         cmd = (
-            f"$p=Test-Connection -ComputerName '{host}' -Count 4 "
+            f"$p=Test-Connection -ComputerName {ps_host} -Count 4 "
             f"-ErrorAction SilentlyContinue;"
             f"$avg=if($p){{($p|Measure-Object -Property ResponseTime "
             f"-Average).Average}}else{{0}};"
-            f"@{{Host='{host}';PingSucceeded=($null -ne $p);"
+            f"@{{Host={ps_host};PingSucceeded=($null -ne $p);"
             f"PingMs=[math]::Round($avg,2);"
             f"Hops=$p|Select-Object Address,ResponseTime,TTL}}"
         )
@@ -334,7 +410,7 @@ class PowerShellRunner:
 # Module-level convenience
 # ---------------------------------------------------------------------------
 
-_default_runner: Optional[PowerShellRunner] = None
+_default_runner: PowerShellRunner | None = None
 
 
 def get_default_runner() -> PowerShellRunner:
