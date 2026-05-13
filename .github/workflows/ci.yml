@@ -76,9 +76,8 @@ jobs:
         run: mypy core api
 
   audit:
-    name: pip-audit (informational)
+    name: pip-audit
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -87,4 +86,4 @@ jobs:
       - name: Install pip-audit
         run: pip install pip-audit
       - name: Audit
-        run: pip-audit -r requirements.txt --disable-pip
+        run: pip-audit -r requirements.txt --no-deps
