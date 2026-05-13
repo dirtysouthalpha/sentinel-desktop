@@ -688,6 +688,8 @@ class SentinelApp:
             max_w, max_h = 330, 250
             img.thumbnail((max_w, max_h))
             ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=img.size)
+            # Retain reference to prevent GC from collecting the image.
+            self._screenshot_ctk_img = ctk_img
             self.screenshot_label.configure(image=ctk_img, text="")
         except Exception as e:
             logger.debug(f"Screenshot update failed: {e}")
@@ -696,7 +698,7 @@ class SentinelApp:
 
     def _open_settings(self):
         """Open settings window."""
-        SettingsWindow(self.root, self.config, self._on_settings_saved)
+        SettingsWindow(self.root, self.config, self._on_settings_saved, app=self)
 
     def _on_settings_saved(self):
         self.cfg = self.config.load()
@@ -959,10 +961,11 @@ class SentinelApp:
 class SettingsWindow:
     """Settings modal for provider/API key configuration."""
 
-    def __init__(self, parent, config: Config, on_save=None):
+    def __init__(self, parent, config: Config, on_save=None, app=None):
         self.config = config
         self.cfg = config.load()
         self.on_save = on_save
+        self.app = app
 
         self.win = ctk.CTkToplevel(parent)
         self.win.title("Settings")
@@ -1024,7 +1027,7 @@ class SettingsWindow:
                 "Max Coding Plan use: https://api.z.ai/api/coding/paas/v4"
             ),
             font=("Segoe UI", 10),
-            text_color=self.app._t("text_secondary", "#b9cacb"),
+            text_color="#b9cacb",
             wraplength=540,
             justify="left",
         ).pack(anchor="w", padx=20, pady=(2, 4))
@@ -1080,14 +1083,25 @@ class SettingsWindow:
             command=self._on_theme_change,
         ).pack(fill="x", padx=20, pady=4)
 
+        # Build advanced settings (monitor, run mode, step budget, save).
+        self._build_advanced()
+
     def _on_theme_change(self, choice):
         """Live theme switch from settings."""
-        self.app.current_theme = get_theme(choice)
-        apply_theme(choice)
-        self.app._t = lambda key, fb="": self.app.current_theme.get(key, fb)
-        # Reconfigure status label
-        self.app.status_label.configure(text_color=self.app._t("status_idle", "#849495"))
-        self.app.provider_label.configure(text_color=self.app._t("text_secondary", "#849495"))
+        if self.app:
+            self.app.current_theme = get_theme(choice)
+            apply_theme(choice)
+            self.app._t = lambda key, fb="": self.app.current_theme.get(key, fb)
+            self.app.status_label.configure(text_color=self.app._t("status_idle", "#849495"))
+            self.app.provider_label.configure(text_color=self.app._t("text_secondary", "#849495"))
+
+    def _build_advanced(self):
+        """Build monitor, run-mode, step-budget, and save controls.
+
+        Called from _build() so these controls are always present, not only
+        when the user triggers a theme change.
+        """
+        _t = lambda key, fb="": (self.app.current_theme.get(key, fb)) if self.app else fb
 
         # Monitor selection (multi-screen)
         from core.screenshot import list_monitors
@@ -1132,7 +1146,7 @@ class SettingsWindow:
             values=monitor_choices,
         ).pack(fill="x", padx=20, pady=4)
 
-        # Autonomous mode toggle
+        # Run mode toggles
         ctk.CTkLabel(
             self.win,
             text="Run mode",
@@ -1187,7 +1201,7 @@ class SettingsWindow:
                 "physical mouse when that happens."
             ),
             font=("Segoe UI", 9),
-            text_color=self.app._t("text_secondary", "#b9cacb"),
+            text_color=_t("text_secondary", "#b9cacb"),
             wraplength=540,
             justify="left",
         ).pack(anchor="w", padx=20, pady=(0, 4))
