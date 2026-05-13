@@ -37,6 +37,7 @@ dependencies = [
     "websockets ~= 12.0",
     "pydantic ~= 2.5",
     "pygetwindow ~= 0.0.9; sys_platform == 'win32'",
+    "bcrypt ~= 4.1",
 ]
 
 [project.optional-dependencies]
@@ -117,7 +118,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S603", "S607", "E701"]
+"tests/*" = ["S101", "S106", "S603", "S607", "E701"]
 "installer/*" = ["S603", "S607"]
 "core/auth.py" = ["S324"]  # SHA-256 password hashing — see TODO to migrate to bcrypt
 

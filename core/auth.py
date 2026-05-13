@@ -17,6 +17,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import bcrypt
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -117,17 +119,48 @@ class User:
 
 # ---------------------------------------------------------------------------
 # Password Helpers
+#
+# New users are hashed with bcrypt — the resulting string starts with
+# ``$2b$`` and embeds the salt + cost factor. ``User.salt`` becomes an
+# empty string for these users.
+#
+# Legacy users from the pre-bcrypt era use SHA-256(salt || password)
+# stored as a 64-char hex digest with a separate hex salt. They continue
+# to verify via _verify_password, and on the next successful login the
+# hash is transparently upgraded to bcrypt.
 # ---------------------------------------------------------------------------
 
 
 def _generate_salt() -> str:
-    """Return a hex-encoded random salt."""
+    """Return a hex-encoded random salt. Kept for legacy callers only."""
     return secrets.token_hex(SALT_LENGTH)
 
 
 def _hash_password(password: str, salt: str) -> str:
-    """Hash *password* with *salt* using SHA-256."""
+    """Hash *password* with *salt* using SHA-256 (legacy verification path)."""
     return hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
+
+
+def _hash_password_bcrypt(password: str) -> str:
+    """Hash *password* with bcrypt. Returns a ``$2b$...`` string."""
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("ascii")
+
+
+def _is_bcrypt_hash(stored_hash: str) -> bool:
+    """``True`` for bcrypt-format hashes (``$2a$``, ``$2b$``, ``$2y$``)."""
+    return stored_hash.startswith(("$2a$", "$2b$", "$2y$"))
+
+
+def _verify_password(password: str, stored_hash: str, legacy_salt: str = "") -> bool:
+    """Constant-time verify *password* against a bcrypt or legacy SHA-256 hash."""
+    if _is_bcrypt_hash(stored_hash):
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("ascii"))
+        except (ValueError, TypeError):
+            return False
+    legacy = _hash_password(password, legacy_salt)
+    return secrets.compare_digest(legacy, stored_hash)
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +175,8 @@ class AuthManager:
     Features
     --------
     * User CRUD backed by a JSON file
-    * Password verification (SHA-256 + random salt)
+    * Password verification (bcrypt; transparent rehash from legacy SHA-256
+      on next successful login)
     * API-key based authentication
     * Role-based permission checks (VIEWER / OPERATOR / ADMIN)
     * Time-limited session tokens with create / validate / revoke lifecycle
@@ -225,11 +259,10 @@ class AuthManager:
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
 
-        salt = _generate_salt()
         user = User(
             username=username,
-            password_hash=_hash_password(password, salt),
-            salt=salt,
+            password_hash=_hash_password_bcrypt(password),
+            salt="",  # bcrypt embeds the salt; field kept for legacy compat
             role=role.value,
             api_key=secrets.token_hex(API_KEY_LENGTH),
             created=time.time(),
@@ -278,9 +311,8 @@ class AuthManager:
             return None
 
         if password is not None:
-            salt = _generate_salt()
-            user.salt = salt
-            user.password_hash = _hash_password(password, salt)
+            user.password_hash = _hash_password_bcrypt(password)
+            user.salt = ""
 
         if role is not None:
             user.role = role.value
@@ -317,10 +349,16 @@ class AuthManager:
             logger.warning("Authentication failed: unknown user '%s'", username)
             return None
 
-        computed = _hash_password(password, user.salt)
-        if not secrets.compare_digest(computed, user.password_hash):
+        if not _verify_password(password, user.password_hash, user.salt):
             logger.warning("Authentication failed: bad password for '%s'", username)
             return None
+
+        # Transparently upgrade legacy SHA-256 hashes to bcrypt on first
+        # successful login so the at-rest hash strengthens over time.
+        if not _is_bcrypt_hash(user.password_hash):
+            user.password_hash = _hash_password_bcrypt(password)
+            user.salt = ""
+            logger.info("Upgraded user '%s' hash from legacy SHA-256 to bcrypt", username)
 
         user.last_login = time.time()
         self._save()
@@ -464,11 +502,11 @@ class AuthManager:
         return len(self._sessions)
 
     @staticmethod
-    def hash_password(password: str, salt: str) -> str:
-        """Public helper to hash a password with a given salt."""
-        return _hash_password(password, salt)
+    def hash_password(password: str) -> str:
+        """Public helper to hash a password with bcrypt."""
+        return _hash_password_bcrypt(password)
 
     @staticmethod
-    def generate_salt() -> str:
-        """Public helper to generate a random salt."""
-        return _generate_salt()
+    def verify_password(password: str, stored_hash: str, legacy_salt: str = "") -> bool:
+        """Public helper to verify a password against a stored hash."""
+        return _verify_password(password, stored_hash, legacy_salt)

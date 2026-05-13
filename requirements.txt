@@ -22,6 +22,9 @@ fastapi ~= 0.110
 uvicorn ~= 0.27
 websockets ~= 12.0
 pydantic ~= 2.5
+# Password hashing for the RBAC layer (core/auth.py). Used to replace
+# the legacy SHA-256 path; legacy hashes auto-upgrade on next login.
+bcrypt ~= 4.1
 
 # ── Screen analysis (optional but recommended) ──────────────────────────
 opencv-python ~= 4.8
