@@ -33,7 +33,7 @@ import os
 import platform
 import subprocess
 import threading
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from PIL import Image
 
@@ -46,15 +46,15 @@ logger = logging.getLogger(__name__)
 _IS_WINDOWS = platform.system() == "Windows"
 
 # Win32 desktop access rights (from winuser.h)
-DESKTOP_READOBJECTS       = 0x0001
-DESKTOP_CREATEWINDOW      = 0x0002
-DESKTOP_CREATEMENU        = 0x0004
-DESKTOP_HOOKCONTROL       = 0x0008
-DESKTOP_JOURNALRECORD     = 0x0010
-DESKTOP_JOURNALPLAYBACK   = 0x0020
-DESKTOP_ENUMERATE         = 0x0040
-DESKTOP_WRITEOBJECTS      = 0x0080
-DESKTOP_SWITCHDESKTOP     = 0x0100
+DESKTOP_READOBJECTS = 0x0001
+DESKTOP_CREATEWINDOW = 0x0002
+DESKTOP_CREATEMENU = 0x0004
+DESKTOP_HOOKCONTROL = 0x0008
+DESKTOP_JOURNALRECORD = 0x0010
+DESKTOP_JOURNALPLAYBACK = 0x0020
+DESKTOP_ENUMERATE = 0x0040
+DESKTOP_WRITEOBJECTS = 0x0080
+DESKTOP_SWITCHDESKTOP = 0x0100
 
 # Standard all-access mask for a desktop we own
 _DESKTOP_FULL_ACCESS = (
@@ -79,14 +79,15 @@ SW_SHOWNORMAL = 1
 UOI_NAME = 2
 
 # Lazy ctypes handles — populated once on first use.
-_user32: Optional[Any] = None
-_kernel32: Optional[Any] = None
+_user32: Any | None = None
+_kernel32: Any | None = None
 
 
 def _get_user32():
     global _user32
     if _user32 is None:
         import ctypes
+
         _user32 = ctypes.windll.user32  # type: ignore[attr-defined]
     return _user32
 
@@ -95,6 +96,7 @@ def _get_kernel32():
     global _kernel32
     if _kernel32 is None:
         import ctypes
+
         _kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
     return _kernel32
 
@@ -102,6 +104,7 @@ def _get_kernel32():
 # ---------------------------------------------------------------------------
 # Helper: discover the name of the current (default) desktop
 # ---------------------------------------------------------------------------
+
 
 def _get_current_desktop_name() -> str:
     """Retrieve the name of the desktop assigned to the calling thread.
@@ -142,25 +145,23 @@ def _get_current_desktop_name() -> str:
 # Windows implementation
 # ---------------------------------------------------------------------------
 
+
 class _Win32VirtualDesktop:
     """Internal implementation backed by real Win32 desktop objects."""
 
     def __init__(self, name: str):
         self._name = name
-        self._handle: Optional[int] = None
+        self._handle: int | None = None
         self._default_desktop_name: str = _get_current_desktop_name()
-        self._default_handle: Optional[int] = None
+        self._default_handle: int | None = None
         self._lock = threading.Lock()
         self._is_active = False
-        self._launched_pids: List[int] = []
+        self._launched_pids: list[int] = []
 
         # Snapshot the handle of the default desktop so we can restore it.
         try:
-            import ctypes
             user32 = _get_user32()
-            self._default_handle = user32.GetThreadDesktop(
-                _get_kernel32().GetCurrentThreadId()
-            )
+            self._default_handle = user32.GetThreadDesktop(_get_kernel32().GetCurrentThreadId())
         except Exception as exc:
             logger.debug("Could not snapshot default desktop handle: %s", exc)
 
@@ -171,16 +172,13 @@ class _Win32VirtualDesktop:
         if not _IS_WINDOWS:
             return False
         try:
-            import ctypes
-            from ctypes import wintypes
-
             user32 = _get_user32()
 
             # If the desktop already exists, try to open it instead.
             existing = user32.OpenDesktopW(
                 self._name,
-                0,                          # dwFlags
-                False,                      # fInherit
+                0,  # dwFlags
+                False,  # fInherit
                 _DESKTOP_FULL_ACCESS,
             )
             if existing:
@@ -190,12 +188,12 @@ class _Win32VirtualDesktop:
 
             # Create a brand-new desktop object.
             handle = user32.CreateDesktopW(
-                self._name,                 # lpszDesktop
-                None,                       # lpszDevice (no device)
-                None,                       # pDevmode (no devmode)
-                0,                          # dwFlags (reserved, 0)
-                _DESKTOP_FULL_ACCESS,       # dwDesiredAccess
-                None,                       # lpsa (NULL → default security)
+                self._name,  # lpszDesktop
+                None,  # lpszDevice (no device)
+                None,  # pDevmode (no devmode)
+                0,  # dwFlags (reserved, 0)
+                _DESKTOP_FULL_ACCESS,  # dwDesiredAccess
+                None,  # lpsa (NULL → default security)
             )
             if not handle:
                 _raise_last_error("CreateDesktopW")
@@ -206,8 +204,8 @@ class _Win32VirtualDesktop:
 
         except Exception as exc:
             logger.warning(
-                "Virtual desktop creation failed (%s); falling back to "
-                "current desktop", exc,
+                "Virtual desktop creation failed (%s); falling back to current desktop",
+                exc,
             )
             self._handle = None
             return False
@@ -265,7 +263,6 @@ class _Win32VirtualDesktop:
                 logger.debug("switch_back: no default info available")
                 return False
             try:
-                import ctypes
                 user32 = _get_user32()
 
                 # Re-open the default desktop by name — the cached handle
@@ -294,7 +291,7 @@ class _Win32VirtualDesktop:
 
     # -- process launching ---------------------------------------------------
 
-    def launch_app(self, path: str, args: Optional[str] = None) -> Dict[str, Any]:
+    def launch_app(self, path: str, args: str | None = None) -> dict[str, Any]:
         """Start a process on this virtual desktop via ``STARTUPINFO.lpDesktop``.
 
         Returns ``{"success": bool, "pid": int|None, "output": str}``.
@@ -302,9 +299,7 @@ class _Win32VirtualDesktop:
         with self._lock:
             return self._launch_app_locked(path, args)
 
-    def _launch_app_locked(
-        self, path: str, args: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def _launch_app_locked(self, path: str, args: str | None = None) -> dict[str, Any]:
         """Must be called while ``self._lock`` is held."""
         import ctypes
         from ctypes import wintypes
@@ -312,38 +307,38 @@ class _Win32VirtualDesktop:
         # Build the command line.
         cmd = f'"{path}"'
         if args:
-            cmd = f'{cmd} {args}'
+            cmd = f"{cmd} {args}"
 
         # STARTUPINFOW structure (68 bytes on 64-bit, 48 on 32-bit — we use
         # the explicit cb field so it's correct on both).
         class STARTUPINFOW(ctypes.Structure):
             _fields_ = [
-                ("cb",              wintypes.DWORD),
-                ("lpReserved",      wintypes.LPWSTR),
-                ("lpDesktop",       wintypes.LPWSTR),
-                ("lpTitle",         wintypes.LPWSTR),
-                ("dwX",             wintypes.DWORD),
-                ("dwY",             wintypes.DWORD),
-                ("dwXSize",         wintypes.DWORD),
-                ("dwYSize",         wintypes.DWORD),
-                ("dwXCountChars",   wintypes.DWORD),
-                ("dwYCountChars",   wintypes.DWORD),
+                ("cb", wintypes.DWORD),
+                ("lpReserved", wintypes.LPWSTR),
+                ("lpDesktop", wintypes.LPWSTR),
+                ("lpTitle", wintypes.LPWSTR),
+                ("dwX", wintypes.DWORD),
+                ("dwY", wintypes.DWORD),
+                ("dwXSize", wintypes.DWORD),
+                ("dwYSize", wintypes.DWORD),
+                ("dwXCountChars", wintypes.DWORD),
+                ("dwYCountChars", wintypes.DWORD),
                 ("dwFillAttribute", wintypes.DWORD),
-                ("dwFlags",         wintypes.DWORD),
-                ("wShowWindow",     wintypes.WORD),
-                ("cbReserved2",     wintypes.WORD),
-                ("lpReserved2",     ctypes.POINTER(wintypes.BYTE)),
-                ("hStdInput",       wintypes.HANDLE),
-                ("hStdOutput",      wintypes.HANDLE),
-                ("hStdError",       wintypes.HANDLE),
+                ("dwFlags", wintypes.DWORD),
+                ("wShowWindow", wintypes.WORD),
+                ("cbReserved2", wintypes.WORD),
+                ("lpReserved2", ctypes.POINTER(wintypes.BYTE)),
+                ("hStdInput", wintypes.HANDLE),
+                ("hStdOutput", wintypes.HANDLE),
+                ("hStdError", wintypes.HANDLE),
             ]
 
         class PROCESS_INFORMATION(ctypes.Structure):
             _fields_ = [
-                ("hProcess",    wintypes.HANDLE),
-                ("hThread",     wintypes.HANDLE),
+                ("hProcess", wintypes.HANDLE),
+                ("hThread", wintypes.HANDLE),
                 ("dwProcessId", wintypes.DWORD),
-                ("dwThreadId",  wintypes.DWORD),
+                ("dwThreadId", wintypes.DWORD),
             ]
 
         si = STARTUPINFOW()
@@ -364,30 +359,26 @@ class _Win32VirtualDesktop:
         #   lpThreadAttributes, bInheritHandles, dwCreationFlags,
         #   lpEnvironment, lpCurrentDirectory, lpStartupInfo,
         #   lpProcessInformation
-        CREATE_NO_WINDOW = 0x08000000
         CREATE_NEW_CONSOLE = 0x00000010
 
         cmd_line = ctypes.create_unicode_buffer(cmd)
 
         ok = kernel32.CreateProcessW(
-            None,                           # lpApplicationName
-            cmd_line,                       # lpCommandLine
-            None,                           # lpProcessAttributes
-            None,                           # lpThreadAttributes
-            False,                          # bInheritHandles
-            CREATE_NEW_CONSOLE,             # dwCreationFlags
-            None,                           # lpEnvironment
-            None,                           # lpCurrentDirectory
-            ctypes.byref(si),               # lpStartupInfo
-            ctypes.byref(pi),               # lpProcessInformation
+            None,  # lpApplicationName
+            cmd_line,  # lpCommandLine
+            None,  # lpProcessAttributes
+            None,  # lpThreadAttributes
+            False,  # bInheritHandles
+            CREATE_NEW_CONSOLE,  # dwCreationFlags
+            None,  # lpEnvironment
+            None,  # lpCurrentDirectory
+            ctypes.byref(si),  # lpStartupInfo
+            ctypes.byref(pi),  # lpProcessInformation
         )
 
         if not ok:
             error = kernel32.GetLastError()
-            msg = (
-                f"CreateProcessW failed for {path!r} "
-                f"( GetLastError={error} )"
-            )
+            msg = f"CreateProcessW failed for {path!r} ( GetLastError={error} )"
             logger.error(msg)
             return {"success": False, "pid": None, "output": msg}
 
@@ -400,7 +391,9 @@ class _Win32VirtualDesktop:
 
         logger.info(
             "Launched %r on desktop %r (pid=%d)",
-            path, desktop_target or "(current)", pid,
+            path,
+            desktop_target or "(current)",
+            pid,
         )
         return {
             "success": True,
@@ -413,6 +406,7 @@ class _Win32VirtualDesktop:
         for pid in self._launched_pids:
             try:
                 import signal
+
                 os.kill(pid, signal.SIGTERM)
             except (ProcessLookupError, PermissionError, OSError):
                 pass
@@ -420,7 +414,7 @@ class _Win32VirtualDesktop:
 
     # -- screenshot ----------------------------------------------------------
 
-    def screenshot(self) -> Optional[Image.Image]:
+    def screenshot(self) -> Image.Image | None:
         """Capture a screenshot of this virtual desktop.
 
         Temporarily switches the calling thread to this desktop (if not
@@ -444,6 +438,7 @@ class _Win32VirtualDesktop:
 
             try:
                 import pyautogui
+
                 img = pyautogui.screenshot()
                 return img
             except Exception as exc:
@@ -457,18 +452,19 @@ class _Win32VirtualDesktop:
 
     # -- window enumeration --------------------------------------------------
 
-    def list_windows(self) -> List[Dict[str, Any]]:
+    def list_windows(self) -> list[dict[str, Any]]:
         """Enumerate visible windows belonging to this virtual desktop.
 
         Returns a list of dicts with ``title``, ``x``, ``y``, ``width``,
         ``height``, ``hwnd`` keys.
         """
-        windows: List[Dict[str, Any]] = []
+        windows: list[dict[str, Any]] = []
 
         if not _IS_WINDOWS or not self._handle:
             # Fallback: use the standard window_manager enumeration.
             try:
                 from core import window_manager as wm
+
                 return wm.list_windows()
             except Exception:
                 return windows
@@ -520,15 +516,17 @@ class _Win32VirtualDesktop:
                     # Get rect.
                     rect = wintypes.RECT()
                     user32.GetWindowRect(hwnd, ctypes.byref(rect))
-                    windows.append({
-                        "title": title,
-                        "x": rect.left,
-                        "y": rect.top,
-                        "width": rect.right - rect.left,
-                        "height": rect.bottom - rect.top,
-                        "hwnd": hwnd,
-                        "is_focused": hwnd == user32.GetForegroundWindow(),
-                    })
+                    windows.append(
+                        {
+                            "title": title,
+                            "x": rect.left,
+                            "y": rect.top,
+                            "width": rect.right - rect.left,
+                            "height": rect.bottom - rect.top,
+                            "hwnd": hwnd,
+                            "is_focused": hwnd == user32.GetForegroundWindow(),
+                        }
+                    )
                     return True
 
                 callback = WNDENUMPROC(_enum_cb)
@@ -564,7 +562,10 @@ class _Win32VirtualDesktop:
         try:
             user32 = _get_user32()
             default_handle = user32.OpenDesktopW(
-                self._default_desktop_name, 0, False, _DESKTOP_FULL_ACCESS,
+                self._default_desktop_name,
+                0,
+                False,
+                _DESKTOP_FULL_ACCESS,
             )
             if not default_handle:
                 return False
@@ -579,7 +580,7 @@ class _Win32VirtualDesktop:
 
     # -- context manager -----------------------------------------------------
 
-    def __enter__(self) -> "_Win32VirtualDesktop":
+    def __enter__(self) -> _Win32VirtualDesktop:
         self.create()
         return self
 
@@ -592,6 +593,7 @@ class _Win32VirtualDesktop:
 # ---------------------------------------------------------------------------
 # Non-Windows stub — logs a warning and provides safe no-op methods.
 # ---------------------------------------------------------------------------
+
 
 class _StubVirtualDesktop:
     """Fallback used when the platform is not Windows or Win32 APIs fail."""
@@ -613,7 +615,7 @@ class _StubVirtualDesktop:
     def switch_back(self) -> bool:
         return False
 
-    def launch_app(self, path: str, args: Optional[str] = None) -> Dict[str, Any]:
+    def launch_app(self, path: str, args: str | None = None) -> dict[str, Any]:
         """Launch on the *current* desktop as a graceful fallback."""
         try:
             cmd = [path]
@@ -636,19 +638,21 @@ class _StubVirtualDesktop:
                 "output": f"Failed to launch {path!r}: {exc}",
             }
 
-    def screenshot(self) -> Optional[Image.Image]:
+    def screenshot(self) -> Image.Image | None:
         """Capture the current (only) desktop."""
         try:
             import pyautogui
+
             return pyautogui.screenshot()
         except Exception as exc:
             logger.warning("screenshot (fallback) failed: %s", exc)
             return None
 
-    def list_windows(self) -> List[Dict[str, Any]]:
+    def list_windows(self) -> list[dict[str, Any]]:
         """Delegate to the standard window_manager."""
         try:
             from core import window_manager as wm
+
             return wm.list_windows()
         except Exception:
             return []
@@ -656,7 +660,7 @@ class _StubVirtualDesktop:
     def close(self) -> None:
         pass
 
-    def __enter__(self) -> "_StubVirtualDesktop":
+    def __enter__(self) -> _StubVirtualDesktop:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -667,9 +671,11 @@ class _StubVirtualDesktop:
 # Error helper
 # ---------------------------------------------------------------------------
 
+
 def _raise_last_error(api_name: str) -> None:
     """Raise an ``OSError`` with the Win32 last-error text."""
     import ctypes
+
     error_code = ctypes.GetLastError()
     # FormatMessageW is the proper way but a simple code is fine for logging.
     raise OSError(f"{api_name} failed (Win32 error {error_code})")
@@ -678,6 +684,7 @@ def _raise_last_error(api_name: str) -> None:
 # ---------------------------------------------------------------------------
 # Public factory
 # ---------------------------------------------------------------------------
+
 
 class VirtualDesktop:
     """Create and manage an isolated Windows desktop for agent operations.
@@ -707,15 +714,15 @@ class VirtualDesktop:
 
     def __init__(self, name: str = "SentinelDesktop"):
         self._name = name
-        self._impl: Optional[Any] = None
+        self._impl: Any | None = None
 
         if _IS_WINDOWS:
             try:
                 self._impl = _Win32VirtualDesktop(name)
             except Exception as exc:
                 logger.warning(
-                    "Failed to initialise Win32 virtual desktop: %s — "
-                    "falling back to stub", exc,
+                    "Failed to initialise Win32 virtual desktop: %s — falling back to stub",
+                    exc,
                 )
                 self._impl = _StubVirtualDesktop(name)
         else:
@@ -746,9 +753,7 @@ class VirtualDesktop:
         """
         return self._impl.switch_back()
 
-    def launch_app(
-        self, path: str, args: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def launch_app(self, path: str, args: str | None = None) -> dict[str, Any]:
         """Launch an application on this desktop.
 
         On Windows, the process is started with
@@ -764,7 +769,7 @@ class VirtualDesktop:
         """
         return self._impl.launch_app(path, args)
 
-    def screenshot(self) -> Optional[Image.Image]:
+    def screenshot(self) -> Image.Image | None:
         """Capture a screenshot of the virtual desktop.
 
         Temporarily switches to this desktop if necessary, captures, then
@@ -774,7 +779,7 @@ class VirtualDesktop:
         """
         return self._impl.screenshot()
 
-    def list_windows(self) -> List[Dict[str, Any]]:
+    def list_windows(self) -> list[dict[str, Any]]:
         """List visible windows on this desktop.
 
         Returns a list of dicts with ``title``, ``x``, ``y``, ``width``,
@@ -789,7 +794,7 @@ class VirtualDesktop:
 
     # -- context manager -----------------------------------------------------
 
-    def __enter__(self) -> "VirtualDesktop":
+    def __enter__(self) -> VirtualDesktop:
         self.create()
         return self
 

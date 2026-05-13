@@ -19,7 +19,7 @@ def test_list_directory_sorts_dirs_first(tmp_path):
     (tmp_path / "a_file.txt").write_text("x", encoding="utf-8")
     entries = file_ops.list_directory(str(tmp_path))
     names = [e["name"] for e in entries]
-    assert names[0] == "z_dir"     # directory comes first
+    assert names[0] == "z_dir"  # directory comes first
     assert names[1] == "a_file.txt"
     assert entries[0]["is_dir"] is True
     assert entries[1]["is_dir"] is False

@@ -1,5 +1,5 @@
 """Regression: minimized-window detection + restore-before-capture path."""
-import pytest
+
 from core import window_manager as wm
 
 
@@ -24,10 +24,24 @@ def test_looks_minimized_accepts_normal_rect():
 def test_get_window_rect_uses_list_windows(monkeypatch):
     """get_window_rect must reuse the same enumeration list_windows uses."""
     fake = [
-        {"title": "OpenSwarm - Google Chrome", "x": 0, "y": 0,
-         "width": 1920, "height": 1080, "is_focused": False, "hwnd": 1},
-        {"title": "Mail - Brandon Goolsby - Outlook", "x": 100, "y": 100,
-         "width": 1800, "height": 1000, "is_focused": False, "hwnd": 2},
+        {
+            "title": "OpenSwarm - Google Chrome",
+            "x": 0,
+            "y": 0,
+            "width": 1920,
+            "height": 1080,
+            "is_focused": False,
+            "hwnd": 1,
+        },
+        {
+            "title": "Mail - Brandon Goolsby - Outlook",
+            "x": 100,
+            "y": 100,
+            "width": 1800,
+            "height": 1000,
+            "is_focused": False,
+            "hwnd": 2,
+        },
     ]
     monkeypatch.setattr(wm, "list_windows", lambda: fake)
     # Partial match should win.
@@ -39,8 +53,15 @@ def test_get_window_rect_triggers_restore_for_minimized(monkeypatch):
     restored = []
 
     fake = [
-        {"title": "Outlook - Inbox", "x": -32000, "y": -32000,
-         "width": 160, "height": 28, "is_focused": False, "hwnd": 42},
+        {
+            "title": "Outlook - Inbox",
+            "x": -32000,
+            "y": -32000,
+            "width": 160,
+            "height": 28,
+            "is_focused": False,
+            "hwnd": 42,
+        },
     ]
     # After restore, the window comes back to a real rect.
     state = {"first": True}
@@ -49,8 +70,17 @@ def test_get_window_rect_triggers_restore_for_minimized(monkeypatch):
         if state["first"]:
             state["first"] = False
             return fake
-        return [{"title": "Outlook - Inbox", "x": 100, "y": 100,
-                 "width": 1800, "height": 1000, "is_focused": True, "hwnd": 42}]
+        return [
+            {
+                "title": "Outlook - Inbox",
+                "x": 100,
+                "y": 100,
+                "width": 1800,
+                "height": 1000,
+                "is_focused": True,
+                "hwnd": 42,
+            }
+        ]
 
     def fake_restore(hwnd):
         restored.append(hwnd)

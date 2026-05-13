@@ -34,42 +34,42 @@ logger = logging.getLogger(__name__)
 # friendly name → {title: window-title-substring, launch: command-or-protocol}
 APP_ALIASES: dict[str, dict[str, str]] = {
     # Microsoft Office
-    "outlook":        {"title": "Outlook",          "launch": "outlook"},
-    "excel":          {"title": "Excel",            "launch": "excel"},
-    "word":           {"title": "Word",             "launch": "winword"},
-    "powerpoint":     {"title": "PowerPoint",       "launch": "powerpnt"},
-    "onenote":        {"title": "OneNote",          "launch": "onenote"},
-    "teams":          {"title": "Teams",            "launch": "msteams"},
+    "outlook": {"title": "Outlook", "launch": "outlook"},
+    "excel": {"title": "Excel", "launch": "excel"},
+    "word": {"title": "Word", "launch": "winword"},
+    "powerpoint": {"title": "PowerPoint", "launch": "powerpnt"},
+    "onenote": {"title": "OneNote", "launch": "onenote"},
+    "teams": {"title": "Teams", "launch": "msteams"},
     # Browsers
-    "chrome":         {"title": "Chrome",           "launch": "chrome"},
-    "edge":           {"title": "Edge",             "launch": "msedge"},
-    "firefox":        {"title": "Firefox",          "launch": "firefox"},
-    "brave":          {"title": "Brave",            "launch": "brave"},
+    "chrome": {"title": "Chrome", "launch": "chrome"},
+    "edge": {"title": "Edge", "launch": "msedge"},
+    "firefox": {"title": "Firefox", "launch": "firefox"},
+    "brave": {"title": "Brave", "launch": "brave"},
     # System
-    "explorer":       {"title": "File Explorer",    "launch": "explorer"},
-    "file explorer":  {"title": "File Explorer",    "launch": "explorer"},
-    "notepad":        {"title": "Notepad",          "launch": "notepad"},
-    "notepad++":      {"title": "Notepad++",        "launch": "notepad++"},
-    "calc":           {"title": "Calculator",       "launch": "calc"},
-    "calculator":     {"title": "Calculator",       "launch": "calc"},
-    "paint":          {"title": "Paint",            "launch": "mspaint"},
-    "powershell":     {"title": "PowerShell",       "launch": "powershell"},
-    "cmd":            {"title": "Command Prompt",   "launch": "cmd"},
-    "terminal":       {"title": "Terminal",         "launch": "wt"},
-    "task manager":   {"title": "Task Manager",     "launch": "taskmgr"},
-    "settings":       {"title": "Settings",         "launch": "ms-settings:"},
-    "control panel":  {"title": "Control Panel",    "launch": "control"},
+    "explorer": {"title": "File Explorer", "launch": "explorer"},
+    "file explorer": {"title": "File Explorer", "launch": "explorer"},
+    "notepad": {"title": "Notepad", "launch": "notepad"},
+    "notepad++": {"title": "Notepad++", "launch": "notepad++"},
+    "calc": {"title": "Calculator", "launch": "calc"},
+    "calculator": {"title": "Calculator", "launch": "calc"},
+    "paint": {"title": "Paint", "launch": "mspaint"},
+    "powershell": {"title": "PowerShell", "launch": "powershell"},
+    "cmd": {"title": "Command Prompt", "launch": "cmd"},
+    "terminal": {"title": "Terminal", "launch": "wt"},
+    "task manager": {"title": "Task Manager", "launch": "taskmgr"},
+    "settings": {"title": "Settings", "launch": "ms-settings:"},
+    "control panel": {"title": "Control Panel", "launch": "control"},
     # Dev tools
-    "vscode":         {"title": "Visual Studio Code", "launch": "code"},
-    "code":           {"title": "Visual Studio Code", "launch": "code"},
-    "visual studio":  {"title": "Visual Studio",    "launch": "devenv"},
+    "vscode": {"title": "Visual Studio Code", "launch": "code"},
+    "code": {"title": "Visual Studio Code", "launch": "code"},
+    "visual studio": {"title": "Visual Studio", "launch": "devenv"},
     # Communication
-    "slack":          {"title": "Slack",            "launch": "slack"},
-    "discord":        {"title": "Discord",          "launch": "discord"},
-    "zoom":           {"title": "Zoom",             "launch": "zoom"},
+    "slack": {"title": "Slack", "launch": "slack"},
+    "discord": {"title": "Discord", "launch": "discord"},
+    "zoom": {"title": "Zoom", "launch": "zoom"},
     # Misc
-    "spotify":        {"title": "Spotify",          "launch": "spotify"},
-    "steam":          {"title": "Steam",            "launch": "steam"},
+    "spotify": {"title": "Spotify", "launch": "spotify"},
+    "steam": {"title": "Steam", "launch": "steam"},
 }
 
 
@@ -166,7 +166,7 @@ def _find_existing(title_hint: str) -> str | None:
         return None
     best: str | None = None
     for w in windows:
-        title = (w.get("title") or "")
+        title = w.get("title") or ""
         if not title:
             continue
         if needle in title.lower():

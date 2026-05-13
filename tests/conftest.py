@@ -5,6 +5,7 @@ import tries to open an X display. On CI / headless servers there is no
 display and the process crashes. We register lightweight stubs in
 ``sys.modules`` before any test imports run so the modules load cleanly.
 """
+
 import os
 import sys
 import types
@@ -32,6 +33,7 @@ def _install_headless_stubs() -> None:
         def _screenshot(*_a, **_kw):
             # Lazy PIL import — only when something actually tries to capture.
             from PIL import Image
+
             return Image.new("RGB", (10, 10))
 
         pyautogui.PAUSE = 0.1
@@ -40,8 +42,16 @@ def _install_headless_stubs() -> None:
         pyautogui.position = _position
         pyautogui.screenshot = _screenshot
         for name in (
-            "click", "doubleClick", "rightClick", "moveTo", "drag",
-            "scroll", "typewrite", "write", "press", "hotkey",
+            "click",
+            "doubleClick",
+            "rightClick",
+            "moveTo",
+            "drag",
+            "scroll",
+            "typewrite",
+            "write",
+            "press",
+            "hotkey",
         ):
             setattr(pyautogui, name, _noop)
         sys.modules["pyautogui"] = pyautogui

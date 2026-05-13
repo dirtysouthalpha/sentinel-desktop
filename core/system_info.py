@@ -1,9 +1,11 @@
 """System information: CPU, memory, disk, network."""
+
+import logging
 import os
-import psutil
 import platform
 import socket
-import logging
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,7 @@ def system_info() -> dict:
         class _ZeroDisk:
             total = used = 0
             percent = 0.0
+
         disk = _ZeroDisk()
     return {
         "os": f"{platform.system()} {platform.release()}",
@@ -57,6 +60,7 @@ def system_info() -> dict:
 def _screen_resolution() -> str:
     try:
         import pyautogui
+
         w, h = pyautogui.size()
         return f"{w}x{h}"
     except Exception:

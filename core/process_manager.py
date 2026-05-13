@@ -1,7 +1,9 @@
 """Process management: list, start, kill processes."""
-import psutil
-import subprocess
+
 import logging
+import subprocess
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,9 @@ def list_processes(sort_by="cpu", limit=50):
     for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_info"]):
         try:
             info = p.info
-            info["memory_mb"] = round(info["memory_info"].rss / (1024 * 1024), 1) if info["memory_info"] else 0
+            info["memory_mb"] = (
+                round(info["memory_info"].rss / (1024 * 1024), 1) if info["memory_info"] else 0
+            )
             del info["memory_info"]
             procs.append(info)
         except (psutil.NoSuchProcess, psutil.AccessDenied):

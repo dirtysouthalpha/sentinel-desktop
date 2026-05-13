@@ -15,7 +15,7 @@ import os
 import threading
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,19 @@ logger = logging.getLogger(__name__)
 # Sensitive field detection
 # ---------------------------------------------------------------------------
 SENSITIVE_KEY_PARTS = (
-    "password", "passwd", "key", "secret", "token", "credential",
-    "api_key", "credit_card", "ssn", "social_security", "pin",
+    "password",
+    "passwd",
+    "key",
+    "secret",
+    "token",
+    "credential",
+    "api_key",
+    "credit_card",
+    "ssn",
+    "social_security",
+    "pin",
 )
+
 
 # ---------------------------------------------------------------------------
 # Log directory
@@ -46,12 +56,13 @@ def _default_log_dir() -> str:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _iso_now() -> str:
     """Return the current UTC time as an ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
 
-def _redact_params(params: Dict[str, Any]) -> Dict[str, Any]:
+def _redact_params(params: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of *params* with sensitive values replaced.
 
     Any key that contains one of the SENSITIVE_KEY_PARTS substrings
@@ -59,7 +70,7 @@ def _redact_params(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     if not params:
         return {}
-    redacted: Dict[str, Any] = {}
+    redacted: dict[str, Any] = {}
     for k, v in params.items():
         kl = k.lower()
         if any(part in kl for part in SENSITIVE_KEY_PARTS):
@@ -81,6 +92,7 @@ def _preview(value: Any, max_len: int = 120) -> str:
 # ForensicLog
 # ---------------------------------------------------------------------------
 
+
 class ForensicLog:
     """Structured forensic audit trail for a single agent run.
 
@@ -98,12 +110,12 @@ class ForensicLog:
     All public methods are thread-safe.
     """
 
-    def __init__(self, log_dir: Optional[str] = None):
+    def __init__(self, log_dir: str | None = None):
         self._lock = threading.Lock()
         self._log_dir = log_dir or _default_log_dir()
-        self._run: Dict[str, Any] = {}
-        self._steps: List[Dict[str, Any]] = []
-        self._last_step_time: Optional[str] = None
+        self._run: dict[str, Any] = {}
+        self._steps: list[dict[str, Any]] = []
+        self._last_step_time: str | None = None
 
     # ------------------------------------------------------------------
     # Run lifecycle
@@ -160,9 +172,9 @@ class ForensicLog:
         step_num: int,
         action_type: str,
         target: str,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         result: str,
-        screenshot_path: Optional[str] = None,
+        screenshot_path: str | None = None,
     ) -> str:
         """Record a single agent step. Returns the ``step_id`` (UUID).
 
@@ -195,7 +207,7 @@ class ForensicLog:
             # Determine event_type from result
             event_type = self._infer_event_type(result)
 
-            step: Dict[str, Any] = {
+            step: dict[str, Any] = {
                 "step_id": step_id,
                 "run_id": self._run.get("run_id", ""),
                 "step_num": step_num,
@@ -223,7 +235,7 @@ class ForensicLog:
         self._auto_save()
         return step_id
 
-    def log_event(self, event_type: str, details: Dict[str, Any]) -> None:
+    def log_event(self, event_type: str, details: dict[str, Any]) -> None:
         """Record a non-action event (override, pause, error, timeout, etc.).
 
         Args:
@@ -247,7 +259,7 @@ class ForensicLog:
             step_num = len(self._steps) + 1
             step_id = str(uuid.uuid4())
 
-            step: Dict[str, Any] = {
+            step: dict[str, Any] = {
                 "step_id": step_id,
                 "run_id": self._run.get("run_id", ""),
                 "step_num": step_num,
@@ -276,12 +288,12 @@ class ForensicLog:
     # Query helpers
     # ------------------------------------------------------------------
 
-    def get_run(self) -> Dict[str, Any]:
+    def get_run(self) -> dict[str, Any]:
         """Return a copy of the full run metadata dict."""
         with self._lock:
             return dict(self._run)
 
-    def get_steps(self) -> List[Dict[str, Any]]:
+    def get_steps(self) -> list[dict[str, Any]]:
         """Return a list of copies of all recorded step dicts."""
         with self._lock:
             return [dict(s) for s in self._steps]
@@ -383,17 +395,19 @@ class ForensicLog:
             result_lower = str(result_raw).lower()
             success = "true" if "success" in result_lower or "ok" in result_lower else "false"
 
-            rows.append({
-                "run_id": run_id,
-                "step_num": s.get("step_num", ""),
-                "timestamp": s.get("timestamp", ""),
-                "action_type": s.get("action_type", ""),
-                "target": s.get("target", ""),
-                "params_preview": params_preview,
-                "result_preview": result_preview,
-                "success": success,
-                "event_type": s.get("event_type", ""),
-            })
+            rows.append(
+                {
+                    "run_id": run_id,
+                    "step_num": s.get("step_num", ""),
+                    "timestamp": s.get("timestamp", ""),
+                    "action_type": s.get("action_type", ""),
+                    "target": s.get("target", ""),
+                    "params_preview": params_preview,
+                    "result_preview": result_preview,
+                    "success": success,
+                    "event_type": s.get("event_type", ""),
+                }
+            )
 
         try:
             parent = os.path.dirname(path)

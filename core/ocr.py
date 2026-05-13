@@ -18,12 +18,13 @@ from __future__ import annotations
 import logging
 import re
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from core.screenshot import (
-    capture_screen, capture_focused_window, capture_focused_window_with_title,
+    capture_focused_window_with_title,
+    capture_screen,
     capture_window,
 )
 
@@ -38,7 +39,7 @@ _MIN_ALNUM_PER_LINE_FOR_CONFIDENT = 6
 
 logger = logging.getLogger(__name__)
 
-_TESSERACT_OK: Optional[bool] = None  # None = not yet probed
+_TESSERACT_OK: bool | None = None  # None = not yet probed
 _pytesseract = None
 
 
@@ -49,14 +50,15 @@ def _have_tesseract() -> bool:
         return _TESSERACT_OK
     try:
         import pytesseract  # type: ignore
+
         # Touch the binary to confirm it's reachable.
         pytesseract.get_tesseract_version()
         _pytesseract = pytesseract
         _TESSERACT_OK = True
     except Exception as exc:
         logger.info(
-            "OCR disabled — install Tesseract + pytesseract to enable "
-            "click_text / read_text (%s)", exc,
+            "OCR disabled — install Tesseract + pytesseract to enable click_text / read_text (%s)",
+            exc,
         )
         _TESSERACT_OK = False
     return _TESSERACT_OK
@@ -120,8 +122,7 @@ def looks_low_confidence(text: str) -> bool:
     return avg_alnum_per_line < _MIN_ALNUM_PER_LINE_FOR_CONFIDENT
 
 
-def read_screen_text(monitor: Optional[int] = None,
-                     preprocess: bool = PREPROCESS_DEFAULT) -> str:
+def read_screen_text(monitor: int | None = None, preprocess: bool = PREPROCESS_DEFAULT) -> str:
     """OCR the screen and return the raw text. Empty string if OCR is unavailable."""
     if not _have_tesseract():
         return ""
@@ -166,8 +167,8 @@ def find_text(
     *,
     fuzzy: bool = True,
     min_score: float = 0.7,
-    monitor: Optional[int] = None,
-) -> Optional[Tuple[int, int]]:
+    monitor: int | None = None,
+) -> tuple[int, int] | None:
     """Locate *query* on screen via OCR. Returns the centre (x, y) or ``None``.
 
     Matching strategy:
@@ -188,8 +189,9 @@ def find_text(
 
     try:
         img = capture_screen(monitor=monitor)
-        data: Dict[str, List[Any]] = _pytesseract.image_to_data(  # type: ignore[union-attr]
-            img, output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
+        data: dict[str, list[Any]] = _pytesseract.image_to_data(  # type: ignore[union-attr]
+            img,
+            output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
         )
     except Exception as exc:
         logger.warning("OCR find_text failed: %s", exc)
@@ -212,10 +214,11 @@ def find_text(
 # Internals
 # ---------------------------------------------------------------------------
 
-def _boxes_from_data(data: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
+
+def _boxes_from_data(data: dict[str, list[Any]]) -> list[dict[str, Any]]:
     """Normalise pytesseract's ``image_to_data`` output to per-word boxes."""
     n = len(data.get("text", []))
-    boxes: List[Dict[str, Any]] = []
+    boxes: list[dict[str, Any]] = []
     for i in range(n):
         text = (data["text"][i] or "").strip()
         if not text:
@@ -226,26 +229,29 @@ def _boxes_from_data(data: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
             conf = 0.0
         if conf < 30:  # Drop low-confidence cells.
             continue
-        boxes.append({
-            "text": text,
-            "x": int(data["left"][i]),
-            "y": int(data["top"][i]),
-            "w": int(data["width"][i]),
-            "h": int(data["height"][i]),
-            "line_id": (
-                int(data.get("block_num", [0])[i]),
-                int(data.get("par_num", [0])[i]),
-                int(data.get("line_num", [0])[i]),
-            ),
-        })
+        boxes.append(
+            {
+                "text": text,
+                "x": int(data["left"][i]),
+                "y": int(data["top"][i]),
+                "w": int(data["width"][i]),
+                "h": int(data["height"][i]),
+                "line_id": (
+                    int(data.get("block_num", [0])[i]),
+                    int(data.get("par_num", [0])[i]),
+                    int(data.get("line_num", [0])[i]),
+                ),
+            }
+        )
     return boxes
 
 
 def _exact_substring_hit(
-    boxes: List[Dict[str, Any]], needle: str,
-) -> Optional[Tuple[int, int]]:
+    boxes: list[dict[str, Any]],
+    needle: str,
+) -> tuple[int, int] | None:
     # Group word boxes into lines, then test the joined lower-cased line text.
-    by_line: Dict[Tuple[int, int, int], List[Dict[str, Any]]] = {}
+    by_line: dict[tuple[int, int, int], list[dict[str, Any]]] = {}
     for b in boxes:
         by_line.setdefault(b["line_id"], []).append(b)
 
@@ -260,8 +266,9 @@ def _exact_substring_hit(
 
 
 def _words_covering_substring(
-    words: List[Dict[str, Any]], needle: str,
-) -> List[Dict[str, Any]]:
+    words: list[dict[str, Any]],
+    needle: str,
+) -> list[dict[str, Any]]:
     """Return the subset of word boxes whose joined text covers the needle."""
     joined = ""
     spans = []  # (char_start, char_end_exclusive, word_index)
@@ -277,21 +284,21 @@ def _words_covering_substring(
     if pos < 0:
         return words  # fall back: whole line
     end = pos + len(needle)
-    covering_idx = [
-        idx for (s, e, idx) in spans if not (e <= pos or s >= end)
-    ]
+    covering_idx = [idx for (s, e, idx) in spans if not (e <= pos or s >= end)]
     return [words[i] for i in covering_idx] or words
 
 
 def _fuzzy_line_hit(
-    boxes: List[Dict[str, Any]], needle: str, min_score: float,
-) -> Optional[Tuple[int, int]]:
-    by_line: Dict[Tuple[int, int, int], List[Dict[str, Any]]] = {}
+    boxes: list[dict[str, Any]],
+    needle: str,
+    min_score: float,
+) -> tuple[int, int] | None:
+    by_line: dict[tuple[int, int, int], list[dict[str, Any]]] = {}
     for b in boxes:
         by_line.setdefault(b["line_id"], []).append(b)
 
     best_score = 0.0
-    best_words: Optional[List[Dict[str, Any]]] = None
+    best_words: list[dict[str, Any]] | None = None
     for words in by_line.values():
         words.sort(key=lambda w: w["x"])
         joined = " ".join(w["text"] for w in words).lower()
@@ -305,7 +312,7 @@ def _fuzzy_line_hit(
     return None
 
 
-def _centroid(boxes: List[Dict[str, Any]]) -> Tuple[int, int]:
+def _centroid(boxes: list[dict[str, Any]]) -> tuple[int, int]:
     if not boxes:
         return (0, 0)
     x0 = min(b["x"] for b in boxes)

@@ -14,13 +14,14 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Callable, Optional
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 try:
     import pystray  # type: ignore
     from PIL import Image, ImageDraw
+
     _HAS_TRAY = True
 except Exception:
     _HAS_TRAY = False
@@ -30,17 +31,17 @@ def is_available() -> bool:
     return _HAS_TRAY
 
 
-def _make_icon_image() -> "Image.Image":
+def _make_icon_image() -> Image.Image:
     """Generate a simple orange hexagon icon (Sentinel brand) for the tray."""
     size = 64
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     # Hexagon
     import math
+
     cx, cy, r = size / 2, size / 2, size * 0.42
     points = [
-        (cx + r * math.cos(math.radians(60 * i - 30)),
-         cy + r * math.sin(math.radians(60 * i - 30)))
+        (cx + r * math.cos(math.radians(60 * i - 30)), cy + r * math.sin(math.radians(60 * i - 30)))
         for i in range(6)
     ]
     draw.polygon(points, fill=(232, 121, 58, 255), outline=(255, 200, 150, 255))
@@ -58,15 +59,15 @@ class SentinelTray:
         self,
         on_show: Callable[[], None],
         on_hide: Callable[[], None],
-        on_stop_agent: Optional[Callable[[], None]] = None,
-        on_quit: Optional[Callable[[], None]] = None,
+        on_stop_agent: Callable[[], None] | None = None,
+        on_quit: Callable[[], None] | None = None,
     ) -> None:
         self._on_show = on_show
         self._on_hide = on_hide
         self._on_stop_agent = on_stop_agent
         self._on_quit = on_quit
         self._icon = None
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def run(self) -> bool:
         """Start the tray icon. Returns True if it's running; False if pystray
@@ -82,8 +83,7 @@ class SentinelTray:
                 icon.stop()
 
         menu = pystray.Menu(
-            pystray.MenuItem("Show Sentinel", lambda i, _: self._on_show(),
-                             default=True),
+            pystray.MenuItem("Show Sentinel", lambda i, _: self._on_show(), default=True),
             pystray.MenuItem("Hide", lambda i, _: self._on_hide()),
             pystray.MenuItem(
                 "Stop running agent",

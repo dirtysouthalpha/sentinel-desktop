@@ -16,7 +16,7 @@ import logging
 import threading
 import time
 from collections import deque
-from typing import Callable, Optional
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class FailsafeListener:
 
 
 # Convenience module-level wrapper so callers don't have to manage the object.
-_active: Optional[FailsafeListener] = None
+_active: FailsafeListener | None = None
 
 
 def arm(on_panic: Callable[[], None]) -> bool:

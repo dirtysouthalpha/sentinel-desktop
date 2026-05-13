@@ -1,17 +1,22 @@
 """Tests for config save/load round-trip and defaults."""
-import json
-import os
-from unittest import mock
 
-import pytest
-
-from config import Config, DEFAULTS
+from config import DEFAULTS, Config
 
 
 def test_defaults_have_expected_keys():
-    for key in ("provider", "model", "max_steps", "approval_mode",
-                "dry_run", "use_tools", "image_history", "monitor",
-                "autonomous", "llm_max_retries", "llm_retry_base_delay"):
+    for key in (
+        "provider",
+        "model",
+        "max_steps",
+        "approval_mode",
+        "dry_run",
+        "use_tools",
+        "image_history",
+        "monitor",
+        "autonomous",
+        "llm_max_retries",
+        "llm_retry_base_delay",
+    ):
         assert key in DEFAULTS, f"missing default: {key}"
 
 

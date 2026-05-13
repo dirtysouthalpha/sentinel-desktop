@@ -1,22 +1,33 @@
 """Tests confirming the tool schemas line up with the dispatch table."""
+
 import pytest
 
 import core.desktop as desktop_mod
-from core.tool_schemas import TOOLS, TOOL_CAPABLE_PROVIDERS
+from core.tool_schemas import TOOL_CAPABLE_PROVIDERS, TOOLS
 
 
 class FakeDesktop:
-    def click(self, *a, **kw): pass
-    def type_text(self, *a, **kw): pass
-    def press_key(self, *a, **kw): pass
-    def hotkey(self, *a, **kw): pass
-    def scroll(self, *a, **kw): pass
+    def click(self, *a, **kw):
+        pass
+
+    def type_text(self, *a, **kw):
+        pass
+
+    def press_key(self, *a, **kw):
+        pass
+
+    def hotkey(self, *a, **kw):
+        pass
+
+    def scroll(self, *a, **kw):
+        pass
 
 
 @pytest.fixture
 def executor_cls(monkeypatch):
     monkeypatch.setattr(desktop_mod, "DesktopEngine", FakeDesktop)
     from core.action_executor import ActionExecutor
+
     return ActionExecutor
 
 

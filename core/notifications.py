@@ -58,7 +58,7 @@ import time
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -71,12 +71,12 @@ __all__ = ["NotificationManager", "CHANNELS", "LEVEL_COLORS", "VALID_LEVELS"]
 # ---------------------------------------------------------------------------
 
 #: Mapping of notification level names to Discord embed colour integers.
-LEVEL_COLORS: Dict[str, int] = {
-    "info":     0x3498DB,   # blue
-    "success":  0x2ECC71,   # green
-    "warning":  0xF39C12,   # orange
-    "error":    0xE74C3C,   # red
-    "critical": 0x8E44AD,   # purple
+LEVEL_COLORS: dict[str, int] = {
+    "info": 0x3498DB,  # blue
+    "success": 0x2ECC71,  # green
+    "warning": 0xF39C12,  # orange
+    "error": 0xE74C3C,  # red
+    "critical": 0x8E44AD,  # purple
 }
 
 #: Set of valid notification levels.
@@ -110,24 +110,30 @@ def _send_http(
     payload: dict,
     timeout: int = HTTP_TIMEOUT,
     retries: int = MAX_RETRIES,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """POST *payload* as JSON to *url* with linear back-off retries.
 
     Returns a ``(ok, detail)`` tuple where *ok* is ``True`` when the
     server responded with a 2xx status code.
     """
+    # Webhook URLs come from user config — refuse anything other than
+    # http(s) so a misconfiguration can't read local files or invoke
+    # custom protocol handlers.
+    if not url.startswith(("http://", "https://")):
+        return False, f"refusing non-http(s) webhook URL: {url!r}"
+
     data = json.dumps(payload).encode("utf-8")
     last_error = ""
 
     for attempt in range(1, retries + 1):
         try:
-            req = Request(
+            req = Request(  # noqa: S310  (scheme validated above)
                 url,
                 data=data,
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urlopen(req, timeout=timeout) as resp:
+            with urlopen(req, timeout=timeout) as resp:  # noqa: S310  (scheme validated above)
                 status = getattr(resp, "status", 0)
                 body = resp.read().decode("utf-8", errors="replace")[:512]
                 if 200 <= status < 300:
@@ -170,8 +176,8 @@ class NotificationManager:
         =================== ============= ===================================
     """
 
-    def __init__(self, config: Optional[dict] = None):
-        self._config: Dict[str, Any] = {
+    def __init__(self, config: dict | None = None):
+        self._config: dict[str, Any] = {
             "enabled_channels": ["log"],
             "webhook_url": None,
             "email_to": None,
@@ -185,13 +191,13 @@ class NotificationManager:
             self._config.update({k: v for k, v in config.items() if v is not None})
 
         # Per-channel last-fire timestamp (monotonic) for rate limiting.
-        self._last_sent: Dict[str, float] = {}
+        self._last_sent: dict[str, float] = {}
 
         # Per-channel last result cache.
-        self._last_results: Dict[str, Tuple[bool, str]] = {}
+        self._last_results: dict[str, tuple[bool, str]] = {}
 
         # Cumulative counters.
-        self._stats: Dict[str, Dict[str, int]] = {
+        self._stats: dict[str, dict[str, int]] = {
             ch: {"sent": 0, "succeeded": 0, "failed": 0} for ch in CHANNELS
         }
         self._total_notifications = 0
@@ -205,7 +211,7 @@ class NotificationManager:
         title: str,
         message: str,
         level: str = "info",
-        channels: Optional[List[str]] = None,
+        channels: list[str] | None = None,
     ) -> bool:
         """Send a notification to the requested channels.
 
@@ -231,7 +237,8 @@ class NotificationManager:
         """
         if level not in VALID_LEVELS:
             logger.warning(
-                "Unknown notification level %r — falling back to 'info'", level,
+                "Unknown notification level %r — falling back to 'info'",
+                level,
             )
             level = "info"
 
@@ -274,8 +281,8 @@ class NotificationManager:
 
     def notify_batch(
         self,
-        notifications: List[Dict[str, Any]],
-    ) -> Dict[str, bool]:
+        notifications: list[dict[str, Any]],
+    ) -> dict[str, bool]:
         """Send multiple notifications in sequence.
 
         Each element is a dict with keys accepted by :meth:`notify`
@@ -283,7 +290,7 @@ class NotificationManager:
 
         Returns a mapping of ``{title: success_bool}``.
         """
-        results: Dict[str, bool] = {}
+        results: dict[str, bool] = {}
         for n in notifications:
             title = n.get("title", "Untitled")
             results[title] = self.notify(
@@ -294,7 +301,7 @@ class NotificationManager:
             )
         return results
 
-    def test_channel(self, channel: str) -> Tuple[bool, str]:
+    def test_channel(self, channel: str) -> tuple[bool, str]:
         """Send a test notification to a single channel.
 
         Returns ``(ok, detail)``.
@@ -338,7 +345,7 @@ class NotificationManager:
             self._config[key] = value
         logger.info("Channel %r reconfigured: %s", channel, list(settings.keys()))
 
-    def get_channels(self) -> Dict[str, Any]:
+    def get_channels(self) -> dict[str, Any]:
         """Return current channel configuration and last-send status.
 
         Returns a dict with keys:
@@ -351,12 +358,11 @@ class NotificationManager:
             "enabled": list(self._config["enabled_channels"]),
             "available": list(CHANNELS),
             "last_results": {
-                ch: {"ok": ok, "detail": detail}
-                for ch, (ok, detail) in self._last_results.items()
+                ch: {"ok": ok, "detail": detail} for ch, (ok, detail) in self._last_results.items()
             },
         }
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Return cumulative notification statistics.
 
         Example return value::
@@ -376,32 +382,34 @@ class NotificationManager:
 
     def reset_stats(self) -> None:
         """Zero-out all cumulative counters."""
-        self._stats = {
-            ch: {"sent": 0, "succeeded": 0, "failed": 0} for ch in CHANNELS
-        }
+        self._stats = {ch: {"sent": 0, "succeeded": 0, "failed": 0} for ch in CHANNELS}
         self._total_notifications = 0
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _resolve_channels(self, override: Optional[List[str]]) -> List[str]:
+    def _resolve_channels(self, override: list[str] | None) -> list[str]:
         """Determine the final channel list, always including ``"log"``."""
-        channels = list(override) if override else list(
-            self._config["enabled_channels"],
+        channels = (
+            list(override)
+            if override
+            else list(
+                self._config["enabled_channels"],
+            )
         )
         if "log" not in channels:
             channels.append("log")
         return channels
 
-    def _dispatch_map(self) -> Dict[str, Any]:
+    def _dispatch_map(self) -> dict[str, Any]:
         """Return ``{channel_name: handler_callable}``."""
         return {
-            "toast":   self._send_toast,
+            "toast": self._send_toast,
             "webhook": self._send_webhook,
             "discord": self._send_discord,
-            "email":   self._send_email,
-            "log":     self._send_log,
+            "email": self._send_email,
+            "log": self._send_log,
         }
 
     # ------------------------------------------------------------------
@@ -410,13 +418,13 @@ class NotificationManager:
 
     # -- Log (always succeeds) -----------------------------------------
 
-    def _send_log(self, title: str, message: str, level: str) -> Tuple[bool, str]:
+    def _send_log(self, title: str, message: str, level: str) -> tuple[bool, str]:
         """Write to the standard Python logger.  Always succeeds."""
         log_fn = {
-            "info":     logger.info,
-            "success":  logger.info,
-            "warning":  logger.warning,
-            "error":    logger.error,
+            "info": logger.info,
+            "success": logger.info,
+            "warning": logger.warning,
+            "error": logger.error,
             "critical": logger.critical,
         }.get(level, logger.info)
         log_fn("[NOTIFICATION] %s — %s", title, message)
@@ -424,7 +432,7 @@ class NotificationManager:
 
     # -- Windows Toast -------------------------------------------------
 
-    def _send_toast(self, title: str, message: str, level: str) -> Tuple[bool, str]:
+    def _send_toast(self, title: str, message: str, level: str) -> tuple[bool, str]:
         """Show a Windows toast notification.
 
         Tries ``win10toast`` first; falls back to a non-blocking
@@ -461,7 +469,10 @@ class NotificationManager:
             def _show_box() -> None:
                 # MB_ICONINFORMATION = 0x40
                 ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
-                    0, message, f"Sentinel — {title}", 0x40,
+                    0,
+                    message,
+                    f"Sentinel — {title}",
+                    0x40,
                 )
 
             threading.Thread(target=_show_box, daemon=True).start()
@@ -471,7 +482,7 @@ class NotificationManager:
 
     # -- Generic Webhook (HTTP POST) -----------------------------------
 
-    def _send_webhook(self, title: str, message: str, level: str) -> Tuple[bool, str]:
+    def _send_webhook(self, title: str, message: str, level: str) -> tuple[bool, str]:
         """POST a JSON payload to the configured ``webhook_url``."""
         url = self._config.get("webhook_url")
         if not url:
@@ -488,7 +499,7 @@ class NotificationManager:
 
     # -- Discord Webhook -----------------------------------------------
 
-    def _send_discord(self, title: str, message: str, level: str) -> Tuple[bool, str]:
+    def _send_discord(self, title: str, message: str, level: str) -> tuple[bool, str]:
         """Send a colour-coded rich embed to a Discord webhook URL."""
         url = self._config.get("discord_webhook")
         if not url:
@@ -507,7 +518,7 @@ class NotificationManager:
 
     # -- Email (SMTP) --------------------------------------------------
 
-    def _send_email(self, title: str, message: str, level: str) -> Tuple[bool, str]:
+    def _send_email(self, title: str, message: str, level: str) -> tuple[bool, str]:
         """Send a plain-text email via SMTP with optional STARTTLS."""
         smtp_server = self._config.get("smtp_server")
         email_from = self._config.get("email_from")

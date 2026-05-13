@@ -35,17 +35,17 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
 
 from PIL import Image
 
-from core.screenshot import capture_screen, capture_region
+from core.screenshot import capture_region, capture_screen
 
 logger = logging.getLogger(__name__)
 
 # Try to import numpy for fast pixel comparison; fall back to pure PIL.
 try:
     import numpy as np  # type: ignore
+
     _HAS_NUMPY = True
 except Exception:
     np = None  # type: ignore[assignment]
@@ -62,6 +62,7 @@ _DOWNSCALE = 4
 # ---------------------------------------------------------------------------
 # WaitResult
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class WaitResult:
@@ -83,14 +84,15 @@ class WaitResult:
     elapsed: float
     frames_checked: int
     change_score: float
-    snapshot_path: Optional[str] = field(default=None)
+    snapshot_path: str | None = field(default=None)
 
 
 # ---------------------------------------------------------------------------
 # Visual diff helpers
 # ---------------------------------------------------------------------------
 
-def _crop_to_region(region: Optional[Tuple[int, int, int, int]]) -> Optional[Image.Image]:
+
+def _crop_to_region(region: tuple[int, int, int, int] | None) -> Image.Image | None:
     """Capture a screenshot, optionally restricted to *region* (x, y, w, h)."""
     if region is not None:
         x, y, w, h = region
@@ -145,9 +147,11 @@ def _compute_change_score(
         for x in range(w):
             pa = pixels_a[x, y]
             pb = pixels_b[x, y]
-            if (abs(pa[0] - pb[0]) > _CHANNEL_THRESHOLD
-                    or abs(pa[1] - pb[1]) > _CHANNEL_THRESHOLD
-                    or abs(pa[2] - pb[2]) > _CHANNEL_THRESHOLD):
+            if (
+                abs(pa[0] - pb[0]) > _CHANNEL_THRESHOLD
+                or abs(pa[1] - pb[1]) > _CHANNEL_THRESHOLD
+                or abs(pa[2] - pb[2]) > _CHANNEL_THRESHOLD
+            ):
                 changed += 1
     return changed / total
 
@@ -170,6 +174,7 @@ def _save_snapshot(img: Image.Image, prefix: str = "smart_wait") -> str:
 # ---------------------------------------------------------------------------
 # SmartWait
 # ---------------------------------------------------------------------------
+
 
 class SmartWait:
     """Visual-diff-based waiting engine.
@@ -221,7 +226,7 @@ class SmartWait:
     # Core capture helper
     # ------------------------------------------------------------------
 
-    def _capture(self, region: Optional[Tuple[int, int, int, int]]) -> Image.Image:
+    def _capture(self, region: tuple[int, int, int, int] | None) -> Image.Image:
         """Capture a frame, possibly restricted to *region*."""
         return _crop_to_region(region)
 
@@ -233,7 +238,7 @@ class SmartWait:
         self,
         timeout: float = 10,
         interval: float = 0.3,
-        region: Optional[Tuple[int, int, int, int]] = None,
+        region: tuple[int, int, int, int] | None = None,
     ) -> WaitResult:
         """Wait until the screen (or a region) visually changes.
 
@@ -302,7 +307,7 @@ class SmartWait:
         timeout: float = 10,
         stable_time: float = 1.5,
         interval: float = 0.3,
-        region: Optional[Tuple[int, int, int, int]] = None,
+        region: tuple[int, int, int, int] | None = None,
     ) -> WaitResult:
         """Wait until the screen (or a region) stops changing.
 
@@ -452,7 +457,7 @@ class SmartWait:
         text: str,
         timeout: float = 10,
         interval: float = 0.5,
-        region: Optional[Tuple[int, int, int, int]] = None,
+        region: tuple[int, int, int, int] | None = None,
     ) -> WaitResult:
         """Wait until specific text appears on screen (via OCR).
 
@@ -484,7 +489,8 @@ class SmartWait:
 
         # Lazy import — OCR is optional.
         try:
-            from core.ocr import read_screen_text, _ocr_image  # type: ignore[attr-defined]
+            from core.ocr import _ocr_image, read_screen_text  # type: ignore[attr-defined]
+
             _ocr_available = True
         except Exception:
             _ocr_available = False
@@ -550,7 +556,7 @@ class SmartWait:
         self,
         x: int,
         y: int,
-        target_rgb: Tuple[int, int, int],
+        target_rgb: tuple[int, int, int],
         tolerance: int = 30,
         timeout: float = 10,
     ) -> WaitResult:
@@ -609,9 +615,7 @@ class SmartWait:
 
             r, g, b = pixel
             tr, tg, tb = target_rgb
-            if (abs(r - tr) <= tolerance
-                    and abs(g - tg) <= tolerance
-                    and abs(b - tb) <= tolerance):
+            if abs(r - tr) <= tolerance and abs(g - tg) <= tolerance and abs(b - tb) <= tolerance:
                 # Save a slightly larger snapshot for context.
                 snap = capture_region(max(0, x - 50), max(0, y - 50), 100, 100)
                 snap_path = _save_snapshot(snap, prefix="color")

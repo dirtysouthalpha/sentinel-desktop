@@ -15,24 +15,24 @@ import logging
 import os
 import re
 import time
-import asyncio
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
-from core.llm_client import LLMClient, LLMError
-from core.action_executor import ActionExecutor
-from core.screenshot import capture_to_base64, capture_screen, get_capture_offset
+from core import failsafe
 from core import system_info as sysinfo
 from core import window_manager as wm
-from core import failsafe
-from core.provider_registry import get_base_url
-from core.tool_schemas import TOOLS as ACTION_TOOLS, TOOL_CAPABLE_PROVIDERS
-from core.forensic_log import ForensicLog
+from core.action_executor import ActionExecutor
+from core.app_profiles import detect_profile
+from core.approval_gate import ApprovalDecision, ApprovalGate
 from core.checkpoint import CheckpointManager
-from core.approval_gate import ApprovalGate, ApprovalDecision
+from core.forensic_log import ForensicLog
+from core.llm_client import LLMClient, LLMError
 from core.mfa_detection import MFADetector
+from core.screenshot import capture_to_base64, get_capture_offset
 from core.smart_wait import SmartWait
-from core.app_profiles import detect_profile, get_timing_for_app
+from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
+from core.tool_schemas import TOOLS as ACTION_TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +45,18 @@ DEFAULT_IMAGE_HISTORY = 3
 # executing when approval_mode is on. Read-only actions like screenshot,
 # note, find_image, etc. are not gated.
 APPROVAL_REQUIRED_ACTIONS = {
-    "click", "click_image", "type_text", "press_key", "hotkey", "scroll",
-    "open_app", "start_process", "close_app", "kill_process",
-    "close_window", "write_file",
+    "click",
+    "click_image",
+    "type_text",
+    "press_key",
+    "hotkey",
+    "scroll",
+    "open_app",
+    "start_process",
+    "close_app",
+    "kill_process",
+    "close_window",
+    "write_file",
 }
 
 # ---------------------------------------------------------------------------
@@ -156,9 +165,12 @@ Example: {"action": "click", "x": 500, "y": 300}
 class AgentEngine:
     """The main agent loop that drives desktop automation via LLM."""
 
-    def __init__(self, config: Optional[Dict] = None,
-                 approval_callback: Optional[Callable[[Dict], bool]] = None,
-                 pre_action_callback: Optional[Callable[[Dict], None]] = None):
+    def __init__(
+        self,
+        config: dict | None = None,
+        approval_callback: Callable[[dict], bool] | None = None,
+        pre_action_callback: Callable[[dict], None] | None = None,
+    ):
         self.config = config or {}
         self.llm = LLMClient()
         # approval_callback(action_dict) -> bool. When set AND
@@ -180,12 +192,10 @@ class AgentEngine:
         self.running = False
         self.step = 0
         self.max_steps = self.config.get("max_steps", 100)
-        self.image_history = int(
-            self.config.get("image_history", DEFAULT_IMAGE_HISTORY)
-        )
-        self.notes: List[str] = []
-        self.forensic_log: List[Dict] = []
-        self.on_step_callback: Optional[Callable] = None
+        self.image_history = int(self.config.get("image_history", DEFAULT_IMAGE_HISTORY))
+        self.notes: list[str] = []
+        self.forensic_log: list[dict] = []
+        self.on_step_callback: Callable | None = None
         self.finish_summary: str = ""
 
         # ── Enhanced subsystems ───────────────────────────────────────
@@ -207,26 +217,32 @@ class AgentEngine:
 
         # Script recorder — captures actions for replay
         from core.recorder import ActionRecorder
+
         self.recorder = ActionRecorder()
 
         # Script engine — replays recorded scripts
         from core.script_engine import ScriptEngine
+
         self.script_engine = ScriptEngine(self.executor)
 
         # PowerShell runner — execute PS scripts/commands
         from core.powershell import PowerShellRunner
+
         self.powershell = PowerShellRunner()
 
         # Workflow engine — multi-step workflows with conditions/loops
         from core.workflow import WorkflowEngine
+
         self.workflow_engine = WorkflowEngine(self.executor, self.script_engine)
 
         # Task scheduler — cron-like scheduling
         from core.scheduler import TaskScheduler
+
         self.scheduler = TaskScheduler(self)
 
         # Notification manager — toast/email/webhook
         from core.notifications import NotificationManager
+
         notify_config = {
             "enabled_channels": self.config.get("notify_channels", ["toast", "log"]),
             "webhook_url": self.config.get("notify_webhook_url", ""),
@@ -236,12 +252,14 @@ class AgentEngine:
 
         # Plugin loader — drop-in extensibility
         from core.plugin_loader import PluginLoader
+
         self.plugin_loader = PluginLoader(
             os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
         )
 
         # Recovery manager — self-healing + popup auto-dismiss
         from core.recovery import RecoveryManager
+
         self.recovery = RecoveryManager(self.executor, self.config)
 
         # Load plugins
@@ -258,23 +276,27 @@ class AgentEngine:
 
         # Auth manager — RBAC + session tokens
         from core.auth import AuthManager
+
         self.auth_manager = AuthManager()
 
         # Credential vault — DPAPI encryption for API keys
         from core.encryption import CredentialVault
+
         self.vault = CredentialVault()
 
         # Audit exporter — professional reports
         from core.audit_export import AuditExporter
+
         self.audit_exporter = AuditExporter()
 
         # Agent pool — multi-agent parallel execution
         from core.agent_pool import AgentPool
+
         self.agent_pool = AgentPool(max_agents=self.config.get("max_agents", 3))
 
     # ── Sync entry point ────────────────────────────────────────────────
 
-    def run(self, goal: str) -> Dict[str, Any]:
+    def run(self, goal: str) -> dict[str, Any]:
         """Execute agent loop synchronously. Blocks until done."""
         self.running = True
         self.step = 0
@@ -287,6 +309,7 @@ class AgentEngine:
         if self.config.get("virtual_desktop"):
             try:
                 from core.virtual_desktop import VirtualDesktop
+
                 vd = VirtualDesktop()
                 vd.create("SentinelAgent")
                 vd.switch_to("SentinelAgent")
@@ -305,7 +328,7 @@ class AgentEngine:
                 except Exception:
                     pass
 
-    def _run_inner(self, goal: str) -> Dict[str, Any]:
+    def _run_inner(self, goal: str) -> dict[str, Any]:
         """Inner agent loop — called by run() with virtual desktop wrapping."""
         provider = self.config.get("provider", "")
         api_key = self.config.get("api_key", "")
@@ -344,13 +367,16 @@ class AgentEngine:
 
         # Initial screenshot + goal
         screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
-        self._add_vision_message(messages, screenshot_b64,
-                                 f"Goal: {goal}\n\nI can see this screen. What should I do first?")
+        self._add_vision_message(
+            messages,
+            screenshot_b64,
+            f"Goal: {goal}\n\nI can see this screen. What should I do first?",
+        )
 
         start_time = time.time()
 
         # Start structured forensic log
-        run_id = self.logger.start_run(goal, provider, model)
+        self.logger.start_run(goal, provider, model)
 
         # Arm the Esc-x3 failsafe for the duration of this run. Safe no-op
         # if the keyboard package isn't installed or can't hook globally.
@@ -364,8 +390,7 @@ class AgentEngine:
                 # Call LLM. Strip internal `_sentinel_*` markers so they
                 # never reach the provider's API.
                 use_tools = (
-                    self.config.get("use_tools", True)
-                    and provider in TOOL_CAPABLE_PROVIDERS
+                    self.config.get("use_tools", True) and provider in TOOL_CAPABLE_PROVIDERS
                 )
                 tools = ACTION_TOOLS if use_tools else None
                 try:
@@ -378,9 +403,7 @@ class AgentEngine:
                         temperature=0.1,
                         custom_url=self.config.get("custom_base_url") or None,
                         max_retries=int(self.config.get("llm_max_retries", 3)),
-                        retry_base_delay=float(
-                            self.config.get("llm_retry_base_delay", 1.0)
-                        ),
+                        retry_base_delay=float(self.config.get("llm_retry_base_delay", 1.0)),
                     )
                 except LLMError as exc:
                     # Already a clean, user-facing message.
@@ -400,10 +423,12 @@ class AgentEngine:
                 if not action:
                     # LLM didn't return valid JSON, try to continue
                     self.notes.append(f"Step {self.step}: No valid action parsed from LLM response")
-                    messages.append({
-                        "role": "user",
-                        "content": "Please respond with a valid JSON action. Only JSON, no other text.",
-                    })
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": "Please respond with a valid JSON action. Only JSON, no other text.",
+                        }
+                    )
                     continue
 
                 action_name = action.get("action", "")
@@ -422,15 +447,16 @@ class AgentEngine:
                     if decision in (ApprovalDecision.SKIP, ApprovalDecision.ABORT):
                         rejection = {"ok": False, "msg": f"Action {decision.value} by user"}
                         self._log_step(action, rejection)
-                        self.logger.log_step(self.step, action_name,
-                                             str(action), action, rejection)
+                        self.logger.log_step(self.step, action_name, str(action), action, rejection)
                         if decision == ApprovalDecision.ABORT:
                             self.running = False
                             break
-                        messages.append({
-                            "role": "user",
-                            "content": "The user skipped that action. Try a different approach.",
-                        })
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": "The user skipped that action. Try a different approach.",
+                            }
+                        )
                         continue
                     action = approved_action or action
 
@@ -439,22 +465,30 @@ class AgentEngine:
                 if not mfa_result.detected:
                     try:
                         from core.screenshot import capture_screen
+
                         screen = capture_screen()
                         mfa_result = self.mfa_detector.check_screen(screen)
                     except Exception:
                         pass
                 if mfa_result.detected:
                     self._mfa_paused = True
-                    self.logger.log_event("mfa_pause", {
-                        "type": mfa_result.type,
-                        "prompt": mfa_result.prompt_text,
-                        "window": mfa_result.window_title,
-                    })
+                    self.logger.log_event(
+                        "mfa_pause",
+                        {
+                            "type": mfa_result.type,
+                            "prompt": mfa_result.prompt_text,
+                            "window": mfa_result.window_title,
+                        },
+                    )
                     if self.on_step_callback:
                         try:
                             self.on_step_callback(
-                                step=self.step, action={"action": "mfa_pause"},
-                                result={"ok": False, "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}"},
+                                step=self.step,
+                                action={"action": "mfa_pause"},
+                                result={
+                                    "ok": False,
+                                    "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}",
+                                },
                             )
                         except Exception:
                             pass
@@ -487,16 +521,19 @@ class AgentEngine:
 
                 # Structured forensic log
                 self.logger.log_step(
-                    self.step, action_name,
+                    self.step,
+                    action_name,
                     str(action.get("x", action.get("name", ""))),
-                    action, log_result,
+                    action,
+                    log_result,
                 )
 
                 # Checkpoint every 5 steps
                 if self.checkpoint.should_auto_save(self.step):
                     try:
                         self.checkpoint.save(
-                            goal=goal, step_num=self.step,
+                            goal=goal,
+                            step_num=self.step,
                             agent_memory=self.notes,
                             last_screenshot_path=None,
                             config=self.config,
@@ -530,7 +567,8 @@ class AgentEngine:
                     self._prune_old_screenshots(messages)
                     screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
                     self._add_vision_message(
-                        messages, screenshot_b64,
+                        messages,
+                        screenshot_b64,
                         f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
                     )
 
@@ -551,6 +589,7 @@ class AgentEngine:
         # Sound notification
         try:
             from core.sound import play_sound
+
             play_sound("complete" if self.finish_summary else "error")
         except Exception:
             pass
@@ -635,32 +674,42 @@ class AgentEngine:
         """
         provider = self.config.get("provider", "")
         if provider == "anthropic":
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": text},
-                    {"type": "image", "source": {
-                        "type": "base64",
-                        "media_type": "image/png",
-                        "data": screenshot_b64,
-                    }},
-                ],
-                # Marker so _prune_old_screenshots can find image messages.
-                "_sentinel_has_image": True,
-                "_sentinel_step": self.step,
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": text},
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/png",
+                                "data": screenshot_b64,
+                            },
+                        },
+                    ],
+                    # Marker so _prune_old_screenshots can find image messages.
+                    "_sentinel_has_image": True,
+                    "_sentinel_step": self.step,
+                }
+            )
         else:
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": text},
-                    {"type": "image_url", "image_url": {
-                        "url": f"data:image/png;base64,{screenshot_b64}",
-                    }},
-                ],
-                "_sentinel_has_image": True,
-                "_sentinel_step": self.step,
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": text},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{screenshot_b64}",
+                            },
+                        },
+                    ],
+                    "_sentinel_has_image": True,
+                    "_sentinel_step": self.step,
+                }
+            )
 
     def _prune_old_screenshots(self, messages: list) -> None:
         """Drop the image bytes from older screenshot messages, but PRESERVE
@@ -672,10 +721,7 @@ class AgentEngine:
         block and only discard the image payload.
         """
         keep = max(1, self.image_history)
-        image_indices = [
-            i for i, m in enumerate(messages)
-            if m.get("_sentinel_has_image")
-        ]
+        image_indices = [i for i, m in enumerate(messages) if m.get("_sentinel_has_image")]
         if len(image_indices) <= keep:
             return
         to_strip = image_indices[: len(image_indices) - keep]
@@ -696,12 +742,10 @@ class AgentEngine:
                 preserved_text = content
 
             stub = f"[screenshot at step {step} omitted to save tokens]"
-            new_content = (
-                f"{preserved_text}\n{stub}" if preserved_text else stub
-            )
+            new_content = f"{preserved_text}\n{stub}" if preserved_text else stub
             messages[idx] = {"role": "user", "content": new_content}
 
-    def _parse_action(self, response: str) -> Optional[Dict]:
+    def _parse_action(self, response: str) -> dict | None:
         """Extract an action dict from an LLM response.
 
         Handles three shapes:
@@ -723,7 +767,7 @@ class AgentEngine:
             return parsed
 
         # 2) JSON fenced in a markdown code block.
-        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+        json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
         if json_match:
             try:
                 inner = json.loads(json_match.group(1))
@@ -743,7 +787,7 @@ class AgentEngine:
         return None
 
     @staticmethod
-    def _action_from_tool_call(tool_calls) -> Optional[Dict]:
+    def _action_from_tool_call(tool_calls) -> dict | None:
         """Convert the first tool_call into an action dict for the executor.
 
         Defensive: tool_calls coming from real providers occasionally arrive
@@ -776,16 +820,18 @@ class AgentEngine:
             args = {k: v for k, v in args.items() if k != "action"}
         return {"action": str(name), **(args if isinstance(args, dict) else {})}
 
-    def _log_step(self, action: Dict, result: Dict):
-        self.forensic_log.append({
-            "step": self.step,
-            "action": action.get("action"),
-            "params": {k: v for k, v in action.items() if k != "action"},
-            "result": result,
-            "timestamp": datetime.now().isoformat(),
-        })
+    def _log_step(self, action: dict, result: dict):
+        self.forensic_log.append(
+            {
+                "step": self.step,
+                "action": action.get("action"),
+                "params": {k: v for k, v in action.items() if k != "action"},
+                "result": result,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
-    def _log_step_result(self, step: int, result: Dict):
+    def _log_step_result(self, step: int, result: dict):
         for entry in reversed(self.forensic_log):
             if entry.get("step") == step:
                 entry["result"] = result
@@ -799,7 +845,8 @@ class AgentEngine:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _find_balanced_json_with_key(text: str, key: str) -> Optional[Dict]:
+
+def _find_balanced_json_with_key(text: str, key: str) -> dict | None:
     """Scan *text* for a balanced ``{...}`` JSON object that contains *key*.
 
     Handles strings and escape characters so nested braces don't break the
@@ -829,7 +876,7 @@ def _find_balanced_json_with_key(text: str, key: str) -> Optional[Dict]:
         elif ch == "}":
             depth -= 1
             if depth == 0 and start >= 0:
-                candidate = text[start:i + 1]
+                candidate = text[start : i + 1]
                 if needle in candidate:
                     try:
                         obj = json.loads(candidate)
@@ -853,8 +900,7 @@ def _clean_messages_for_api(messages: list) -> list:
         if not isinstance(m, dict):
             cleaned.append(m)
             continue
-        cleaned.append({
-            k: v for k, v in m.items()
-            if not (isinstance(k, str) and k.startswith("_sentinel_"))
-        })
+        cleaned.append(
+            {k: v for k, v in m.items() if not (isinstance(k, str) and k.startswith("_sentinel_"))}
+        )
     return cleaned

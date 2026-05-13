@@ -16,16 +16,17 @@ import logging
 import math
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Animation defaults
-_GLIDE_DURATION = 0.35        # seconds for cursor to glide to target
-_RING_RADIUS = 18             # pixels
-_PULSE_DURATION = 0.5         # seconds for post-action pulse
-_FADE_DURATION = 0.3          # seconds to fade out after pulse
-_STEPS_PER_SECOND = 60       # animation smoothness
+_GLIDE_DURATION = 0.35  # seconds for cursor to glide to target
+_RING_RADIUS = 18  # pixels
+_PULSE_DURATION = 0.5  # seconds for post-action pulse
+_FADE_DURATION = 0.3  # seconds to fade out after pulse
+_STEPS_PER_SECOND = 60  # animation smoothness
+
 
 # Easing function: ease-out cubic
 def _ease_out(t: float) -> float:
@@ -40,9 +41,9 @@ class CursorOverlay:
 
     def __init__(self, accent_color: str = "#00F0FF"):
         self._accent = accent_color
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._running = False
-        self._queue: List[Dict] = []
+        self._queue: list[dict] = []
         self._queue_lock = threading.Lock()
         self._root = None
         self._canvas = None
@@ -57,7 +58,7 @@ class CursorOverlay:
         if self._running:
             return True
         try:
-            import tkinter as tk
+            import tkinter as tk  # noqa: F401  (availability check)
         except ImportError:
             logger.warning("tkinter not available — cursor overlay disabled")
             return False
@@ -76,7 +77,7 @@ class CursorOverlay:
             except Exception:
                 pass
 
-    def show_action(self, action: Dict[str, Any]):
+    def show_action(self, action: dict[str, Any]):
         """
         Queue an action for visual display. Thread-safe.
         Action dict should have: type, x, y, label (optional)
@@ -111,23 +112,38 @@ class CursorOverlay:
         self._root.geometry(f"{screen_w}x{screen_h}+0+0")
 
         self._canvas = tk.Canvas(
-            self._root, width=screen_w, height=screen_h,
-            bg="white", highlightthickness=0,
+            self._root,
+            width=screen_w,
+            height=screen_h,
+            bg="white",
+            highlightthickness=0,
         )
         self._canvas.pack()
 
         # Create ring elements (initially off-screen)
         self._ring_id = self._canvas.create_oval(
-            -100, -100, -100, -100,
-            outline=self._accent, width=3,
+            -100,
+            -100,
+            -100,
+            -100,
+            outline=self._accent,
+            width=3,
         )
         self._inner_id = self._canvas.create_oval(
-            -100, -100, -100, -100,
-            fill=self._accent, outline="",
+            -100,
+            -100,
+            -100,
+            -100,
+            fill=self._accent,
+            outline="",
         )
         self._label_id = self._canvas.create_text(
-            -100, -100, text="", fill="white",
-            font=("Segoe UI", 9, "bold"), anchor="s",
+            -100,
+            -100,
+            text="",
+            fill="white",
+            font=("Segoe UI", 9, "bold"),
+            anchor="s",
         )
 
         # Make window click-through on Windows via ctypes
@@ -147,13 +163,16 @@ class CursorOverlay:
         """Set WS_EX_TRANSPARENT | WS_EX_LAYERED on Windows for click-through."""
         try:
             import ctypes
+
             hwnd = int(self._root.winfo_id())
             GWL_EXSTYLE = -20
             WS_EX_TRANSPARENT = 0x20
             WS_EX_LAYERED = 0x80000
             ex = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
             ctypes.windll.user32.SetWindowLongW(
-                hwnd, GWL_EXSTYLE, ex | WS_EX_TRANSPARENT | WS_EX_LAYERED,
+                hwnd,
+                GWL_EXSTYLE,
+                ex | WS_EX_TRANSPARENT | WS_EX_LAYERED,
             )
         except Exception:
             pass  # Non-Windows — overlay won't be click-through but still functional
@@ -173,7 +192,7 @@ class CursorOverlay:
 
         self._root.after(16, self._process_queue)  # ~60fps check
 
-    def _animate_action(self, action: Dict):
+    def _animate_action(self, action: dict):
         """Animate a single action: glide → pulse → fade."""
         target_x = action.get("x", 0)
         target_y = action.get("y", 0)
@@ -183,19 +202,14 @@ class CursorOverlay:
         # Choose ring style based on action type
         if action_type in ("click", "click_element", "click_image"):
             ring_color = self._accent
-            fill_alpha = 0.6
         elif action_type in ("type_text", "type_into_field"):
-            ring_color = "#95E400"     # lime (Override success)
-            fill_alpha = 0.4
+            ring_color = "#95E400"  # lime (Override success)
         elif action_type in ("press_key", "hotkey"):
-            ring_color = "#FBBC00"     # amber (Override warning)
-            fill_alpha = 0.3
+            ring_color = "#FBBC00"  # amber (Override warning)
         elif action_type in ("scroll",):
-            ring_color = "#8a5cff"     # phantom purple
-            fill_alpha = 0.3
+            ring_color = "#8a5cff"  # phantom purple
         else:
             ring_color = self._accent
-            fill_alpha = 0.4
 
         # Step 1: Glide from current position to target
         start_x, start_y = self._current_x, self._current_y
@@ -210,7 +224,9 @@ class CursorOverlay:
             r = _RING_RADIUS
             self._canvas.coords(self._ring_id, cx - r, cy - r, cx + r, cy + r)
             inner_r = r * 0.3
-            self._canvas.coords(self._inner_id, cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r)
+            self._canvas.coords(
+                self._inner_id, cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r
+            )
             self._canvas.itemconfig(self._inner_id, fill=ring_color, stipple="gray50")
             self._canvas.itemconfig(self._ring_id, outline=ring_color)
             self._root.attributes("-alpha", 0.85)
@@ -256,7 +272,7 @@ class CursorOverlay:
 
 # ── Singleton ───────────────────────────────────────────────────────
 
-_overlay: Optional[CursorOverlay] = None
+_overlay: CursorOverlay | None = None
 
 
 def get_overlay() -> CursorOverlay:
@@ -274,7 +290,7 @@ def start_overlay(accent_color: str = "#00F0FF") -> bool:
     return o.start()
 
 
-def show_action(action: Dict[str, Any]):
+def show_action(action: dict[str, Any]):
     """Show an action on the overlay. Thread-safe."""
     get_overlay().show_action(action)
 

@@ -1,4 +1,5 @@
 """Clipboard read/write."""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,7 @@ def _get_clipboard():
     if _clipboard is None:
         try:
             import pyperclip
+
             _clipboard = pyperclip
         except ImportError:
             logger.warning("pyperclip not installed — clipboard unavailable")

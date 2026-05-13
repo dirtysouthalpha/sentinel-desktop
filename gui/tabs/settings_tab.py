@@ -6,7 +6,8 @@ Full settings panel with sections for all configuration.
 import json
 import logging
 import os
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 import customtkinter as ctk
 
@@ -31,11 +32,11 @@ class SettingsTab:
     def __init__(self, parent, app):
         self.app = app
         self.root = parent
-        self._vars: Dict[str, Any] = {}
-        self._callbacks: Dict[str, Callable] = {}
+        self._vars: dict[str, Any] = {}
+        self._callbacks: dict[str, Callable] = {}
 
         # Color helper
-        self._t = app._t if hasattr(app, '_t') else lambda k, f="": f
+        self._t = app._t if hasattr(app, "_t") else lambda k, f="": f
 
         self._build()
 
@@ -80,9 +81,16 @@ class SettingsTab:
 
         return content
 
-    def _add_field(self, parent, label: str, var_name: str,
-                   default: str = "", field_type: str = "entry",
-                   values: List[str] = None, row: int = 0):
+    def _add_field(
+        self,
+        parent,
+        label: str,
+        var_name: str,
+        default: str = "",
+        field_type: str = "entry",
+        values: list[str] = None,
+        row: int = 0,
+    ):
         """Add a labeled field to a section."""
         ctk.CTkLabel(
             parent,
@@ -147,29 +155,70 @@ class SettingsTab:
     def _section_provider(self):
         s = self._make_section("🤖 Provider")
         s.grid_columnconfigure(1, weight=1)
-        self._add_field(s, "Model", "model", "gpt-4o", "dropdown",
-                        values=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "claude-3.5-sonnet",
-                                "glm-4v", "qwen-vl-max", "gemini-1.5-flash"], row=0)
+        self._add_field(
+            s,
+            "Model",
+            "model",
+            "gpt-4o",
+            "dropdown",
+            values=[
+                "gpt-4o",
+                "gpt-4o-mini",
+                "gpt-4-turbo",
+                "claude-3.5-sonnet",
+                "glm-4v",
+                "qwen-vl-max",
+                "gemini-1.5-flash",
+            ],
+            row=0,
+        )
         self._add_field(s, "API Key", "api_key", "", "entry", row=1)
         self._add_field(s, "Base URL", "base_url", "", "entry", row=2)
-        self._add_field(s, "Temperature", "temperature", "0.3", "slider",
-                        values=[0.0, 2.0, 20], row=3)
+        self._add_field(
+            s, "Temperature", "temperature", "0.3", "slider", values=[0.0, 2.0, 20], row=3
+        )
 
     def _section_agent(self):
         s = self._make_section("🤖 Agent")
-        self._add_field(s, "Max Steps", "max_steps", "50", "slider",
-                        values=[5, 200, 39], row=0)
+        self._add_field(s, "Max Steps", "max_steps", "50", "slider", values=[5, 200, 39], row=0)
         self._add_field(s, "Timeout (s)", "timeout", "300", "entry", row=1)
-        self._add_field(s, "Approval Mode", "approval_mode", "auto", "dropdown",
-                        values=["auto", "approve", "deny"], row=2)
+        self._add_field(
+            s,
+            "Approval Mode",
+            "approval_mode",
+            "auto",
+            "dropdown",
+            values=["auto", "approve", "deny"],
+            row=2,
+        )
 
     def _section_theme(self):
         s = self._make_section("🎨 Theme")
-        self._add_field(s, "Theme", "theme", "sentinel", "dropdown",
-                        values=["sentinel", "midnight", "cyberpunk", "dracula", "nord",
-                                "tokyo-night", "solarized", "gruvbox", "catppuccin",
-                                "one-dark", "material", "monokai", "horizon",
-                                "rose-pine", "mono"], row=0)
+        self._add_field(
+            s,
+            "Theme",
+            "theme",
+            "sentinel",
+            "dropdown",
+            values=[
+                "sentinel",
+                "midnight",
+                "cyberpunk",
+                "dracula",
+                "nord",
+                "tokyo-night",
+                "solarized",
+                "gruvbox",
+                "catppuccin",
+                "one-dark",
+                "material",
+                "monokai",
+                "horizon",
+                "rose-pine",
+                "mono",
+            ],
+            row=0,
+        )
 
     def _section_scheduler(self):
         s = self._make_section("⏰ Scheduler")
@@ -189,11 +238,25 @@ class SettingsTab:
 
     def _section_advanced(self):
         s = self._make_section("⚙️ Advanced")
-        self._add_field(s, "Screenshot Quality", "screenshot_quality", "85", "slider",
-                        values=[10, 100, 90], row=0)
+        self._add_field(
+            s,
+            "Screenshot Quality",
+            "screenshot_quality",
+            "85",
+            "slider",
+            values=[10, 100, 90],
+            row=0,
+        )
         self._add_field(s, "Debug Mode", "debug_mode", "false", "checkbox", row=1)
-        self._add_field(s, "Log Level", "log_level", "INFO", "dropdown",
-                        values=["DEBUG", "INFO", "WARNING", "ERROR"], row=2)
+        self._add_field(
+            s,
+            "Log Level",
+            "log_level",
+            "INFO",
+            "dropdown",
+            values=["DEBUG", "INFO", "WARNING", "ERROR"],
+            row=2,
+        )
 
     def _section_plugins(self):
         s = self._make_section("🔌 Plugins")
@@ -218,7 +281,7 @@ class SettingsTab:
             w.destroy()
 
         try:
-            if hasattr(self.app, 'engine') and self.app.engine:
+            if hasattr(self.app, "engine") and self.app.engine:
                 plugins = self.app.engine.plugin_loader.list_plugins()
             else:
                 plugins = []
@@ -257,7 +320,7 @@ class SettingsTab:
 
     def _reload_plugins(self):
         try:
-            if hasattr(self.app, 'engine') and self.app.engine:
+            if hasattr(self.app, "engine") and self.app.engine:
                 self.app.engine.plugin_loader.load_all()
             self._refresh_plugin_list()
             logger.info("Plugins reloaded")
@@ -307,8 +370,7 @@ class SettingsTab:
         """Save current settings to config/config.json."""
         cfg = self._gather_config()
         config_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "config", "config.json"
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "config.json"
         )
         try:
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
@@ -323,7 +385,7 @@ class SettingsTab:
             logger.info("Settings saved to %s", config_path)
 
             # Apply theme immediately
-            if "theme" in cfg and hasattr(self.app, 'set_theme'):
+            if "theme" in cfg and hasattr(self.app, "set_theme"):
                 self.app.set_theme(cfg["theme"])
 
         except Exception as exc:
@@ -332,14 +394,23 @@ class SettingsTab:
     def _reset(self):
         """Reset all fields to defaults."""
         defaults = {
-            "model": "gpt-4o", "api_key": "", "base_url": "",
-            "temperature": "0.3", "max_steps": "50", "timeout": "300",
-            "approval_mode": "auto", "theme": "sentinel",
+            "model": "gpt-4o",
+            "api_key": "",
+            "base_url": "",
+            "temperature": "0.3",
+            "max_steps": "50",
+            "timeout": "300",
+            "approval_mode": "auto",
+            "theme": "sentinel",
             "scheduler_enabled": "false",
-            "notify_toast": "true", "notify_log": "true",
-            "notify_discord_webhook": "", "notify_webhook_url": "",
-            "session_timeout": "24", "encrypt_credentials": "true",
-            "screenshot_quality": "85", "debug_mode": "false",
+            "notify_toast": "true",
+            "notify_log": "true",
+            "notify_discord_webhook": "",
+            "notify_webhook_url": "",
+            "session_timeout": "24",
+            "encrypt_credentials": "true",
+            "screenshot_quality": "85",
+            "debug_mode": "false",
             "log_level": "INFO",
         }
         for name, val in defaults.items():
@@ -361,6 +432,10 @@ class SettingsTab:
                 if isinstance(var, ctk.DoubleVar):
                     var.set(float(val))
                 elif isinstance(var, ctk.BooleanVar):
-                    var.set(bool(val) if not isinstance(val, str) else val.lower() in ("true", "1", "yes"))
+                    var.set(
+                        bool(val)
+                        if not isinstance(val, str)
+                        else val.lower() in ("true", "1", "yes")
+                    )
                 else:
                     var.set(str(val))

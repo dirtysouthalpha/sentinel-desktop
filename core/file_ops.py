@@ -29,6 +29,7 @@ def _get_lockdown_root() -> Path | None:
         return Path(env_root).expanduser().resolve(strict=False)
     try:
         from config import Config  # local import: config lives at repo root
+
         cfg = Config()
         cfg.load()
         if not cfg.get("tenant_lockdown"):
@@ -53,9 +54,7 @@ def _resolve_safe(path: str) -> Path:
     try:
         resolved.relative_to(root)
     except ValueError as exc:
-        raise PermissionError(
-            f"path {resolved!s} is outside tenant sandbox {root!s}"
-        ) from exc
+        raise PermissionError(f"path {resolved!s} is outside tenant sandbox {root!s}") from exc
     return resolved
 
 
@@ -103,11 +102,13 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
     try:
         entries: list[dict[str, Any]] = []
         for entry in os.scandir(safe):
-            entries.append({
-                "name": entry.name,
-                "is_dir": entry.is_dir(),
-                "size": entry.stat().st_size if entry.is_file() else 0,
-            })
+            entries.append(
+                {
+                    "name": entry.name,
+                    "is_dir": entry.is_dir(),
+                    "size": entry.stat().st_size if entry.is_file() else 0,
+                }
+            )
         return sorted(entries, key=lambda e: (not e["is_dir"], e["name"].lower()))
     except OSError as exc:
         logger.error("list_directory(%s) failed: %s", path, exc)

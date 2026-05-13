@@ -26,9 +26,9 @@ from __future__ import annotations
 import logging
 import platform
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +52,10 @@ def _ensure_win32() -> bool:
     if not _IS_WINDOWS:
         return False
     try:
-        import win32gui  # type: ignore
-        import win32con  # type: ignore
         import win32api  # type: ignore
+        import win32con  # type: ignore
+        import win32gui  # type: ignore
+
         _win32gui = win32gui
         _win32con = win32con
         _win32api = win32api
@@ -68,8 +69,10 @@ def _ensure_win32() -> bool:
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 class RecoveryAction(Enum):
     """Possible recovery decisions returned by :meth:`handle_failure`."""
+
     RETRY = "retry"
     RETRY_WITH_ALT = "retry_with_alt"
     SKIP = "skip"
@@ -80,6 +83,7 @@ class RecoveryAction(Enum):
 @dataclass
 class PopupInfo:
     """Describes a detected popup window."""
+
     hwnd: int
     title: str
     class_name: str
@@ -102,14 +106,24 @@ class PopupInfo:
 # Default configuration
 # ---------------------------------------------------------------------------
 
-_DEFAULT_POPUP_KEYWORDS: List[str] = [
-    "error", "warning", "confirm", "cancel", "close",
-    "exception", "access denied", "failed",
-    "could not", "unable to", "retry",
-    "abort", "ignore", "don't send",
+_DEFAULT_POPUP_KEYWORDS: list[str] = [
+    "error",
+    "warning",
+    "confirm",
+    "cancel",
+    "close",
+    "exception",
+    "access denied",
+    "failed",
+    "could not",
+    "unable to",
+    "retry",
+    "abort",
+    "ignore",
+    "don't send",
 ]
 
-_DEFAULT_CONFIG: Dict[str, Any] = {
+_DEFAULT_CONFIG: dict[str, Any] = {
     "max_retries": 2,
     "retry_delay": 1.0,
     "dismiss_popups": True,
@@ -121,7 +135,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
 # alternatives that the recovery manager should try.
 # ---------------------------------------------------------------------------
 
-_FALLBACK_MAP: Dict[str, List[str]] = {
+_FALLBACK_MAP: dict[str, list[str]] = {
     "click": ["click_image", "click_text"],
     "click_image": ["click_text", "click"],
     "click_text": ["click_image", "click"],
@@ -133,6 +147,7 @@ _FALLBACK_MAP: Dict[str, List[str]] = {
 # ---------------------------------------------------------------------------
 # RecoveryManager
 # ---------------------------------------------------------------------------
+
 
 class RecoveryManager:
     """Analyse action failures and orchestrate recovery.
@@ -151,14 +166,14 @@ class RecoveryManager:
 
     def __init__(
         self,
-        action_executor: Optional[Any] = None,
-        config: Optional[Dict[str, Any]] = None,
+        action_executor: Any | None = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         merged = {**_DEFAULT_CONFIG, **(config or {})}
         self.max_retries: int = int(merged["max_retries"])
         self.retry_delay: float = float(merged["retry_delay"])
         self.dismiss_popups: bool = bool(merged["dismiss_popups"])
-        self.popup_keywords: List[str] = list(merged["popup_keywords"])
+        self.popup_keywords: list[str] = list(merged["popup_keywords"])
 
         self._executor = action_executor
 
@@ -176,8 +191,8 @@ class RecoveryManager:
 
     def handle_failure(
         self,
-        action: Dict[str, Any],
-        result: Dict[str, Any],
+        action: dict[str, Any],
+        result: dict[str, Any],
         attempt: int,
     ) -> RecoveryAction:
         """Analyse a failure and decide the recovery strategy.
@@ -204,7 +219,9 @@ class RecoveryManager:
 
         logger.info(
             "Handling failure: action=%s attempt=%d error_type=%s",
-            action_type, attempt, error_type,
+            action_type,
+            attempt,
+            error_type,
         )
 
         # 1. Check for popups first — they can interfere with any action.
@@ -221,7 +238,8 @@ class RecoveryManager:
         if attempt > self.max_retries:
             logger.warning(
                 "Max retries (%d) exceeded for action %s — aborting",
-                self.max_retries, action_type,
+                self.max_retries,
+                action_type,
             )
             self._total_aborts += 1
             return RecoveryAction.ABORT
@@ -241,7 +259,11 @@ class RecoveryManager:
             self._total_retries += 1
             return RecoveryAction.RETRY
 
-        if "permission" in error_msg or "access denied" in error_msg or "access is denied" in error_msg:
+        if (
+            "permission" in error_msg
+            or "access denied" in error_msg
+            or "access is denied" in error_msg
+        ):
             logger.warning("Permission error — skipping action")
             self._total_skips += 1
             return RecoveryAction.SKIP
@@ -258,7 +280,7 @@ class RecoveryManager:
     # Popup detection
     # ------------------------------------------------------------------
 
-    def check_for_popups(self) -> List[PopupInfo]:
+    def check_for_popups(self) -> list[PopupInfo]:
         """Scan all top-level windows for titles matching known popup keywords.
 
         Uses ``win32gui.EnumWindows`` on Windows.  Returns an empty list on
@@ -268,7 +290,7 @@ class RecoveryManager:
             logger.debug("win32 unavailable — skipping popup scan")
             return []
 
-        popups: List[PopupInfo] = []
+        popups: list[PopupInfo] = []
 
         def _enum_callback(hwnd: int, _: Any) -> None:
             if not _win32gui.IsWindowVisible(hwnd):
@@ -285,16 +307,18 @@ class RecoveryManager:
                     except Exception:
                         rect = (0, 0, 0, 0)
                         class_name = ""
-                    popups.append(PopupInfo(
-                        hwnd=hwnd,
-                        title=title,
-                        class_name=class_name,
-                        left=rect[0],
-                        top=rect[1],
-                        right=rect[2],
-                        bottom=rect[3],
-                        matched_keyword=kw,
-                    ))
+                    popups.append(
+                        PopupInfo(
+                            hwnd=hwnd,
+                            title=title,
+                            class_name=class_name,
+                            left=rect[0],
+                            top=rect[1],
+                            right=rect[2],
+                            bottom=rect[3],
+                            matched_keyword=kw,
+                        )
+                    )
                     break  # one keyword match per window is enough
 
         try:
@@ -303,8 +327,7 @@ class RecoveryManager:
             logger.error("EnumWindows failed during popup scan: %s", exc)
 
         if popups:
-            logger.debug("Detected %d popup(s): %s", len(popups),
-                         [p.title for p in popups])
+            logger.debug("Detected %d popup(s): %s", len(popups), [p.title for p in popups])
         return popups
 
     # ------------------------------------------------------------------
@@ -341,7 +364,7 @@ class RecoveryManager:
 
         # --- Strategy 2: VK_ESCAPE ---
         try:
-            _win32api.keybd_event(0x1B, 0, 0, 0)         # key down
+            _win32api.keybd_event(0x1B, 0, 0, 0)  # key down
             _win32api.keybd_event(0x1B, 0, _win32con.KEYEVENTF_KEYUP, 0)
             time.sleep(0.3)
             if not _win32gui.IsWindow(popup.hwnd):
@@ -389,9 +412,9 @@ class RecoveryManager:
 
     def retry_with_fallback(
         self,
-        action: Dict[str, Any],
-        result: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        action: dict[str, Any],
+        result: dict[str, Any],
+    ) -> dict[str, Any]:
         """Try an alternative action based on the failure.
 
         Fallback chains (first available alternative wins):
@@ -406,8 +429,11 @@ class RecoveryManager:
 
         if not alternatives:
             logger.info("No fallback defined for action type %r", action_type)
-            return {"success": False, "error": f"no fallback for {action_type}",
-                    "fallback_attempted": False}
+            return {
+                "success": False,
+                "error": f"no fallback for {action_type}",
+                "fallback_attempted": False,
+            }
 
         for alt_type in alternatives:
             logger.info("Attempting fallback: %s → %s", action_type, alt_type)
@@ -456,8 +482,14 @@ class RecoveryManager:
         error_lower = error.lower()
 
         # Never retry these.
-        non_retryable = ["permission", "access denied", "access is denied",
-                         "authentication", "unauthorized", "login failed"]
+        non_retryable = [
+            "permission",
+            "access denied",
+            "access is denied",
+            "authentication",
+            "unauthorized",
+            "login failed",
+        ]
         for phrase in non_retryable:
             if phrase in error_lower:
                 return False
@@ -471,7 +503,7 @@ class RecoveryManager:
     # Statistics
     # ------------------------------------------------------------------
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Return a dictionary of recovery statistics."""
         return {
             "total_failures": self._total_failures,
@@ -494,9 +526,9 @@ class RecoveryManager:
 
     def _build_alt_action(
         self,
-        original: Dict[str, Any],
+        original: dict[str, Any],
         alt_type: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Build an alternative action dict from the original action.
 
         Returns *None* if the alternative cannot be constructed (e.g. missing

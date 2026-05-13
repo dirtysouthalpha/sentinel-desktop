@@ -11,9 +11,9 @@ The package version is sourced from ``core.__version__``.
 """
 
 import argparse
-import sys
-import os
 import logging
+import os
+import sys
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -35,37 +35,49 @@ if PROJECT_ROOT not in sys.path:
 
 def parse_args():
     from core import __version__
+
     parser = argparse.ArgumentParser(
         prog="sentinel-desktop",
         description=f"Sentinel Desktop v{__version__} — AI-powered Windows desktop automation",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
-        "--api", action="store_true",
+        "--api",
+        action="store_true",
         help="Launch in headless API mode (FastAPI on port 8091)",
     )
     parser.add_argument(
-        "--command", "-c", type=str, default=None,
+        "--command",
+        "-c",
+        type=str,
+        default=None,
         help="Execute a single goal in CLI mode and exit",
     )
     parser.add_argument(
-        "--port", type=int, default=8091,
+        "--port",
+        type=int,
+        default=8091,
         help="Port for API server (default: 8091)",
     )
     parser.add_argument(
-        "--host", type=str, default="0.0.0.0",
+        "--host",
+        type=str,
+        default="0.0.0.0",
         help="Host for API server (default: 0.0.0.0)",
     )
     parser.add_argument(
-        "--debug", action="store_true",
+        "--debug",
+        action="store_true",
         help="Enable debug logging",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Log state-changing actions instead of executing them",
     )
     parser.add_argument(
-        "--autonomous", action="store_true",
+        "--autonomous",
+        action="store_true",
         help="Skip every approval prompt and let the agent run uninterrupted",
     )
     return parser.parse_args()
@@ -74,7 +86,7 @@ def parse_args():
 def run_gui():
     """Launch the CustomTkinter GUI."""
     try:
-        import customtkinter as ctk
+        import customtkinter as ctk  # noqa: F401  (availability check)
     except ImportError:
         logger.error("customtkinter not installed. Run: pip install -r requirements.txt")
         sys.exit(1)
@@ -96,8 +108,8 @@ def run_api(host="0.0.0.0", port=8091):
         logger.error("uvicorn not installed. Run: pip install -r requirements.txt")
         sys.exit(1)
 
-    from config import Config
     from api.server import SentinelServer
+    from config import Config
 
     config = Config()
     server = SentinelServer(config)
@@ -126,13 +138,13 @@ def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False):
 
     result = engine.run(goal)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Goal: {goal}")
     print(f"Steps: {result.get('steps', 0)}")
     print(f"Notes: {len(result.get('notes', []))}")
     if result.get("finish_summary"):
         print(f"\nSummary:\n{result['finish_summary']}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 def main():
@@ -149,6 +161,7 @@ def main():
         # Surface CLI flags to config so the GUI picks them up this session.
         if args.dry_run or args.autonomous:
             from config import Config
+
             cfg = Config()
             data = cfg.load()
             if args.dry_run:

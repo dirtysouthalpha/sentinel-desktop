@@ -19,14 +19,13 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import logging
-import os
 import sys
 import threading
-import traceback
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +38,11 @@ REQUIRED_PLUGIN_ATTRS = ("PLUGIN_NAME", "PLUGIN_VERSION", "PLUGIN_DESCRIPTION")
 # Data holders for registered actions / commands / settings
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PluginAction:
     """An action registered by a plugin."""
+
     name: str
     handler: Callable[..., Any]
     description: str
@@ -51,15 +52,17 @@ class PluginAction:
 @dataclass
 class PluginCommand:
     """A voice / command-palette command registered by a plugin."""
+
     name: str
     handler: Callable[..., Any]
-    keywords: List[str]
+    keywords: list[str]
     plugin_name: str
 
 
 @dataclass
 class PluginSetting:
     """A user-configurable setting registered by a plugin."""
+
     key: str
     default: Any
     label: str
@@ -69,6 +72,7 @@ class PluginSetting:
 # ---------------------------------------------------------------------------
 # PluginAPI — passed into each plugin's ``register(api)`` call
 # ---------------------------------------------------------------------------
+
 
 class PluginAPI:
     """Facade that plugins use to hook into Sentinel Desktop.
@@ -86,22 +90,27 @@ class PluginAPI:
         Settings registered by the owning plugin.
     """
 
-    def __init__(self, plugin_name: str, engine: Any = None,
-                 config: Optional[Dict] = None,
-                 log_callback: Optional[Callable[[str], None]] = None) -> None:
+    def __init__(
+        self,
+        plugin_name: str,
+        engine: Any = None,
+        config: dict | None = None,
+        log_callback: Callable[[str], None] | None = None,
+    ) -> None:
         self._plugin_name = plugin_name
         self._engine = engine
         self._config = config or {}
         self._log_callback = log_callback or logger.info
 
-        self.actions: List[PluginAction] = []
-        self.commands: List[PluginCommand] = []
-        self.settings: List[PluginSetting] = []
+        self.actions: list[PluginAction] = []
+        self.commands: list[PluginCommand] = []
+        self.settings: list[PluginSetting] = []
 
     # -- registration helpers ------------------------------------------------
 
-    def register_action(self, name: str, handler: Callable[..., Any],
-                        description: str = "") -> None:
+    def register_action(
+        self, name: str, handler: Callable[..., Any], description: str = ""
+    ) -> None:
         """Register a named action that the agent can invoke.
 
         Parameters
@@ -116,15 +125,18 @@ class PluginAPI:
         """
         if not callable(handler):
             raise TypeError(f"handler for action '{name}' must be callable")
-        self.actions.append(PluginAction(
-            name=name,
-            handler=handler,
-            description=description,
-            plugin_name=self._plugin_name,
-        ))
+        self.actions.append(
+            PluginAction(
+                name=name,
+                handler=handler,
+                description=description,
+                plugin_name=self._plugin_name,
+            )
+        )
 
-    def register_command(self, name: str, handler: Callable[..., Any],
-                         keywords: Optional[Sequence[str]] = None) -> None:
+    def register_command(
+        self, name: str, handler: Callable[..., Any], keywords: Sequence[str] | None = None
+    ) -> None:
         """Register a command-palette / voice command.
 
         Parameters
@@ -138,15 +150,16 @@ class PluginAPI:
         """
         if not callable(handler):
             raise TypeError(f"handler for command '{name}' must be callable")
-        self.commands.append(PluginCommand(
-            name=name,
-            handler=handler,
-            keywords=list(keywords or []),
-            plugin_name=self._plugin_name,
-        ))
+        self.commands.append(
+            PluginCommand(
+                name=name,
+                handler=handler,
+                keywords=list(keywords or []),
+                plugin_name=self._plugin_name,
+            )
+        )
 
-    def register_setting(self, key: str, default: Any = None,
-                         label: str = "") -> None:
+    def register_setting(self, key: str, default: Any = None, label: str = "") -> None:
         """Declare a user-configurable setting for this plugin.
 
         Parameters
@@ -158,12 +171,14 @@ class PluginAPI:
         label : str
             Human-readable label for the settings UI.
         """
-        self.settings.append(PluginSetting(
-            key=key,
-            default=default,
-            label=label,
-            plugin_name=self._plugin_name,
-        ))
+        self.settings.append(
+            PluginSetting(
+                key=key,
+                default=default,
+                label=label,
+                plugin_name=self._plugin_name,
+            )
+        )
 
     # -- accessor helpers ----------------------------------------------------
 
@@ -171,7 +186,7 @@ class PluginAPI:
         """Return the current :class:`AgentEngine` instance, if available."""
         return self._engine
 
-    def get_config(self) -> Dict:
+    def get_config(self) -> dict:
         """Return the global configuration dict."""
         return self._config
 
@@ -184,21 +199,24 @@ class PluginAPI:
 # Internal per-plugin bookkeeping
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class _LoadedPlugin:
     """Internal state for a single loaded plugin."""
+
     name: str
     version: str
     description: str
     filepath: str
     module: ModuleType
     api: PluginAPI
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ---------------------------------------------------------------------------
 # PluginLoader — the main public interface
 # ---------------------------------------------------------------------------
+
 
 class PluginLoader:
     """Discover, load, and manage Sentinel Desktop plugins.
@@ -215,15 +233,15 @@ class PluginLoader:
         Global configuration dict forwarded to plugins.
     """
 
-    def __init__(self, plugin_dir: str | Path = "plugins",
-                 engine: Any = None,
-                 config: Optional[Dict] = None) -> None:
+    def __init__(
+        self, plugin_dir: str | Path = "plugins", engine: Any = None, config: dict | None = None
+    ) -> None:
         self._plugin_dir = Path(plugin_dir)
         self._engine = engine
         self._config = config or {}
         self._lock = threading.Lock()
         # name -> _LoadedPlugin
-        self._plugins: Dict[str, _LoadedPlugin] = {}
+        self._plugins: dict[str, _LoadedPlugin] = {}
 
     # -- public helpers ------------------------------------------------------
 
@@ -234,7 +252,7 @@ class PluginLoader:
 
     # -- loading ------------------------------------------------------------
 
-    def load_all(self) -> List[Dict[str, Any]]:
+    def load_all(self) -> list[dict[str, Any]]:
         """Scan *plugin_dir* and load every ``*.py`` file found.
 
         Returns a list of info dicts (one per plugin).  Plugins that fail to
@@ -242,7 +260,7 @@ class PluginLoader:
 
         Thread-safe.
         """
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         self._ensure_plugin_dir()
 
         py_files = sorted(self._plugin_dir.glob("*.py"))
@@ -256,16 +274,18 @@ class PluginLoader:
                 results.append(info)
             except Exception as exc:
                 logger.error("Failed to load plugin %s: %s", filepath, exc)
-                results.append({
-                    "name": filepath.stem,
-                    "loaded": False,
-                    "error": str(exc),
-                    "filepath": str(filepath),
-                })
+                results.append(
+                    {
+                        "name": filepath.stem,
+                        "loaded": False,
+                        "error": str(exc),
+                        "filepath": str(filepath),
+                    }
+                )
 
         return results
 
-    def load_plugin(self, filepath: str | Path) -> Dict[str, Any]:
+    def load_plugin(self, filepath: str | Path) -> dict[str, Any]:
         """Load a single plugin from *filepath*.
 
         Returns an info dict with ``"loaded": True`` on success.  Raises
@@ -305,15 +325,12 @@ class PluginLoader:
             if missing:
                 sys.modules.pop(module_name, None)
                 raise AttributeError(
-                    f"Plugin {filepath.name} is missing required attributes: "
-                    + ", ".join(missing)
+                    f"Plugin {filepath.name} is missing required attributes: " + ", ".join(missing)
                 )
 
             if not hasattr(module, "register") or not callable(module.register):
                 sys.modules.pop(module_name, None)
-                raise AttributeError(
-                    f"Plugin {filepath.name} must define a callable register(api)"
-                )
+                raise AttributeError(f"Plugin {filepath.name} must define a callable register(api)")
 
             plugin_name = module.PLUGIN_NAME
             plugin_version = module.PLUGIN_VERSION
@@ -348,7 +365,9 @@ class PluginLoader:
 
             logger.info(
                 "Loaded plugin %s v%s from %s",
-                plugin_name, plugin_version, filepath.name,
+                plugin_name,
+                plugin_version,
+                filepath.name,
             )
 
             return self._plugin_info(loaded, loaded=True)
@@ -408,7 +427,7 @@ class PluginLoader:
 
     # -- querying -----------------------------------------------------------
 
-    def list_plugins(self) -> List[Dict[str, Any]]:
+    def list_plugins(self) -> list[dict[str, Any]]:
         """Return info dicts for all currently loaded plugins.
 
         Each dict contains: name, version, description, filepath, loaded,
@@ -417,7 +436,7 @@ class PluginLoader:
         with self._lock:
             return [self._plugin_info(p, loaded=True) for p in self._plugins.values()]
 
-    def get_action(self, name: str) -> Optional[PluginAction]:
+    def get_action(self, name: str) -> PluginAction | None:
         """Look up a registered action by its scoped name across all plugins."""
         with self._lock:
             for loaded in self._plugins.values():
@@ -426,26 +445,26 @@ class PluginLoader:
                         return action
         return None
 
-    def get_all_actions(self) -> List[PluginAction]:
+    def get_all_actions(self) -> list[PluginAction]:
         """Return every registered action from every loaded plugin."""
         with self._lock:
-            actions: List[PluginAction] = []
+            actions: list[PluginAction] = []
             for loaded in self._plugins.values():
                 actions.extend(loaded.api.actions)
             return actions
 
-    def get_all_commands(self) -> List[PluginCommand]:
+    def get_all_commands(self) -> list[PluginCommand]:
         """Return every registered command from every loaded plugin."""
         with self._lock:
-            commands: List[PluginCommand] = []
+            commands: list[PluginCommand] = []
             for loaded in self._plugins.values():
                 commands.extend(loaded.api.commands)
             return commands
 
-    def get_all_settings(self) -> List[PluginSetting]:
+    def get_all_settings(self) -> list[PluginSetting]:
         """Return every registered setting from every loaded plugin."""
         with self._lock:
-            settings: List[PluginSetting] = []
+            settings: list[PluginSetting] = []
             for loaded in self._plugins.values():
                 settings.extend(loaded.api.settings)
             return settings
@@ -457,7 +476,7 @@ class PluginLoader:
         self._plugin_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def _plugin_info(plugin: _LoadedPlugin, *, loaded: bool) -> Dict[str, Any]:
+    def _plugin_info(plugin: _LoadedPlugin, *, loaded: bool) -> dict[str, Any]:
         """Serialise a ``_LoadedPlugin`` into a public-facing dict."""
         return {
             "name": plugin.name,
@@ -466,17 +485,10 @@ class PluginLoader:
             "filepath": plugin.filepath,
             "loaded": loaded,
             "error": plugin.error,
-            "actions": [
-                {"name": a.name, "description": a.description}
-                for a in plugin.api.actions
-            ],
-            "commands": [
-                {"name": c.name, "keywords": c.keywords}
-                for c in plugin.api.commands
-            ],
+            "actions": [{"name": a.name, "description": a.description} for a in plugin.api.actions],
+            "commands": [{"name": c.name, "keywords": c.keywords} for c in plugin.api.commands],
             "settings": [
-                {"key": s.key, "default": s.default, "label": s.label}
-                for s in plugin.api.settings
+                {"key": s.key, "default": s.default, "label": s.label} for s in plugin.api.settings
             ],
         }
 
@@ -491,7 +503,4 @@ class PluginLoader:
             return name in self._plugins
 
     def __repr__(self) -> str:
-        return (
-            f"PluginLoader(plugin_dir={self._plugin_dir!r}, "
-            f"loaded={len(self._plugins)})"
-        )
+        return f"PluginLoader(plugin_dir={self._plugin_dir!r}, loaded={len(self._plugins)})"

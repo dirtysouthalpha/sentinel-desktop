@@ -23,8 +23,8 @@ import logging
 import platform
 import threading
 import time
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from PIL import Image
 
@@ -41,7 +41,7 @@ _IS_WINDOWS = platform.system() == "Windows"
 # ---------------------------------------------------------------------------
 
 # (title_substring, detection_type)
-AUTH_WINDOW_TITLES: List[Tuple[str, str]] = [
+AUTH_WINDOW_TITLES: list[tuple[str, str]] = [
     ("Windows Security", "credential"),
     ("User Account Control", "uac"),
     ("UAC", "uac"),
@@ -61,13 +61,13 @@ AUTH_WINDOW_TITLES: List[Tuple[str, str]] = [
 ]
 
 # Generic substrings — if *any* window title contains these, classify.
-_GENERIC_TITLE_KEYWORDS: List[Tuple[str, str]] = [
+_GENERIC_TITLE_KEYWORDS: list[tuple[str, str]] = [
     ("credential", "credential"),
     ("authentication", "mfa"),
 ]
 
 # (pattern_text, detection_type)
-MFA_PATTERNS: List[Tuple[str, str]] = [
+MFA_PATTERNS: list[tuple[str, str]] = [
     ("verify your identity", "mfa"),
     ("enter the code", "2fa"),
     ("approve sign-in", "mfa"),
@@ -91,7 +91,7 @@ MFA_PATTERNS: List[Tuple[str, str]] = [
 ]
 
 # Keywords that strongly indicate a UAC prompt specifically.
-UAC_KEYWORDS: List[str] = [
+UAC_KEYWORDS: list[str] = [
     "user account control",
     "do you want to allow",
     "uac",
@@ -105,7 +105,7 @@ UAC_KEYWORDS: List[str] = [
 # Optional-dependency probes
 # ---------------------------------------------------------------------------
 
-_TESSERACT_OK: Optional[bool] = None
+_TESSERACT_OK: bool | None = None
 _pytesseract = None  # type: ignore[assignment]
 
 
@@ -116,6 +116,7 @@ def _have_tesseract() -> bool:
         return _TESSERACT_OK
     try:
         import pytesseract  # type: ignore
+
         pytesseract.get_tesseract_version()
         _pytesseract = pytesseract
         _TESSERACT_OK = True
@@ -125,7 +126,7 @@ def _have_tesseract() -> bool:
     return _TESSERACT_OK
 
 
-_UIA_AVAILABLE: Optional[bool] = None
+_UIA_AVAILABLE: bool | None = None
 _auto = None  # uiautomation module ref
 
 
@@ -136,6 +137,7 @@ def _have_uia() -> bool:
         return _UIA_AVAILABLE
     try:
         import uiautomation as auto  # type: ignore
+
         _auto = auto
         _UIA_AVAILABLE = True
     except Exception as exc:
@@ -200,9 +202,9 @@ def _classify_action(det_type: str, confidence: float) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _get_window_titles() -> List[str]:
+def _get_window_titles() -> list[str]:
     """Return titles of all visible windows (Windows-only, best-effort)."""
-    titles: List[str] = []
+    titles: list[str] = []
     if not _IS_WINDOWS:
         return titles
     try:
@@ -229,7 +231,7 @@ def _get_window_titles() -> List[str]:
     return titles
 
 
-def _match_window_title(titles: List[str]) -> Optional[DetectionResult]:
+def _match_window_title(titles: list[str]) -> DetectionResult | None:
     """Check *titles* against :data:`AUTH_WINDOW_TITLES`.
 
     Returns the first matching :class:`DetectionResult`, or ``None``.
@@ -266,7 +268,7 @@ def _match_window_title(titles: List[str]) -> Optional[DetectionResult]:
 # ---------------------------------------------------------------------------
 
 
-def _ocr_check(screenshot: Image.Image) -> Optional[DetectionResult]:
+def _ocr_check(screenshot: Image.Image) -> DetectionResult | None:
     """OCR the *screenshot* and scan for MFA/UAC text patterns.
 
     Returns a :class:`DetectionResult` on the first match, or ``None``.
@@ -291,9 +293,7 @@ def _ocr_check(screenshot: Image.Image) -> Optional[DetectionResult]:
     for pattern, det_type in MFA_PATTERNS:
         if pattern.lower() in text_lower:
             # Boost confidence if multiple patterns match
-            match_count = sum(
-                1 for p, _ in MFA_PATTERNS if p.lower() in text_lower
-            )
+            match_count = sum(1 for p, _ in MFA_PATTERNS if p.lower() in text_lower)
             confidence = min(0.6 + match_count * 0.08, 0.95)
 
             # UAC-specific boost
@@ -337,7 +337,7 @@ def _extract_excerpt(text: str, pattern: str, context_chars: int = 80) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _uia_check() -> Optional[DetectionResult]:
+def _uia_check() -> DetectionResult | None:
     """Walk the accessibility tree for password fields / auth text elements.
 
     Returns a :class:`DetectionResult` if an auth prompt is identified,
@@ -360,15 +360,13 @@ def _uia_check() -> Optional[DetectionResult]:
             # If the window already matches by title, skip — the title
             # checker handles that with higher confidence.
             tl = title.lower()
-            already_matched = any(
-                substr.lower() in tl for substr, _ in AUTH_WINDOW_TITLES
-            )
+            already_matched = any(substr.lower() in tl for substr, _ in AUTH_WINDOW_TITLES)
             if already_matched:
                 continue
 
             found_password = False
             found_auth_text = False
-            prompt_text_parts: List[str] = []
+            prompt_text_parts: list[str] = []
 
             # Walk immediate children (don't recurse too deep — it's slow).
             for ctrl in win.GetChildren():
@@ -448,15 +446,15 @@ class MFADetector:
 
     def __init__(self, cooldown_seconds: float = 10.0) -> None:
         self._lock = threading.Lock()
-        self._last_detection: Optional[DetectionResult] = None
+        self._last_detection: DetectionResult | None = None
         self._last_detection_time: float = 0.0
         self._last_prompt_sig: str = ""  # for cooldown dedup
         self._cooldown = cooldown_seconds
 
         # Monitoring state
-        self._monitor_thread: Optional[threading.Thread] = None
+        self._monitor_thread: threading.Thread | None = None
         self._monitor_stop = threading.Event()
-        self._callback: Optional[Callable[[str, str], None]] = None
+        self._callback: Callable[[str, str], None] | None = None
         self._interval: float = 2.0
 
     # ------------------------------------------------------------------
@@ -573,7 +571,7 @@ class MFADetector:
             thread.join(timeout=self._interval + 2.0)
             logger.info("MFA monitoring stopped")
 
-    def get_last_detection(self) -> Optional[DetectionResult]:
+    def get_last_detection(self) -> DetectionResult | None:
         """Return the most recent :class:`DetectionResult`, or ``None``."""
         with self._lock:
             return self._last_detection

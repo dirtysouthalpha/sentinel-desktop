@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from gui.app import SentinelApp
@@ -40,12 +40,14 @@ logger = logging.getLogger(__name__)
 
 try:
     import pystray  # type: ignore[import-untyped]
+
     _HAS_PYSTRAY = True
 except Exception:
     _HAS_PYSTRAY = False
 
 try:
     from PIL import Image, ImageDraw  # type: ignore[import-untyped]
+
     _HAS_PIL = True
 except Exception:
     _HAS_PIL = False
@@ -64,12 +66,12 @@ def is_available() -> bool:
 
 # Colour palette for the status circle.
 _STATUS_COLOURS = {
-    "idle": (136, 136, 136),       # grey
-    "running": (46, 204, 113),     # green
-    "recording": (231, 76, 60),    # red
-    "warning": (241, 196, 15),     # yellow
-    "error": (192, 57, 43),        # dark red
-    "paused": (52, 152, 219),      # blue
+    "idle": (136, 136, 136),  # grey
+    "running": (46, 204, 113),  # green
+    "recording": (231, 76, 60),  # red
+    "warning": (241, 196, 15),  # yellow
+    "error": (192, 57, 43),  # dark red
+    "paused": (52, 152, 219),  # blue
 }
 
 _ICON_SIZE = 64
@@ -77,7 +79,7 @@ _ICON_SIZE = 64
 
 def _create_icon_image(
     status: str = "idle",
-) -> "Image.Image":
+) -> Image.Image:
     """Render a 64×64 RGBA image with a coloured status circle.
 
     Falls back to a tiny 4×4 pixel placeholder if PIL is unavailable.
@@ -140,6 +142,7 @@ _IT_QUICK_ACTIONS = [
 # SystemTrayIcon
 # ---------------------------------------------------------------------------
 
+
 class SystemTrayIcon:
     """System tray icon with context menu for Sentinel Desktop v3.0.
 
@@ -152,10 +155,10 @@ class SystemTrayIcon:
     # Status strings accepted by *update_status*.
     VALID_STATUSES = frozenset(_STATUS_COLOURS.keys())
 
-    def __init__(self, app: "SentinelApp") -> None:
+    def __init__(self, app: SentinelApp) -> None:
         self._app = app
-        self._icon: Optional[pystray.Icon] = None
-        self._thread: Optional[threading.Thread] = None
+        self._icon: pystray.Icon | None = None
+        self._thread: threading.Thread | None = None
         self._current_status: str = "idle"
         self._running: threading.Event = threading.Event()
 
@@ -168,9 +171,7 @@ class SystemTrayIcon:
         ``pystray`` / ``Pillow`` are unavailable.
         """
         if not _AVAILABLE:
-            logger.info(
-                "System tray skipped — pystray and/or Pillow not installed."
-            )
+            logger.info("System tray skipped — pystray and/or Pillow not installed.")
             return False
 
         if self._icon is not None:
@@ -266,24 +267,30 @@ class SystemTrayIcon:
 
     # ── Menu construction ───────────────────────────────────────────────
 
-    def _build_menu(self) -> "pystray.Menu":
+    def _build_menu(self) -> pystray.Menu:
         """Build the full right-click context menu."""
         items = []
 
         # --- Primary actions ------------------------------------------------
-        items.append(pystray.MenuItem(
-            "▶ New Task",
-            self._on_new_task,
-            default=True,
-        ))
-        items.append(pystray.MenuItem(
-            "⏺ Record",
-            self._on_record,
-        ))
-        items.append(pystray.MenuItem(
-            "▶ Run Last Script",
-            self._on_run_last_script,
-        ))
+        items.append(
+            pystray.MenuItem(
+                "▶ New Task",
+                self._on_new_task,
+                default=True,
+            )
+        )
+        items.append(
+            pystray.MenuItem(
+                "⏺ Record",
+                self._on_record,
+            )
+        )
+        items.append(
+            pystray.MenuItem(
+                "▶ Run Last Script",
+                self._on_run_last_script,
+            )
+        )
 
         items.append(pystray.Menu.SEPARATOR)
 
@@ -291,40 +298,50 @@ class SystemTrayIcon:
         it_items = []
         for action_info in _IT_QUICK_ACTIONS:
             script_path = action_info["script"]
-            it_items.append(pystray.MenuItem(
-                action_info["label"],
-                lambda _icon, _item, sp=script_path: self._run_it_script(sp),
-            ))
+            it_items.append(
+                pystray.MenuItem(
+                    action_info["label"],
+                    lambda _icon, _item, sp=script_path: self._run_it_script(sp),
+                )
+            )
 
-        items.append(pystray.MenuItem(
-            "🔧 IT Quick Actions",
-            pystray.Menu(*it_items),
-        ))
+        items.append(
+            pystray.MenuItem(
+                "🔧 IT Quick Actions",
+                pystray.Menu(*it_items),
+            )
+        )
 
         items.append(pystray.Menu.SEPARATOR)
 
         # --- Status indicator (non-clickable, dynamically updated) ----------
-        items.append(pystray.MenuItem(
-            lambda text: f"Status: {self._current_status.replace('_', ' ').title()}",
-            lambda icon, item: None,  # no-op click
-            enabled=False,
-        ))
+        items.append(
+            pystray.MenuItem(
+                lambda text: f"Status: {self._current_status.replace('_', ' ').title()}",
+                lambda icon, item: None,  # no-op click
+                enabled=False,
+            )
+        )
 
         items.append(pystray.Menu.SEPARATOR)
 
         # --- Show / Hide window ---------------------------------------------
-        items.append(pystray.MenuItem(
-            "Show Window",
-            lambda _icon, _item: self._show_window(),
-        ))
+        items.append(
+            pystray.MenuItem(
+                "Show Window",
+                lambda _icon, _item: self._show_window(),
+            )
+        )
 
         items.append(pystray.Menu.SEPARATOR)
 
         # --- Exit -----------------------------------------------------------
-        items.append(pystray.MenuItem(
-            "Exit",
-            self._on_exit,
-        ))
+        items.append(
+            pystray.MenuItem(
+                "Exit",
+                self._on_exit,
+            )
+        )
 
         return pystray.Menu(*items)
 
@@ -372,9 +389,7 @@ class SystemTrayIcon:
 
         fn = getattr(app, method_name, None)
         if fn is None:
-            logger.debug(
-                "App does not implement %s — tray action ignored.", method_name
-            )
+            logger.debug("App does not implement %s — tray action ignored.", method_name)
             return
 
         try:

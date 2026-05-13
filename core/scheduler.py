@@ -16,11 +16,11 @@ Task types delegate to the appropriate subsystem:
 import json
 import logging
 import threading
-import time
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -34,17 +34,18 @@ CHECK_INTERVAL = 30  # seconds between scheduler ticks
 VALID_TASK_TYPES = {"script", "workflow", "goal", "powershell"}
 
 # ── Preset schedules → cron expressions ─────────────────────────────────
-PRESETS: Dict[str, str] = {
-    "every_5m":       "*/5 * * * *",
-    "every_1h":       "0 * * * *",
-    "daily_9am":      "0 9 * * *",
+PRESETS: dict[str, str] = {
+    "every_5m": "*/5 * * * *",
+    "every_1h": "0 * * * *",
+    "daily_9am": "0 9 * * *",
     "weekly_mon_9am": "0 9 * * 1",
-    "monthly_1st":    "0 9 1 * *",
+    "monthly_1st": "0 9 1 * *",
 }
 
 # ---------------------------------------------------------------------------
 # Simple cron matcher (no external dependencies)
 # ---------------------------------------------------------------------------
+
 
 def _parse_cron_field(field: str, value: int, ranges: tuple) -> bool:
     """Return True if *value* matches a single cron *field*.
@@ -72,7 +73,7 @@ def _parse_cron_field(field: str, value: int, ranges: tuple) -> bool:
     return False
 
 
-def cron_matches(expr: str, dt: Optional[datetime] = None) -> bool:
+def cron_matches(expr: str, dt: datetime | None = None) -> bool:
     """Return True if *dt* (default: now) matches the 5-field cron *expr*.
 
     Fields: minute  hour  day-of-month  month  day-of-week (0=Sun).
@@ -99,11 +100,13 @@ def resolve_cron(schedule: str) -> str:
     """Convert a preset name to its cron expression, or return as-is."""
     return PRESETS.get(schedule, schedule)
 
+
 # ---------------------------------------------------------------------------
 # Next-run calculator
 # ---------------------------------------------------------------------------
 
-def _next_run_after(cron_expr: str, after: Optional[datetime] = None) -> datetime:
+
+def _next_run_after(cron_expr: str, after: datetime | None = None) -> datetime:
     """Brute-force find the next datetime matching *cron_expr* after *after*.
 
     Scans minute-by-minute for up to 2 years (covers monthly/annual schedules).
@@ -118,9 +121,11 @@ def _next_run_after(cron_expr: str, after: Optional[datetime] = None) -> datetim
         probe += timedelta(minutes=1)
     return after + timedelta(days=730)
 
+
 # ---------------------------------------------------------------------------
 # TaskScheduler
 # ---------------------------------------------------------------------------
+
 
 class TaskScheduler:
     """Cron-like task scheduler for Sentinel Desktop.
@@ -137,17 +142,17 @@ class TaskScheduler:
 
     def __init__(
         self,
-        engine: Optional[Any] = None,
-        tasks_path: Optional[str] = None,
+        engine: Any | None = None,
+        tasks_path: str | None = None,
     ) -> None:
         self.engine = engine
         self._tasks_path = Path(tasks_path) if tasks_path else DEFAULT_TASKS_PATH
-        self._tasks: Dict[str, Dict[str, Any]] = {}
+        self._tasks: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
-        self._on_task_complete: Optional[Callable[[Dict[str, Any]], None]] = None
+        self._on_task_complete: Callable[[dict[str, Any]], None] | None = None
 
         # Load persisted tasks on init
         self.load()
@@ -187,29 +192,27 @@ class TaskScheduler:
         task_type: str,
         schedule: str,
         *,
-        path: Optional[str] = None,
-        goal: Optional[str] = None,
-        command: Optional[str] = None,
-        params: Optional[Dict[str, Any]] = None,
-        on_complete: Optional[str] = None,
+        path: str | None = None,
+        goal: str | None = None,
+        command: str | None = None,
+        params: dict[str, Any] | None = None,
+        on_complete: str | None = None,
         enabled: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create and register a new scheduled task.
 
         Returns the full task dict (with generated ``id`` and timestamps).
         """
         task_type = task_type.lower()
         if task_type not in VALID_TASK_TYPES:
-            raise ValueError(
-                f"Invalid task type {task_type!r}; expected one of {VALID_TASK_TYPES}"
-            )
+            raise ValueError(f"Invalid task type {task_type!r}; expected one of {VALID_TASK_TYPES}")
 
         cron_expr = resolve_cron(schedule)
         # Validate the cron expression
         cron_matches(cron_expr, datetime.now())
 
         now = datetime.now()
-        task: Dict[str, Any] = {
+        task: dict[str, Any] = {
             "id": uuid.uuid4().hex[:12],
             "name": name,
             "type": task_type,
@@ -244,7 +247,7 @@ class TaskScheduler:
         logger.info("Task removed: %s (%s)", removed["name"], task_id)
         return True
 
-    def update_task(self, task_id: str, **updates: Any) -> Optional[Dict[str, Any]]:
+    def update_task(self, task_id: str, **updates: Any) -> dict[str, Any] | None:
         """Update fields of an existing task. Returns the updated task or None."""
         with self._lock:
             task = self._tasks.get(task_id)
@@ -271,13 +274,13 @@ class TaskScheduler:
         logger.info("Task updated: %s (%s)", task["name"], task_id)
         return dict(task)
 
-    def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+    def get_task(self, task_id: str) -> dict[str, Any] | None:
         """Return a single task dict by ID, or None."""
         with self._lock:
             task = self._tasks.get(task_id)
         return dict(task) if task else None
 
-    def list_tasks(self, enabled_only: bool = False) -> List[Dict[str, Any]]:
+    def list_tasks(self, enabled_only: bool = False) -> list[dict[str, Any]]:
         """Return all tasks, optionally filtered to enabled only."""
         with self._lock:
             tasks = list(self._tasks.values())
@@ -295,7 +298,7 @@ class TaskScheduler:
 
     # ── Immediate execution ─────────────────────────────────────────────
 
-    def run_task_now(self, task_id: str) -> Optional[Dict[str, Any]]:
+    def run_task_now(self, task_id: str) -> dict[str, Any] | None:
         """Execute a task immediately, regardless of schedule.
 
         Returns a result dict with ``success``, ``output``, and ``error`` keys,
@@ -316,18 +319,14 @@ class TaskScheduler:
             if task_id in self._tasks:
                 self._tasks[task_id]["last_run"] = now.isoformat()
                 cron_expr = self._tasks[task_id].get("cron_expr", "")
-                self._tasks[task_id]["next_run"] = _next_run_after(
-                    cron_expr, now
-                ).isoformat()
+                self._tasks[task_id]["next_run"] = _next_run_after(cron_expr, now).isoformat()
 
         self.save()
         return result
 
     # ── Callbacks ───────────────────────────────────────────────────────
 
-    def set_on_task_complete(
-        self, callback: Callable[[Dict[str, Any]], None]
-    ) -> None:
+    def set_on_task_complete(self, callback: Callable[[dict[str, Any]], None]) -> None:
         """Register *callback* invoked after every task execution (success or fail).
 
         The callback receives the result dict from ``_execute_task``.
@@ -387,14 +386,19 @@ class TaskScheduler:
         logger.info("Task %s %s.", task_id, "enabled" if value else "disabled")
         return True
 
-    def _execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Dispatch a single task to the appropriate executor.
 
         Returns ``{success, output, error, task_id, task_name}``.
         """
         task_type = task.get("type", "")
-        base = {"success": False, "output": None, "error": None,
-                "task_id": task["id"], "task_name": task.get("name", "")}
+        base = {
+            "success": False,
+            "output": None,
+            "error": None,
+            "task_id": task["id"],
+            "task_name": task.get("name", ""),
+        }
         try:
             if task_type in ("script", "workflow"):
                 return self._exec_script(task)
@@ -408,33 +412,51 @@ class TaskScheduler:
             logger.exception("Task %s raised an exception.", task.get("id"))
         return base
 
-    def _exec_script(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        r = {"success": False, "output": None, "error": "No engine available.",
-             "task_id": task["id"], "task_name": task.get("name", "")}
+    def _exec_script(self, task: dict[str, Any]) -> dict[str, Any]:
+        r = {
+            "success": False,
+            "output": None,
+            "error": "No engine available.",
+            "task_id": task["id"],
+            "task_name": task.get("name", ""),
+        }
         if self.engine and hasattr(self.engine, "script_engine"):
-            sr = self.engine.script_engine.run_script(
-                task.get("path", ""), task.get("params", {}))
-            r.update(success=sr.success, error=sr.error,
-                     output={"steps_completed": sr.steps_completed,
-                             "steps_total": sr.steps_total,
-                             "duration_ms": sr.duration_ms})
+            sr = self.engine.script_engine.run_script(task.get("path", ""), task.get("params", {}))
+            r.update(
+                success=sr.success,
+                error=sr.error,
+                output={
+                    "steps_completed": sr.steps_completed,
+                    "steps_total": sr.steps_total,
+                    "duration_ms": sr.duration_ms,
+                },
+            )
         return r
 
-    def _exec_goal(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        r = {"success": False, "output": None, "error": "No engine available.",
-             "task_id": task["id"], "task_name": task.get("name", "")}
+    def _exec_goal(self, task: dict[str, Any]) -> dict[str, Any]:
+        r = {
+            "success": False,
+            "output": None,
+            "error": "No engine available.",
+            "task_id": task["id"],
+            "task_name": task.get("name", ""),
+        }
         goal = task.get("goal", "")
         if not goal:
             r["error"] = "Task has no goal specified."
         elif self.engine and hasattr(self.engine, "run"):
             er = self.engine.run(goal)
-            r.update(success=er.get("success", True), output=er,
-                     error=er.get("error"))
+            r.update(success=er.get("success", True), output=er, error=er.get("error"))
         return r
 
-    def _exec_powershell(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        r = {"success": False, "output": None, "error": "No engine available.",
-             "task_id": task["id"], "task_name": task.get("name", "")}
+    def _exec_powershell(self, task: dict[str, Any]) -> dict[str, Any]:
+        r = {
+            "success": False,
+            "output": None,
+            "error": "No engine available.",
+            "task_id": task["id"],
+            "task_name": task.get("name", ""),
+        }
         if self.engine and hasattr(self.engine, "powershell"):
             ps = self.engine.powershell
             sp = task.get("path")
@@ -446,14 +468,14 @@ class TaskScheduler:
             else:
                 r["error"] = "PowerShell task needs 'path' or 'command'."
                 return r
-            r.update(success=pr.success, error=pr.stderr or None,
-                     output={"exit_code": pr.exit_code, "stdout": pr.stdout,
-                             "objects": pr.objects})
+            r.update(
+                success=pr.success,
+                error=pr.stderr or None,
+                output={"exit_code": pr.exit_code, "stdout": pr.stdout, "objects": pr.objects},
+            )
         return r
 
-    def _handle_on_complete(
-        self, task: Dict[str, Any], result: Dict[str, Any]
-    ) -> None:
+    def _handle_on_complete(self, task: dict[str, Any], result: dict[str, Any]) -> None:
         """Process the ``on_complete`` directive of a task."""
         directive = task.get("on_complete")
         if not directive:
@@ -484,7 +506,7 @@ class TaskScheduler:
         """Check all enabled tasks and execute any that are due."""
         now = datetime.now()
         now_iso = now.isoformat()
-        tasks_to_run: List[Dict[str, Any]] = []
+        tasks_to_run: list[dict[str, Any]] = []
 
         with self._lock:
             for task in list(self._tasks.values()):
@@ -497,9 +519,7 @@ class TaskScheduler:
                     if cron_matches(cron_expr, now):
                         tasks_to_run.append(dict(task))
                 except ValueError:
-                    logger.warning(
-                        "Invalid cron for task %s: %s", task["id"], cron_expr
-                    )
+                    logger.warning("Invalid cron for task %s: %s", task["id"], cron_expr)
 
         for task in tasks_to_run:
             logger.info("Running scheduled task: %s (%s)", task["name"], task["id"])
@@ -511,9 +531,7 @@ class TaskScheduler:
                 if tid in self._tasks:
                     self._tasks[tid]["last_run"] = now_iso
                     cron_expr = self._tasks[tid].get("cron_expr", "")
-                    self._tasks[tid]["next_run"] = _next_run_after(
-                        cron_expr, now
-                    ).isoformat()
+                    self._tasks[tid]["next_run"] = _next_run_after(cron_expr, now).isoformat()
 
             self._handle_on_complete(task, result)
 

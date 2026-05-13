@@ -26,5 +26,6 @@ def test_prompt_substitution_does_not_choke_on_json_example():
 def test_str_format_on_prompt_would_still_crash():
     """Document the original bug so we don't regress to .format() naively."""
     import pytest
+
     with pytest.raises(KeyError):
         SYSTEM_PROMPT.format(env_context="anything")

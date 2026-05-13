@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import logging
 import platform
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_UIA_OK: Optional[bool] = None
+_UIA_OK: bool | None = None
 _auto = None  # holds the imported uiautomation module if available
 
 
@@ -37,12 +37,14 @@ def _have_uia() -> bool:
         return False
     try:
         import uiautomation as auto  # type: ignore
+
         _auto = auto
         _UIA_OK = True
     except Exception as exc:
         logger.info(
             "UIAutomation disabled — install 'uiautomation' to enable "
-            "click_control / list_controls / set_text (%s)", exc,
+            "click_control / list_controls / set_text (%s)",
+            exc,
         )
         _UIA_OK = False
     return _UIA_OK
@@ -52,12 +54,13 @@ def _have_uia() -> bool:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def list_controls(
-    window_title: Optional[str] = None,
+    window_title: str | None = None,
     *,
     max_depth: int = 6,
     max_results: int = 120,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Walk the accessible control tree under a window and return its controls.
 
     Args:
@@ -74,7 +77,7 @@ def list_controls(
     root = _find_window(window_title)
     if root is None:
         return []
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     try:
         _walk(root, out, depth=0, max_depth=max_depth, max_results=max_results)
     except Exception as exc:
@@ -84,12 +87,12 @@ def list_controls(
 
 def click_control(
     *,
-    name: Optional[str] = None,
-    automation_id: Optional[str] = None,
-    control_type: Optional[str] = None,
-    window_title: Optional[str] = None,
+    name: str | None = None,
+    automation_id: str | None = None,
+    control_type: str | None = None,
+    window_title: str | None = None,
     button: str = "left",
-) -> Optional[Tuple[int, int]]:
+) -> tuple[int, int] | None:
     """Find and click a control by accessibility metadata.
 
     Returns the (x, y) it clicked, or ``None`` if no match was found.
@@ -98,8 +101,10 @@ def click_control(
     if not _have_uia():
         return None
     ctrl = _find_control(
-        name=name, automation_id=automation_id,
-        control_type=control_type, window_title=window_title,
+        name=name,
+        automation_id=automation_id,
+        control_type=control_type,
+        window_title=window_title,
     )
     if ctrl is None:
         return None
@@ -148,9 +153,9 @@ def click_control(
 def set_text(
     text: str,
     *,
-    name: Optional[str] = None,
-    automation_id: Optional[str] = None,
-    window_title: Optional[str] = None,
+    name: str | None = None,
+    automation_id: str | None = None,
+    window_title: str | None = None,
 ) -> bool:
     """Set the value of a named text control (Edit / TextBox / ComboBox).
 
@@ -159,11 +164,14 @@ def set_text(
     if not _have_uia():
         return False
     ctrl = _find_control(
-        name=name, automation_id=automation_id,
+        name=name,
+        automation_id=automation_id,
         control_type="EditControl",  # narrow by default to avoid clicking buttons
         window_title=window_title,
     ) or _find_control(
-        name=name, automation_id=automation_id, window_title=window_title,
+        name=name,
+        automation_id=automation_id,
+        window_title=window_title,
     )
     if ctrl is None:
         return False
@@ -188,7 +196,8 @@ def set_text(
 # Internals
 # ---------------------------------------------------------------------------
 
-def _find_window(window_title: Optional[str]):
+
+def _find_window(window_title: str | None):
     """Return the root control for either the named window or the foreground."""
     if _auto is None:
         return None
@@ -206,23 +215,25 @@ def _find_window(window_title: Optional[str]):
         return None
 
 
-def _walk(node, out: List[Dict[str, Any]], depth: int, max_depth: int, max_results: int) -> None:
+def _walk(node, out: list[dict[str, Any]], depth: int, max_depth: int, max_results: int) -> None:
     if len(out) >= max_results or depth > max_depth:
         return
     try:
         rect = node.BoundingRectangle
-        out.append({
-            "name": node.Name or "",
-            "control_type": node.ControlTypeName,
-            "automation_id": getattr(node, "AutomationId", "") or "",
-            "class_name": getattr(node, "ClassName", "") or "",
-            "x": int(rect.left),
-            "y": int(rect.top),
-            "width": int(rect.right - rect.left),
-            "height": int(rect.bottom - rect.top),
-            "is_enabled": bool(getattr(node, "IsEnabled", True)),
-            "is_offscreen": bool(getattr(node, "IsOffscreen", False)),
-        })
+        out.append(
+            {
+                "name": node.Name or "",
+                "control_type": node.ControlTypeName,
+                "automation_id": getattr(node, "AutomationId", "") or "",
+                "class_name": getattr(node, "ClassName", "") or "",
+                "x": int(rect.left),
+                "y": int(rect.top),
+                "width": int(rect.right - rect.left),
+                "height": int(rect.bottom - rect.top),
+                "is_enabled": bool(getattr(node, "IsEnabled", True)),
+                "is_offscreen": bool(getattr(node, "IsOffscreen", False)),
+            }
+        )
     except Exception:
         return
     try:
@@ -234,10 +245,10 @@ def _walk(node, out: List[Dict[str, Any]], depth: int, max_depth: int, max_resul
 
 def _find_control(
     *,
-    name: Optional[str] = None,
-    automation_id: Optional[str] = None,
-    control_type: Optional[str] = None,
-    window_title: Optional[str] = None,
+    name: str | None = None,
+    automation_id: str | None = None,
+    control_type: str | None = None,
+    window_title: str | None = None,
 ):
     root = _find_window(window_title)
     if root is None:

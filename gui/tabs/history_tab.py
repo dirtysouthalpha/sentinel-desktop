@@ -6,9 +6,7 @@ Run history browser with session replay and log export.
 import json
 import logging
 import os
-import time
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
 
 import customtkinter as ctk
 
@@ -21,7 +19,7 @@ class HistoryTab(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color="transparent")
         self.app = app
-        self.sessions: List[Dict] = []
+        self.sessions: list[dict] = []
         self.selected_index = -1
 
         self.grid_columnconfigure(0, weight=1)
@@ -33,7 +31,7 @@ class HistoryTab(ctk.CTkFrame):
         self.refresh_history()
 
     def _t(self, key: str, fallback: str = "#ffffff") -> str:
-        return self.app._t(key, fallback) if hasattr(self.app, '_t') else fallback
+        return self.app._t(key, fallback) if hasattr(self.app, "_t") else fallback
 
     # ── Left panel ────────────────────────────────────────────────────
 
@@ -46,15 +44,20 @@ class HistoryTab(ctk.CTkFrame):
         # Filter bar
         filter_frame = ctk.CTkFrame(left, fg_color="transparent")
         filter_frame.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
-        ctk.CTkLabel(filter_frame, text="📁 Run History",
-                     font=("Segoe UI", 14, "bold"),
-                     text_color=self._t("text_primary", "#e2e2e8")).pack(side="left")
+        ctk.CTkLabel(
+            filter_frame,
+            text="📁 Run History",
+            font=("Segoe UI", 14, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+        ).pack(side="left")
 
         self.filter_var = ctk.StringVar(value="All")
         filter_menu = ctk.CTkOptionMenu(
-            filter_frame, variable=self.filter_var,
+            filter_frame,
+            variable=self.filter_var,
             values=["All", "Today", "This Week", "Failed"],
-            width=100, height=28,
+            width=100,
+            height=28,
             fg_color=self._t("bg_input", "#111418"),
             button_color=self._t("accent", "#00F0FF"),
             text_color=self._t("text_primary", "#e2e2e8"),
@@ -64,7 +67,8 @@ class HistoryTab(ctk.CTkFrame):
 
         # Search
         self.search_entry = ctk.CTkEntry(
-            left, placeholder_text="Search sessions...",
+            left,
+            placeholder_text="Search sessions...",
             height=32,
             fg_color=self._t("bg_input", "#111418"),
             text_color=self._t("text_primary", "#e2e2e8"),
@@ -89,10 +93,12 @@ class HistoryTab(ctk.CTkFrame):
         header = ctk.CTkFrame(right, fg_color="transparent")
         header.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 4))
         self.goal_label = ctk.CTkLabel(
-            header, text="Select a session to view details",
+            header,
+            text="Select a session to view details",
             font=("Segoe UI", 16, "bold"),
             text_color=self._t("text_primary", "#e2e2e8"),
-            wraplength=600, justify="left",
+            wraplength=600,
+            justify="left",
         )
         self.goal_label.pack(side="left", fill="x", expand=True)
 
@@ -100,12 +106,17 @@ class HistoryTab(ctk.CTkFrame):
         actions = ctk.CTkFrame(right, fg_color="transparent")
         actions.grid(row=1, column=0, sticky="ew", padx=12, pady=4)
         self.status_badge = ctk.CTkLabel(
-            actions, text="", font=("Segoe UI", 11),
+            actions,
+            text="",
+            font=("Segoe UI", 11),
         )
         self.status_badge.pack(side="left")
 
         self.replay_btn = ctk.CTkButton(
-            actions, text="🔄 Replay", width=90, height=30,
+            actions,
+            text="🔄 Replay",
+            width=90,
+            height=30,
             fg_color=self._t("accent", "#00F0FF"),
             hover_color=self._t("bg_hover", "#333539"),
             command=self._replay_session,
@@ -113,7 +124,10 @@ class HistoryTab(ctk.CTkFrame):
         self.replay_btn.pack(side="right", padx=4)
 
         self.export_btn = ctk.CTkButton(
-            actions, text="📋 Export Log", width=100, height=30,
+            actions,
+            text="📋 Export Log",
+            width=100,
+            height=30,
             fg_color=self._t("bg_input", "#111418"),
             hover_color=self._t("bg_hover", "#333539"),
             text_color=self._t("text_primary", "#e2e2e8"),
@@ -127,7 +141,8 @@ class HistoryTab(ctk.CTkFrame):
 
         # Output area
         self.output_text = ctk.CTkTextbox(
-            right, height=120,
+            right,
+            height=120,
             font=("Consolas", 11),
             fg_color=self._t("bg_primary", "#050608"),
             text_color=self._t("text_secondary", "#b9cacb"),
@@ -140,8 +155,8 @@ class HistoryTab(ctk.CTkFrame):
         """Reload session history from forensic log."""
         self.sessions.clear()
 
-        if hasattr(self.app, 'engine') and self.app.engine:
-            flog = getattr(self.app.engine, 'forensic_log', [])
+        if hasattr(self.app, "engine") and self.app.engine:
+            flog = getattr(self.app.engine, "forensic_log", [])
             if flog:
                 # Group forensic log entries into sessions
                 current_session = {"steps": [], "goal": "", "start": "", "status": ""}
@@ -157,27 +172,35 @@ class HistoryTab(ctk.CTkFrame):
                     current_session["goal"] = current_session["steps"][0].get("goal", "Unknown")
                     current_session["start"] = current_session["steps"][0].get("timestamp", "")
                     if not current_session["status"]:
-                        current_session["status"] = "completed" if current_session["steps"][-1].get("ok", True) else "failed"
+                        current_session["status"] = (
+                            "completed"
+                            if current_session["steps"][-1].get("ok", True)
+                            else "failed"
+                        )
                     self.sessions.append(current_session)
 
             # Also check notes
-            notes = getattr(self.app.engine, 'notes', [])
+            notes = getattr(self.app.engine, "notes", [])
             if notes and not self.sessions:
-                self.sessions.append({
-                    "goal": "Previous session",
-                    "start": datetime.now().isoformat(),
-                    "status": "completed",
-                    "steps": [],
-                    "notes": notes,
-                })
+                self.sessions.append(
+                    {
+                        "goal": "Previous session",
+                        "start": datetime.now().isoformat(),
+                        "status": "completed",
+                        "steps": [],
+                        "notes": notes,
+                    }
+                )
 
         if not self.sessions:
-            self.sessions.append({
-                "goal": "No sessions recorded yet",
-                "start": datetime.now().isoformat(),
-                "status": "empty",
-                "steps": [],
-            })
+            self.sessions.append(
+                {
+                    "goal": "No sessions recorded yet",
+                    "start": datetime.now().isoformat(),
+                    "status": "empty",
+                    "steps": [],
+                }
+            )
 
         self._apply_filter()
         self._render_sessions()
@@ -187,8 +210,9 @@ class HistoryTab(ctk.CTkFrame):
         f = self.filter_var.get()
         now = datetime.now()
         if f == "Today":
-            self.sessions = [s for s in self.sessions
-                             if s.get("start", "").startswith(now.strftime("%Y-%m-%d"))]
+            self.sessions = [
+                s for s in self.sessions if s.get("start", "").startswith(now.strftime("%Y-%m-%d"))
+            ]
         elif f == "This Week":
             week_ago = (now - timedelta(days=7)).isoformat()
             self.sessions = [s for s in self.sessions if s.get("start", "") >= week_ago]
@@ -200,21 +224,26 @@ class HistoryTab(ctk.CTkFrame):
         for w in self.session_list.winfo_children():
             w.destroy()
 
-        query = self.search_entry.get().lower() if hasattr(self, 'search_entry') else ""
+        query = self.search_entry.get().lower() if hasattr(self, "search_entry") else ""
         for i, session in enumerate(self.sessions):
             goal = session.get("goal", "Unknown")
             if query and query not in goal.lower():
                 continue
 
             status = session.get("status", "unknown")
-            icon = {"completed": "✅", "failed": "❌", "running": "🔄", "empty": "📭"}.get(status, "❓")
+            icon = {"completed": "✅", "failed": "❌", "running": "🔄", "empty": "📭"}.get(
+                status, "❓"
+            )
             steps = len(session.get("steps", []))
             start = session.get("start", "")[:19].replace("T", " ")
 
             card = ctk.CTkFrame(
                 self.session_list,
-                fg_color=self._t("bg_input", "#111418") if i != self.selected_index else self._t("accent", "#00F0FF"),
-                corner_radius=3, height=60,
+                fg_color=self._t("bg_input", "#111418")
+                if i != self.selected_index
+                else self._t("accent", "#00F0FF"),
+                corner_radius=3,
+                height=60,
             )
             card.pack(fill="x", pady=2, padx=4)
             card.pack_propagate(False)
@@ -223,13 +252,19 @@ class HistoryTab(ctk.CTkFrame):
             sub_color = self._t("text_secondary", "#b9cacb")
 
             ctk.CTkLabel(
-                card, text=f"{icon} {goal[:50]}",
-                font=("Segoe UI", 11, "bold"), text_color=text_color, anchor="w",
+                card,
+                text=f"{icon} {goal[:50]}",
+                font=("Segoe UI", 11, "bold"),
+                text_color=text_color,
+                anchor="w",
             ).pack(fill="x", padx=8, pady=(6, 0))
 
             ctk.CTkLabel(
-                card, text=f"{start}  •  {steps} steps",
-                font=("Segoe UI", 9), text_color=sub_color, anchor="w",
+                card,
+                text=f"{start}  •  {steps} steps",
+                font=("Segoe UI", 9),
+                text_color=sub_color,
+                anchor="w",
             ).pack(fill="x", padx=8, pady=(0, 4))
 
             idx = i
@@ -267,7 +302,9 @@ class HistoryTab(ctk.CTkFrame):
             ok = step_data.get("ok", True)
             ts = step_data.get("timestamp", "")[11:19]
 
-            color = self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
+            color = (
+                self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
+            )
             icon = "✓" if ok else "✗"
 
             row = ctk.CTkFrame(self.timeline, fg_color="transparent", height=28)
@@ -275,13 +312,18 @@ class HistoryTab(ctk.CTkFrame):
             row.pack_propagate(False)
 
             ctk.CTkLabel(
-                row, text=f"  {icon} Step {i+1}: {action}",
-                font=("Consolas", 11), text_color=color, anchor="w",
+                row,
+                text=f"  {icon} Step {i + 1}: {action}",
+                font=("Consolas", 11),
+                text_color=color,
+                anchor="w",
             ).pack(side="left")
 
             ctk.CTkLabel(
-                row, text=ts,
-                font=("Consolas", 9), text_color=self._t("text_secondary", "#b9cacb"),
+                row,
+                text=ts,
+                font=("Consolas", 9),
+                text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(side="right")
 
         # Output
@@ -305,7 +347,7 @@ class HistoryTab(ctk.CTkFrame):
             return
         session = self.sessions[self.selected_index]
         goal = session.get("goal", "")
-        if goal and hasattr(self.app, '_on_run'):
+        if goal and hasattr(self.app, "_on_run"):
             self.app.goal_entry.delete("1.0", "end")
             self.app.goal_entry.insert("1.0", goal)
             self.app._on_run()
@@ -318,20 +360,21 @@ class HistoryTab(ctk.CTkFrame):
 
         try:
             export_path = os.path.join(
-                os.path.expanduser("~"), "Desktop",
+                os.path.expanduser("~"),
+                "Desktop",
                 f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
             )
             with open(export_path, "w", encoding="utf-8") as f:
-                f.write(f"Sentinel Desktop — Session Log\n")
-                f.write(f"{'='*50}\n")
+                f.write("Sentinel Desktop — Session Log\n")
+                f.write(f"{'=' * 50}\n")
                 f.write(f"Goal: {session.get('goal', '')}\n")
                 f.write(f"Status: {session.get('status', '')}\n")
                 f.write(f"Started: {session.get('start', '')}\n")
                 f.write(f"Steps: {len(session.get('steps', []))}\n")
-                f.write(f"{'='*50}\n\n")
+                f.write(f"{'=' * 50}\n\n")
 
                 for i, step in enumerate(session.get("steps", [])):
-                    f.write(f"Step {i+1}: {json.dumps(step, indent=2, default=str)}\n\n")
+                    f.write(f"Step {i + 1}: {json.dumps(step, indent=2, default=str)}\n\n")
 
             self.output_text.configure(state="normal")
             self.output_text.insert("end", f"\n✅ Log exported to: {export_path}")

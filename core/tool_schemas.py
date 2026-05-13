@@ -9,11 +9,10 @@ Anthropic's native shape automatically.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
+from typing import Any
 
 # Each tool maps 1:1 to a key in ActionExecutor._dispatch_table.
-TOOLS: List[Dict[str, Any]] = [
+TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
@@ -125,8 +124,15 @@ TOOLS: List[Dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "text": {"type": "string", "description": "Visible text to click on, e.g. 'Send', 'File menu'."},
-                    "button": {"type": "string", "enum": ["left", "right", "middle"], "default": "left"},
+                    "text": {
+                        "type": "string",
+                        "description": "Visible text to click on, e.g. 'Send', 'File menu'.",
+                    },
+                    "button": {
+                        "type": "string",
+                        "enum": ["left", "right", "middle"],
+                        "default": "left",
+                    },
                     "fuzzy": {"type": "boolean", "default": True},
                 },
                 "required": ["text"],
@@ -147,7 +153,10 @@ TOOLS: List[Dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "scope": {"type": "string", "enum": ["focused", "all"], "default": "focused"},
-                    "window": {"type": "string", "description": "Partial window title to target instead of the focused window."},
+                    "window": {
+                        "type": "string",
+                        "description": "Partial window title to target instead of the focused window.",
+                    },
                 },
             },
         },
@@ -160,7 +169,10 @@ TOOLS: List[Dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "Partial window title, e.g. 'Outlook' or 'Mail'."},
+                    "title": {
+                        "type": "string",
+                        "description": "Partial window title, e.g. 'Outlook' or 'Mail'.",
+                    },
                 },
                 "required": ["title"],
             },
@@ -260,7 +272,10 @@ TOOLS: List[Dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "window_title": {"type": "string", "description": "Partial window title. Omit for the foreground window."},
+                    "window_title": {
+                        "type": "string",
+                        "description": "Partial window title. Omit for the foreground window.",
+                    },
                     "max_results": {"type": "integer", "default": 60},
                 },
             },
@@ -278,11 +293,21 @@ TOOLS: List[Dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string", "description": "Visible label or accessible name, e.g. 'Send', 'OK'."},
+                    "name": {
+                        "type": "string",
+                        "description": "Visible label or accessible name, e.g. 'Send', 'OK'.",
+                    },
                     "automation_id": {"type": "string"},
-                    "control_type": {"type": "string", "description": "e.g. 'ButtonControl', 'EditControl', 'MenuItemControl'."},
+                    "control_type": {
+                        "type": "string",
+                        "description": "e.g. 'ButtonControl', 'EditControl', 'MenuItemControl'.",
+                    },
                     "window_title": {"type": "string"},
-                    "button": {"type": "string", "enum": ["left", "right", "middle"], "default": "left"},
+                    "button": {
+                        "type": "string",
+                        "enum": ["left", "right", "middle"],
+                        "default": "left",
+                    },
                 },
             },
         },
@@ -300,7 +325,10 @@ TOOLS: List[Dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "text": {"type": "string"},
-                    "name": {"type": "string", "description": "Label of the edit, e.g. 'Subject', 'Search'."},
+                    "name": {
+                        "type": "string",
+                        "description": "Label of the edit, e.g. 'Subject', 'Search'.",
+                    },
                     "automation_id": {"type": "string"},
                     "window_title": {"type": "string"},
                 },
@@ -386,8 +414,23 @@ TOOLS: List[Dict[str, Any]] = [
 # compatible providers technically accept the `tools` parameter but model
 # support varies wildly, so we keep this conservative.
 TOOL_CAPABLE_PROVIDERS = {
-    "openai", "anthropic", "google", "groq", "mistral", "openrouter",
-    "fireworks", "together", "cerebras",
-    "minimax", "moonshot", "qwen", "cohere", "nvidia",
-    "huggingface", "github", "deepinfra", "zai", "deepseek",
+    "openai",
+    "anthropic",
+    "google",
+    "groq",
+    "mistral",
+    "openrouter",
+    "fireworks",
+    "together",
+    "cerebras",
+    "minimax",
+    "moonshot",
+    "qwen",
+    "cohere",
+    "nvidia",
+    "huggingface",
+    "github",
+    "deepinfra",
+    "zai",
+    "deepseek",
 }

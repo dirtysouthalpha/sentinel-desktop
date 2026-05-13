@@ -27,14 +27,14 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 try:
-    import win32gui  # type: ignore
     import win32api  # type: ignore
     import win32con  # type: ignore
+    import win32gui  # type: ignore
+
     _HAS_WIN32 = True
 except Exception:
     _HAS_WIN32 = False
@@ -49,8 +49,8 @@ def is_available() -> bool:
 # Mouse: PostMessage click
 # ---------------------------------------------------------------------------
 
-def post_click(x: int, y: int, button: str = "left",
-               clicks: int = 1, delay: float = 0.02) -> bool:
+
+def post_click(x: int, y: int, button: str = "left", clicks: int = 1, delay: float = 0.02) -> bool:
     """Send a click to the window at screen coord (x, y) without moving the cursor.
 
     Returns True if at least one click message was posted successfully.
@@ -88,7 +88,8 @@ def post_click(x: int, y: int, button: str = "left",
 # Keyboard: PostMessage WM_CHAR
 # ---------------------------------------------------------------------------
 
-def post_text(text: str, hwnd: Optional[int] = None, delay: float = 0.005) -> bool:
+
+def post_text(text: str, hwnd: int | None = None, delay: float = 0.005) -> bool:
     """Send WM_CHAR per character to *hwnd* (or the foreground window if None).
 
     Returns True if all characters were posted.
@@ -114,7 +115,7 @@ def post_text(text: str, hwnd: Optional[int] = None, delay: float = 0.005) -> bo
         return False
 
 
-def post_key(vk_code: int, hwnd: Optional[int] = None) -> bool:
+def post_key(vk_code: int, hwnd: int | None = None) -> bool:
     """Send a single virtual-key press (WM_KEYDOWN + WM_KEYUP) to *hwnd*."""
     if not _HAS_WIN32:
         return False
@@ -134,18 +135,38 @@ def post_key(vk_code: int, hwnd: Optional[int] = None) -> bool:
 
 # Map of common key names → virtual key codes for post_key.
 VK_NAMES = {
-    "enter": 0x0D, "return": 0x0D,
-    "tab": 0x09, "escape": 0x1B, "esc": 0x1B,
-    "space": 0x20, "backspace": 0x08, "delete": 0x2E,
-    "up": 0x26, "down": 0x28, "left": 0x25, "right": 0x27,
-    "home": 0x24, "end": 0x23, "pageup": 0x21, "pagedown": 0x22,
-    "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
-    "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
-    "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
+    "enter": 0x0D,
+    "return": 0x0D,
+    "tab": 0x09,
+    "escape": 0x1B,
+    "esc": 0x1B,
+    "space": 0x20,
+    "backspace": 0x08,
+    "delete": 0x2E,
+    "up": 0x26,
+    "down": 0x28,
+    "left": 0x25,
+    "right": 0x27,
+    "home": 0x24,
+    "end": 0x23,
+    "pageup": 0x21,
+    "pagedown": 0x22,
+    "f1": 0x70,
+    "f2": 0x71,
+    "f3": 0x72,
+    "f4": 0x73,
+    "f5": 0x74,
+    "f6": 0x75,
+    "f7": 0x76,
+    "f8": 0x77,
+    "f9": 0x78,
+    "f10": 0x79,
+    "f11": 0x7A,
+    "f12": 0x7B,
 }
 
 
-def post_named_key(name: str, hwnd: Optional[int] = None) -> bool:
+def post_named_key(name: str, hwnd: int | None = None) -> bool:
     vk = VK_NAMES.get((name or "").lower())
     if vk is None:
         # Single-character fallback.
@@ -157,14 +178,18 @@ def post_named_key(name: str, hwnd: Optional[int] = None) -> bool:
 
 # Modifier key codes for chorded hotkeys.
 _MOD_VK = {
-    "ctrl": 0x11, "control": 0x11,
+    "ctrl": 0x11,
+    "control": 0x11,
     "shift": 0x10,
-    "alt": 0x12, "menu": 0x12,
-    "win": 0x5B, "windows": 0x5B, "meta": 0x5B,
+    "alt": 0x12,
+    "menu": 0x12,
+    "win": 0x5B,
+    "windows": 0x5B,
+    "meta": 0x5B,
 }
 
 
-def post_hotkey(keys, hwnd: Optional[int] = None) -> bool:
+def post_hotkey(keys, hwnd: int | None = None) -> bool:
     """Send a chorded hotkey (e.g. Ctrl+C) via WM_KEYDOWN/UP messages.
 
     Note: many apps require *real* input state for modifier handling — e.g.
@@ -216,10 +241,12 @@ def post_hotkey(keys, hwnd: Optional[int] = None) -> bool:
 # Internals
 # ---------------------------------------------------------------------------
 
-def _get_focus_hwnd(parent: int) -> Optional[int]:
+
+def _get_focus_hwnd(parent: int) -> int | None:
     """Return the focused-control HWND inside *parent*'s thread, if any."""
     try:
         import ctypes
+
         thread_id = win32api.GetWindowThreadProcessId(parent)[0]
         info = _GUI_THREAD_INFO()
         info.cbSize = ctypes.sizeof(info)
@@ -237,8 +264,12 @@ if _HAS_WIN32:
     from ctypes import wintypes
 
     class _RECT(ctypes.Structure):
-        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
-                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+        _fields_ = [
+            ("left", ctypes.c_long),
+            ("top", ctypes.c_long),
+            ("right", ctypes.c_long),
+            ("bottom", ctypes.c_long),
+        ]
 
     class _GUI_THREAD_INFO(ctypes.Structure):
         _fields_ = [
@@ -253,5 +284,6 @@ if _HAS_WIN32:
             ("rcCaret", _RECT),
         ]
 else:
+
     class _GUI_THREAD_INFO:  # type: ignore[no-redef]
         pass

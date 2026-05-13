@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import platform
 import threading
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +36,13 @@ def _play(sound_type: str):
     try:
         if _IS_WINDOWS:
             import winsound
+
             freq_map = {
-                "complete": (800, 200),   # short high ping
-                "error": (300, 500),       # long low buzz
-                "mfa": (600, 150),         # urgent double beep
-                "approval": (1000, 100),   # quick chirp
-                "click": (1200, 50),       # tiny tick
+                "complete": (800, 200),  # short high ping
+                "error": (300, 500),  # long low buzz
+                "mfa": (600, 150),  # urgent double beep
+                "approval": (1000, 100),  # quick chirp
+                "click": (1200, 50),  # tiny tick
             }
             freq, duration = freq_map.get(sound_type, (800, 200))
 
@@ -50,18 +50,21 @@ def _play(sound_type: str):
                 # Double beep for MFA urgency
                 winsound.Beep(freq, duration)
                 import time
+
                 time.sleep(0.1)
                 winsound.Beep(freq, duration)
             elif sound_type == "complete":
                 # Two-tone success: low→high
                 winsound.Beep(600, 100)
                 import time
+
                 time.sleep(0.05)
                 winsound.Beep(900, 150)
             elif sound_type == "error":
                 # Descending error tone
                 winsound.Beep(400, 200)
                 import time
+
                 time.sleep(0.05)
                 winsound.Beep(250, 300)
             else:
@@ -79,6 +82,7 @@ def play_file(filepath: str, blocking: bool = False):
         return
     try:
         import winsound
+
         flags = winsound.SND_FILENAME | winsound.SND_NODEFAULT
         if not blocking:
             flags |= winsound.SND_ASYNC

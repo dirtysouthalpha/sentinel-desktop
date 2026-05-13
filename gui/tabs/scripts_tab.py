@@ -4,18 +4,25 @@ Sentinel Desktop v3.0 — Script Library tab.
 Two-panel layout: browseable/searchable script list on the left,
 script detail + parameter entry + run controls on the right.
 """
-import json, logging, threading
+
+import json
+import logging
+import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 import customtkinter as ctk
 
 logger = logging.getLogger(__name__)
 
 _SCRIPT_DIRS = ["scripts/it_support", "scripts/custom", "scripts/recorded"]
 _CATEGORIES = ["All", "IT Support", "Custom", "Recorded"]
-_DIR_MAP = {"IT Support": "scripts/it_support", "Custom": "scripts/custom",
-            "Recorded": "scripts/recorded"}
+_DIR_MAP = {
+    "IT Support": "scripts/it_support",
+    "Custom": "scripts/custom",
+    "Recorded": "scripts/recorded",
+}
 
 
 class ScriptsTab:
@@ -24,10 +31,10 @@ class ScriptsTab:
     def __init__(self, parent_frame: ctk.CTkFrame, app) -> None:
         self.app = app
         self._t = app._t
-        self._scripts: List[Dict[str, Any]] = []
-        self._selected_script: Optional[Dict[str, Any]] = None
-        self._selected_path: Optional[str] = None
-        self._param_entries: Dict[str, ctk.CTkEntry] = {}
+        self._scripts: list[dict[str, Any]] = []
+        self._selected_script: dict[str, Any] | None = None
+        self._selected_path: str | None = None
+        self._param_entries: dict[str, ctk.CTkEntry] = {}
         self._active_category = "All"
 
         self.frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
@@ -42,8 +49,9 @@ class ScriptsTab:
     # ── Left panel ────────────────────────────────────────────────────
 
     def _build_left_panel(self) -> None:
-        left = ctk.CTkFrame(self.frame, fg_color=self._t("bg_secondary", "#0A0C10"),
-                            corner_radius=5)
+        left = ctk.CTkFrame(
+            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
+        )
         left.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 4))
         left.grid_columnconfigure(0, weight=1)
         left.grid_rowconfigure(3, weight=1)
@@ -52,8 +60,11 @@ class ScriptsTab:
         self._search_var = ctk.StringVar()
         self._search_var.trace_add("write", lambda *_: self._apply_filter())
         ctk.CTkEntry(
-            left, placeholder_text="🔍 Search scripts…", textvariable=self._search_var,
-            height=36, font=("Segoe UI", 12),
+            left,
+            placeholder_text="🔍 Search scripts…",
+            textvariable=self._search_var,
+            height=36,
+            font=("Segoe UI", 12),
             fg_color=self._t("bg_input", "#111418"),
             border_color=self._t("bg_hover", "#333539"),
             text_color=self._t("text_primary", "#e2e2e8"),
@@ -62,62 +73,88 @@ class ScriptsTab:
         # Category filter chips
         chips = ctk.CTkFrame(left, fg_color="transparent")
         chips.grid(row=1, column=0, sticky="ew", padx=8, pady=2)
-        self._chip_btns: List[ctk.CTkButton] = []
+        self._chip_btns: list[ctk.CTkButton] = []
         for cat in _CATEGORIES:
             btn = ctk.CTkButton(
-                chips, text=cat, height=26, width=80, font=("Segoe UI", 11),
+                chips,
+                text=cat,
+                height=26,
+                width=80,
+                font=("Segoe UI", 11),
                 fg_color=self._t("bg_input", "#111418"),
                 hover_color=self._t("bg_hover", "#333539"),
                 text_color=self._t("text_secondary", "#b9cacb"),
-                corner_radius=6, command=lambda c=cat: self._set_category(c))
+                corner_radius=6,
+                command=lambda c=cat: self._set_category(c),
+            )
             btn.pack(side="left", padx=2)
             self._chip_btns.append(btn)
         self._highlight_chip(0)
 
         # Script count
         self._count_label = ctk.CTkLabel(
-            left, text="0 scripts", font=("Segoe UI", 10),
-            text_color=self._t("text_secondary", "#b9cacb"))
+            left,
+            text="0 scripts",
+            font=("Segoe UI", 10),
+            text_color=self._t("text_secondary", "#b9cacb"),
+        )
         self._count_label.grid(row=2, column=0, sticky="w", padx=12, pady=(4, 0))
 
         # Scrollable script list
-        self._list_frame = ctk.CTkScrollableFrame(left, fg_color="transparent",
-                                                   corner_radius=0)
+        self._list_frame = ctk.CTkScrollableFrame(left, fg_color="transparent", corner_radius=0)
         self._list_frame.grid(row=3, column=0, sticky="nsew", padx=4, pady=(4, 8))
         self._list_frame.grid_columnconfigure(0, weight=1)
 
     # ── Right panel ───────────────────────────────────────────────────
 
     def _build_right_panel(self) -> None:
-        right = ctk.CTkFrame(self.frame, fg_color=self._t("bg_secondary", "#0A0C10"),
-                             corner_radius=5)
+        right = ctk.CTkFrame(
+            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
+        )
         right.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(4, 0))
         right.grid_columnconfigure(0, weight=1)
         right.grid_rowconfigure(5, weight=1)
 
         # Script name (large)
         self._name_label = ctk.CTkLabel(
-            right, text="Select a script", font=("Segoe UI", 18, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"), anchor="w")
+            right,
+            text="Select a script",
+            font=("Segoe UI", 18, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            anchor="w",
+        )
         self._name_label.grid(row=0, column=0, sticky="ew", padx=16, pady=(16, 2))
 
         # Description
         self._desc_label = ctk.CTkLabel(
-            right, text="", font=("Segoe UI", 12),
+            right,
+            text="",
+            font=("Segoe UI", 12),
             text_color=self._t("text_secondary", "#b9cacb"),
-            wraplength=500, justify="left", anchor="w")
+            wraplength=500,
+            justify="left",
+            anchor="w",
+        )
         self._desc_label.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 4))
 
         # Meta: steps · author · date
         self._meta_label = ctk.CTkLabel(
-            right, text="", font=("Segoe UI", 10),
-            text_color=self._t("text_secondary", "#b9cacb"), anchor="w")
+            right,
+            text="",
+            font=("Segoe UI", 10),
+            text_color=self._t("text_secondary", "#b9cacb"),
+            anchor="w",
+        )
         self._meta_label.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 8))
 
         # Parameters header
         self._params_label = ctk.CTkLabel(
-            right, text="Parameters", font=("Segoe UI", 12, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"), anchor="w")
+            right,
+            text="Parameters",
+            font=("Segoe UI", 12, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            anchor="w",
+        )
         self._params_label.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 2))
 
         # Dynamic parameter entry fields container
@@ -130,33 +167,52 @@ class ScriptsTab:
         btn_row.grid(row=5, column=0, sticky="nw", padx=16, pady=(4, 4))
 
         self._run_btn = ctk.CTkButton(
-            btn_row, text="▶ Run Script", width=140, height=38,
+            btn_row,
+            text="▶ Run Script",
+            width=140,
+            height=38,
             font=("Segoe UI", 13, "bold"),
             fg_color=self._t("accent", "#00F0FF"),
             hover_color=self._t("accent_hover", "#00c8d4"),
-            text_color="#ffffff", corner_radius=4,
-            command=self.run_selected_script)
+            text_color="#ffffff",
+            corner_radius=4,
+            command=self.run_selected_script,
+        )
         self._run_btn.pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
-            btn_row, text="⏺ Record New", width=140, height=38,
+            btn_row,
+            text="⏺ Record New",
+            width=140,
+            height=38,
             font=("Segoe UI", 13),
             fg_color=self._t("bg_input", "#111418"),
             hover_color=self._t("bg_hover", "#333539"),
             text_color=self._t("text_primary", "#e2e2e8"),
-            corner_radius=4, command=self._open_recorder).pack(side="left")
+            corner_radius=4,
+            command=self._open_recorder,
+        ).pack(side="left")
 
         # Output header
         ctk.CTkLabel(
-            right, text="Output", font=("Segoe UI", 12, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"), anchor="w"
+            right,
+            text="Output",
+            font=("Segoe UI", 12, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            anchor="w",
         ).grid(row=6, column=0, sticky="ew", padx=16, pady=(8, 2))
 
         # Output textbox
         self._output_box = ctk.CTkTextbox(
-            right, height=120, font=("Consolas", 11), wrap="word", state="disabled",
+            right,
+            height=120,
+            font=("Consolas", 11),
+            wrap="word",
+            state="disabled",
             fg_color=self._t("bg_input", "#111418"),
-            text_color=self._t("text_primary", "#e2e2e8"), corner_radius=4)
+            text_color=self._t("text_primary", "#e2e2e8"),
+            corner_radius=4,
+        )
         self._output_box.grid(row=7, column=0, sticky="ew", padx=16, pady=(0, 16))
 
     # ── Script scanning ───────────────────────────────────────────────
@@ -191,8 +247,10 @@ class ScriptsTab:
             if i == active_idx:
                 btn.configure(fg_color=self._t("accent", "#00F0FF"), text_color="#ffffff")
             else:
-                btn.configure(fg_color=self._t("bg_input", "#111418"),
-                              text_color=self._t("text_secondary", "#b9cacb"))
+                btn.configure(
+                    fg_color=self._t("bg_input", "#111418"),
+                    text_color=self._t("text_secondary", "#b9cacb"),
+                )
 
     def _apply_filter(self) -> None:
         query = self._search_var.get().strip().lower()
@@ -203,21 +261,27 @@ class ScriptsTab:
                 expected = _DIR_MAP.get(cat, "")
                 if expected and not s.get("_folder", "").startswith(expected):
                     continue
-            if query and query not in s.get("name", "").lower() \
-                      and query not in s.get("description", "").lower():
+            if (
+                query
+                and query not in s.get("name", "").lower()
+                and query not in s.get("description", "").lower()
+            ):
                 continue
             filtered.append(s)
         self._populate_list(filtered)
         n = len(filtered)
         self._count_label.configure(text=f"{n} script{'s' if n != 1 else ''}")
 
-    def _populate_list(self, scripts: List[Dict[str, Any]]) -> None:
+    def _populate_list(self, scripts: list[dict[str, Any]]) -> None:
         for w in self._list_frame.winfo_children():
             w.destroy()
         for script in scripts:
-            card = ctk.CTkFrame(self._list_frame,
-                                fg_color=self._t("bg_input", "#111418"),
-                                corner_radius=4, height=68)
+            card = ctk.CTkFrame(
+                self._list_frame,
+                fg_color=self._t("bg_input", "#111418"),
+                corner_radius=4,
+                height=68,
+            )
             card.pack(fill="x", pady=2, padx=2)
             card.pack_propagate(False)
             card.grid_columnconfigure(0, weight=1)
@@ -227,17 +291,27 @@ class ScriptsTab:
             steps = len(script.get("steps", []))
             icon = script.get("icon", "📄")
 
-            ctk.CTkLabel(card, text=f"{icon} {name}", font=("Segoe UI", 12, "bold"),
-                         text_color=self._t("text_primary", "#e2e2e8"), anchor="w"
-                         ).grid(row=0, column=0, sticky="ew", padx=10, pady=(8, 0))
+            ctk.CTkLabel(
+                card,
+                text=f"{icon} {name}",
+                font=("Segoe UI", 12, "bold"),
+                text_color=self._t("text_primary", "#e2e2e8"),
+                anchor="w",
+            ).grid(row=0, column=0, sticky="ew", padx=10, pady=(8, 0))
             short = (desc[:60] + "…") if len(desc) > 60 else desc
-            ctk.CTkLabel(card, text=short, font=("Segoe UI", 10),
-                         text_color=self._t("text_secondary", "#b9cacb"), anchor="w"
-                         ).grid(row=1, column=0, sticky="ew", padx=10)
-            ctk.CTkLabel(card, text=f"{steps} step{'s' if steps != 1 else ''}",
-                         font=("Segoe UI", 9),
-                         text_color=self._t("text_secondary", "#b9cacb")
-                         ).grid(row=0, column=1, rowspan=2, padx=(0, 10))
+            ctk.CTkLabel(
+                card,
+                text=short,
+                font=("Segoe UI", 10),
+                text_color=self._t("text_secondary", "#b9cacb"),
+                anchor="w",
+            ).grid(row=1, column=0, sticky="ew", padx=10)
+            ctk.CTkLabel(
+                card,
+                text=f"{steps} step{'s' if steps != 1 else ''}",
+                font=("Segoe UI", 9),
+                text_color=self._t("text_secondary", "#b9cacb"),
+            ).grid(row=0, column=1, rowspan=2, padx=(0, 10))
 
             path = script.get("_path", "")
             for widget in (card,) + tuple(card.winfo_children()):
@@ -254,7 +328,8 @@ class ScriptsTab:
         self._selected_path = path
 
         self._name_label.configure(
-            text=f"{script.get('icon', '📄')} {script.get('name', 'Untitled')}")
+            text=f"{script.get('icon', '📄')} {script.get('name', 'Untitled')}"
+        )
         self._desc_label.configure(text=script.get("description", "No description."))
 
         steps = len(script.get("steps", []))
@@ -266,10 +341,11 @@ class ScriptsTab:
             except (ValueError, TypeError):
                 pass
         self._meta_label.configure(
-            text=f"{steps} step{'s' if steps != 1 else ''}  ·  {author}  ·  {created}")
+            text=f"{steps} step{'s' if steps != 1 else ''}  ·  {author}  ·  {created}"
+        )
         self._build_param_fields(script)
 
-    def _build_param_fields(self, script: Dict[str, Any]) -> None:
+    def _build_param_fields(self, script: dict[str, Any]) -> None:
         """Rebuild dynamic CTkEntry fields based on script parameters."""
         for w in self._params_frame.winfo_children():
             w.destroy()
@@ -285,15 +361,22 @@ class ScriptsTab:
             lbl = p.get("label", p.get("name", ""))
             if p.get("required"):
                 lbl += " *"
-            ctk.CTkLabel(self._params_frame, text=lbl, font=("Segoe UI", 11),
-                         text_color=self._t("text_secondary", "#b9cacb"), anchor="w"
-                         ).grid(row=i, column=0, sticky="w", pady=3)
+            ctk.CTkLabel(
+                self._params_frame,
+                text=lbl,
+                font=("Segoe UI", 11),
+                text_color=self._t("text_secondary", "#b9cacb"),
+                anchor="w",
+            ).grid(row=i, column=0, sticky="w", pady=3)
             entry = ctk.CTkEntry(
-                self._params_frame, height=32, font=("Segoe UI", 12),
+                self._params_frame,
+                height=32,
+                font=("Segoe UI", 12),
                 placeholder_text=p.get("description", ""),
                 fg_color=self._t("bg_input", "#111418"),
                 text_color=self._t("text_primary", "#e2e2e8"),
-                border_color=self._t("bg_hover", "#333539"))
+                border_color=self._t("bg_hover", "#333539"),
+            )
             entry.grid(row=i, column=1, sticky="ew", padx=(8, 0), pady=3)
             default = p.get("default")
             if default is not None:
@@ -308,16 +391,16 @@ class ScriptsTab:
             self._append_output("⚠ No script selected.")
             return
 
-        params = {name: entry.get().strip()
-                  for name, entry in self._param_entries.items()}
+        params = {name: entry.get().strip() for name, entry in self._param_entries.items()}
         self._append_output(f"▶ Running: {self._selected_script.get('name', '')}…")
         self._run_btn.configure(state="disabled", text="⏳ Running…")
         script_path = self._selected_path
 
         def _run():
             try:
-                from core.script_engine import ScriptEngine
                 from core.action_executor import ActionExecutor
+                from core.script_engine import ScriptEngine
+
                 executor = ActionExecutor()
                 engine = ScriptEngine(executor)
                 engine.set_progress_callback(self._on_script_progress)
@@ -325,31 +408,39 @@ class ScriptsTab:
 
                 mark = "✅" if result.success else "❌"
                 word = "Completed" if result.success else "Failed"
-                lines = [f"\n{mark} {word} — "
-                         f"{result.steps_completed}/{result.steps_total} steps "
-                         f"in {result.duration_ms}ms"]
+                lines = [
+                    f"\n{mark} {word} — "
+                    f"{result.steps_completed}/{result.steps_total} steps "
+                    f"in {result.duration_ms}ms"
+                ]
                 if result.error:
                     lines.append(f"   Error: {result.error}")
                 for idx, r in enumerate(result.results):
                     ok = r.get("success", False)
                     out = r.get("output", r.get("error", ""))
-                    lines.append(f"   Step {idx+1}: {'✓' if ok else '✗'} {out}")
+                    lines.append(f"   Step {idx + 1}: {'✓' if ok else '✗'} {out}")
                 self._append_output("\n".join(lines))
             except Exception as exc:
                 self._append_output(f"\n❌ Exception: {exc}")
             finally:
-                self.app.root.after(0, lambda: self._run_btn.configure(
-                    state="normal", text="▶ Run Script"))
+                self.app.root.after(
+                    0, lambda: self._run_btn.configure(state="normal", text="▶ Run Script")
+                )
 
         threading.Thread(target=_run, daemon=True).start()
 
-    def _on_script_progress(self, step_num: int, total: int,
-                            action: str, result: Dict[str, Any]) -> None:
+    def _on_script_progress(
+        self, step_num: int, total: int, action: str, result: dict[str, Any]
+    ) -> None:
         """Progress callback from ScriptEngine (worker thread)."""
         ok = result.get("success", False)
         out = result.get("output", result.get("error", ""))
-        self.app.root.after(0, lambda: self._append_output(
-            f"   Step {step_num}/{total}: {'✓' if ok else '✗'} {action} — {out}"))
+        self.app.root.after(
+            0,
+            lambda: self._append_output(
+                f"   Step {step_num}/{total}: {'✓' if ok else '✗'} {action} — {out}"
+            ),
+        )
 
     # ── Recorder ───────────────────────────────────────────────────────
 
@@ -359,9 +450,7 @@ class ScriptsTab:
             if hasattr(self.app, "recorder_panel") and self.app.recorder_panel:
                 self.app.recorder_panel.start_recording()
             else:
-                from core.recorder import Recorder
-                self._append_output(
-                    "⏺ Recording started — use the main chat to drive actions.")
+                self._append_output("⏺ Recording started — use the main chat to drive actions.")
         except Exception as exc:
             self._append_output(f"⚠ Could not start recorder: {exc}")
 
@@ -369,11 +458,13 @@ class ScriptsTab:
 
     def _append_output(self, text: str) -> None:
         """Append text to the output box (thread-safe)."""
+
         def _do():
             self._output_box.configure(state="normal")
             self._output_box.insert("end", text + "\n")
             self._output_box.configure(state="disabled")
             self._output_box.see("end")
+
         try:
             self.app.root.after(0, _do)
         except RuntimeError:

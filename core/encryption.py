@@ -22,12 +22,11 @@ Thread safety: All public methods are guarded by a reentrant lock.
 import base64
 import json
 import logging
-import os
 import platform
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +38,11 @@ _IS_WINDOWS = platform.system() == "Windows"
 
 if _IS_WINDOWS:
     import ctypes
-    from ctypes import c_byte, c_uint, c_void_p, c_wchar_p, POINTER, Structure
+    from ctypes import POINTER, Structure, c_byte, c_uint, c_void_p, c_wchar_p
 
     class _DATA_BLOB(Structure):
         """Wrapper for the Windows DATA_BLOB structure used by DPAPI."""
+
         _fields_ = [
             ("cbData", c_uint),
             ("pbData", POINTER(c_byte)),
@@ -61,25 +61,25 @@ if _IS_WINDOWS:
     # )
     _CryptProtectData = _crypt32.CryptProtectData
     _CryptProtectData.argtypes = [
-        POINTER(_DATA_BLOB),   # pDataIn
-        c_wchar_p,             # szDataDescr
-        POINTER(_DATA_BLOB),   # pOptionalEntropy
-        c_void_p,              # pvReserved
-        c_void_p,              # pPromptStruct
-        c_uint,                # dwFlags
-        POINTER(_DATA_BLOB),   # pDataOut
+        POINTER(_DATA_BLOB),  # pDataIn
+        c_wchar_p,  # szDataDescr
+        POINTER(_DATA_BLOB),  # pOptionalEntropy
+        c_void_p,  # pvReserved
+        c_void_p,  # pPromptStruct
+        c_uint,  # dwFlags
+        POINTER(_DATA_BLOB),  # pDataOut
     ]
     _CryptProtectData.restype = c_uint
 
     _CryptUnprotectData = _crypt32.CryptUnprotectData
     _CryptUnprotectData.argtypes = [
-        POINTER(_DATA_BLOB),   # pDataIn
-        POINTER(c_wchar_p),    # ppszDataDescr
-        POINTER(_DATA_BLOB),   # pOptionalEntropy
-        c_void_p,              # pvReserved
-        c_void_p,              # pPromptStruct
-        c_uint,                # dwFlags
-        POINTER(_DATA_BLOB),   # pDataOut
+        POINTER(_DATA_BLOB),  # pDataIn
+        POINTER(c_wchar_p),  # ppszDataDescr
+        POINTER(_DATA_BLOB),  # pOptionalEntropy
+        c_void_p,  # pvReserved
+        c_void_p,  # pPromptStruct
+        c_uint,  # dwFlags
+        POINTER(_DATA_BLOB),  # pDataOut
     ]
     _CryptUnprotectData.restype = c_uint
 
@@ -97,6 +97,7 @@ _MASK = "********"  # shown by export_safe_config
 # ---------------------------------------------------------------------------
 # CredentialVault
 # ---------------------------------------------------------------------------
+
 
 class CredentialVault:
     """Thread-safe credential vault backed by Windows DPAPI encryption.
@@ -140,7 +141,7 @@ class CredentialVault:
             }
             return self._save()
 
-    def retrieve(self, key: str) -> Optional[str]:
+    def retrieve(self, key: str) -> str | None:
         """Decrypt and return the value stored under *key*.
 
         Returns ``None`` when the key does not exist or decryption fails.
@@ -183,7 +184,7 @@ class CredentialVault:
     def import_from_config(
         self,
         config: dict[str, Any],
-        keys: Optional[list[str]] = None,
+        keys: list[str] | None = None,
     ) -> int:
         """Migrate plaintext values from *config* into the vault.
 
@@ -210,7 +211,8 @@ class CredentialVault:
 
         if keys is None:
             keys = [
-                k for k, v in config.items()
+                k
+                for k, v in config.items()
                 if isinstance(v, str) and k.endswith(sensitive_suffixes)
             ]
 
@@ -249,7 +251,7 @@ class CredentialVault:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _encrypt(plaintext: bytes) -> Optional[bytes]:
+    def _encrypt(plaintext: bytes) -> bytes | None:
         """Encrypt *plaintext* using DPAPI (CurrentUser scope).
 
         On non-Windows platforms the data is merely base64-encoded and a
@@ -265,22 +267,18 @@ class CredentialVault:
             ok = _CryptProtectData(
                 ctypes.byref(blob_in),
                 "SentinelDesktopCredential",  # description
-                None,   # no optional entropy
-                None,   # reserved
-                None,   # no prompt struct
+                None,  # no optional entropy
+                None,  # reserved
+                None,  # no prompt struct
                 CRYPTPROTECT_UI_FORBIDDEN,
                 ctypes.byref(blob_out),
             )
             if not ok:
-                logger.error(
-                    "CryptProtectData failed (HRESULT may indicate data loss)"
-                )
+                logger.error("CryptProtectData failed (HRESULT may indicate data loss)")
                 return None
 
             try:
-                result = bytes(
-                    (ctypes.c_byte * blob_out.cbData).from_address(blob_out.pbData)
-                )
+                result = bytes((ctypes.c_byte * blob_out.cbData).from_address(blob_out.pbData))
             finally:
                 # DPAPI allocates memory that we must free via LocalFree
                 ctypes.windll.kernel32.LocalFree(blob_out.pbData)  # type: ignore[attr-defined]
@@ -298,7 +296,7 @@ class CredentialVault:
             return base64.b64encode(plaintext)
 
     @staticmethod
-    def _decrypt(ciphertext: bytes) -> Optional[bytes]:
+    def _decrypt(ciphertext: bytes) -> bytes | None:
         """Decrypt *ciphertext* that was produced by :meth:`_encrypt`."""
         if _IS_WINDOWS:
             blob_in = _DATA_BLOB()
@@ -309,10 +307,10 @@ class CredentialVault:
 
             ok = _CryptUnprotectData(
                 ctypes.byref(blob_in),
-                None,   # ppszDataDescr – not needed
-                None,   # no optional entropy
-                None,   # reserved
-                None,   # no prompt struct
+                None,  # ppszDataDescr – not needed
+                None,  # no optional entropy
+                None,  # reserved
+                None,  # no prompt struct
                 CRYPTPROTECT_UI_FORBIDDEN,
                 ctypes.byref(blob_out),
             )
@@ -321,9 +319,7 @@ class CredentialVault:
                 return None
 
             try:
-                result = bytes(
-                    (ctypes.c_byte * blob_out.cbData).from_address(blob_out.pbData)
-                )
+                result = bytes((ctypes.c_byte * blob_out.cbData).from_address(blob_out.pbData))
             finally:
                 ctypes.windll.kernel32.LocalFree(blob_out.pbData)  # type: ignore[attr-defined]
 
