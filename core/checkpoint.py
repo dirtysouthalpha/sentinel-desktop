@@ -162,10 +162,12 @@ class CheckpointManager:
         }
 
         dest = os.path.join(self._dir, f"{checkpoint_id}.json")
+        saved = False
         with self._lock:
             try:
                 with open(dest, "w", encoding="utf-8") as fh:
                     json.dump(record, fh, indent=2, default=str, ensure_ascii=False)
+                saved = True
                 logger.info(
                     "Checkpoint saved: %s  step=%d  status=%s",
                     checkpoint_id[:8],
@@ -175,7 +177,7 @@ class CheckpointManager:
             except Exception as exc:
                 logger.error("Failed to save checkpoint %s: %s", checkpoint_id[:8], exc)
 
-        return checkpoint_id
+        return checkpoint_id if saved else None
 
     # ------------------------------------------------------------------
     # Load helpers

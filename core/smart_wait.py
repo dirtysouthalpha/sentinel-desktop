@@ -258,9 +258,10 @@ class SmartWait:
         start = time.monotonic()
         frames = 0
 
-        # Baseline
+        # Capture the initial baseline and track cumulative change from it.
         baseline = self._capture(region)
         baseline_small = _downsample(baseline)
+        prev_small = baseline_small
         frames += 1
 
         while True:
@@ -287,7 +288,13 @@ class SmartWait:
             current_small = _downsample(current)
             frames += 1
 
-            score = _compute_change_score(baseline_small, current_small)
+            # Check both: cumulative change from baseline AND per-frame change.
+            # This catches both sudden jumps and gradual drifts.
+            cumulative_score = _compute_change_score(baseline_small, current_small)
+            frame_score = _compute_change_score(prev_small, current_small)
+            prev_small = current_small
+
+            score = max(cumulative_score, frame_score)
             if score > 0.0:
                 snap_path = _save_snapshot(current, prefix="change")
                 return WaitResult(

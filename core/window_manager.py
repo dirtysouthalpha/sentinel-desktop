@@ -274,19 +274,27 @@ def restore_window(title: str) -> bool:
 
 
 def close_window(title: str) -> bool:
-    """Close a window by partial title match."""
+    """Close the first window matching *title* (partial, case-insensitive).
+
+    Returns ``True`` only if a matching window was found and WM_CLOSE was
+    posted.  Subsequent matching windows are left alone — call again to
+    close the next one.
+    """
     if HAS_WIN32:
+        found = False
 
         def _find(hwnd, _):
+            nonlocal found
+            if found:
+                return  # Already closed one; stop iterating.
             if win32gui.IsWindowVisible(hwnd):
                 if title.lower() in win32gui.GetWindowText(hwnd).lower():
                     win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
-                    return True
-            return False
+                    found = True
 
         try:
             win32gui.EnumWindows(_find, None)
-            return True
+            return found
         except Exception:
             return False
     elif HAS_PGW:

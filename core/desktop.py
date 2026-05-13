@@ -58,9 +58,9 @@ class DesktopController:
         return pyautogui.position()
 
     def type_text(self, text, interval=0.02):
-        pyautogui.typewrite(text, interval=interval) if text.isascii() else pyautogui.write(
-            text, interval=interval
-        )
+        # pyautogui.write() handles arbitrary text via clipboard fallback.
+        # pyautogui.typewrite() only works with single key names like 'enter'.
+        pyautogui.write(text, interval=interval)
 
     def press_key(self, key):
         pyautogui.press(key)
