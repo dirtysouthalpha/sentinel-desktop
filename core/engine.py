@@ -216,7 +216,6 @@ class AgentEngine:
         self._scheduler = None
         self._notifications = None
         self._plugin_loader = None
-        self._recovery = None
         self._auth_manager = None
         self._vault = None
         self._audit_exporter = None
@@ -285,13 +284,6 @@ class AgentEngine:
             except Exception as exc:
                 logger.warning("Plugin loading failed: %s", exc)
         return self._plugin_loader
-
-    @property
-    def recovery(self):
-        if self._recovery is None:
-            from core.recovery import RecoveryManager
-            self._recovery = RecoveryManager(self.executor, self.config)
-        return self._recovery
 
     @property
     def auth_manager(self):

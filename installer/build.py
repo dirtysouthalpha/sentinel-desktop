@@ -57,7 +57,6 @@ HIDDEN_IMPORTS = [
     "core.scheduler",
     "core.notifications",
     "core.plugin_loader",
-    "core.recovery",
     "core.auth",
     "core.encryption",
     "core.audit_export",
