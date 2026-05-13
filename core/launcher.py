@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v2 — Smart app launcher.
+Sentinel Desktop — Smart app launcher.
 
 ``smart_open(name)`` is what the agent should call instead of ``open_app``
 99% of the time:
@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 import re
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Any
 
 from core import window_manager as wm
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 # friendly name → {title: window-title-substring, launch: command-or-protocol}
-APP_ALIASES: Dict[str, Dict[str, str]] = {
+APP_ALIASES: dict[str, dict[str, str]] = {
     # Microsoft Office
     "outlook":        {"title": "Outlook",          "launch": "outlook"},
     "excel":          {"title": "Excel",            "launch": "excel"},
@@ -73,7 +73,20 @@ APP_ALIASES: Dict[str, Dict[str, str]] = {
 }
 
 
-def smart_open(name: str) -> Dict[str, Any]:
+# Conservative whitelist for unknown app names. Curated APP_ALIASES values
+# bypass this check (they're trusted at definition time and include URI
+# protocols like ``ms-settings:``). Anything matching this pattern is safe
+# to splice into ``cmd /c start "" <token>`` because Windows command-line
+# parsing treats it as a single non-metacharacter argument.
+_UNKNOWN_NAME_RE = re.compile(r"^[A-Za-z0-9._+-]+$")
+
+
+def _is_safe_launch_token(token: str) -> bool:
+    """Return True if *token* is safe to pass to ``cmd /c start`` unescaped."""
+    return bool(token) and bool(_UNKNOWN_NAME_RE.fullmatch(token))
+
+
+def smart_open(name: str) -> dict[str, Any]:
     """Focus or launch the named app. Returns ``{success, output, ...}``.
 
     The result dict is shaped to match what ActionExecutor handlers return.
@@ -82,9 +95,21 @@ def smart_open(name: str) -> Dict[str, Any]:
         return {"success": False, "output": "smart_open needs an app name", "error": "empty_name"}
 
     key = re.sub(r"\.(exe|lnk|url)$", "", name.strip().lower())
-    info = APP_ALIASES.get(key, {"title": key, "launch": key})
-    title_hint = info["title"]
-    launch_cmd = info["launch"]
+    alias = APP_ALIASES.get(key)
+    if alias is not None:
+        # Curated entry — trusted.
+        title_hint = alias["title"]
+        launch_cmd = alias["launch"]
+    else:
+        # Unknown name — caller-supplied, validate before spawning.
+        if not _is_safe_launch_token(key):
+            return {
+                "success": False,
+                "output": f"refusing to launch {name!r}: contains shell metacharacters",
+                "error": "unsafe_app_name",
+            }
+        title_hint = key
+        launch_cmd = key
 
     # 1) Is there already an open window matching this app?
     try:
@@ -129,7 +154,7 @@ def smart_open(name: str) -> Dict[str, Any]:
         }
 
 
-def _find_existing(title_hint: str) -> Optional[str]:
+def _find_existing(title_hint: str) -> str | None:
     """Return the title of an open window matching *title_hint*, or None."""
     needle = title_hint.lower()
     if not needle:
@@ -139,7 +164,7 @@ def _find_existing(title_hint: str) -> Optional[str]:
     except Exception as exc:
         logger.debug("list_windows failed: %s", exc)
         return None
-    best: Optional[str] = None
+    best: str | None = None
     for w in windows:
         title = (w.get("title") or "")
         if not title:

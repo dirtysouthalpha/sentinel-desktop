@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v3.0 — Build Script
+Sentinel Desktop — Build Script
 PyInstaller EXE builder + Inno Setup installer generator.
 
 Usage:
@@ -15,13 +15,21 @@ import shutil
 import subprocess
 import sys
 
+# Make the project root importable so we can read core.__version__.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from core import __version__ as APP_VERSION  # noqa: E402
+
 
 # ── Config ──────────────────────────────────────────────────────────────
 
 APP_NAME = "SentinelDesktop"
-APP_VERSION = "3.0.0"
 APP_PUBLISHER = "Sentinel Labs"
 APP_URL = "https://github.com/dirtysouthalpha/sentinel-desktop"
+# Stable GUID for Inno Setup upgrade detection. Must NOT change across versions.
+APP_GUID = "8C2F4A6E-3B5D-4F7C-A9E1-1D0E6B8F2A45"
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST_DIR = os.path.join(ROOT_DIR, "dist")
@@ -32,8 +40,8 @@ INSTALLER_DIR = os.path.join(ROOT_DIR, "installer")
 
 HIDDEN_IMPORTS = [
     "core.engine", "core.action_executor", "core.screenshot",
-    "core.llm_client", "core.forensic", "core.checkpoint",
-    "core.smart_wait", "core.mfa_detector", "core.system_info",
+    "core.llm_client", "core.forensic_log", "core.checkpoint",
+    "core.smart_wait", "core.mfa_detection", "core.system_info",
     "core.window_manager", "core.virtual_desktop", "core.failsafe",
     "core.recorder", "core.script_engine", "core.powershell",
     "core.workflow", "core.scheduler", "core.notifications",
@@ -42,7 +50,7 @@ HIDDEN_IMPORTS = [
     "core.provider_registry", "core.tool_schemas",
     "gui.app", "gui.themes", "gui.recorder_panel",
     "gui.tabs.scripts_tab", "gui.tabs.workflows_tab",
-    "gui.tabs.history_tab", "gui.system_tray",
+    "gui.tabs.history_tab", "gui.tabs.settings_tab", "gui.system_tray",
     "api.server",
     "customtkinter", "PIL", "pystray",
 ]
@@ -133,7 +141,7 @@ def generate_inno_setup():
 #define MyAppExeName "{APP_NAME}.exe"
 
 [Setup]
-AppId={{SENTINEL-DESKTOP-{{{APP_VERSION.replace('.', 'X')}}}
+AppId={{{{{APP_GUID}}}}}
 AppName={{#MyAppName}}
 AppVersion={{#MyAppVersion}}
 AppVerName={{#MyAppName}} {{#MyAppVersion}}
@@ -175,7 +183,7 @@ Filename: "{{app}}\\{{#MyAppExeName}}"; Description: "{{cm:LaunchProgram,{{#MyAp
 """
     iss_path = os.path.join(INSTALLER_DIR, "sentinel-desktop.iss")
     os.makedirs(INSTALLER_DIR, exist_ok=True)
-    with open(iss_path, "w") as f:
+    with open(iss_path, "w", encoding="utf-8") as f:
         f.write(iss_content)
 
     print(f"✅ Generated: {iss_path}")
