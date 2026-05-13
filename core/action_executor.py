@@ -517,18 +517,26 @@ class ActionExecutor:
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
     def _press_key(self, *, key: str, **_) -> dict:
-        if self.stealth and stealth_input.is_available():
-            if stealth_input.post_named_key(key):
-                return {"success": True, "output": f"Pressed {key} — stealth"}
-        self._desktop.press_key(key)
-        return {"success": True, "output": f"Pressed {key}"}
+        try:
+            if self.stealth and stealth_input.is_available():
+                if stealth_input.post_named_key(key):
+                    return {"success": True, "output": f"Pressed {key} — stealth"}
+            self._desktop.press_key(key)
+            return {"success": True, "output": f"Pressed {key}"}
+        except Exception as exc:
+            logger.debug("press_key failed for %r: %s", key, exc)
+            return {"success": False, "output": f"Press key failed: {exc}", "error": "press_key_failed"}
 
     def _hotkey(self, *, keys: list, **_) -> dict:
-        if self.stealth and stealth_input.is_available():
-            if stealth_input.post_hotkey(keys):
-                return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
-        self._desktop.hotkey(*keys)
-        return {"success": True, "output": f"Hotkey: {'+'.join(keys)}"}
+        try:
+            if self.stealth and stealth_input.is_available():
+                if stealth_input.post_hotkey(keys):
+                    return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
+            self._desktop.hotkey(*keys)
+            return {"success": True, "output": f"Hotkey: {'+'.join(keys)}"}
+        except Exception as exc:
+            logger.debug("hotkey failed for %s: %s", keys, exc)
+            return {"success": False, "output": f"Hotkey failed: {exc}", "error": "hotkey_failed"}
 
     def _drag(
         self,
@@ -597,14 +605,17 @@ class ActionExecutor:
             return {"success": False, "output": f"Screenshot failed: {exc}", "error": "capture_failed"}
 
     def _find_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
-        pos = find_template(template_path, confidence)
-        if pos:
-            return {
-                "success": True,
-                "output": f"Found at ({pos[0]}, {pos[1]})",
-                "position": list(pos),
-            }
-        return {"success": False, "output": "Image not found on screen"}
+        try:
+            pos = find_template(template_path, confidence)
+            if pos:
+                return {
+                    "success": True,
+                    "output": f"Found at ({pos[0]}, {pos[1]})",
+                    "position": list(pos),
+                }
+            return {"success": False, "output": "Image not found on screen"}
+        except Exception as exc:
+            return {"success": False, "output": f"find_image error: {exc}", "error": "find_image_failed"}
 
     def _wait(self, *, seconds: float = 1.0, **_) -> dict:
         import time as _time
@@ -616,14 +627,17 @@ class ActionExecutor:
         return {"success": True, "output": f"Waited {seconds}s"}
 
     def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_) -> dict:
-        pos = wait_for_template(template_path, float(timeout))
-        if pos:
-            return {
-                "success": True,
-                "output": f"Image appeared at ({pos[0]}, {pos[1]})",
-                "position": list(pos),
-            }
-        return {"success": False, "output": f"Timed out after {timeout}s"}
+        try:
+            pos = wait_for_template(template_path, float(timeout))
+            if pos:
+                return {
+                    "success": True,
+                    "output": f"Image appeared at ({pos[0]}, {pos[1]})",
+                    "position": list(pos),
+                }
+            return {"success": False, "output": f"Timed out after {timeout}s"}
+        except Exception as exc:
+            return {"success": False, "output": f"wait_for_image error: {exc}", "error": "wait_for_image_failed"}
 
     def _smart_wait(self, *, timeout: float = 10, region: list = None, **_) -> dict:
         """Wait until the screen changes (visual diff)."""
@@ -691,10 +705,13 @@ class ActionExecutor:
             return {"success": False, "output": f"Wait-for-text fallback: {exc}"}
 
     def _open_app(self, *, path: str, args: list = None, **_) -> dict:
-        pid = pm.start_process(path, args)
-        if pid:
-            return {"success": True, "output": f"Started process (pid {pid})"}
-        return {"success": False, "output": "Failed to start process"}
+        try:
+            pid = pm.start_process(path, args)
+            if pid:
+                return {"success": True, "output": f"Started process (pid {pid})"}
+            return {"success": False, "output": "Failed to start process"}
+        except Exception as exc:
+            return {"success": False, "output": f"open_app error: {exc}", "error": "open_app_failed"}
 
     def _smart_open(self, *, name: str, **_) -> dict:
         """Focus an existing window if the app is already running, else launch.
@@ -729,11 +746,14 @@ class ActionExecutor:
         target = pid or name
         if target is None:
             return {"success": False, "output": "Provide 'name' or 'pid'"}
-        killed = pm.kill_process(target)
-        return {
-            "success": killed,
-            "output": f"Process {target} {'killed' if killed else 'not found'}",
-        }
+        try:
+            killed = pm.kill_process(target)
+            return {
+                "success": killed,
+                "output": f"Process {target} {'killed' if killed else 'not found'}",
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"close_app error: {exc}", "error": "close_app_failed"}
 
     def _focus_window(self, *, title: str, **_) -> dict:
         """Focus a window by partial title match.
@@ -741,87 +761,123 @@ class ActionExecutor:
         Self-healing: if exact focus fails, scans visible windows for
         the best partial match and tries harder (Alt-Tab style).
         """
-        ok = wm.focus_window(title)
-        if ok:
-            return {"success": True, "output": f"Window '{title}' focused"}
+        try:
+            ok = wm.focus_window(title)
+            if ok:
+                return {"success": True, "output": f"Window '{title}' focused"}
 
-        # Fallback: search all windows and try closest match
-        windows = wm.list_windows()
-        candidates = []
-        needle = title.lower()
-        for w in windows:
-            wtitle = (w.get("title") or "").lower()
-            if needle in wtitle or wtitle in needle:
-                candidates.append(w)
-        if candidates:
-            # Try focusing the best candidate directly
-            best = candidates[0]
-            if wm.focus_window(best["title"]):
-                return {
-                    "success": True,
-                    "output": f"Focused window '{best['title']}' (partial match for '{title}')",
-                    "matched_title": best["title"],
-                }
+            # Fallback: search all windows and try closest match
+            windows = wm.list_windows()
+            candidates = []
+            needle = title.lower()
+            for w in windows:
+                wtitle = (w.get("title") or "").lower()
+                if needle in wtitle or wtitle in needle:
+                    candidates.append(w)
+            if candidates:
+                # Try focusing the best candidate directly
+                best = candidates[0]
+                if wm.focus_window(best["title"]):
+                    return {
+                        "success": True,
+                        "output": f"Focused window '{best['title']}' (partial match for '{title}')",
+                        "matched_title": best["title"],
+                    }
 
-        return {
-            "success": False,
-            "output": f"Window '{title}' not found",
-            "error": "window_not_found",
-            "hint": "Try list_windows() to see what's actually open",
-        }
+            return {
+                "success": False,
+                "output": f"Window '{title}' not found",
+                "error": "window_not_found",
+                "hint": "Try list_windows() to see what's actually open",
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"focus_window error: {exc}", "error": "focus_window_failed"}
 
     def _close_window(self, *, title: str, **_) -> dict:
-        ok = wm.close_window(title)
-        return {"success": ok, "output": f"Window '{title}' {'closed' if ok else 'not found'}"}
+        try:
+            ok = wm.close_window(title)
+            return {"success": ok, "output": f"Window '{title}' {'closed' if ok else 'not found'}"}
+        except Exception as exc:
+            return {"success": False, "output": f"close_window error: {exc}", "error": "close_window_failed"}
 
     def _list_windows(self, **_) -> dict:
-        windows = wm.list_windows()
-        return {"success": True, "output": windows}
+        try:
+            windows = wm.list_windows()
+            return {"success": True, "output": windows}
+        except Exception as exc:
+            return {"success": False, "output": f"list_windows error: {exc}", "error": "list_windows_failed"}
 
     def _read_file(self, *, path: str, **_) -> dict:
-        content = file_ops.read_file(path)
-        if content is not None:
-            preview = content[:5000]
-            return {"success": True, "output": preview, "length": len(content)}
-        return {"success": False, "output": "File not found or unreadable"}
+        try:
+            content = file_ops.read_file(path)
+            if content is not None:
+                preview = content[:5000]
+                return {"success": True, "output": preview, "length": len(content)}
+            return {"success": False, "output": "File not found or unreadable"}
+        except Exception as exc:
+            return {"success": False, "output": f"read_file error: {exc}", "error": "read_file_failed"}
 
     def _write_file(self, *, path: str, content: str, **_) -> dict:
-        ok = file_ops.write_file(path, content)
-        return {"success": ok, "output": f"File {'written' if ok else 'write failed'}"}
+        try:
+            ok = file_ops.write_file(path, content)
+            return {"success": ok, "output": f"File {'written' if ok else 'write failed'}"}
+        except Exception as exc:
+            return {"success": False, "output": f"write_file error: {exc}", "error": "write_file_failed"}
 
     def _list_directory(self, *, path: str = ".", **_) -> dict:
-        entries = file_ops.list_directory(path)
-        if entries is not None:
-            return {"success": True, "output": entries}
-        return {"success": False, "output": "Directory not found"}
+        try:
+            entries = file_ops.list_directory(path)
+            if entries is not None:
+                return {"success": True, "output": entries}
+            return {"success": False, "output": "Directory not found"}
+        except Exception as exc:
+            return {"success": False, "output": f"list_directory error: {exc}", "error": "list_directory_failed"}
 
     def _clipboard_read(self, **_) -> dict:
-        text = clip.clipboard_read()
-        return {"success": text is not None, "output": text or ""}
+        try:
+            text = clip.clipboard_read()
+            return {"success": text is not None, "output": text or ""}
+        except Exception as exc:
+            return {"success": False, "output": f"clipboard_read error: {exc}", "error": "clipboard_failed"}
 
     def _clipboard_write(self, *, text: str, **_) -> dict:
-        ok = clip.clipboard_write(text)
-        return {"success": ok, "output": f"Clipboard {'updated' if ok else 'failed'}"}
+        try:
+            ok = clip.clipboard_write(text)
+            return {"success": ok, "output": f"Clipboard {'updated' if ok else 'failed'}"}
+        except Exception as exc:
+            return {"success": False, "output": f"clipboard_write error: {exc}", "error": "clipboard_failed"}
 
     def _system_info(self, **_) -> dict:
-        info = sysinfo.system_info()
-        return {"success": True, "output": info}
+        try:
+            info = sysinfo.system_info()
+            return {"success": True, "output": info}
+        except Exception as exc:
+            return {"success": False, "output": f"system_info error: {exc}", "error": "system_info_failed"}
 
     def _list_processes(self, **_) -> dict:
-        procs = pm.list_processes()
-        return {"success": True, "output": procs[:100]}  # Cap at 100
+        try:
+            procs = pm.list_processes()
+            return {"success": True, "output": procs[:100]}
+        except Exception as exc:
+            return {"success": False, "output": f"list_processes error: {exc}", "error": "list_processes_failed"}
 
     def _start_process(self, *, path: str, args: list = None, **_) -> dict:
-        pid = pm.start_process(path, args)
-        return {"success": pid is not None, "output": f"pid={pid}"}
+        try:
+            pid = pm.start_process(path, args)
+            return {"success": pid is not None, "output": f"pid={pid}"}
+        except Exception as exc:
+            return {"success": False, "output": f"start_process error: {exc}", "error": "start_process_failed"}
 
     def _kill_process(self, *, pid: int = None, name: str = None, **_) -> dict:
         target = pid or name
-        killed = pm.kill_process(target)
-        return {
-            "success": killed,
-            "output": f"Process {target} {'killed' if killed else 'not found'}",
-        }
+        try:
+            killed = pm.kill_process(target)
+            return {
+                "success": killed,
+                "output": f"Process {target} {'killed' if killed else 'not found'}",
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"kill_process error: {exc}", "error": "kill_process_failed"}
 
     def _note(self, *, text: str, **_) -> dict:
         """Agent makes a note to itself — no-op for execution, logged."""
