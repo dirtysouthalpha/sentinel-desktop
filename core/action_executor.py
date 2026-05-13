@@ -208,7 +208,7 @@ class ActionExecutor:
     # -------------------------------------------------------------------
     # Action handlers (sync — wrapped by execute())
     # -------------------------------------------------------------------
-    def _click(self, *, x: int, y: int, button: str = "left", **_) -> dict[str, Any]:
+    def _click(self, *, x: int, y: int, button: str = "left", clicks: int = 1, **_) -> dict[str, Any]:
         # Translate from captured-image coords to absolute screen coords for
         # multi-monitor virtual-desktop capture.
         sx = int(x) + self.click_offset[0]
@@ -216,10 +216,12 @@ class ActionExecutor:
         # In stealth mode, try the no-cursor-move path first.
         if self.stealth and stealth_input.is_available():
             if stealth_input.post_click(sx, sy, button=button):
-                return {"success": True, "output": f"Clicked ({sx}, {sy}) — stealth"}
+                desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
+                return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
             # PostMessage failed; fall through to physical click.
-        self._desktop.click(sx, sy, button=button)
-        return {"success": True, "output": f"Clicked ({sx}, {sy})"}
+        self._desktop.click(sx, sy, button=button, clicks=clicks)
+        desc = f"Double-clicked" if clicks == 2 else f"Right-clicked" if button == "right" else "Clicked"
+        return {"success": True, "output": f"{desc} ({sx}, {sy})"}
 
     def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_) -> dict:
         """OCR-backed click: locate visible text and click its centre.
@@ -501,8 +503,18 @@ class ActionExecutor:
         if self.stealth and stealth_input.is_available():
             if stealth_input.post_text(text):
                 return {"success": True, "output": f"Typed {len(text)} chars — stealth"}
-        self._desktop.type_text(text)
-        return {"success": True, "output": f"Typed {len(text)} characters"}
+        try:
+            self._desktop.type_text(text)
+            return {"success": True, "output": f"Typed {len(text)} characters"}
+        except Exception as exc:
+            logger.debug("pyautogui type_text failed, trying clipboard: %s", exc)
+            try:
+                import pyperclip
+                pyperclip.copy(text)
+                self._desktop.hotkey("ctrl", "v")
+                return {"success": True, "output": f"Typed {len(text)} chars via clipboard", "fallback": "clipboard"}
+            except Exception as exc2:
+                return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
     def _press_key(self, *, key: str, **_) -> dict:
         if self.stealth and stealth_input.is_available():
@@ -529,8 +541,10 @@ class ActionExecutor:
         button: str = "left",
         **_,
     ) -> dict:
-        sx, sy = self._apply_offset(from_x, from_y)
-        tx, ty = self._apply_offset(to_x, to_y)
+        sx = int(from_x) + self.click_offset[0]
+        sy = int(from_y) + self.click_offset[1]
+        tx = int(to_x) + self.click_offset[0]
+        ty = int(to_y) + self.click_offset[1]
         if self.stealth and stealth_input.is_available():
             # Stealth drag: PostMessage mouse_down at source, move events, mouse_up at dest
             try:
@@ -566,17 +580,22 @@ class ActionExecutor:
         return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
 
     def _scroll(self, *, amount: int, **_) -> dict:
-        self._desktop.scroll(amount)
-        return {"success": True, "output": f"Scrolled {amount}"}
+        try:
+            self._desktop.scroll(amount)
+            return {"success": True, "output": f"Scrolled {amount}"}
+        except Exception as exc:
+            return {"success": False, "output": f"Scroll failed: {exc}", "error": "scroll_failed"}
 
     def _screenshot(self, **_) -> dict:
-        # Honor the configured monitor so screenshots see every screen.
-        b64 = capture_to_base64(monitor=self.monitor)
-        return {
-            "success": True,
-            "output": f"Screenshot captured ({len(b64)} chars base64)",
-            "screenshot": b64,
-        }
+        try:
+            b64 = capture_to_base64(monitor=self.monitor)
+            return {
+                "success": True,
+                "output": f"Screenshot captured ({len(b64)} chars base64)",
+                "screenshot": b64,
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"Screenshot failed: {exc}", "error": "capture_failed"}
 
     def _find_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
         pos = find_template(template_path, confidence)
@@ -850,6 +869,8 @@ class ActionExecutor:
     # Dispatch table
     _dispatch_table: dict[str, Callable] = {
         "click": _click,
+        "double_click": _click,
+        "right_click": _click,
         "click_text": _click_text,
         "click_image": _click_image,
         "click_control": _click_control,

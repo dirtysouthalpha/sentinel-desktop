@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 # Reusable field annotations
 _PixelCoord = Annotated[int, Field(ge=0, le=20000)]
@@ -40,6 +40,15 @@ class ClickAction(_ActionBase):
     x: _PixelCoord
     y: _PixelCoord
     button: Literal["left", "right", "middle"] = "left"
+    clicks: int = 1
+
+    @model_validator(mode="after")
+    def _derive_button_and_clicks(self) -> "ClickAction":
+        if self.action == "double_click":
+            self.clicks = 2
+        if self.action == "right_click":
+            self.button = "right"
+        return self
 
 
 class TypeTextAction(_ActionBase):
