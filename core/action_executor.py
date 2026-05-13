@@ -548,6 +548,7 @@ class ActionExecutor:
         if self.stealth and stealth_input.is_available():
             # Stealth drag: PostMessage mouse_down at source, move events, mouse_up at dest
             try:
+                import time as _t
                 import win32api
                 import win32con
                 import win32gui
@@ -566,8 +567,6 @@ class ActionExecutor:
                     my = int(cy + (cy2 - cy) * i / steps)
                     lparam_move = ((my & 0xFFFF) << 16) | (mx & 0xFFFF)
                     win32api.PostMessage(hwnd, win32con.WM_MOUSEMOVE, mk, lparam_move)
-                    import time as _t
-
                     _t.sleep(duration / steps)
                 win32api.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lparam_up)
                 return {
