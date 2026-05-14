@@ -1,13 +1,16 @@
 <div align="center">
 
-# ⬡ Sentinel Desktop
+# ⬡ Sentinel Desktop v3.1
 
-**AI-powered Windows desktop automation agent.**
+**AI-powered Windows desktop automation agent — cyberpunk HUD edition.**
 
 Give it a goal in plain English. It sees your screen, moves the mouse, types, and interacts with any application — autonomously.
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
+[![Version](https://img.shields.io/badge/version-3.1.0-orange)](https://github.com/DirtySouthAlpha/sentinel-desktop/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+76 Python modules · 21,664 lines · 19 themes · 35 API endpoints · 30+ action types
 
 </div>
 
