@@ -213,59 +213,65 @@ class ActionExecutor:
         # multi-monitor virtual-desktop capture.
         sx = int(x) + self.click_offset[0]
         sy = int(y) + self.click_offset[1]
-        # In stealth mode, try the no-cursor-move path first.
-        if self.stealth and stealth_input.is_available():
-            if stealth_input.post_click(sx, sy, button=button):
-                desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
-                return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
-            # PostMessage failed; fall through to physical click.
-        self._desktop.click(sx, sy, button=button, clicks=clicks)
-        desc = f"Double-clicked" if clicks == 2 else f"Right-clicked" if button == "right" else "Clicked"
-        return {"success": True, "output": f"{desc} ({sx}, {sy})"}
+        try:
+            # In stealth mode, try the no-cursor-move path first.
+            if self.stealth and stealth_input.is_available():
+                if stealth_input.post_click(sx, sy, button=button):
+                    desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
+                    return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
+                # PostMessage failed; fall through to physical click.
+            self._desktop.click(sx, sy, button=button, clicks=clicks)
+            desc = f"Double-clicked" if clicks == 2 else f"Right-clicked" if button == "right" else "Clicked"
+            return {"success": True, "output": f"{desc} ({sx}, {sy})"}
+        except Exception as exc:
+            return {"success": False, "output": f"click error at ({sx},{sy}): {exc}", "error": "click_failed"}
 
     def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_) -> dict:
         """OCR-backed click: locate visible text and click its centre.
 
         Self-healing: if OCR fails, tries UIAutomation click by name.
         """
-        pos = ocr.find_text(text, fuzzy=fuzzy)
-        if pos is not None:
-            x, y = pos
-            sx = x + self.click_offset[0]
-            sy = y + self.click_offset[1]
-            if self.stealth and stealth_input.is_available():
-                if stealth_input.post_click(sx, sy, button=button):
-                    return {
-                        "success": True,
-                        "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
-                        "position": [sx, sy],
-                    }
-            self._desktop.click(sx, sy, button=button)
-            return {
-                "success": True,
-                "output": f"Clicked text {text!r} at ({sx}, {sy})",
-                "position": [sx, sy],
-            }
-
-        # Fallback 1: UIAutomation click by name
         try:
-            ui_pos = ui_tree.click_control(name=text, button=button)
-            if ui_pos is not None:
+            pos = ocr.find_text(text, fuzzy=fuzzy)
+            if pos is not None:
+                x, y = pos
+                sx = x + self.click_offset[0]
+                sy = y + self.click_offset[1]
+                if self.stealth and stealth_input.is_available():
+                    if stealth_input.post_click(sx, sy, button=button):
+                        return {
+                            "success": True,
+                            "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
+                            "position": [sx, sy],
+                        }
+                self._desktop.click(sx, sy, button=button)
                 return {
                     "success": True,
-                    "output": f"Clicked text {text!r} via UIAutomation at {ui_pos}",
-                    "position": list(ui_pos),
-                    "fallback": "uia",
+                    "output": f"Clicked text {text!r} at ({sx}, {sy})",
+                    "position": [sx, sy],
                 }
-        except Exception as exc:
-            logger.debug("click_text UIA fallback failed: %s", exc)
 
-        return {
-            "success": False,
-            "output": f"Text {text!r} not found via OCR or UIAutomation",
-            "error": "text_not_found",
-            "hint": "Try list_controls() to find the element, or use click(x,y) with coordinates from the screenshot",
-        }
+            # Fallback 1: UIAutomation click by name
+            try:
+                ui_pos = ui_tree.click_control(name=text, button=button)
+                if ui_pos is not None:
+                    return {
+                        "success": True,
+                        "output": f"Clicked text {text!r} via UIAutomation at {ui_pos}",
+                        "position": list(ui_pos),
+                        "fallback": "uia",
+                    }
+            except Exception as exc:
+                logger.debug("click_text UIA fallback failed: %s", exc)
+
+            return {
+                "success": False,
+                "output": f"Text {text!r} not found via OCR or UIAutomation",
+                "error": "text_not_found",
+                "hint": "Try list_controls() to find the element, or use click(x,y) with coordinates from the screenshot",
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"click_text error: {exc}", "error": "click_text_failed"}
 
     def _read_text(self, *, scope: str = "focused", window: str | None = None, **_) -> dict:
         """OCR text from the screen.
@@ -278,55 +284,61 @@ class ActionExecutor:
             window: When provided, OCR a specific window by partial title
                 match (overrides ``scope``).
         """
-        if window:
-            text = ocr.read_window_text(window)
-            origin = f"window {window!r}"
-        elif scope == "all":
-            text = ocr.read_screen_text()
-            origin = "full screen"
-        else:
-            text, title = ocr.read_focused_window_text_with_title()
-            origin = f"focused window: {title!r}" if title else "focused window"
-        if not text:
-            return {
-                "success": False,
-                "output": f"No text found in {origin} (or Tesseract OCR unavailable)",
-                "error": "ocr_unavailable",
+        try:
+            if window:
+                text = ocr.read_window_text(window)
+                origin = f"window {window!r}"
+            elif scope == "all":
+                text = ocr.read_screen_text()
+                origin = "full screen"
+            else:
+                text, title = ocr.read_focused_window_text_with_title()
+                origin = f"focused window: {title!r}" if title else "focused window"
+            if not text:
+                return {
+                    "success": False,
+                    "output": f"No text found in {origin} (or Tesseract OCR unavailable)",
+                    "error": "ocr_unavailable",
+                }
+            result = {
+                "success": True,
+                "output": text[:8000],
+                "length": len(text),
+                "source": origin,
             }
-        result = {
-            "success": True,
-            "output": text[:8000],
-            "length": len(text),
-            "source": origin,
-        }
-        # Flag suspect output so the LLM knows to trust the screenshot over
-        # this garbled text. The prompt teaches it how to react.
-        if ocr.looks_low_confidence(text):
-            result["low_confidence"] = True
-            result["hint"] = (
-                "OCR output looks garbled. Trust the screenshot vision "
-                "instead — read content directly from the image and act on "
-                "coordinates rather than OCR text."
-            )
-        return result
+            # Flag suspect output so the LLM knows to trust the screenshot over
+            # this garbled text. The prompt teaches it how to react.
+            if ocr.looks_low_confidence(text):
+                result["low_confidence"] = True
+                result["hint"] = (
+                    "OCR output looks garbled. Trust the screenshot vision "
+                    "instead — read content directly from the image and act on "
+                    "coordinates rather than OCR text."
+                )
+            return result
+        except Exception as exc:
+            return {"success": False, "output": f"read_text error: {exc}", "error": "read_text_failed"}
 
     def _read_window(self, *, title: str, **_) -> dict:
         """OCR a specific window by partial title match — convenience for the LLM."""
-        text = ocr.read_window_text(title)
-        if not text:
-            return {
-                "success": False,
-                "output": f"Window {title!r} not found or contained no text",
-                "error": "window_not_found",
-            }
-        result = {"success": True, "output": text[:8000], "length": len(text), "window": title}
-        if ocr.looks_low_confidence(text):
-            result["low_confidence"] = True
-            result["hint"] = (
-                "OCR output looks garbled. Read content from the screenshot "
-                "directly and act on coordinates instead of relying on this text."
-            )
-        return result
+        try:
+            text = ocr.read_window_text(title)
+            if not text:
+                return {
+                    "success": False,
+                    "output": f"Window {title!r} not found or contained no text",
+                    "error": "window_not_found",
+                }
+            result = {"success": True, "output": text[:8000], "length": len(text), "window": title}
+            if ocr.looks_low_confidence(text):
+                result["low_confidence"] = True
+                result["hint"] = (
+                    "OCR output looks garbled. Read content from the screenshot "
+                    "directly and act on coordinates instead of relying on this text."
+                )
+            return result
+        except Exception as exc:
+            return {"success": False, "output": f"read_window error: {exc}", "error": "read_window_failed"}
 
     # ---- UIAutomation handlers ---------------------------------------
 
@@ -344,67 +356,73 @@ class ActionExecutor:
 
         Self-healing: if UIAutomation fails, tries OCR text click.
         """
-        pos = ui_tree.click_control(
-            name=name,
-            automation_id=automation_id,
-            control_type=control_type,
-            window_title=window_title,
-            button=button,
-        )
-        if pos is not None:
-            return {"success": True, "output": f"Clicked control at {pos}", "position": list(pos)}
+        try:
+            pos = ui_tree.click_control(
+                name=name,
+                automation_id=automation_id,
+                control_type=control_type,
+                window_title=window_title,
+                button=button,
+            )
+            if pos is not None:
+                return {"success": True, "output": f"Clicked control at {pos}", "position": list(pos)}
 
-        # Fallback: if name was provided, try OCR text click
-        if name:
-            try:
-                ocr_pos = ocr.find_text(name, fuzzy=True)
-                if ocr_pos:
-                    sx = ocr_pos[0] + self.click_offset[0]
-                    sy = ocr_pos[1] + self.click_offset[1]
-                    self._desktop.click(sx, sy, button=button)
-                    return {
-                        "success": True,
-                        "output": f"Clicked control {name!r} via OCR at ({sx},{sy})",
-                        "position": [sx, sy],
-                        "fallback": "ocr",
-                    }
-            except Exception as exc:
-                logger.debug("click_control OCR fallback failed: %s", exc)
+            # Fallback: if name was provided, try OCR text click
+            if name:
+                try:
+                    ocr_pos = ocr.find_text(name, fuzzy=True)
+                    if ocr_pos:
+                        sx = ocr_pos[0] + self.click_offset[0]
+                        sy = ocr_pos[1] + self.click_offset[1]
+                        self._desktop.click(sx, sy, button=button)
+                        return {
+                            "success": True,
+                            "output": f"Clicked control {name!r} via OCR at ({sx},{sy})",
+                            "position": [sx, sy],
+                            "fallback": "ocr",
+                        }
+                except Exception as exc:
+                    logger.debug("click_control OCR fallback failed: %s", exc)
 
-        return {
-            "success": False,
-            "output": f"No control matched (name={name!r}, automation_id={automation_id!r}, "
-            f"control_type={control_type!r})",
-            "error": "control_not_found",
-            "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
-        }
+            return {
+                "success": False,
+                "output": f"No control matched (name={name!r}, automation_id={automation_id!r}, "
+                f"control_type={control_type!r})",
+                "error": "control_not_found",
+                "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"click_control error: {exc}", "error": "click_control_failed"}
 
     def _list_controls(
         self, *, window_title: str | None = None, max_results: int = 60, **_
     ) -> dict:
         """List accessible controls in a window for the LLM to choose from."""
-        controls = ui_tree.list_controls(window_title=window_title, max_results=max_results)
-        if not controls:
-            return {
-                "success": False,
-                "output": "UIAutomation unavailable or window has no controls",
-                "error": "uia_unavailable",
-            }
-        # Trim to what's useful for the LLM (drop offscreen controls, big text).
-        slim = [
-            {
-                "name": c["name"][:120],
-                "control_type": c["control_type"],
-                "automation_id": c["automation_id"],
-                "x": c["x"],
-                "y": c["y"],
-                "width": c["width"],
-                "height": c["height"],
-            }
-            for c in controls
-            if not c.get("is_offscreen") and c.get("is_enabled", True)
-        ]
-        return {"success": True, "output": slim, "count": len(slim)}
+        try:
+            controls = ui_tree.list_controls(window_title=window_title, max_results=max_results)
+            if not controls:
+                return {
+                    "success": False,
+                    "output": "UIAutomation unavailable or window has no controls",
+                    "error": "uia_unavailable",
+                }
+            # Trim to what's useful for the LLM (drop offscreen controls, big text).
+            slim = [
+                {
+                    "name": c["name"][:120],
+                    "control_type": c["control_type"],
+                    "automation_id": c["automation_id"],
+                    "x": c["x"],
+                    "y": c["y"],
+                    "width": c["width"],
+                    "height": c["height"],
+                }
+                for c in controls
+                if not c.get("is_offscreen") and c.get("is_enabled", True)
+            ]
+            return {"success": True, "output": slim, "count": len(slim)}
+        except Exception as exc:
+            return {"success": False, "output": f"list_controls error: {exc}", "error": "list_controls_failed"}
 
     def _set_text(
         self,
@@ -425,72 +443,78 @@ class ActionExecutor:
                 "output": "Blocked: text appears sensitive",
                 "error": "sensitive_field",
             }
-        ok = ui_tree.set_text(
-            text,
-            name=name,
-            automation_id=automation_id,
-            window_title=window_title,
-        )
-        if ok:
-            return {"success": True, "output": f"Set text on {name or automation_id!r}"}
-
-        # Fallback: try finding the control position, click it, select-all, type
         try:
-            controls = ui_tree.list_controls(window_title=window_title, max_results=30)
-            target = None
-            for c in controls:
-                cname = (c.get("name") or "").lower()
-                cid = (c.get("automation_id") or "").lower()
-                if name and name.lower() in cname:
-                    target = c
-                    break
-                if automation_id and automation_id.lower() in cid:
-                    target = c
-                    break
-                if c.get("control_type") == "Edit" and not name and not automation_id:
-                    target = c
-                    break
-            if target and not target.get("is_offscreen"):
-                cx = target["x"] + target["width"] // 2
-                cy = target["y"] + target["height"] // 2
-                sx = cx + self.click_offset[0]
-                sy = cy + self.click_offset[1]
-                self._desktop.click(sx, sy)
-                import time as _t
-                _t.sleep(0.15)
-                self._desktop.hotkey("ctrl", "a")
-                _t.sleep(0.1)
-                self._desktop.type_text(text)
-                return {
-                    "success": True,
-                    "output": f"Set text via click+type on control at ({sx},{sy})",
-                    "fallback": "click_and_type",
-                }
-        except Exception as exc:
-            logger.debug("set_text click+type fallback failed: %s", exc)
+            ok = ui_tree.set_text(
+                text,
+                name=name,
+                automation_id=automation_id,
+                window_title=window_title,
+            )
+            if ok:
+                return {"success": True, "output": f"Set text on {name or automation_id!r}"}
 
-        return {
-            "success": False,
-            "output": f"No editable control matched (name={name!r})",
-            "error": "control_not_found",
-            "hint": "Try click_text() on the field label, then type_text()",
-        }
+            # Fallback: try finding the control position, click it, select-all, type
+            try:
+                controls = ui_tree.list_controls(window_title=window_title, max_results=30)
+                target = None
+                for c in controls:
+                    cname = (c.get("name") or "").lower()
+                    cid = (c.get("automation_id") or "").lower()
+                    if name and name.lower() in cname:
+                        target = c
+                        break
+                    if automation_id and automation_id.lower() in cid:
+                        target = c
+                        break
+                    if c.get("control_type") == "Edit" and not name and not automation_id:
+                        target = c
+                        break
+                if target and not target.get("is_offscreen"):
+                    cx = target["x"] + target["width"] // 2
+                    cy = target["y"] + target["height"] // 2
+                    sx = cx + self.click_offset[0]
+                    sy = cy + self.click_offset[1]
+                    self._desktop.click(sx, sy)
+                    import time as _t
+                    _t.sleep(0.15)
+                    self._desktop.hotkey("ctrl", "a")
+                    _t.sleep(0.1)
+                    self._desktop.type_text(text)
+                    return {
+                        "success": True,
+                        "output": f"Set text via click+type on control at ({sx},{sy})",
+                        "fallback": "click_and_type",
+                    }
+            except Exception as exc:
+                logger.debug("set_text click+type fallback failed: %s", exc)
+
+            return {
+                "success": False,
+                "output": f"No editable control matched (name={name!r})",
+                "error": "control_not_found",
+                "hint": "Try click_text() on the field label, then type_text()",
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"set_text error: {exc}", "error": "set_text_failed"}
 
     def _click_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
         # Find the template position; click via stealth if enabled so the
         # cursor stays put.
-        if self.stealth and stealth_input.is_available():
-            pos = find_template(template_path, confidence)
-            if pos:
-                sx = pos[0] + self.click_offset[0]
-                sy = pos[1] + self.click_offset[1]
-                if stealth_input.post_click(sx, sy):
-                    return {"success": True, "output": f"Clicked template at ({sx},{sy}) — stealth"}
-        found = self._desktop.click_image(template_path, confidence)
-        return {
-            "success": found,
-            "output": f"Template {'found and clicked' if found else 'not found'}",
-        }
+        try:
+            if self.stealth and stealth_input.is_available():
+                pos = find_template(template_path, confidence)
+                if pos:
+                    sx = pos[0] + self.click_offset[0]
+                    sy = pos[1] + self.click_offset[1]
+                    if stealth_input.post_click(sx, sy):
+                        return {"success": True, "output": f"Clicked template at ({sx},{sy}) — stealth"}
+            found = self._desktop.click_image(template_path, confidence)
+            return {
+                "success": found,
+                "output": f"Template {'found and clicked' if found else 'not found'}",
+            }
+        except Exception as exc:
+            return {"success": False, "output": f"click_image error: {exc}", "error": "click_image_failed"}
 
     def _type_text(self, *, text: str, **_) -> dict:
         # Sensitive field check
