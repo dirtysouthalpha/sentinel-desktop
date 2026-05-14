@@ -17,6 +17,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class FailsafeListener:
 
     # -- internal -------------------------------------------------------
 
-    def _on_esc(self, _event) -> None:
+    def _on_esc(self, _event: Any) -> None:
         now = time.monotonic()
         with self._lock:
             self._presses.append(now)

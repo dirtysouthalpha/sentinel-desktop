@@ -2,13 +2,14 @@
 
 import logging
 import subprocess
+from typing import Any
 
 import psutil
 
 logger = logging.getLogger(__name__)
 
 
-def list_processes(sort_by="cpu", limit=50):
+def list_processes(sort_by: str = "cpu", limit: int = 50) -> list[dict[str, Any]]:
     """List running processes. Returns list of dicts."""
     procs = []
     for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_info"]):
@@ -38,7 +39,7 @@ def start_process(path: str, args: list | None = None) -> int:
         return 0
 
 
-def kill_process(target) -> bool:
+def kill_process(target: int | str) -> bool:
     """Kill a process by PID (int) or name (str). Returns True on success."""
     if target is None or target == "":
         logger.warning("kill_process called with empty target")

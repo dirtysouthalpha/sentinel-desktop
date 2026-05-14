@@ -33,7 +33,7 @@ import os
 import platform
 import subprocess
 import threading
-from typing import Any
+from typing import Any, NoReturn
 
 from PIL import Image
 
@@ -83,7 +83,7 @@ _user32: Any | None = None
 _kernel32: Any | None = None
 
 
-def _get_user32():
+def _get_user32() -> Any:
     global _user32
     if _user32 is None:
         import ctypes
@@ -92,7 +92,7 @@ def _get_user32():
     return _user32
 
 
-def _get_kernel32():
+def _get_kernel32() -> Any:
     global _kernel32
     if _kernel32 is None:
         import ctypes
@@ -672,7 +672,7 @@ class _StubVirtualDesktop:
 # ---------------------------------------------------------------------------
 
 
-def _raise_last_error(api_name: str) -> None:
+def _raise_last_error(api_name: str) -> NoReturn:
     """Raise an ``OSError`` with the Win32 last-error text."""
     import ctypes
 

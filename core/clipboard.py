@@ -1,13 +1,16 @@
 """Clipboard read/write."""
 
+from __future__ import annotations
+
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _clipboard = None
 
 
-def _get_clipboard():
+def _get_clipboard() -> Any | None:
     global _clipboard
     if _clipboard is None:
         try:

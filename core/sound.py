@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _IS_WINDOWS = platform.system() == "Windows"
 
 
-def play_sound(sound_type: str = "complete", blocking: bool = False):
+def play_sound(sound_type: str = "complete", blocking: bool = False) -> None:
     """
     Play a notification sound.
 
@@ -31,7 +31,7 @@ def play_sound(sound_type: str = "complete", blocking: bool = False):
         t.start()
 
 
-def _play(sound_type: str):
+def _play(sound_type: str) -> None:
     """Internal: produce the sound."""
     try:
         if _IS_WINDOWS:
@@ -76,7 +76,7 @@ def _play(sound_type: str):
         logger.debug("Sound playback failed: %s", exc)
 
 
-def play_file(filepath: str, blocking: bool = False):
+def play_file(filepath: str, blocking: bool = False) -> None:
     """Play a WAV file (Windows only, no-op on other platforms)."""
     if not _IS_WINDOWS:
         return

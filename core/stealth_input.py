@@ -189,7 +189,7 @@ _MOD_VK = {
 }
 
 
-def post_hotkey(keys, hwnd: int | None = None) -> bool:
+def post_hotkey(keys: list[str], hwnd: int | None = None) -> bool:
     """Send a chorded hotkey (e.g. Ctrl+C) via WM_KEYDOWN/UP messages.
 
     Note: many apps require *real* input state for modifier handling — e.g.
