@@ -1,7 +1,7 @@
 """
 Sentinel Desktop v2 — LLM provider catalog with auto-detection of available models.
 
-Defines 16+ providers (cloud & local) with their base URLs, authentication
+Defines 24 providers (cloud & local) with their base URLs, authentication
 headers, and model-discovery endpoints.  Most providers follow the
 OpenAI-compatible ``/chat/completions`` pattern; Anthropic uses its native
 ``/messages`` endpoint and is flagged with ``anthropic_native``.
@@ -35,6 +35,16 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            "gpt-4.1-nano",
+            "o3",
+            "o3-mini",
+            "o4-mini",
+            "gpt-4o",
+            "gpt-4o-mini",
+        ],
     },
     "anthropic": {
         "name": "Anthropic Claude",
@@ -80,8 +90,9 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
         "manual_models": [
-            "grok-4.20-0309-reasoning",
-            "grok-4.20-0309-non-reasoning",
+            "grok-4.3",
+            "grok-4.20",
+            "grok-4.20-reasoning",
             "grok-4-1-fast-reasoning",
             "grok-4-1-fast-non-reasoning",
         ],
@@ -129,6 +140,13 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "mistral-large-3",
+            "mistral-medium-3",
+            "mistral-small-3.2",
+            "codestral",
+            "pixtral-large-2",
+        ],
     },
     "together": {
         "name": "Together AI",
@@ -153,6 +171,11 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "manual_models": [
+            "llama3.1-8b",
+            "gpt-oss-120b",
+            "qwen-3-235b-a22b-instruct-2507",
+        ],
     },
     "perplexity": {
         "name": "Perplexity",
