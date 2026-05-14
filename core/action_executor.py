@@ -699,7 +699,7 @@ class ActionExecutor:
                     "output": f"Found at ({pos[0]}, {pos[1]})",
                     "position": list(pos),
                 }
-            return {"success": False, "output": "Image not found on screen"}
+            return {"success": False, "output": "Image not found on screen", "error": "image_not_found"}
         except Exception as exc:
             return {
                 "success": False,
@@ -725,7 +725,7 @@ class ActionExecutor:
                     "output": f"Image appeared at ({pos[0]}, {pos[1]})",
                     "position": list(pos),
                 }
-            return {"success": False, "output": f"Timed out after {timeout}s"}
+            return {"success": False, "output": f"Timed out after {timeout}s", "error": "timeout"}
         except Exception as exc:
             return {
                 "success": False,
@@ -753,7 +753,7 @@ class ActionExecutor:
             import time as _t
 
             _t.sleep(min(float(timeout), 5.0))
-            return {"success": False, "output": f"Smart wait fallback: {exc}"}
+            return {"success": False, "output": f"Smart wait fallback: {exc}", "error": "smart_wait_failed"}
 
     def _wait_for_stable(
         self, *, timeout: float = 10, stable_time: float = 1.5, region: list | None = None, **_
@@ -778,7 +778,7 @@ class ActionExecutor:
             import time as _t
 
             _t.sleep(3.0)
-            return {"success": False, "output": f"Wait-for-stable fallback: {exc}"}
+            return {"success": False, "output": f"Wait-for-stable fallback: {exc}", "error": "wait_for_stable_failed"}
 
     def _wait_for_text(
         self, *, text: str, timeout: float = 10, region: list | None = None, **_
@@ -798,7 +798,7 @@ class ActionExecutor:
                 "elapsed": result.elapsed,
             }
         except Exception as exc:
-            return {"success": False, "output": f"Wait-for-text fallback: {exc}"}
+            return {"success": False, "output": f"Wait-for-text fallback: {exc}", "error": "wait_for_text_failed"}
 
     def _open_app(self, *, path: str, args: list | None = None, **_) -> dict:
         try:
@@ -845,7 +845,7 @@ class ActionExecutor:
     def _close_app(self, *, name: str | None = None, pid: int | None = None, **_) -> dict:
         target = pid or name
         if target is None:
-            return {"success": False, "output": "Provide 'name' or 'pid'"}
+            return {"success": False, "output": "Provide 'name' or 'pid'", "error": "missing_target"}
         try:
             killed = pm.kill_process(target)
             return {
@@ -929,7 +929,7 @@ class ActionExecutor:
             if content is not None:
                 preview = content[:5000]
                 return {"success": True, "output": preview, "length": len(content)}
-            return {"success": False, "output": "File not found or unreadable"}
+            return {"success": False, "output": "File not found or unreadable", "error": "file_not_found"}
         except Exception as exc:
             return {
                 "success": False,
@@ -953,7 +953,7 @@ class ActionExecutor:
             entries = file_ops.list_directory(path)
             if entries is not None:
                 return {"success": True, "output": entries}
-            return {"success": False, "output": "Directory not found"}
+            return {"success": False, "output": "Directory not found", "error": "dir_not_found"}
         except Exception as exc:
             return {
                 "success": False,
@@ -1054,7 +1054,7 @@ class ActionExecutor:
                 "objects": result.objects[:50] if result.objects else [],
             }
         except Exception as exc:
-            return {"success": False, "output": f"PowerShell error: {exc}"}
+            return {"success": False, "output": f"PowerShell error: {exc}", "error": "powershell_failed"}
 
     def _run_script(self, *, path: str, params: dict | None = None, **_) -> dict:
         """Replay a recorded script from a JSON file."""
@@ -1071,7 +1071,7 @@ class ActionExecutor:
                 "error": result.error,
             }
         except Exception as exc:
-            return {"success": False, "output": f"Script error: {exc}"}
+            return {"success": False, "output": f"Script error: {exc}", "error": "script_failed"}
 
     # Dispatch table
     _dispatch_table: dict[str, Callable] = {
