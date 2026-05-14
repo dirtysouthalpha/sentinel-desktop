@@ -838,12 +838,12 @@ class ActionExecutor:
         if result.get("success"):
             return result
 
-        # Fallback: PowerShell Start-Process
+        # Fallback: PowerShell Start-Process (argument separation prevents injection)
         import subprocess
 
         try:
             subprocess.Popen(
-                ["powershell", "-Command", f"Start-Process '{name}'"],
+                ["powershell", "-Command", "Start-Process", name],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

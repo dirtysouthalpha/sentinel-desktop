@@ -269,6 +269,8 @@ class NotificationManager:
                     self._stats[ch]["failed"] += 1
                     logger.error("Channel %r failed: %s", ch, detail)
                     all_ok = False
+            except (KeyboardInterrupt, SystemExit):
+                raise
             except Exception as exc:
                 # Graceful degradation — never let one channel kill others.
                 self._last_results[ch] = (False, str(exc))
@@ -552,7 +554,10 @@ class NotificationManager:
         # Parse host and optional port.
         parts = smtp_server.rsplit(":", 1)
         host = parts[0]
-        port = int(parts[1]) if len(parts) > 1 else 587
+        try:
+            port = int(parts[1]) if len(parts) > 1 else 587
+        except (ValueError, IndexError):
+            return False, f"Invalid smtp_server format: {smtp_server!r}"
         use_tls = self._config.get("smtp_use_tls", True)
 
         try:

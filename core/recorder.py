@@ -13,11 +13,14 @@ import base64
 import glob
 import hashlib
 import json
+import logging
 import os
 import threading
 import time
 from datetime import datetime, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Script data model
@@ -69,15 +72,23 @@ class Script:
 
     def save(self, path: str) -> None:
         """Write the script JSON to *path*, creating parent dirs as needed."""
-        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(self.to_json())
+        try:
+            os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self.to_json())
+        except OSError as exc:
+            logger.error("Failed to save script to %s: %s", path, exc)
+            raise
 
     @classmethod
     def load(cls, path: str) -> "Script":
         """Load a Script from a JSON file on disk."""
-        with open(path, encoding="utf-8") as fh:
-            data = json.load(fh)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.error("Failed to load script from %s: %s", path, exc)
+            raise
         return cls(
             name=data.get("name", "Untitled Script"),
             description=data.get("description", ""),
