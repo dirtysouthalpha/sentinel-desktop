@@ -22,7 +22,12 @@ class Command:
     """A single palette command."""
 
     def __init__(
-        self, name: str, shortcut: str, category: str, handler: Callable, keywords: list[str] | None = None
+        self,
+        name: str,
+        shortcut: str,
+        category: str,
+        handler: Callable,
+        keywords: list[str] | None = None,
     ):
         self.name = name
         self.shortcut = shortcut
@@ -72,7 +77,12 @@ class CommandPalette:
         self._commands: list[Command] = []
 
     def register(
-        self, name: str, shortcut: str, category: str, handler: Callable, keywords: list[str] | None = None
+        self,
+        name: str,
+        shortcut: str,
+        category: str,
+        handler: Callable,
+        keywords: list[str] | None = None,
     ):
         """Register a command."""
         self._commands.append(Command(name, shortcut, category, handler, keywords))

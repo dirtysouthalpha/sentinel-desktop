@@ -780,7 +780,9 @@ class ActionExecutor:
             _t.sleep(3.0)
             return {"success": False, "output": f"Wait-for-stable fallback: {exc}"}
 
-    def _wait_for_text(self, *, text: str, timeout: float = 10, region: list | None = None, **_) -> dict:
+    def _wait_for_text(
+        self, *, text: str, timeout: float = 10, region: list | None = None, **_
+    ) -> dict:
         """Wait until specific text appears on screen via OCR."""
         try:
             from core.smart_wait import SmartWait
