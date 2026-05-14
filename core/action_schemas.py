@@ -43,7 +43,7 @@ class ClickAction(_ActionBase):
     clicks: int = 1
 
     @model_validator(mode="after")
-    def _derive_button_and_clicks(self) -> "ClickAction":
+    def _derive_button_and_clicks(self) -> ClickAction:
         if self.action == "double_click":
             self.clicks = 2
         if self.action == "right_click":

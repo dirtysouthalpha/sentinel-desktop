@@ -274,6 +274,7 @@ class AgentEngine:
     def recorder(self):
         if self._recorder is None:
             from core.recorder import ActionRecorder
+
             self._recorder = ActionRecorder()
         return self._recorder
 
@@ -281,6 +282,7 @@ class AgentEngine:
     def script_engine(self):
         if self._script_engine is None:
             from core.script_engine import ScriptEngine
+
             self._script_engine = ScriptEngine(self.executor)
         return self._script_engine
 
@@ -288,6 +290,7 @@ class AgentEngine:
     def powershell(self):
         if self._powershell is None:
             from core.powershell import PowerShellRunner
+
             self._powershell = PowerShellRunner()
         return self._powershell
 
@@ -295,6 +298,7 @@ class AgentEngine:
     def workflow_engine(self):
         if self._workflow_engine is None:
             from core.workflow import WorkflowEngine
+
             self._workflow_engine = WorkflowEngine(self.executor, self.script_engine)
         return self._workflow_engine
 
@@ -302,6 +306,7 @@ class AgentEngine:
     def scheduler(self):
         if self._scheduler is None:
             from core.scheduler import TaskScheduler
+
             self._scheduler = TaskScheduler(self)
         return self._scheduler
 
@@ -309,6 +314,7 @@ class AgentEngine:
     def notifications(self):
         if self._notifications is None:
             from core.notifications import NotificationManager
+
             notify_config = {
                 "enabled_channels": self.config.get("notify_channels", ["toast", "log"]),
                 "webhook_url": self.config.get("notify_webhook_url", ""),
@@ -321,6 +327,7 @@ class AgentEngine:
     def plugin_loader(self):
         if self._plugin_loader is None:
             from core.plugin_loader import PluginLoader
+
             self._plugin_loader = PluginLoader(
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
             )
@@ -336,6 +343,7 @@ class AgentEngine:
     def auth_manager(self):
         if self._auth_manager is None:
             from core.auth import AuthManager
+
             self._auth_manager = AuthManager()
         return self._auth_manager
 
@@ -343,6 +351,7 @@ class AgentEngine:
     def vault(self):
         if self._vault is None:
             from core.encryption import CredentialVault
+
             self._vault = CredentialVault()
         return self._vault
 
@@ -350,6 +359,7 @@ class AgentEngine:
     def audit_exporter(self):
         if self._audit_exporter is None:
             from core.audit_export import AuditExporter
+
             self._audit_exporter = AuditExporter()
         return self._audit_exporter
 
@@ -357,6 +367,7 @@ class AgentEngine:
     def agent_pool(self):
         if self._agent_pool is None:
             from core.agent_pool import AgentPool
+
             self._agent_pool = AgentPool(max_agents=self.config.get("max_agents", 3))
         return self._agent_pool
 
@@ -712,7 +723,9 @@ class AgentEngine:
             {
                 "step": e.get("step"),
                 "action": e.get("action"),
-                "params": {k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)},
+                "params": {
+                    k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
+                },
                 "ok": e.get("result", {}).get("ok", True),
                 "output_preview": str(e.get("result", {}).get("msg", ""))[:200],
                 "timestamp": e.get("timestamp"),
@@ -739,7 +752,9 @@ class AgentEngine:
                 {
                     "step": e.get("step"),
                     "action": e.get("action"),
-                    "params": {k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)},
+                    "params": {
+                        k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
+                    },
                     "error": e.get("result", {}).get("msg", "")[:300],
                     "timestamp": e.get("timestamp"),
                 }
@@ -765,7 +780,9 @@ class AgentEngine:
         if errors:
             lines.append("Errors:")
             for e in errors[:5]:
-                lines.append(f"  Step {e.get('step')}: {e.get('action')} — {e.get('result', {}).get('msg', '')[:150]}")
+                lines.append(
+                    f"  Step {e.get('step')}: {e.get('action')} — {e.get('result', {}).get('msg', '')[:150]}"
+                )
         report["text"] = "\n".join(lines)
         return report
 

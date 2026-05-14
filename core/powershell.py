@@ -265,7 +265,7 @@ class PowerShellRunner:
 
     # -- public API ---------------------------------------------------------
 
-    def run_script(self, script_path: str, args: dict = None) -> PSResult:
+    def run_script(self, script_path: str, args: dict | None = None) -> PSResult:
         """Execute a .ps1 script file with optional -Key Value args."""
         if not os.path.isfile(script_path):
             return PSResult(

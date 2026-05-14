@@ -22,13 +22,12 @@ import json
 import logging
 import os
 import threading
+import time
+from collections import defaultdict
+from contextlib import asynccontextmanager
 from typing import Any
 
-from contextlib import asynccontextmanager
-from collections import defaultdict
-import time
-
-from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -376,7 +375,9 @@ class SentinelServer:
         except Exception as exc:
             return {"scripts": [], "error": str(exc)}
 
-    async def _handle_script_run(self, req: ScriptRunRequest, authorization: str | None = Header(default=None)):
+    async def _handle_script_run(
+        self, req: ScriptRunRequest, authorization: str | None = Header(default=None)
+    ):
         """Run a script by path with optional parameters."""
         self._check_auth(authorization)
         if not self.engine:
@@ -392,7 +393,9 @@ class SentinelServer:
             "error": result.error,
         }
 
-    async def _handle_powershell(self, req: PowerShellRequest, authorization: str | None = Header(default=None)):
+    async def _handle_powershell(
+        self, req: PowerShellRequest, authorization: str | None = Header(default=None)
+    ):
         """Run a PowerShell command."""
         self._check_auth(authorization)
         try:
@@ -509,7 +512,9 @@ class SentinelServer:
         result = self.engine.scheduler.run_task_now(req.task_id)
         return result
 
-    async def _handle_notify(self, req: NotifyRequest, authorization: str | None = Header(default=None)):
+    async def _handle_notify(
+        self, req: NotifyRequest, authorization: str | None = Header(default=None)
+    ):
         """Send a notification."""
         self._check_auth(authorization)
         if not self.engine:
@@ -584,7 +589,9 @@ class SentinelServer:
             raise HTTPException(404, "Session not found")
         return status
 
-    async def _handle_auth_login(self, req: AuthLoginRequest, authorization: str | None = Header(default=None)):
+    async def _handle_auth_login(
+        self, req: AuthLoginRequest, authorization: str | None = Header(default=None)
+    ):
         """Authenticate and get a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")

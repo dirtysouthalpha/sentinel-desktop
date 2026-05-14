@@ -1101,7 +1101,9 @@ class SettingsWindow:
         Called from _build() so these controls are always present, not only
         when the user triggers a theme change.
         """
-        _t = lambda key, fb="": (self.app.current_theme.get(key, fb)) if self.app else fb
+
+        def _t(key: str, fb: str = "") -> str:
+            return (self.app.current_theme.get(key, fb)) if self.app else fb
 
         # Monitor selection (multi-screen)
         from core.screenshot import list_monitors

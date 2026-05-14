@@ -165,7 +165,7 @@ class WorkflowEngine:
 
         return bool(expr)
 
-    def run_workflow(self, path: str, variables: dict[str, Any] = None) -> WorkflowResult:
+    def run_workflow(self, path: str, variables: dict[str, Any] | None = None) -> WorkflowResult:
         """Execute a workflow from a JSON file."""
         start_time = time.time()
 
@@ -186,7 +186,7 @@ class WorkflowEngine:
         self._variables = {**wf_data.get("variables", {}), **(variables or {})}
         self._step_outputs = {}
 
-        steps = []
+        steps: list[WorkflowStep] = []
         for s in steps_data:
             steps.append(
                 WorkflowStep(
@@ -252,7 +252,7 @@ class WorkflowEngine:
                         step.over or "", self._variables, self._step_outputs
                     )
                     items = self._parse_list(over_ref)
-                    body = step_map.get(step.body_step)
+                    body = step_map.get(step.body_step)  # type: ignore[arg-type]
                     if body and items:
                         loop_success = True
                         for item in items:
@@ -379,9 +379,9 @@ class WorkflowEngine:
     def _exec_notify(self, step: WorkflowStep) -> dict[str, Any]:
         """Send a notification."""
         try:
-            from core.notifications import get_notification_manager
+            from core.notifications import NotificationManager
 
-            nm = get_notification_manager()
+            nm = NotificationManager()
             msg = self.resolve_variables(step.message, self._variables, self._step_outputs)
             nm.notify(title="Workflow", message=msg, level=step.level)
             return {"success": True, "type": "notify"}
@@ -413,7 +413,7 @@ class WorkflowEngine:
     @staticmethod
     def list_workflows(directory: str = "workflows") -> list[dict[str, Any]]:
         """List all workflow files in a directory."""
-        workflows = []
+        workflows: list[dict[str, Any]] = []
         if not os.path.isdir(directory):
             return workflows
         for fname in sorted(os.listdir(directory)):

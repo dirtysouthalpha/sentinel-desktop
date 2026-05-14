@@ -449,7 +449,11 @@ TOOLS: list[dict[str, Any]] = [
                     "from_y": {"type": "integer", "description": "Start Y pixel"},
                     "to_x": {"type": "integer", "description": "End X pixel"},
                     "to_y": {"type": "integer", "description": "End Y pixel"},
-                    "duration": {"type": "number", "default": 0.5, "description": "Drag duration in seconds"},
+                    "duration": {
+                        "type": "number",
+                        "default": 0.5,
+                        "description": "Drag duration in seconds",
+                    },
                     "button": {"type": "string", "enum": ["left", "right"], "default": "left"},
                 },
                 "required": ["from_x", "from_y", "to_x", "to_y"],
@@ -464,7 +468,11 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "timeout": {"type": "number", "default": 10, "description": "Max wait in seconds"},
+                    "timeout": {
+                        "type": "number",
+                        "default": 10,
+                        "description": "Max wait in seconds",
+                    },
                     "region": {
                         "type": "array",
                         "items": {"type": "integer"},
@@ -483,7 +491,11 @@ TOOLS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "timeout": {"type": "number", "default": 10},
-                    "stable_time": {"type": "number", "default": 1.5, "description": "Seconds of no change"},
+                    "stable_time": {
+                        "type": "number",
+                        "default": 1.5,
+                        "description": "Seconds of no change",
+                    },
                     "region": {
                         "type": "array",
                         "items": {"type": "integer"},

@@ -27,7 +27,7 @@ def list_processes(sort_by="cpu", limit=50):
     return procs[:limit]
 
 
-def start_process(path: str, args: list = None) -> int:
+def start_process(path: str, args: list | None = None) -> int:
     """Start a process. Returns PID or 0 on failure."""
     try:
         cmd = [path] + (args or [])
