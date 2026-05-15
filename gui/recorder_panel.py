@@ -347,7 +347,7 @@ class RecorderPanel(ctk.CTkFrame):
             try:
                 with open(p, encoding="utf-8") as fh:
                     sc = len(json.load(fh).get("steps", []))
-            except Exception as exc:
+            except (OSError, json.JSONDecodeError) as exc:
                 logger.debug("Failed to read workflow step count: %s", exc)
             ctk.CTkLabel(row, text="📜", font=("Segoe UI", 14), width=28).pack(
                 side="left", padx=(8, 4)

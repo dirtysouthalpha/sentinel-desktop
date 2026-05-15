@@ -638,7 +638,7 @@ class _StubVirtualDesktop:
                 "pid": proc.pid,
                 "output": f"Launched {path!r} on current desktop (pid={proc.pid}) [fallback]",
             }
-        except Exception as exc:
+        except (OSError, subprocess.SubprocessError, FileNotFoundError) as exc:
             return {
                 "success": False,
                 "pid": None,

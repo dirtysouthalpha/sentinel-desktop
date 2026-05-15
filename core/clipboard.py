@@ -7,19 +7,21 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_clipboard = None
+_clipboard: Any = None
+
+try:
+    import pyperclip  # type: ignore[import-untyped]
+except ImportError:
+    pyperclip = None  # type: ignore[assignment]
 
 
 def _get_clipboard() -> Any | None:
     global _clipboard
     if _clipboard is None:
-        try:
-            import pyperclip
-
-            _clipboard = pyperclip
-        except ImportError:
+        if pyperclip is None:
             logger.warning("pyperclip not installed — clipboard unavailable")
             return None
+        _clipboard = pyperclip
     return _clipboard
 
 

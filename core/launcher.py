@@ -146,7 +146,7 @@ def smart_open(name: str) -> dict[str, Any]:
             "focused": False,
             "command": launch_cmd,
         }
-    except Exception as exc:
+    except (OSError, subprocess.SubprocessError, FileNotFoundError) as exc:
         return {
             "success": False,
             "output": f"Failed to launch {name!r}: {exc}",

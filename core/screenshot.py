@@ -121,7 +121,7 @@ def list_monitors() -> list[dict[str, int | bool]]:
 
     try:
         w, h = pyautogui.size()
-    except Exception as exc:
+    except OSError as exc:
         logger.debug("pyautogui.size() failed: %s", exc)
         w, h = 0, 0
     return [
@@ -284,7 +284,7 @@ def base64_to_image(b64_str: str) -> Image.Image:
     try:
         data = base64.b64decode(b64_str)
         return Image.open(io.BytesIO(data))
-    except Exception as exc:
+    except (ValueError, OSError) as exc:
         logger.error("base64_to_image failed: %s", exc)
         raise ValueError(f"Invalid base64 image data: {exc}") from exc
 

@@ -572,5 +572,5 @@ class NotificationManager:
             server.sendmail(email_from, recipients, msg.as_string())
             server.quit()
             return True, f"email sent to {len(recipients)} recipient(s)"
-        except Exception as exc:
+        except (smtplib.SMTPException, OSError, ValueError) as exc:
             return False, f"SMTP error: {exc}"

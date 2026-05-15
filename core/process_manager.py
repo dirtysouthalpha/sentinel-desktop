@@ -34,7 +34,7 @@ def start_process(path: str, args: list[str] | None = None) -> int:
         cmd = [path] + (args or [])
         proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return proc.pid
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError, FileNotFoundError) as e:
         logger.error("start_process(%s) failed: %s", path, e)
         return 0
 
@@ -65,6 +65,6 @@ def kill_process(target: int | str) -> bool:
         return killed
     except psutil.NoSuchProcess:
         return False
-    except Exception as e:
+    except (psutil.AccessDenied, OSError) as e:
         logger.error("kill_process(%s) failed: %s", target, e)
         return False

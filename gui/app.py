@@ -418,7 +418,7 @@ class SentinelApp:
         self.cfg["recent_prompts"] = recent
         try:
             self.config.save(self.cfg)
-        except Exception as exc:
+        except (OSError, TypeError) as exc:
             logger.debug("Failed to save recent prompts: %s", exc)
 
     # ── Chat display ────────────────────────────────────────────────────

@@ -131,7 +131,7 @@ class Config:
                     data = json.load(fh)
                 self._data.update(data)
                 logger.info("Config loaded from %s", self._path)
-            except Exception as exc:
+            except (OSError, json.JSONDecodeError, ValueError) as exc:
                 logger.warning("Failed to load config (%s) — using defaults", exc)
         return self._data
 
@@ -144,7 +144,7 @@ class Config:
             with open(self._path, "w", encoding="utf-8") as fh:
                 json.dump(self._data, fh, indent=2, ensure_ascii=False)
             logger.info("Config saved to %s", self._path)
-        except Exception as exc:
+        except (OSError, TypeError) as exc:
             logger.error("Failed to save config: %s", exc)
 
     def reset(self) -> None:

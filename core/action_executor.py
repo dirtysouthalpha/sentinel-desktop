@@ -7,8 +7,11 @@ the appropriate desktop, file, window, or process functions.
 
 import asyncio
 import logging
+import subprocess
 from collections.abc import Callable
 from typing import Any
+
+import psutil
 
 from core import clipboard as clip
 from core import desktop as desktop_mod
@@ -984,7 +987,7 @@ class ActionExecutor:
         try:
             ok = file_ops.write_file(path, content)
             return {"success": ok, "output": f"File {'written' if ok else 'write failed'}"}
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             return {
                 "success": False,
                 "output": f"write_file error: {exc}",
@@ -997,7 +1000,7 @@ class ActionExecutor:
             if entries is not None:
                 return {"success": True, "output": entries}
             return {"success": False, "output": "Directory not found", "error": "dir_not_found"}
-        except Exception as exc:
+        except OSError as exc:
             return {
                 "success": False,
                 "output": f"list_directory error: {exc}",
@@ -1054,7 +1057,7 @@ class ActionExecutor:
         try:
             pid = pm.start_process(path, args)
             return {"success": pid is not None, "output": f"pid={pid}"}
-        except Exception as exc:
+        except (OSError, subprocess.SubprocessError) as exc:
             return {
                 "success": False,
                 "output": f"start_process error: {exc}",
@@ -1071,7 +1074,7 @@ class ActionExecutor:
                 "success": killed,
                 "output": f"Process {target} {'killed' if killed else 'not found'}",
             }
-        except Exception as exc:
+        except (OSError, psutil.NoSuchProcess, psutil.AccessDenied) as exc:
             return {
                 "success": False,
                 "output": f"kill_process error: {exc}",
