@@ -7,6 +7,7 @@ inside the main SentinelApp window.
 """
 
 import json
+import logging
 import os
 import threading
 import tkinter as tk
@@ -14,6 +15,8 @@ from tkinter import filedialog, messagebox
 from typing import Any
 
 import customtkinter as ctk
+
+logger = logging.getLogger(__name__)
 
 SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
 
@@ -340,8 +343,8 @@ class RecorderPanel(ctk.CTkFrame):
             try:
                 with open(p, encoding="utf-8") as fh:
                     sc = len(json.load(fh).get("steps", []))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to read workflow step count: %s", exc)
             ctk.CTkLabel(row, text="📜", font=("Segoe UI", 14), width=28).pack(
                 side="left", padx=(8, 4)
             )

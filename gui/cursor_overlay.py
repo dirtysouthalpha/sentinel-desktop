@@ -74,8 +74,8 @@ class CursorOverlay:
         if self._root:
             try:
                 self._root.after(0, self._root.destroy)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Cursor overlay destroy failed: %s", exc)
 
     def show_action(self, action: dict[str, Any]):
         """
@@ -103,8 +103,8 @@ class CursorOverlay:
         # Make click-through on Windows
         try:
             self._root.wm_attributes("-transparentcolor", "white")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Transparent color attribute not supported: %s", exc)
 
         # Create canvas covering the full screen
         screen_w = self._root.winfo_screenwidth()
@@ -154,8 +154,8 @@ class CursorOverlay:
 
         try:
             self._root.mainloop()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Cursor overlay mainloop exited: %s", exc)
         finally:
             self._running = False
 
@@ -174,8 +174,8 @@ class CursorOverlay:
                 GWL_EXSTYLE,
                 ex | WS_EX_TRANSPARENT | WS_EX_LAYERED,
             )
-        except Exception:
-            pass  # Non-Windows — overlay won't be click-through but still functional
+        except Exception as exc:
+            logger.debug("Click-through setup failed (non-Windows?): %s", exc)
 
     def _process_queue(self):
         """Process queued actions, animating each one."""

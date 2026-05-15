@@ -66,8 +66,8 @@ class ActionOverlay:
             if self._current is not None:
                 try:
                     self._current.destroy()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Overlay destroy failed: %s", exc)
                 self._current = None
 
 
@@ -90,8 +90,8 @@ class _Indicator:
         try:
             self.win.attributes("-alpha", 0.85)
             self.win.attributes("-transparentcolor", "#010203")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Overlay transparency attributes not supported: %s", exc)
         # Position centered on (x, y).
         gx = max(0, x - w // 2)
         gy = max(0, y - h // 2)
@@ -149,8 +149,8 @@ class _Indicator:
     def destroy(self) -> None:
         try:
             self.win.destroy()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Indicator destroy failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

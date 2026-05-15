@@ -122,6 +122,6 @@ class SentinelTray:
         if self._icon is not None:
             try:
                 self._icon.stop()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Tray stop failed: %s", exc)
             self._icon = None
