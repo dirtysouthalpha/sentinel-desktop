@@ -278,7 +278,8 @@ class CredentialVault:
                 return None
 
             try:
-                result = bytes((ctypes.c_byte * blob_out.cbData).from_address(blob_out.pbData))
+                length = int(blob_out.cbData)
+                result = ctypes.string_at(blob_out.pbData, length)
             finally:
                 # DPAPI allocates memory that we must free via LocalFree
                 ctypes.windll.kernel32.LocalFree(blob_out.pbData)  # type: ignore[attr-defined]
@@ -319,7 +320,8 @@ class CredentialVault:
                 return None
 
             try:
-                result = bytes((ctypes.c_byte * blob_out.cbData).from_address(blob_out.pbData))
+                length = int(blob_out.cbData)
+                result = ctypes.string_at(blob_out.pbData, length)
             finally:
                 ctypes.windll.kernel32.LocalFree(blob_out.pbData)  # type: ignore[attr-defined]
 
