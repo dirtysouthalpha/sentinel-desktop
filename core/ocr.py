@@ -141,7 +141,7 @@ def read_focused_window_text() -> str:
     return text
 
 
-def read_focused_window_text_with_title():
+def read_focused_window_text_with_title() -> tuple[str, str]:
     """Return (text, title) of the OCR'd window so callers can surface what
     window was actually read. Useful for debugging multi-monitor confusion."""
     if not _have_tesseract():

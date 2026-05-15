@@ -31,7 +31,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 
-def resolve_monitor(monitor) -> int | None:
+def resolve_monitor(monitor: int | str | None) -> int | None:
     """Resolve a config ``monitor`` value (possibly ``"auto"``) to a real index.
 
     ``"auto"`` returns the index of the monitor containing the foreground
@@ -66,7 +66,7 @@ def resolve_monitor(monitor) -> int | None:
         return 1
 
 
-def get_capture_offset(monitor=None) -> tuple[int, int]:
+def get_capture_offset(monitor: int | str | None = None) -> tuple[int, int]:
     """Return the (x, y) absolute-screen offset of a captured image's origin.
 
     Accepts the same values as ``monitor`` config: int index, ``"auto"``,
@@ -140,7 +140,7 @@ def list_monitors() -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def capture_screen(monitor=None) -> Image.Image:
+def capture_screen(monitor: int | str | None = None) -> Image.Image:
     """Capture the screen → PIL Image.
 
     Args:

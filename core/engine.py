@@ -205,7 +205,7 @@ class AgentEngine:
         config: dict | None = None,
         approval_callback: Callable[[dict], bool] | None = None,
         pre_action_callback: Callable[[dict], None] | None = None,
-    ):
+    ) -> None:
         self.config = config or {}
         self.llm = LLMClient()
         # approval_callback(action_dict) -> bool. When set AND
@@ -261,7 +261,7 @@ class AgentEngine:
     # ── Lazy subsystem accessors ─────────────────────────────────────
 
     @property
-    def recorder(self):
+    def recorder(self) -> "ActionRecorder":
         if self._recorder is None:
             from core.recorder import ActionRecorder
 
@@ -269,7 +269,7 @@ class AgentEngine:
         return self._recorder
 
     @property
-    def script_engine(self):
+    def script_engine(self) -> "ScriptEngine":
         if self._script_engine is None:
             from core.script_engine import ScriptEngine
 
@@ -277,7 +277,7 @@ class AgentEngine:
         return self._script_engine
 
     @property
-    def powershell(self):
+    def powershell(self) -> "PowerShellRunner":
         if self._powershell is None:
             from core.powershell import PowerShellRunner
 
@@ -285,7 +285,7 @@ class AgentEngine:
         return self._powershell
 
     @property
-    def workflow_engine(self):
+    def workflow_engine(self) -> "WorkflowEngine":
         if self._workflow_engine is None:
             from core.workflow import WorkflowEngine
 
@@ -293,7 +293,7 @@ class AgentEngine:
         return self._workflow_engine
 
     @property
-    def scheduler(self):
+    def scheduler(self) -> "TaskScheduler":
         if self._scheduler is None:
             from core.scheduler import TaskScheduler
 
@@ -301,7 +301,7 @@ class AgentEngine:
         return self._scheduler
 
     @property
-    def notifications(self):
+    def notifications(self) -> "NotificationManager":
         if self._notifications is None:
             from core.notifications import NotificationManager
 
@@ -314,7 +314,7 @@ class AgentEngine:
         return self._notifications
 
     @property
-    def plugin_loader(self):
+    def plugin_loader(self) -> "PluginLoader":
         if self._plugin_loader is None:
             from core.plugin_loader import PluginLoader
 
@@ -330,7 +330,7 @@ class AgentEngine:
         return self._plugin_loader
 
     @property
-    def auth_manager(self):
+    def auth_manager(self) -> "AuthManager":
         if self._auth_manager is None:
             from core.auth import AuthManager
 
@@ -338,7 +338,7 @@ class AgentEngine:
         return self._auth_manager
 
     @property
-    def vault(self):
+    def vault(self) -> "CredentialVault":
         if self._vault is None:
             from core.encryption import CredentialVault
 
@@ -346,7 +346,7 @@ class AgentEngine:
         return self._vault
 
     @property
-    def audit_exporter(self):
+    def audit_exporter(self) -> "AuditExporter":
         if self._audit_exporter is None:
             from core.audit_export import AuditExporter
 
@@ -354,7 +354,7 @@ class AgentEngine:
         return self._audit_exporter
 
     @property
-    def agent_pool(self):
+    def agent_pool(self) -> "AgentPool":
         if self._agent_pool is None:
             from core.agent_pool import AgentPool
 
@@ -776,7 +776,7 @@ class AgentEngine:
         report["text"] = "\n".join(lines)
         return report
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the agent loop."""
         self.running = False
         logger.info("Agent stop requested")
@@ -840,7 +840,9 @@ class AgentEngine:
         except Exception:
             return ""
 
-    def _add_vision_message(self, messages: list, screenshot_b64: str, text: str):
+    def _add_vision_message(
+        self, messages: list[dict[str, Any]], screenshot_b64: str, text: str
+    ) -> None:
         """Add a vision message (screenshot + text) to the conversation.
 
         capture_to_base64() encodes PNG by default; the media type below must
@@ -961,7 +963,7 @@ class AgentEngine:
         return None
 
     @staticmethod
-    def _action_from_tool_call(tool_calls) -> dict | None:
+    def _action_from_tool_call(tool_calls: list[Any] | None) -> dict | None:
         """Convert the first tool_call into an action dict for the executor.
 
         Defensive: tool_calls coming from real providers occasionally arrive
@@ -994,7 +996,7 @@ class AgentEngine:
             args = {k: v for k, v in args.items() if k != "action"}
         return {"action": str(name), **(args if isinstance(args, dict) else {})}
 
-    def _log_step(self, action: dict, result: dict):
+    def _log_step(self, action: dict[str, Any], result: dict[str, Any]) -> None:
         self.forensic_log.append(
             {
                 "step": self.step,
@@ -1005,7 +1007,7 @@ class AgentEngine:
             }
         )
 
-    def _log_step_result(self, step: int, result: dict):
+    def _log_step_result(self, step: int, result: dict[str, Any]) -> None:
         for entry in reversed(self.forensic_log):
             if entry.get("step") == step:
                 entry["result"] = result

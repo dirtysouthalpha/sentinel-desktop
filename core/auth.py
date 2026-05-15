@@ -104,7 +104,7 @@ class User:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> User:
+    def from_dict(cls: type["User"], data: dict[str, Any]) -> User:
         """Deserialise from a dict (e.g. loaded from JSON)."""
         return cls(
             username=data["username"],

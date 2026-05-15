@@ -81,7 +81,7 @@ class Script:
             raise
 
     @classmethod
-    def load(cls, path: str) -> "Script":
+    def load(cls: type["Script"], path: str) -> "Script":
         """Load a Script from a JSON file on disk."""
         try:
             with open(path, encoding="utf-8") as fh:
