@@ -87,9 +87,9 @@ def _substitute_step(step_params: dict[str, Any], params: dict[str, Any]) -> dic
 # ---------------------------------------------------------------------------
 
 
-def _extract_required_params(script: dict) -> set:
+def _extract_required_params(script: dict[str, Any]) -> set[str]:
     """Scan all steps and return the set of param names inside ``{{…}}``."""
-    required: set = set()
+    required: set[str] = set()
     for step in script.get("steps", []):
         for value in step.get("params", {}).values():
             if isinstance(value, str):
@@ -98,7 +98,9 @@ def _extract_required_params(script: dict) -> set:
     return required
 
 
-def _validate_script(script: dict, params: dict[str, Any] | None, executor: Any) -> list[str]:
+def _validate_script(
+    script: dict[str, Any], params: dict[str, Any] | None, executor: Any
+) -> list[str]:
     """Return a list of validation error strings (empty == valid)."""
     errors: list[str] = []
 
@@ -202,7 +204,7 @@ class ScriptEngine:
 
     def run_script_from_dict(
         self,
-        script: dict,
+        script: dict[str, Any],
         params: dict[str, Any] | None = None,
     ) -> ScriptResult:
         """Replay a script provided as a *dict*."""
@@ -221,7 +223,7 @@ class ScriptEngine:
                 duration_ms=duration_ms,
             )
 
-        steps: list[dict] = script["steps"]
+        steps: list[dict[str, Any]] = script["steps"]
         total = len(steps)
         results: list[dict[str, Any]] = []
         steps_completed = 0
@@ -286,7 +288,7 @@ class ScriptEngine:
 
     def dry_run(
         self,
-        script: dict,
+        script: dict[str, Any],
         params: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Validate *script* without executing and return the step list.

@@ -201,7 +201,7 @@ class AuditExporter:
     # Text (ASCII tables)
     # ------------------------------------------------------------------
 
-    def export_text(self, log: list[dict], metadata: dict) -> str:
+    def export_text(self, log: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
         """Export audit data as a plain-text report with ASCII tables."""
         masked = _mask_log(log)
         summary = _compute_summary(masked, metadata)
@@ -283,7 +283,7 @@ class AuditExporter:
     # HTML (dark sentinel theme)
     # ------------------------------------------------------------------
 
-    def export_html(self, log: list[dict], metadata: dict) -> str:
+    def export_html(self, log: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
         """Export audit data as a styled HTML report (dark sentinel theme)."""
         masked = _mask_log(log)
         summary = _compute_summary(masked, metadata)
@@ -404,7 +404,7 @@ class AuditExporter:
         )
 
     @staticmethod
-    def _html_metadata_section(metadata: dict) -> str:
+    def _html_metadata_section(metadata: dict[str, Any]) -> str:
         gen_ts = _now_iso()
         cards = [
             ("Goal", metadata.get("goal", "N/A")),
@@ -427,7 +427,7 @@ class AuditExporter:
         )
 
     @staticmethod
-    def _html_timeline(masked_log: list[dict]) -> str:
+    def _html_timeline(masked_log: list[dict[str, Any]]) -> str:
         rows = []
         for entry in masked_log:
             result_raw = str(entry.get("result", ""))
@@ -461,7 +461,7 @@ class AuditExporter:
         )
 
     @staticmethod
-    def _html_summary(summary: dict) -> str:
+    def _html_summary(summary: dict[str, Any]) -> str:
         cards = [
             (str(summary["total_steps"]), "Total Steps"),
             (str(summary["success_count"]), "Successful"),
@@ -530,8 +530,8 @@ def _esc(text: str) -> str:
 
 
 def export_audit(
-    log: list[dict],
-    metadata: dict,
+    log: list[dict[str, Any]],
+    metadata: dict[str, Any],
     fmt: str = "html",
     output_dir: str = "reports",
 ) -> str:

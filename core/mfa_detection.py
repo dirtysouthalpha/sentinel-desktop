@@ -210,7 +210,7 @@ def _get_window_titles() -> list[str]:
     try:
         import win32gui  # type: ignore
 
-        def _enum(hwnd: int, _) -> None:
+        def _enum(hwnd: int, _lparam: int) -> None:
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
                 if title:

@@ -31,7 +31,7 @@ class ApprovalDecision(Enum):
 class ApprovalRequest:
     """Represents a pending action awaiting user approval."""
 
-    def __init__(self, action: dict[str, Any], step_num: int):
+    def __init__(self, action: dict[str, Any], step_num: int) -> None:
         self.action = action
         self.step_num = step_num
         self.decision: ApprovalDecision | None = None
@@ -68,13 +68,13 @@ class ApprovalGate:
             executor.execute(action)
     """
 
-    def __init__(self, enabled: bool = False):
+    def __init__(self, enabled: bool = False) -> None:
         self.enabled = enabled
         self._callback: Callable | None = None
         self._current_request: ApprovalRequest | None = None
         self._stats = {"approved": 0, "skipped": 0, "modified": 0, "aborted": 0}
 
-    def set_callback(self, callback: Callable[[ApprovalRequest], None]):
+    def set_callback(self, callback: Callable[[ApprovalRequest], None]) -> None:
         """Set a callback to notify the UI when a request is pending."""
         self._callback = callback
 

@@ -97,7 +97,7 @@ _CONFIG_PATH = os.path.join(_CONFIG_DIR, "config.json")
 class Config:
     """Thin wrapper around a settings dict with save/load."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: dict[str, Any] = {**DEFAULTS}
         self._path = _CONFIG_PATH
 
