@@ -15,6 +15,7 @@ import platform
 import subprocess
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class PSResult:
     exit_code: int
     stdout: str
     stderr: str
-    objects: list = field(default_factory=list)
+    objects: list[dict[str, Any]] = field(default_factory=list)
 
     def __str__(self) -> str:
         status = "OK" if self.success else "FAIL"
@@ -106,9 +107,9 @@ class PowerShellRunner:
         timeout: int = 300,
         run_as_admin: bool = False,
         working_dir: str | None = None,
-        env_vars: dict | None = None,
+        env_vars: dict[str, str] | None = None,
         allow_raw: bool = True,
-    ):
+    ) -> None:
         """Configure a PowerShell runner.
 
         Args:
@@ -152,16 +153,16 @@ class PowerShellRunner:
                 continue
         return self.POWERSHELL_EXE
 
-    def _build_env(self) -> dict:
+    def _build_env(self) -> dict[str, str]:
         env = os.environ.copy()
         env.update({k: str(v) for k, v in self.env_vars.items()})
         return env
 
-    def _base_args(self) -> list:
+    def _base_args(self) -> list[str]:
         return [self._ps_exe, "-NoProfile", "-NonInteractive", "-OutputFormat", "JSON"]
 
     @staticmethod
-    def _parse_json_output(stdout: str) -> list:
+    def _parse_json_output(stdout: str) -> list[dict[str, Any]]:
         stdout = stdout.strip()
         if not stdout:
             return []
@@ -317,7 +318,7 @@ class PowerShellRunner:
 
     # -- built-in helpers ---------------------------------------------------
 
-    def get_event_errors(self, hours: int = 1) -> list:
+    def get_event_errors(self, hours: int = 1) -> list[dict[str, Any]]:
         """Scan System + Application event logs for errors in the last *hours*."""
         cmd = (
             "Get-WinEvent -FilterHashtable "
@@ -329,7 +330,7 @@ class PowerShellRunner:
         result = self._run(cmd)
         return result.objects if result.success else []
 
-    def get_installed_software(self) -> list:
+    def get_installed_software(self) -> list[dict[str, Any]]:
         """List installed programs from the registry (32- and 64-bit)."""
         cmd = (
             "$paths=@("
@@ -343,7 +344,7 @@ class PowerShellRunner:
         result = self._run(cmd)
         return result.objects if result.success else []
 
-    def get_service_status(self, name: str) -> dict:
+    def get_service_status(self, name: str) -> dict[str, Any]:
         """Check the status of a Windows service."""
         try:
             ps_name = _ps_escape_single_quoted(name)
@@ -370,7 +371,7 @@ class PowerShellRunner:
             "error": result.stderr,
         }
 
-    def restart_service(self, name: str) -> dict:
+    def restart_service(self, name: str) -> dict[str, Any]:
         """Restart a Windows service safely (stop then start)."""
         try:
             ps_name = _ps_escape_single_quoted(name)
@@ -404,7 +405,7 @@ class PowerShellRunner:
             "error": result.stderr,
         }
 
-    def get_disk_usage(self) -> list:
+    def get_disk_usage(self) -> list[dict[str, Any]]:
         """Disk space info for all local drives."""
         cmd = (
             "Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' "
@@ -417,7 +418,7 @@ class PowerShellRunner:
         result = self._run(cmd)
         return result.objects if result.success else []
 
-    def get_network_config(self) -> list:
+    def get_network_config(self) -> list[dict[str, Any]]:
         """IP / DNS / adapter info for enabled adapters."""
         cmd = (
             "Get-CimInstance Win32_NetworkAdapterConfiguration "
@@ -428,7 +429,7 @@ class PowerShellRunner:
         result = self._run(cmd)
         return result.objects if result.success else []
 
-    def test_connection(self, host: str) -> dict:
+    def test_connection(self, host: str) -> dict[str, Any]:
         """Ping and traceroute to *host*."""
         try:
             ps_host = _ps_escape_single_quoted(host)

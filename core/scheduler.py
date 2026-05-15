@@ -47,7 +47,7 @@ PRESETS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def _parse_cron_field(field: str, value: int, ranges: tuple) -> bool:
+def _parse_cron_field(field: str, value: int, ranges: tuple[int, int]) -> bool:
     """Return True if *value* matches a single cron *field*.
 
     Supports ``*``, ``*/N``, ``N``, ``N-M``, and ``N,M`` syntax.

@@ -68,17 +68,17 @@ class WorkflowStep:
 class WorkflowEngine:
     """Execute multi-step workflows with conditions, loops, and variables."""
 
-    def __init__(self, action_executor=None, script_engine=None):
+    def __init__(self, action_executor: Any = None, script_engine: Any = None) -> None:
         self.executor = action_executor
         self.script_engine = script_engine
         self._variables: dict[str, Any] = {}
         self._step_outputs: dict[str, Any] = {}
-        self._callbacks: dict[str, Callable] = {}
+        self._callbacks: dict[str, Callable[..., Any]] = {}
 
-    def set_callback(self, event: str, fn: Callable):
+    def set_callback(self, event: str, fn: Callable[..., Any]) -> None:
         self._callbacks[event] = fn
 
-    def _fire(self, event: str, *args, **kwargs):
+    def _fire(self, event: str, *args: Any, **kwargs: Any) -> None:
         cb = self._callbacks.get(event)
         if cb:
             try:
@@ -87,7 +87,9 @@ class WorkflowEngine:
                 logger.warning("Callback %s error: %s", event, exc)
 
     @staticmethod
-    def resolve_variables(text: str, variables: dict, step_outputs: dict) -> str:
+    def resolve_variables(
+        text: str, variables: dict[str, Any], step_outputs: dict[str, Any]
+    ) -> str:
         """Replace {{var}} and {{step.sN.output.field}} references."""
         if not isinstance(text, str):
             return text
@@ -390,7 +392,7 @@ class WorkflowEngine:
             return {"success": True, "type": "notify", "note": "notifications module not available"}
 
     @staticmethod
-    def _parse_list(value) -> list:
+    def _parse_list(value: Any) -> list[Any]:
         """Parse a value into a list."""
         if isinstance(value, list):
             return value

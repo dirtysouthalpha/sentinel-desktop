@@ -90,7 +90,7 @@ def get_capture_offset(monitor: int | str | None = None) -> tuple[int, int]:
     return (0, 0)
 
 
-def list_monitors() -> list[dict]:
+def list_monitors() -> list[dict[str, int | bool]]:
     """Return a list of monitors as ``{index, x, y, width, height, is_primary}``.
 
     When mss is available we use its monitor table (index 0 is the union of
@@ -191,7 +191,7 @@ def capture_focused_window() -> Image.Image | None:
     return capture_region(x, y, w, h)
 
 
-def capture_focused_window_with_title() -> tuple | None:
+def capture_focused_window_with_title() -> tuple[Image.Image, str] | None:
     """Like capture_focused_window but also returns the title we picked.
 
     Returns (PIL.Image, title) or None.

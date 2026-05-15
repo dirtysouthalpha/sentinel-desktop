@@ -1067,7 +1067,7 @@ def _find_balanced_json_with_key(text: str, key: str) -> dict | None:
     return None
 
 
-def _clean_messages_for_api(messages: list) -> list:
+def _clean_messages_for_api(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return a copy of *messages* with internal ``_sentinel_*`` keys stripped.
 
     The engine attaches private markers like ``_sentinel_has_image`` so it can

@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import socket
+from typing import Any
 
 import psutil
 
@@ -23,7 +24,7 @@ def brief_system_info() -> str:
     )
 
 
-def system_info() -> dict:
+def system_info() -> dict[str, Any]:
     """Return full system info as a dict."""
     mem = psutil.virtual_memory()
     # On Windows, "/" is not a valid drive root — use the system drive instead.

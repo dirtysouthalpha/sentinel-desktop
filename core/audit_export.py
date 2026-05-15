@@ -34,7 +34,7 @@ def _mask_value(value: Any) -> Any:
     return value
 
 
-def _mask_log(log: list[dict]) -> list[dict]:
+def _mask_log(log: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return a copy of *log* with sensitive fields masked."""
     masked = []
     for entry in log:
@@ -52,7 +52,7 @@ def _mask_log(log: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _compute_summary(masked_log: list[dict], metadata: dict) -> dict:
+def _compute_summary(masked_log: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
     """Compute success rate, per-action counts, and total elapsed time."""
     total = len(masked_log)
     success_count = sum(

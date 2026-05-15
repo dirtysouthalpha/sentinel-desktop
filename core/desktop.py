@@ -103,7 +103,9 @@ class DesktopController:
             time.sleep(interval)
         return None
 
-    def click_image(self, template_path, confidence=0.8, button="left"):
+    def click_image(
+        self, template_path: str, confidence: float = 0.8, button: str = "left"
+    ) -> bool:
         pos = self.find_on_screen(template_path, confidence)
         if pos:
             self.click(pos[0], pos[1], button=button)
@@ -125,29 +127,29 @@ def _get_controller() -> DesktopController:
     return _ctrl
 
 
-def screenshot():
+def screenshot() -> Image.Image:
     return _get_controller().screenshot()
 
 
-def screenshot_base64():
+def screenshot_base64() -> str:
     return _get_controller().screenshot_base64()
 
 
-def click(x, y, button="left", clicks=1):
+def click(x: int, y: int, button: str = "left", clicks: int = 1) -> None:
     _get_controller().click(x, y, button=button, clicks=clicks)
 
 
-def type_text(text, interval=0.02):
+def type_text(text: str, interval: float = 0.02) -> None:
     _get_controller().type_text(text, interval=interval)
 
 
-def press_key(key):
+def press_key(key: str) -> None:
     _get_controller().press_key(key)
 
 
-def hotkey(*keys):
+def hotkey(*keys: str) -> None:
     _get_controller().hotkey(*keys)
 
 
-def scroll(amount, x=None, y=None):
+def scroll(amount: int, x: int | None = None, y: int | None = None) -> None:
     _get_controller().scroll(amount, x=x, y=y)

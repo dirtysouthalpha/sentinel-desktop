@@ -33,6 +33,7 @@ import os
 import platform
 import subprocess
 import threading
+from types import TracebackType
 from typing import Any, NoReturn
 
 from PIL import Image
@@ -149,7 +150,7 @@ def _get_current_desktop_name() -> str:
 class _Win32VirtualDesktop:
     """Internal implementation backed by real Win32 desktop objects."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self._name = name
         self._handle: int | None = None
         self._default_desktop_name: str = _get_current_desktop_name()
@@ -584,7 +585,12 @@ class _Win32VirtualDesktop:
         self.create()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         # Best-effort: switch back before closing.
         self.switch_back()
         self.close()
@@ -598,7 +604,7 @@ class _Win32VirtualDesktop:
 class _StubVirtualDesktop:
     """Fallback used when the platform is not Windows or Win32 APIs fail."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self._name = name
         logger.warning(
             "VirtualDesktop(%r): not running on Windows — operating on "
@@ -663,7 +669,12 @@ class _StubVirtualDesktop:
     def __enter__(self) -> _StubVirtualDesktop:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         pass
 
 
@@ -712,7 +723,7 @@ class VirtualDesktop:
             vd.close()
     """
 
-    def __init__(self, name: str = "SentinelDesktop"):
+    def __init__(self, name: str = "SentinelDesktop") -> None:
         self._name = name
         self._impl: Any | None = None
 
@@ -798,7 +809,12 @@ class VirtualDesktop:
         self.create()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.switch_back()
         self.close()
 

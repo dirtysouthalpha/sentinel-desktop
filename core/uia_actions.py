@@ -115,7 +115,7 @@ class UIAActionPipeline:
     def _postmessage_ok() -> bool:
         return _probe_postmessage()
 
-    def _get_physical_desktop(self):
+    def _get_physical_desktop(self) -> Any:
         """Lazy getter for the core.desktop DesktopController."""
         from core.desktop import _get_controller
 
@@ -545,7 +545,7 @@ class UIAActionPipeline:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _control_to_dict(ctrl) -> dict[str, Any]:
+    def _control_to_dict(ctrl: Any) -> dict[str, Any]:
         """Convert a uiautomation Control to an info dict."""
         try:
             rect = ctrl.BoundingRectangle
@@ -698,7 +698,7 @@ class UIAActionPipeline:
             return False
 
     @staticmethod
-    def _find_child_by_name(parent, name: str):
+    def _find_child_by_name(parent: Any, name: str) -> Any | None:
         """Find the first direct child whose Name matches *name*."""
         needle = name.lower()
         try:

@@ -103,7 +103,7 @@ class CheckpointManager:
     All public methods are thread-safe.
     """
 
-    def __init__(self, checkpoint_dir: str | None = None):
+    def __init__(self, checkpoint_dir: str | None = None) -> None:
         self._lock = threading.Lock()
         self._dir = checkpoint_dir or _CHECKPOINT_DIR
         os.makedirs(self._dir, exist_ok=True)
@@ -121,7 +121,7 @@ class CheckpointManager:
         config: dict[str, Any],
         status: str = "running",
         messages: list[dict[str, Any]] | None = None,
-    ) -> str:
+    ) -> str | None:
         """Persist a checkpoint to disk.
 
         Args:

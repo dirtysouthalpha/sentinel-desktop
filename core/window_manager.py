@@ -2,6 +2,7 @@
 
 import logging
 import platform
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,12 @@ else:
     HAS_PGW = False
 
 
-def list_windows() -> list:
+def list_windows() -> list[dict[str, Any]]:
     """List all visible windows with title, position, size, focused state."""
     windows = []
     if HAS_WIN32:
 
-        def _enum(hwnd, _):
+        def _enum(hwnd: int, _: Any) -> None:
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
                 if title:
@@ -129,7 +130,7 @@ def _is_self_window(title: str) -> bool:
     return any(h in low for h in SELF_WINDOW_HINTS)
 
 
-def get_focused_window_rect():
+def get_focused_window_rect() -> tuple[int, int, int, int] | None:
     """Return (x, y, width, height) of the foreground window, or None."""
     if HAS_WIN32:
         try:
@@ -155,7 +156,7 @@ def get_focused_window_rect():
     return None
 
 
-def get_target_window_rect():
+def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
     """Return (x, y, w, h, title) for the window the agent likely wants to
     inspect — the foreground window, unless that's Sentinel Desktop itself
     (which often happens between actions when focus snaps back to the GUI).
@@ -201,7 +202,7 @@ def get_target_window_rect():
     return None
 
 
-def get_window_rect(title: str):
+def get_window_rect(title: str) -> tuple[int, int, int, int] | None:
     """Return (x, y, w, h) for a window whose title contains *title*, or None.
 
     Reuses ``list_windows`` so we use the same enumeration path as everything
@@ -233,7 +234,7 @@ def get_window_rect(title: str):
     return None
 
 
-def _looks_minimized(rect) -> bool:
+def _looks_minimized(rect: tuple[int, int, int, int] | None) -> bool:
     """Windows parks minimized windows at (-32000, -32000) — detect that.
 
     Also catches degenerate / zero-sized rectangles.
@@ -248,7 +249,7 @@ def _looks_minimized(rect) -> bool:
     return False
 
 
-def restore_window_hwnd(hwnd) -> bool:
+def restore_window_hwnd(hwnd: int) -> bool:
     """Restore a window by hwnd if it's minimized. Best-effort, never raises."""
     if not HAS_WIN32 or not hwnd:
         return False
@@ -283,7 +284,7 @@ def close_window(title: str) -> bool:
     if HAS_WIN32:
         found = False
 
-        def _find(hwnd, _):
+        def _find(hwnd: int, _: Any) -> None:
             nonlocal found
             if found:
                 return  # Already closed one; stop iterating.

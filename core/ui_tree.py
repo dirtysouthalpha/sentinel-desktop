@@ -198,7 +198,7 @@ def set_text(
 # ---------------------------------------------------------------------------
 
 
-def _find_window(window_title: str | None):
+def _find_window(window_title: str | None) -> Any | None:
     """Return the root control for either the named window or the foreground."""
     if _auto is None:
         return None
@@ -216,7 +216,9 @@ def _find_window(window_title: str | None):
         return None
 
 
-def _walk(node, out: list[dict[str, Any]], depth: int, max_depth: int, max_results: int) -> None:
+def _walk(
+    node: Any, out: list[dict[str, Any]], depth: int, max_depth: int, max_results: int
+) -> None:
     if len(out) >= max_results or depth > max_depth:
         return
     try:
@@ -250,7 +252,7 @@ def _find_control(
     automation_id: str | None = None,
     control_type: str | None = None,
     window_title: str | None = None,
-):
+) -> Any | None:
     root = _find_window(window_title)
     if root is None:
         return None
@@ -261,7 +263,7 @@ def _find_control(
     best = None
     best_score = -1
 
-    def _matches(node) -> int:
+    def _matches(node: Any) -> int:
         score = 0
         n = (node.Name or "").lower()
         a = (getattr(node, "AutomationId", "") or "").lower()
