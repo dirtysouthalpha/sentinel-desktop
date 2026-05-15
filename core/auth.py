@@ -29,7 +29,7 @@ SALT_LENGTH: int = 32
 API_KEY_LENGTH: int = 32  # secrets.token_hex(32) → 64-char hex string
 SESSION_EXPIRY_SECONDS: int = 86_400  # 24 hours
 DEFAULT_ADMIN_USERNAME: str = "admin"
-DEFAULT_ADMIN_PASSWORD: str = "[REDACTED]"  # noqa: S105  (rotation required on first login)
+DEFAULT_ADMIN_PASSWORD: str = "[REDACTED]"
 
 
 # ---------------------------------------------------------------------------

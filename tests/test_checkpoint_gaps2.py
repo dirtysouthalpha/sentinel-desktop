@@ -93,7 +93,7 @@ class TestDeleteWithTraversal:
 
 
 # Helper for patching json.dump to raise
-from unittest.mock import patch as _patch  # noqa: E402
+from unittest.mock import patch as _patch
 
 
 class _patch_json_dump_raises:

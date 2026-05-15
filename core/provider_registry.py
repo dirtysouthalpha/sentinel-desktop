@@ -449,7 +449,7 @@ def fetch_models(
             exc,
         )
         return []
-    except Exception as exc:  # noqa: BLE001 — defensive
+    except Exception as exc:
         logger.warning("fetch_models(%s): %s", provider_key, exc)
         return []
 

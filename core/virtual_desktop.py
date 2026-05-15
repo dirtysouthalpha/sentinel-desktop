@@ -440,8 +440,7 @@ class _Win32VirtualDesktop:
             try:
                 import pyautogui
 
-                img = pyautogui.screenshot()
-                return img
+                return pyautogui.screenshot()
             except Exception as exc:
                 logger.warning("screenshot capture failed: %s", exc)
                 return None

@@ -58,7 +58,7 @@ if _IS_WINDOWS:
     #     CRYPTPROTECT_PROMPTSTRUCT *pPromptStruct,  # optional prompt
     #     DWORD      dwFlags,        # CRYPTPROTECT_UI_FORBIDDEN etc.
     #     DATA_BLOB *pDataOut        # out – encrypted blob
-    # )  # noqa: ERA001
+    # )
     _CryptProtectData = _crypt32.CryptProtectData
     _CryptProtectData.argtypes = [
         POINTER(_DATA_BLOB),  # pDataIn

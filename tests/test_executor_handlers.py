@@ -157,7 +157,7 @@ class TestReadFile:
         monkeypatch.setattr(file_ops, "read_file", lambda p: "file contents here")
 
         ex = fake_executor()
-        out = ex.execute_sync({"action": "read_file", "path": "test.txt"})  # noqa: S108
+        out = ex.execute_sync({"action": "read_file", "path": "test.txt"})
         assert out["success"] is True
         assert out["output"] == "file contents here"
 
@@ -191,7 +191,7 @@ class TestWriteFile:
         monkeypatch.setattr(file_ops, "write_file", lambda p, c: True)
 
         ex = fake_executor()
-        out = ex.execute_sync({"action": "write_file", "path": "out.txt", "content": "hello"})  # noqa: S108
+        out = ex.execute_sync({"action": "write_file", "path": "out.txt", "content": "hello"})
         assert out["success"] is True
 
     def test_write_failure(self, fake_executor, monkeypatch):
@@ -200,7 +200,7 @@ class TestWriteFile:
         monkeypatch.setattr(file_ops, "write_file", lambda p, c: False)
 
         ex = fake_executor()
-        out = ex.execute_sync({"action": "write_file", "path": "out.txt", "content": "hello"})  # noqa: S108
+        out = ex.execute_sync({"action": "write_file", "path": "out.txt", "content": "hello"})
         assert out["success"] is False
 
 

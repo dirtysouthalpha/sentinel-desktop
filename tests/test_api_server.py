@@ -105,7 +105,7 @@ class _FakeEngine:
     class _audit_exporter:
         @staticmethod
         def generate_report(log, metadata=None, format="html"):
-            return "report.html"  # noqa: S108
+            return "report.html"
 
     class _vault:
         @staticmethod

@@ -221,13 +221,12 @@ class ActionRecorder:
         parameters = self._detect_parameters(steps)
         description = self.generate_description(steps) if not goal else goal
 
-        script = Script(
+        return Script(
             name=self._generate_name(goal),
             description=description,
             steps=self._finalise_steps(steps),
             parameters=parameters,
         )
-        return script
 
     # -- persistence helpers -----------------------------------------------
 

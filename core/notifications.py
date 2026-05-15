@@ -127,13 +127,13 @@ def _send_http(
 
     for attempt in range(1, retries + 1):
         try:
-            req = Request(  # noqa: S310  (scheme validated above)
+            req = Request(
                 url,
                 data=data,
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urlopen(req, timeout=timeout) as resp:  # noqa: S310  (scheme validated above)
+            with urlopen(req, timeout=timeout) as resp:
                 status = getattr(resp, "status", 0)
                 body = resp.read().decode("utf-8", errors="replace")[:512]
                 if 200 <= status < 300:

@@ -94,7 +94,7 @@ def _image_cache_key(img: Image.Image) -> str:
         fingerprint = f"{w}x{h}:{sample_points}"
     except (IndexError, OSError):
         fingerprint = f"{w}x{h}"
-    return hashlib.md5(fingerprint.encode()).hexdigest()  # noqa: S324
+    return hashlib.md5(fingerprint.encode()).hexdigest()
 
 
 def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:
@@ -155,8 +155,7 @@ def preprocess_for_ocr(img: Image.Image) -> Image.Image:
         img = ImageOps.autocontrast(img, cutoff=2)
         img = img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=140, threshold=2))
         # Light contrast boost — too aggressive blows out hairline strokes.
-        img = ImageEnhance.Contrast(img).enhance(1.25)
-        return img
+        return ImageEnhance.Contrast(img).enhance(1.25)
     except Exception as exc:
         logger.debug("preprocess_for_ocr failed (falling back to raw): %s", exc)
         return img

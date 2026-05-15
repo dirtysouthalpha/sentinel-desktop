@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # Optional shared-secret auth. Set SENTINEL_API_TOKEN in the environment to
 # require an Authorization: Bearer <token> header on every request. Unset →
 # no auth (legacy behaviour, OK for localhost-only use).
-API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # noqa: S105  (env var name, not a token value)
+API_TOKEN_ENV = "SENTINEL_API_TOKEN"
 
 
 # ── Request models ──────────────────────────────────────────────────────
@@ -509,8 +509,7 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        result = self.engine.scheduler.run_task_now(req.task_id)
-        return result
+        return self.engine.scheduler.run_task_now(req.task_id)
 
     async def _handle_notify(
         self, req: NotifyRequest, authorization: str | None = Header(default=None)

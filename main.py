@@ -89,7 +89,7 @@ def parse_args() -> Namespace:
 def run_gui() -> None:
     """Launch the CustomTkinter GUI."""
     try:
-        import customtkinter as ctk  # noqa: F401  (availability check)
+        import customtkinter as ctk
     except ImportError:
         logger.exception("customtkinter not installed. Run: pip install -r requirements.txt")
         sys.exit(1)

@@ -25,9 +25,9 @@ class TestWaitResult:
             elapsed=0.5,
             frames_checked=1,
             change_score=1.0,
-            snapshot_path="/tmp/test.png",  # noqa: S108
+            snapshot_path="/tmp/test.png",
         )
-        assert r.snapshot_path == "/tmp/test.png"  # noqa: S108
+        assert r.snapshot_path == "/tmp/test.png"
 
 
 class TestDownsample:
