@@ -643,7 +643,7 @@ class MFADetector:
 
     def _poll_once(
         self,
-        capture_fn: Callable[..., Image.Image],
+        capture_fn: Callable[[], Image.Image],
     ) -> DetectionResult:
         """Execute a single detection pass.
 

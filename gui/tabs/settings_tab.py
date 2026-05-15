@@ -88,7 +88,7 @@ class SettingsTab:
         var_name: str,
         default: str = "",
         field_type: str = "entry",
-        values: list[str] = None,
+        values: list[str] | None = None,
         row: int = 0,
     ) -> None:
         """Add a labeled field to a section."""

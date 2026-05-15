@@ -27,7 +27,7 @@ class Command:
         name: str,
         shortcut: str,
         category: str,
-        handler: Callable,
+        handler: Callable[..., Any],
         keywords: list[str] | None = None,
     ) -> None:
         self.name = name
@@ -82,7 +82,7 @@ class CommandPalette:
         name: str,
         shortcut: str,
         category: str,
-        handler: Callable,
+        handler: Callable[..., Any],
         keywords: list[str] | None = None,
     ) -> None:
         """Register a command."""

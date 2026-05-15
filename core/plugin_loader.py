@@ -94,7 +94,7 @@ class PluginAPI:
         self,
         plugin_name: str,
         engine: Any = None,
-        config: dict | None = None,
+        config: dict[str, Any] | None = None,
         log_callback: Callable[[str], None] | None = None,
     ) -> None:
         self._plugin_name = plugin_name
@@ -186,7 +186,7 @@ class PluginAPI:
         """Return the current :class:`AgentEngine` instance, if available."""
         return self._engine
 
-    def get_config(self) -> dict:
+    def get_config(self) -> dict[str, Any]:
         """Return the global configuration dict."""
         return self._config
 
@@ -234,7 +234,10 @@ class PluginLoader:
     """
 
     def __init__(
-        self, plugin_dir: str | Path = "plugins", engine: Any = None, config: dict | None = None
+        self,
+        plugin_dir: str | Path = "plugins",
+        engine: Any = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         self._plugin_dir = Path(plugin_dir)
         self._engine = engine

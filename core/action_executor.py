@@ -746,15 +746,14 @@ class ActionExecutor:
             }
 
     def _smart_wait(
-        self, *, timeout: float = 10, region: list | None = None, **_: Any
+        self, *, timeout: float = 10, region: tuple[int, int, int, int] | None = None, **_: Any
     ) -> dict[str, Any]:
         """Wait until the screen changes (visual diff)."""
         try:
             from core.smart_wait import SmartWait
 
             sw = SmartWait()
-            region_tuple = tuple(region) if region else None
-            result = sw.wait_for_change(timeout=float(timeout), region=region_tuple)
+            result = sw.wait_for_change(timeout=float(timeout), region=region)
             return {
                 "success": result.success,
                 "output": f"Screen changed after {result.elapsed:.1f}s ({result.frames_checked} frames)"
@@ -774,16 +773,20 @@ class ActionExecutor:
             }
 
     def _wait_for_stable(
-        self, *, timeout: float = 10, stable_time: float = 1.5, region: list | None = None, **_: Any
+        self,
+        *,
+        timeout: float = 10,
+        stable_time: float = 1.5,
+        region: tuple[int, int, int, int] | None = None,
+        **_: Any,
     ) -> dict[str, Any]:
         """Wait until the screen stops changing."""
         try:
             from core.smart_wait import SmartWait
 
             sw = SmartWait()
-            region_tuple = tuple(region) if region else None
             result = sw.wait_for_stable(
-                timeout=float(timeout), stable_time=float(stable_time), region=region_tuple
+                timeout=float(timeout), stable_time=float(stable_time), region=region
             )
             return {
                 "success": result.success,
@@ -803,15 +806,19 @@ class ActionExecutor:
             }
 
     def _wait_for_text(
-        self, *, text: str, timeout: float = 10, region: list | None = None, **_: Any
+        self,
+        *,
+        text: str,
+        timeout: float = 10,
+        region: tuple[int, int, int, int] | None = None,
+        **_: Any,
     ) -> dict[str, Any]:
         """Wait until specific text appears on screen via OCR."""
         try:
             from core.smart_wait import SmartWait
 
             sw = SmartWait()
-            region_tuple = tuple(region) if region else None
-            result = sw.wait_for_text(text, timeout=float(timeout), region=region_tuple)
+            result = sw.wait_for_text(text, timeout=float(timeout), region=region)
             return {
                 "success": result.success,
                 "output": f"Text '{text}' found after {result.elapsed:.1f}s"

@@ -232,7 +232,7 @@ class AgentEngine:
         self.image_history = int(self.config.get("image_history", DEFAULT_IMAGE_HISTORY))
         self.notes: list[str] = []
         self.forensic_log: list[dict[str, Any]] = []
-        self.on_step_callback: Callable | None = None
+        self.on_step_callback: Callable[..., Any] | None = None
         self.finish_summary: str = ""
 
         # ── Core subsystems (always needed) ──────────────────────────

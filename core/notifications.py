@@ -107,7 +107,7 @@ def _is_windows() -> bool:
 
 def _send_http(
     url: str,
-    payload: dict,
+    payload: dict[str, Any],
     timeout: int = HTTP_TIMEOUT,
     retries: int = MAX_RETRIES,
 ) -> tuple[bool, str]:
@@ -330,7 +330,7 @@ class NotificationManager:
         self._last_results[channel] = (ok, detail)
         return ok, detail
 
-    def configure(self, channel: str, settings: dict) -> None:
+    def configure(self, channel: str, settings: dict[str, Any]) -> None:
         """Update configuration relevant to *channel*.
 
         *settings* maps directly onto internal config keys for that
