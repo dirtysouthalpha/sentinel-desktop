@@ -1,8 +1,8 @@
 """Tests for core/forensic_log.py — structured audit trail."""
 
 import json
-import os
 import tempfile
+from pathlib import Path
 
 from core.forensic_log import ForensicLog, _preview, _redact_params
 
@@ -180,9 +180,9 @@ class TestExport:
         fl = ForensicLog(log_dir=tmpdir)
         fl.start_run("Goal", "openai", "gpt-4o")
         fl.log_step(1, "click", "Btn", {}, "success")
-        path = os.path.join(tmpdir, "test_export.json")
+        path = str(Path(tmpdir) / "test_export.json")
         assert fl.export_json(path) is True
-        with open(path) as fh:
+        with Path(path).open() as fh:
             data = json.load(fh)
         assert data["run"]["goal"] == "Goal"
         assert len(data["steps"]) == 1
@@ -192,9 +192,9 @@ class TestExport:
         fl = ForensicLog(log_dir=tmpdir)
         fl.start_run("Goal", "openai", "gpt-4o")
         fl.log_step(1, "click", "Btn", {}, "success")
-        path = os.path.join(tmpdir, "test_export.csv")
+        path = str(Path(tmpdir) / "test_export.csv")
         assert fl.export_csv(path) is True
-        with open(path) as fh:
+        with Path(path).open() as fh:
             lines = fh.readlines()
         assert len(lines) == 2  # header + 1 row
 
@@ -202,6 +202,6 @@ class TestExport:
         tmpdir = tempfile.mkdtemp()
         fl = ForensicLog(log_dir=tmpdir)
         fl.start_run("Goal", "openai", "gpt-4o")
-        path = os.path.join(tmpdir, "sub", "dir", "out.json")
+        path = str(Path(tmpdir) / "sub" / "dir" / "out.json")
         assert fl.export_json(path) is True
-        assert os.path.isfile(path)
+        assert Path(path).is_file()

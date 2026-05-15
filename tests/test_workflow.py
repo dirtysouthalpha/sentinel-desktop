@@ -1,7 +1,7 @@
 """Tests for core/workflow.py — multi-step workflow execution."""
 
 import json
-import os
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from core.workflow import (
@@ -243,8 +243,8 @@ class TestWorkflowEngine:
         data = {"name": "test", "steps": [{"id": "s1", "type": "delay", "delay_seconds": 0.01}]}
         path = str(tmp_path / "saved.json")
         WorkflowEngine.save_workflow(path, data)
-        assert os.path.exists(path)
-        with open(path, encoding="utf-8") as f:
+        assert Path(path).exists()
+        with Path(path).open(encoding="utf-8") as f:
             loaded = json.load(f)
         assert loaded["name"] == "test"
 

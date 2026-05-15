@@ -14,11 +14,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import time
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from core import failsafe
@@ -322,7 +322,7 @@ class AgentEngine:
             from core.plugin_loader import PluginLoader
 
             self._plugin_loader = PluginLoader(
-                os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
+                str(Path(__file__).resolve().parent.parent / "plugins")
             )
             try:
                 loaded = self._plugin_loader.load_all()

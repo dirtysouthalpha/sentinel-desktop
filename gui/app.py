@@ -554,7 +554,6 @@ class SentinelApp:
             except Exception as e:
                 # Show the exception type + message, and dump the full traceback
                 # to a debug log so the user can paste it for diagnosis.
-                import os
                 import traceback
 
                 tb = traceback.format_exc()
@@ -562,14 +561,14 @@ class SentinelApp:
                     f"❌ {type(e).__name__}: {e}",
                     "error",
                 )
-                log_path = os.path.join(
-                    os.environ.get("APPDATA", os.path.expanduser("~")),
-                    "SentinelDesktop",
-                    "last_error.log",
+                log_path = (
+                    Path(os.environ.get("APPDATA", str(Path.home())))
+                    / "SentinelDesktop"
+                    / "last_error.log"
                 )
                 try:
-                    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-                    with open(log_path, "w", encoding="utf-8") as f:
+                    log_path.parent.mkdir(parents=True, exist_ok=True)
+                    with log_path.open("w", encoding="utf-8") as f:
                         f.write(f"Goal: {goal}\n\n{tb}\n")
                     self._add_chat(
                         f"   Full traceback saved to: {log_path}",
@@ -759,9 +758,9 @@ class SentinelApp:
         if not self.engine:
             self._add_chat("No log to export.", "system")
             return
-        path = f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        path = Path(f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
         try:
-            with open(path, "w", encoding="utf-8") as f:
+            with path.open("w", encoding="utf-8") as f:
                 json.dump(self.engine.forensic_log, f, indent=2)
             self._add_chat(f"Log exported to {path}", "system")
         except OSError as exc:

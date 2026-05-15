@@ -12,13 +12,13 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 # Make the project root importable so we can read core.__version__.
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = str(Path(__file__).resolve().parent.parent)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
@@ -32,12 +32,12 @@ APP_URL = "https://github.com/dirtysouthalpha/sentinel-desktop"
 # Stable GUID for Inno Setup upgrade detection. Must NOT change across versions.
 APP_GUID = "8C2F4A6E-3B5D-4F7C-A9E1-1D0E6B8F2A45"
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DIST_DIR = os.path.join(ROOT_DIR, "dist")
-BUILD_DIR = os.path.join(ROOT_DIR, "build")
-SPEC_FILE = os.path.join(ROOT_DIR, f"{APP_NAME}.spec")
-ICON_PATH = os.path.join(ROOT_DIR, "assets", "icon.ico")
-INSTALLER_DIR = os.path.join(ROOT_DIR, "installer")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DIST_DIR = ROOT_DIR / "dist"
+BUILD_DIR = ROOT_DIR / "build"
+SPEC_FILE = ROOT_DIR / f"{APP_NAME}.spec"
+ICON_PATH = ROOT_DIR / "assets" / "icon.ico"
+INSTALLER_DIR = ROOT_DIR / "installer"
 
 HIDDEN_IMPORTS = [
     "core.engine",
@@ -83,15 +83,15 @@ HIDDEN_IMPORTS = [
 def clean() -> None:
     """Remove build artifacts."""
     for path in [BUILD_DIR, DIST_DIR]:
-        if os.path.exists(path):
+        if path.exists():
             try:
                 shutil.rmtree(path)
                 print(f"  Removed {path}")
             except OSError as exc:
                 print(f"  ⚠ Could not remove {path}: {exc}")
-    if os.path.exists(SPEC_FILE):
+    if SPEC_FILE.exists():
         try:
-            os.remove(SPEC_FILE)
+            SPEC_FILE.unlink()
             print(f"  Removed {SPEC_FILE}")
         except OSError as exc:
             print(f"  ⚠ Could not remove {SPEC_FILE}: {exc}")
@@ -119,14 +119,14 @@ def build_exe() -> bool:
         "--noconfirm",
     ]
 
-    if os.path.exists(ICON_PATH):
-        cmd.extend(["--icon", ICON_PATH])
+    if ICON_PATH.exists():
+        cmd.extend(["--icon", str(ICON_PATH)])
         print(f"  Icon: {ICON_PATH}")
 
     # Add data directories
     for data_dir in ["config", "scripts", "plugins", "assets"]:
-        src = os.path.join(ROOT_DIR, data_dir)
-        if os.path.exists(src):
+        src = ROOT_DIR / data_dir
+        if src.exists():
             cmd.extend(["--add-data", f"{src};{data_dir}"])
             print(f"  Data: {data_dir}/")
 
@@ -137,32 +137,32 @@ def build_exe() -> bool:
     # UPX compression
     upx_path = shutil.which("upx")
     if upx_path:
-        cmd.extend(["--upx-dir", os.path.dirname(upx_path)])
+        cmd.extend(["--upx-dir", str(Path(upx_path).parent)])
         print(f"  UPX: {upx_path}")
 
     cmd.extend(
         [
             "--distpath",
-            DIST_DIR,
+            str(DIST_DIR),
             "--workpath",
-            BUILD_DIR,
+            str(BUILD_DIR),
             "--specpath",
-            ROOT_DIR,
-            os.path.join(ROOT_DIR, "main.py"),
+            str(ROOT_DIR),
+            str(ROOT_DIR / "main.py"),
         ]
     )
 
     print("  Running PyInstaller...")
     try:
-        result = subprocess.run(cmd, cwd=ROOT_DIR)
+        result = subprocess.run(cmd, cwd=str(ROOT_DIR))
     except (OSError, subprocess.SubprocessError) as exc:
         print(f"❌ PyInstaller invocation failed: {exc}")
         return False
 
     if result.returncode == 0:
-        exe_path = os.path.join(DIST_DIR, f"{APP_NAME}.exe")
-        if os.path.exists(exe_path):
-            size_mb = os.path.getsize(exe_path) / (1024 * 1024)
+        exe_path = DIST_DIR / f"{APP_NAME}.exe"
+        if exe_path.exists():
+            size_mb = exe_path.stat().st_size / (1024 * 1024)
             print(f"✅ Built: {exe_path} ({size_mb:.1f} MB)")
             return True
     print(f"❌ Build failed (exit {result.returncode})")
@@ -193,14 +193,14 @@ AppSupportURL={{#MyAppURL}}
 DefaultDirName={{autopf}}\\{{#MyAppName}}
 DefaultGroupName={{#MyAppName}}
 AllowNoIcons=yes
-OutputDir={os.path.join(INSTALLER_DIR, "output")}
+OutputDir={INSTALLER_DIR / "output"}
 OutputBaseFilename=SentinelDesktop-{APP_VERSION}-Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=admin
 UninstallDisplayName={{#MyAppName}}
-SetupIconFile={ICON_PATH if os.path.exists(ICON_PATH) else ""}
+SetupIconFile={ICON_PATH if ICON_PATH.exists() else ""}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -223,17 +223,17 @@ Name: "{{autodesktop}}\\{{#MyAppName}}"; Filename: "{{app}}\\{{#MyAppExeName}}";
 [Run]
 Filename: "{{app}}\\{{#MyAppExeName}}"; Description: "{{cm:LaunchProgram,{{#MyAppName}}}}"; Flags: nowait postinstall skipifsilent
 """
-    iss_path = os.path.join(INSTALLER_DIR, "sentinel-desktop.iss")
+    iss_path = INSTALLER_DIR / "sentinel-desktop.iss"
     try:
-        os.makedirs(INSTALLER_DIR, exist_ok=True)
-        with open(iss_path, "w", encoding="utf-8") as f:
+        INSTALLER_DIR.mkdir(parents=True, exist_ok=True)
+        with iss_path.open("w", encoding="utf-8") as f:
             f.write(iss_content)
     except OSError as exc:
         print(f"❌ Failed to write .iss file: {exc}")
         return ""
 
     print(f"✅ Generated: {iss_path}")
-    return iss_path
+    return str(iss_path)
 
 
 def build_all() -> bool:

@@ -2,7 +2,7 @@
 
 import csv
 import json
-import os
+from pathlib import Path
 
 import pytest
 
@@ -195,8 +195,8 @@ class TestGenerateReport:
 class TestExportJSON:
     def test_creates_valid_json(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="json")
-        assert os.path.isfile(path)
-        with open(path) as f:
+        assert Path(path).is_file()
+        with Path(path).open() as f:
             data = json.load(f)
         assert "Audit Report" in data["header"]
         assert "steps" in data
@@ -204,7 +204,7 @@ class TestExportJSON:
 
     def test_masks_sensitive_params(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="json")
-        with open(path) as f:
+        with Path(path).open() as f:
             data = json.load(f)
         # Step 2 has password param — should be masked
         step2 = data["steps"][1]
@@ -219,8 +219,8 @@ class TestExportJSON:
 class TestExportCSV:
     def test_creates_csv_file(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="csv")
-        assert os.path.isfile(path)
-        with open(path, newline="", encoding="utf-8") as f:
+        assert Path(path).is_file()
+        with Path(path).open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
         assert len(rows) == 2
@@ -228,7 +228,7 @@ class TestExportCSV:
 
     def test_csv_has_header(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="csv")
-        with open(path, newline="", encoding="utf-8") as f:
+        with Path(path).open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
             header = next(reader)
         assert "step" in header
@@ -243,22 +243,22 @@ class TestExportCSV:
 class TestExportText:
     def test_creates_text_file(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="text")
-        assert os.path.isfile(path)
-        with open(path) as f:
+        assert Path(path).is_file()
+        with Path(path).open() as f:
             content = f.read()
         assert "Sentinel Desktop" in content
         assert "Summary Statistics" in content
 
     def test_text_contains_metadata(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="text")
-        with open(path) as f:
+        with Path(path).open() as f:
             content = f.read()
         assert "Test goal" in content
         assert "completed" in content
 
     def test_txt_alias(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="txt")
-        assert os.path.isfile(path)
+        assert Path(path).is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -269,8 +269,8 @@ class TestExportText:
 class TestExportHTML:
     def test_creates_html_file(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="html")
-        assert os.path.isfile(path)
-        with open(path) as f:
+        assert Path(path).is_file()
+        with Path(path).open() as f:
             content = f.read()
         assert "<!DOCTYPE html>" in content
         assert "Sentinel Desktop" in content
@@ -287,7 +287,7 @@ class TestExportHTML:
             }
         ]
         path = exporter.generate_report(log, sample_metadata, format="html")
-        with open(path) as f:
+        with Path(path).open() as f:
             content = f.read()
         assert "<script>" not in content.replace("<!DOCTYPE html>", "").replace(
             "<script>", ""
@@ -296,7 +296,7 @@ class TestExportHTML:
 
     def test_html_contains_summary(self, exporter, sample_log, sample_metadata):
         path = exporter.generate_report(sample_log, sample_metadata, format="html")
-        with open(path) as f:
+        with Path(path).open() as f:
             content = f.read()
         assert "Summary Statistics" in content
         assert "Action Breakdown" in content
@@ -312,7 +312,7 @@ class TestExportAuditConvenience:
         path = export_audit(
             sample_log, sample_metadata, fmt="json", output_dir=str(tmp_path / "out")
         )
-        assert os.path.isfile(path)
+        assert Path(path).is_file()
 
 
 # ---------------------------------------------------------------------------

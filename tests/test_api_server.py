@@ -1,5 +1,7 @@
 """Tests for api.server — SentinelServer auth, config, and route logic."""
 
+import time
+
 import pytest
 
 import api.server as mod
@@ -527,3 +529,302 @@ class TestHandleAuditExport:
             server._handle_audit_export(authorization=None)
         )
         assert "path" in result
+
+
+# ---------------------------------------------------------------------------
+# Additional route handler tests
+# ---------------------------------------------------------------------------
+
+
+def _run(coro):
+    """Run an async coroutine synchronously for testing."""
+    import asyncio
+
+    return asyncio.get_event_loop().run_until_complete(coro)
+
+
+class TestHandleGoal:
+    def test_goal_starts_engine(self, monkeypatch):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        server.engine.running = False
+        server.config.load = lambda: {"max_steps": 10}
+
+        started = {}
+
+        class FakeEngine:
+            running = False
+            step = 0
+            max_steps = 10
+            notes: list = []
+            forensic_log: list = []
+            on_step_callback = None
+
+            def __init__(self, cfg=None):
+                pass
+
+            def run(self, goal):
+                started["goal"] = goal
+                return {"steps": 1, "finish_summary": "done"}
+
+        monkeypatch.setattr(mod, "AgentEngine", FakeEngine)
+        req = mod.GoalRequest(goal="open notepad")
+        result = _run(server._handle_goal(req, authorization=None))
+        assert result["status"] == "started"
+        assert result["goal"] == "open notepad"
+
+    def test_goal_conflict_when_running(self):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        server.engine.running = True
+        from fastapi import HTTPException
+
+        req = mod.GoalRequest(goal="open notepad")
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_goal(req, authorization=None))
+        assert exc_info.value.status_code == 409
+
+
+class TestHandleScheduleRun:
+    def test_schedule_run(self):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        req = mod.ScheduleRunRequest(task_id="t1")
+        result = _run(server._handle_schedule_run(req, authorization=None))
+        assert result["ok"] is True
+
+
+class TestHandlePluginsReload:
+    def test_plugins_reload(self):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        req = mod.PluginReloadRequest(name="test_plugin")
+        result = _run(server._handle_plugins_reload(req, authorization=None))
+        assert result["success"] is True
+        assert result["name"] == "test_plugin"
+
+
+class TestHandleAgentsCancel:
+    def test_agents_cancel(self):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        req = mod.AgentCancelRequest(session_id="s1")
+        result = _run(server._handle_agents_cancel(req, authorization=None))
+        assert result["success"] is True
+
+
+class TestHandleAgentStatus:
+    def test_agent_status_found(self):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        server.engine.agent_pool.get_status = lambda sid: {"id": sid, "status": "completed"}
+        result = _run(server._handle_agent_status("s1", authorization=None))
+        assert result["id"] == "s1"
+
+    def test_agent_status_not_found(self):
+        from fastapi import HTTPException
+
+        server = _make_server()
+        server.engine = _FakeEngine()
+        server.engine.agent_pool.get_status = lambda sid: None
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_agent_status("missing", authorization=None))
+        assert exc_info.value.status_code == 404
+
+
+class TestHandleAuthLogin:
+    def _make_login_server(self):
+        server = _make_server()
+        # create_app() initializes _login_attempts
+        server.create_app()
+        server.engine = _FakeEngine()
+        return server
+
+    def test_login_success(self, monkeypatch):
+        server = self._make_login_server()
+
+        class FakeUser:
+            role = type("R", (), {"value": "admin"})()
+            username = "admin"
+
+        server.engine.auth_manager.authenticate = lambda u, p: FakeUser()
+        server.engine.auth_manager.create_session = lambda u: "tok123"
+        req = mod.AuthLoginRequest(username="admin", password="pass")
+        result = _run(server._handle_auth_login(req, authorization=None))
+        assert result["token"] == "tok123"
+        assert result["role"] == "admin"
+
+    def test_login_invalid_credentials(self):
+        from fastapi import HTTPException
+
+        server = self._make_login_server()
+        server.engine.auth_manager.authenticate = lambda u, p: None
+        req = mod.AuthLoginRequest(username="admin", password="wrong")
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_auth_login(req, authorization=None))
+        assert exc_info.value.status_code == 401
+
+    def test_login_rate_limited(self):
+        from collections import defaultdict
+        from fastapi import HTTPException
+
+        server = self._make_login_server()
+        server.engine.auth_manager.authenticate = lambda u, p: None
+        # Pre-populate rate limiter for a known client_id
+        fake_id = 42
+        server._login_attempts[fake_id] = [time.monotonic()] * server._login_limit
+        # Patch id in the module to return our controlled id
+        import api.server as srv_mod
+
+        orig_id = id
+        srv_mod_id_ref = (
+            srv_mod.__builtins__["id"] if isinstance(srv_mod.__builtins__, dict) else None
+        )
+        # Use monkeypatch approach: temporarily replace id in builtins
+        import builtins as _bi
+
+        _orig_id = _bi.id
+        _bi.id = lambda x: fake_id
+        try:
+            req = mod.AuthLoginRequest(username="admin", password="wrong")
+            with pytest.raises(HTTPException) as exc_info:
+                _run(server._handle_auth_login(req, authorization=None))
+            assert exc_info.value.status_code == 429
+        finally:
+            _bi.id = _orig_id
+
+
+class TestHandleAuthLogout:
+    def test_logout(self):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        revoked = {}
+        server.engine.auth_manager.revoke_session = lambda t: revoked.update({"token": t})
+        req = mod.AuthLogoutRequest(token="tok123")
+        result = _run(server._handle_auth_logout(req, authorization=None))
+        assert result["status"] == "logged_out"
+        assert revoked["token"] == "tok123"
+
+
+class TestHandleScriptsList:
+    def test_scripts_list_no_engine(self, monkeypatch):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        # Patch ActionRecorder.list_scripts to return empty
+        monkeypatch.setattr(
+            "core.recorder.ActionRecorder.list_scripts", staticmethod(lambda d: []), raising=False
+        )
+        result = _run(server._handle_scripts_list(authorization=None))
+        assert "scripts" in result
+
+
+class TestHandleRecorderStart:
+    def test_recorder_start(self):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        result = _run(server._handle_recorder_start(authorization=None))
+        assert result["status"] == "recording"
+
+
+class TestHandleRecorderStop:
+    def test_recorder_stop(self, tmp_path, monkeypatch):
+        server = _make_server()
+        server.engine = _FakeEngine()
+        # Patch ActionRecorder to avoid real file I/O
+        monkeypatch.setattr(
+            "core.recorder.ActionRecorder.stop_recording",
+            lambda self=None: type(
+                "Script",
+                (),
+                {
+                    "name": "test",
+                    "description": "",
+                    "steps": [],
+                    "save": lambda self, p: None,
+                },
+            )(),
+            raising=False,
+        )
+        req = mod.RecorderStopRequest(name="test_script")
+        result = _run(server._handle_recorder_stop(req, authorization=None))
+        assert result["status"] == "saved"
+
+
+class TestHandlePowershell:
+    def test_powershell_endpoint(self, monkeypatch):
+        server = _make_server()
+        server.engine = _FakeEngine()
+
+        class FakeResult:
+            success = True
+            stdout = "process output"
+            stderr = ""
+            exit_code = 0
+            objects: list = []
+
+        monkeypatch.setattr(
+            "core.powershell.get_default_runner",
+            lambda: type("R", (), {"run_command": lambda self, cmd: FakeResult()})(),
+            raising=False,
+        )
+        req = mod.PowerShellRequest(command="Get-Process")
+        result = _run(server._handle_powershell(req, authorization=None))
+        assert result["success"] is True
+        assert result["stdout"] == "process output"
+
+
+class TestEngineNotInitialized:
+    """Handlers that require engine should return 500 when engine is None."""
+
+    @pytest.mark.parametrize(
+        "handler_method",
+        [
+            "schedule_list",
+            "schedule_add",
+            "schedule_remove",
+            "schedule_run",
+            "notify",
+            "plugins_list",
+            "plugins_reload",
+            "agents_list",
+            "agents_submit",
+            "agents_cancel",
+            "agent_status",
+            "auth_users",
+            "audit_export",
+            "vault_keys",
+        ],
+    )
+    def test_returns_500_without_engine(self, handler_method):
+        from fastapi import HTTPException
+
+        server = _make_server()
+        server.engine = None
+        method = getattr(server, f"_handle_{handler_method}")
+        with pytest.raises(HTTPException) as exc_info:
+            if handler_method in ("agent_status",):
+                _run(method("s1", authorization=None))
+            elif handler_method in (
+                "schedule_list",
+                "plugins_list",
+                "agents_list",
+                "auth_users",
+                "audit_export",
+                "vault_keys",
+            ):
+                _run(method(authorization=None))
+            elif handler_method == "schedule_run":
+                _run(method(mod.ScheduleRunRequest(task_id="t1"), authorization=None))
+            elif handler_method == "schedule_add":
+                _run(method(mod.ScheduleAddRequest(name="t", goal="g"), authorization=None))
+            elif handler_method == "schedule_remove":
+                _run(method(mod.ScheduleRemoveRequest(task_id="t1"), authorization=None))
+            elif handler_method == "notify":
+                _run(method(mod.NotifyRequest(message="m"), authorization=None))
+            elif handler_method == "plugins_reload":
+                _run(method(mod.PluginReloadRequest(name="p"), authorization=None))
+            elif handler_method == "agents_submit":
+                _run(method(mod.AgentSubmitRequest(goal="g"), authorization=None))
+            elif handler_method == "agents_cancel":
+                _run(method(mod.AgentCancelRequest(session_id="s1"), authorization=None))
+        assert exc_info.value.status_code == 500

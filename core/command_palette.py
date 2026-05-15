@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -493,18 +494,16 @@ def _run_powershell_dialog(app: Any) -> None:
 
 
 def _run_it_script(app: Any, script_name: str) -> None:
-    import os
-
-    scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts", "it_support")
-    path = os.path.join(scripts_dir, f"{script_name}.json")
-    if not os.path.exists(path):
+    scripts_dir = Path(__file__).resolve().parent.parent / "scripts" / "it_support"
+    path = scripts_dir / f"{script_name}.json"
+    if not path.exists():
         return
     if hasattr(app, "engine") and app.engine:
         try:
             from core.script_engine import ScriptEngine
 
             engine = ScriptEngine(app.engine.executor)
-            result = engine.run_script(path)
+            result = engine.run_script(str(path))
         except Exception as exc:
             err_msg = str(exc)
             if hasattr(app, "notes_label"):

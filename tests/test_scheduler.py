@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -239,7 +240,7 @@ class TestTaskSchedulerPersistence:
 
     def test_load_corrupt_json(self, tmp_path):
         path = str(tmp_path / "tasks.json")
-        with open(path, "w") as f:
+        with Path(path).open("w") as f:
             f.write("not json")
         ts = TaskScheduler(engine=None, tasks_path=path)
         assert ts.list_tasks() == []
@@ -247,7 +248,7 @@ class TestTaskSchedulerPersistence:
 
     def test_load_non_array(self, tmp_path):
         path = str(tmp_path / "tasks.json")
-        with open(path, "w") as f:
+        with Path(path).open("w") as f:
             json.dump({"not": "a list"}, f)
         ts = TaskScheduler(engine=None, tasks_path=path)
         assert ts.list_tasks() == []
@@ -255,7 +256,7 @@ class TestTaskSchedulerPersistence:
 
     def test_load_backfills_cron_expr(self, tmp_path):
         path = str(tmp_path / "tasks.json")
-        with open(path, "w") as f:
+        with Path(path).open("w") as f:
             json.dump(
                 [{"id": "abc", "name": "T", "type": "script", "schedule": "every_5m"}],
                 f,

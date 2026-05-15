@@ -1,7 +1,7 @@
 """Tests for core/encryption.py — DPAPI credential vault."""
 
 import json
-import os
+from pathlib import Path
 
 import pytest
 
@@ -62,11 +62,11 @@ class TestCredentialVaultValidation:
 class TestCredentialVaultPersistence:
     def test_vault_file_created_on_store(self, vault):
         vault.store("k", "v")
-        assert os.path.isfile(vault._path)
+        assert Path(vault._path).is_file()
 
     def test_vault_file_is_valid_json(self, vault):
         vault.store("k", "v")
-        with open(vault._path) as fh:
+        with Path(vault._path).open() as fh:
             data = json.load(fh)
         assert data["version"] == 1
         assert "k" in data["keys"]

@@ -7,7 +7,6 @@ Chain scripts, actions, and sub-workflows with control flow.
 
 import json
 import logging
-import os
 import re
 import time
 from collections.abc import Callable

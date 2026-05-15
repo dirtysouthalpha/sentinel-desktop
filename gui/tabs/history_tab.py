@@ -5,8 +5,8 @@ Run history browser with session replay and log export.
 
 import json
 import logging
-import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import customtkinter as ctk
@@ -359,13 +359,11 @@ class HistoryTab(ctk.CTkFrame):
             return
         session = self.sessions[self.selected_index]
 
-        export_path = os.path.join(
-            os.path.expanduser("~"),
-            "Desktop",
-            f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        export_path = (
+            Path.home() / "Desktop" / f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         )
         try:
-            with open(export_path, "w", encoding="utf-8") as f:
+            with export_path.open("w", encoding="utf-8") as f:
                 f.write("Sentinel Desktop — Session Log\n")
                 f.write(f"{'=' * 50}\n")
                 f.write(f"Goal: {session.get('goal', '')}\n")

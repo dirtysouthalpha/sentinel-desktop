@@ -6,12 +6,12 @@ display and the process crashes. We register lightweight stubs in
 ``sys.modules`` before any test imports run so the modules load cleanly.
 """
 
-import os
 import sys
 import types
+from pathlib import Path
 
 # 1) Make sure the project root is importable as `core`, `gui`, `api`, etc.
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 

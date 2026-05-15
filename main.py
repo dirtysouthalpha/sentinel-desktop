@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import sys
 from argparse import Namespace
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -31,7 +31,7 @@ logger = logging.getLogger("sentinel")
 # ---------------------------------------------------------------------------
 # Add project root to sys.path so `core`, `gui`, `api` packages resolve
 # ---------------------------------------------------------------------------
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = str(Path(__file__).resolve().parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 

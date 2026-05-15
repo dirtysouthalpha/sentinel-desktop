@@ -29,12 +29,12 @@ Typical usage::
 from __future__ import annotations
 
 import logging
-import os
 import tempfile
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from PIL import Image
 
@@ -160,17 +160,17 @@ def _compute_change_score(
 
 def _save_snapshot(img: Image.Image, prefix: str = "smart_wait") -> str:
     """Save *img* to a temp file and return the path."""
-    tmp_dir = tempfile.gettempdir()
-    os.makedirs(tmp_dir, exist_ok=True)
+    tmp_dir = Path(tempfile.gettempdir())
+    tmp_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{prefix}_{uuid.uuid4().hex[:8]}.png"
-    path = os.path.join(tmp_dir, filename)
+    path = tmp_dir / filename
     try:
-        img.save(path, format="PNG")
+        img.save(str(path), format="PNG")
         logger.debug("Snapshot saved: %s", path)
     except Exception as exc:
         logger.warning("Failed to save snapshot: %s", exc)
         return ""
-    return path
+    return str(path)
 
 
 # ---------------------------------------------------------------------------

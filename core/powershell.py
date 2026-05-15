@@ -15,6 +15,7 @@ import platform
 import subprocess
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -129,7 +130,7 @@ class PowerShellRunner:
         """
         self.timeout = timeout
         self.run_as_admin = run_as_admin
-        self.working_dir = working_dir or os.getcwd()
+        self.working_dir = working_dir or str(Path.cwd())
         self.env_vars = env_vars or {}
         self.allow_raw = allow_raw
         self._ps_exe = self._resolve_ps_exe()
@@ -185,7 +186,7 @@ class PowerShellRunner:
         args = self._base_args()
 
         if self.run_as_admin:
-            tmp_out = os.path.join(self.working_dir, f"_ps_elev_{int(time.time())}.tmp")
+            tmp_out = str(Path(self.working_dir) / f"_ps_elev_{int(time.time())}.tmp")
             wrapped = (
                 f'Start-Process -Verb RunAs -FilePath "{self._ps_exe}" '
                 f'-ArgumentList "-NoProfile -NonInteractive -Command '
@@ -220,11 +221,11 @@ class PowerShellRunner:
                         break
                 else:
                     tmp_out = ""
-                if tmp_out and os.path.isfile(tmp_out):
-                    with open(tmp_out, encoding="utf-8", errors="replace") as fh:
+                if tmp_out and Path(tmp_out).is_file():
+                    with Path(tmp_out).open(encoding="utf-8", errors="replace") as fh:
                         stdout = fh.read()
                     try:
-                        os.remove(tmp_out)
+                        Path(tmp_out).unlink()
                     except OSError:
                         pass
 
@@ -269,7 +270,7 @@ class PowerShellRunner:
 
     def run_script(self, script_path: str, args: dict[str, Any] | None = None) -> PSResult:
         """Execute a .ps1 script file with optional -Key Value args."""
-        if not os.path.isfile(script_path):
+        if not Path(script_path).is_file():
             return PSResult(
                 success=False,
                 exit_code=-1,

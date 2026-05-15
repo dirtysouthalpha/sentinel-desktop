@@ -1,7 +1,7 @@
 """Tests for core/checkpoint.py — crash-resume checkpoint save/restore."""
 
 import json
-import os
+from pathlib import Path
 
 import pytest
 
@@ -37,13 +37,13 @@ class TestSave:
 
     def test_file_created(self, cm):
         cp_id = _save_checkpoint(cm)
-        files = os.listdir(cm._dir)
+        files = [p.name for p in Path(cm._dir).iterdir()]
         assert f"{cp_id}.json" in files
 
     def test_file_content(self, cm):
         cp_id = _save_checkpoint(cm, goal="Open Chrome", step=5)
-        path = os.path.join(cm._dir, f"{cp_id}.json")
-        with open(path) as fh:
+        path = Path(cm._dir) / f"{cp_id}.json"
+        with path.open() as fh:
             data = json.load(fh)
         assert data["goal"] == "Open Chrome"
         assert data["step_num"] == 5
@@ -51,8 +51,8 @@ class TestSave:
 
     def test_invalid_status_defaults_to_running(self, cm):
         cp_id = _save_checkpoint(cm, status="bogus")
-        path = os.path.join(cm._dir, f"{cp_id}.json")
-        with open(path) as fh:
+        path = Path(cm._dir) / f"{cp_id}.json"
+        with path.open() as fh:
             data = json.load(fh)
         assert data["status"] == "running"
 
@@ -66,8 +66,8 @@ class TestSave:
             config={"provider": "openai"},
             messages=msgs,
         )
-        path = os.path.join(cm._dir, f"{cp_id}.json")
-        with open(path) as fh:
+        path = Path(cm._dir) / f"{cp_id}.json"
+        with path.open() as fh:
             data = json.load(fh)
         assert len(data["messages"]) == 1
 
