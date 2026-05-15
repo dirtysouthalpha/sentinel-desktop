@@ -1009,8 +1009,8 @@ class AgentEngine:
                 if w.get("is_focused"):
                     active_win = f"\nActive Window: {w['title']}"
                     break
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Failed to detect active window: %s", exc)
         tenant = ""
         if self.config.get("tenant_name"):
             tenant = f"\nTenant: {self.config['tenant_name']}"
@@ -1050,7 +1050,8 @@ class AgentEngine:
                 for action, path in profile.menu_paths.items():
                     lines.append(f"  - {action}: {' → '.join(path)}")
             return "\n".join(lines)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Failed to build app profile context: %s", exc)
             return ""
 
     def _add_vision_message(self, messages: list, screenshot_b64: str, text: str):

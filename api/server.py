@@ -672,7 +672,8 @@ class SentinelServer:
         for ws in clients:
             try:
                 await ws.send_json(event)
-            except Exception:
+            except Exception as exc:
+                logger.debug("WebSocket send failed, marking dead: %s", exc)
                 dead.append(ws)
         if dead:
             with self._ws_lock:

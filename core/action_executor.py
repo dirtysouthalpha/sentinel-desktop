@@ -850,7 +850,7 @@ class ActionExecutor:
     def _close_app(self, *, name: str | None = None, pid: int | None = None, **_) -> dict:
         target = pid or name
         if target is None:
-            return {"success": False, "output": "Provide 'name' or 'pid'"}
+            return {"success": False, "output": "Provide 'name' or 'pid'", "error": "missing_target"}
         try:
             killed = pm.kill_process(target)
             return {
@@ -934,7 +934,7 @@ class ActionExecutor:
             if content is not None:
                 preview = content[:5000]
                 return {"success": True, "output": preview, "length": len(content)}
-            return {"success": False, "output": "File not found or unreadable"}
+            return {"success": False, "output": "File not found or unreadable", "error": "file_not_found"}
         except Exception as exc:
             return {
                 "success": False,
@@ -958,7 +958,7 @@ class ActionExecutor:
             entries = file_ops.list_directory(path)
             if entries is not None:
                 return {"success": True, "output": entries}
-            return {"success": False, "output": "Directory not found"}
+            return {"success": False, "output": "Directory not found", "error": "dir_not_found"}
         except Exception as exc:
             return {
                 "success": False,

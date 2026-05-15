@@ -245,8 +245,8 @@ class ScriptEngine:
             if self._progress_callback is not None:
                 try:
                     self._progress_callback(step_num, total, action, result)
-                except Exception:
-                    logger.debug("Progress callback raised; ignoring.", exc_info=True)
+                except Exception as exc:
+                    logger.debug("Progress callback raised; ignoring: %s", exc)
 
             results.append(result)
 
