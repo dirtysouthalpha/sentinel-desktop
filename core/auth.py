@@ -190,7 +190,10 @@ class AuthManager:
         self._sessions: dict[str, dict[str, Any]] = {}  # token → session info
 
         # Ensure parent directory exists
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            logger.exception("Failed to create config directory %s", self.config_path.parent)
 
         # Load existing data or bootstrap with the default admin
         self._load()

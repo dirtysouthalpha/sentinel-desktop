@@ -337,7 +337,11 @@ class TaskScheduler:
 
     def save(self) -> None:
         """Persist all tasks to the JSON file."""
-        self._tasks_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self._tasks_path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            logger.exception("Failed to create tasks directory %s", self._tasks_path.parent)
+            return
         with self._lock:
             data = list(self._tasks.values())
         try:
@@ -518,8 +522,8 @@ class TaskScheduler:
                 try:
                     if cron_matches(cron_expr, now):
                         tasks_to_run.append(dict(task))
-                except ValueError:
-                    logger.warning("Invalid cron for task %s: %s", task["id"], cron_expr)
+                except ValueError as exc:
+                    logger.warning("Invalid cron for task %s: %s (%s)", task["id"], cron_expr, exc)
 
         for task in tasks_to_run:
             logger.info("Running scheduled task: %s (%s)", task["name"], task["id"])

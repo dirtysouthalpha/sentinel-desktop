@@ -57,8 +57,15 @@ def _discover_checkpoint_files(directory: str | None = None) -> list[Path]:
     target = Path(directory) if directory else _CHECKPOINT_DIR
     if not target.is_dir():
         return []
-    files = sorted(target.glob("*.json"), key=lambda f: (f.stat().st_mtime, f), reverse=True)
-    return files
+    files = []
+    for f in target.glob("*.json"):
+        try:
+            mtime = f.stat().st_mtime
+        except OSError:
+            continue
+        files.append((mtime, f))
+    files.sort(key=lambda pair: pair[0], reverse=True)
+    return [f for _, f in files]
 
 
 def _parse_timestamp(ts: str) -> datetime | None:
@@ -102,7 +109,10 @@ class CheckpointManager:
     def __init__(self, checkpoint_dir: str | None = None) -> None:
         self._lock = threading.Lock()
         self._dir = Path(checkpoint_dir) if checkpoint_dir else _CHECKPOINT_DIR
-        self._dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self._dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            logger.exception("Failed to create checkpoint directory %s", self._dir)
 
     # ------------------------------------------------------------------
     # Save

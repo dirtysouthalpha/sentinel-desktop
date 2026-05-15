@@ -148,21 +148,25 @@ class WorkflowEngine:
                     try:
                         return float(left) > float(right)
                     except ValueError:
+                        logger.debug("Non-numeric comparison '%s' > '%s'", left, right)
                         return False
                 elif op == "<":
                     try:
                         return float(left) < float(right)
                     except ValueError:
+                        logger.debug("Non-numeric comparison '%s' < '%s'", left, right)
                         return False
                 elif op == ">=":
                     try:
                         return float(left) >= float(right)
                     except ValueError:
+                        logger.debug("Non-numeric comparison '%s' >= '%s'", left, right)
                         return False
                 elif op == "<=":
                     try:
                         return float(left) <= float(right)
                     except ValueError:
+                        logger.debug("Non-numeric comparison '%s' <= '%s'", left, right)
                         return False
 
         return bool(expr)
