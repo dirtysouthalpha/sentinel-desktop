@@ -1,14 +1,12 @@
 """Gap tests for action_executor _focus_window, _wait_for_stable, _smart_open,
 _click_control OCR fallback, forensic_log get_summary, and checkpoint stat race."""
 
-import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from core.action_executor import ActionExecutor
 from core.forensic_log import ForensicLog
-
 
 # ── _focus_window ──────────────────────────────────────────────────────────
 
@@ -151,7 +149,7 @@ class TestClickControlOcrFallback:
         mock_ocr.find_text.return_value = (100, 200)
         ex = ActionExecutor(click_offset=(10, 20))
         ex._desktop = MagicMock()
-        result = ex._click_control(name="Submit")
+        ex._click_control(name="Submit")
         ex._desktop.click.assert_called_once_with(110, 220, button="left")
 
     @patch("core.action_executor.ocr")
