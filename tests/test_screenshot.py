@@ -84,6 +84,30 @@ class TestGetCaptureOffset:
             assert get_capture_offset(None) == (0, 0)
 
 
+class TestBase64ToImageErrors:
+    def test_invalid_base64_raises_valueerror(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid base64 image data"):
+            base64_to_image("not-valid-base64!!!")
+
+    def test_valid_base64_but_not_image_raises_valueerror(self):
+        import base64
+
+        import pytest
+
+        # Valid base64 but not a valid image format
+        bad_data = base64.b64encode(b"this is not an image").decode()
+        with pytest.raises(ValueError, match="Invalid base64 image data"):
+            base64_to_image(bad_data)
+
+    def test_empty_string_raises_valueerror(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid base64 image data"):
+            base64_to_image("")
+
+
 class TestCaptureRegionToBase64:
     def test_produces_valid_png(self):
         import base64
