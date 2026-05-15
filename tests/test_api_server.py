@@ -669,21 +669,12 @@ class TestHandleAuthLogin:
 
         server = self._make_login_server()
         server.engine.auth_manager.authenticate = lambda u, p: None
-        # Pre-populate rate limiter for a known client_id
-        fake_id = 42
-        server._login_attempts[fake_id] = [time.monotonic()] * server._login_limit
-        # Patch id in the module to return our controlled id
-        import builtins as _bi
-
-        _orig_id = _bi.id
-        _bi.id = lambda x: fake_id
-        try:
-            req = mod.AuthLoginRequest(username="admin", password="wrong")
-            with pytest.raises(HTTPException) as exc_info:
-                _run(server._handle_auth_login(req, authorization=None))
-            assert exc_info.value.status_code == 429
-        finally:
-            _bi.id = _orig_id
+        # Pre-populate rate limiter for "unknown" client (request=None → "unknown")
+        server._login_attempts["unknown"] = [time.monotonic()] * server._login_limit
+        req = mod.AuthLoginRequest(username="admin", password="wrong")
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_auth_login(req, authorization=None))
+        assert exc_info.value.status_code == 429
 
 
 class TestHandleAuthLogout:

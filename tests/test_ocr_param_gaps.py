@@ -16,6 +16,7 @@ class TestOcrImageNoPreprocess:
         ocr._TESSERACT_OK = True
         ocr._pytesseract = MagicMock()
         ocr._pytesseract.image_to_string.return_value = "raw text"
+        ocr._ocr_cache.clear()
         img = Image.new("RGB", (10, 10))
         with patch("core.ocr.preprocess_for_ocr") as mock_pp:
             result = ocr._ocr_image(img, preprocess=False)
@@ -26,6 +27,7 @@ class TestOcrImageNoPreprocess:
         ocr._TESSERACT_OK = True
         ocr._pytesseract = MagicMock()
         ocr._pytesseract.image_to_string.return_value = "preprocessed text"
+        ocr._ocr_cache.clear()
         img = Image.new("RGB", (10, 10))
         with patch("core.ocr.preprocess_for_ocr", return_value=img) as mock_pp:
             result = ocr._ocr_image(img, preprocess=True)

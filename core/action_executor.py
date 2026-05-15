@@ -734,7 +734,7 @@ class ActionExecutor:
                     "output": f"Image appeared at ({pos[0]}, {pos[1]})",
                     "position": list(pos),
                 }
-            return {"success": False, "output": f"Timed out after {timeout}s"}
+            return {"success": False, "output": f"Timed out after {timeout}s", "error": "timeout"}
         except Exception as exc:
             return {
                 "success": False,
@@ -787,7 +787,7 @@ class ActionExecutor:
             import time as _t
 
             _t.sleep(3.0)
-            return {"success": False, "output": f"Wait-for-stable fallback: {exc}"}
+            return {"success": False, "output": f"Wait-for-stable fallback: {exc}", "error": f"import failed: {exc}"}
 
     def _wait_for_text(
         self, *, text: str, timeout: float = 10, region: list | None = None, **_
@@ -807,7 +807,7 @@ class ActionExecutor:
                 "elapsed": result.elapsed,
             }
         except Exception as exc:
-            return {"success": False, "output": f"Wait-for-text fallback: {exc}"}
+            return {"success": False, "output": f"Wait-for-text fallback: {exc}", "error": "wait_for_text_failed"}
 
     def _open_app(self, *, path: str, args: list | None = None, **_) -> dict:
         try:
@@ -1071,7 +1071,7 @@ class ActionExecutor:
                 "objects": result.objects[:50] if result.objects else [],
             }
         except Exception as exc:
-            return {"success": False, "output": f"PowerShell error: {exc}"}
+            return {"success": False, "output": f"PowerShell error: {exc}", "error": "powershell_failed"}
 
     def _run_script(self, *, path: str, params: dict | None = None, **_) -> dict:
         """Replay a recorded script from a JSON file."""
@@ -1088,7 +1088,7 @@ class ActionExecutor:
                 "error": result.error,
             }
         except Exception as exc:
-            return {"success": False, "output": f"Script error: {exc}"}
+            return {"success": False, "output": f"Script error: {exc}", "error": "script_failed"}
 
     # Dispatch table
     _dispatch_table: dict[str, Callable] = {
