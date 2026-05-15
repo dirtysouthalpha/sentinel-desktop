@@ -1,8 +1,10 @@
 """Tests for core/powershell.py — argument escaping, PSResult, JSON parsing."""
 
+import pytest
+
 from core.powershell import (
-    PSResult,
     PowerShellRunner,
+    PSResult,
     _ps_escape_single_quoted,
 )
 
@@ -21,32 +23,20 @@ class TestPsEscapeSingleQuoted:
         assert _ps_escape_single_quoted("") == "''"
 
     def test_rejects_null_byte(self):
-        try:
+        with pytest.raises(ValueError):
             _ps_escape_single_quoted("hello\x00world")
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_rejects_carriage_return(self):
-        try:
+        with pytest.raises(ValueError):
             _ps_escape_single_quoted("hello\rworld")
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_rejects_newline(self):
-        try:
+        with pytest.raises(ValueError):
             _ps_escape_single_quoted("hello\nworld")
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_rejects_non_string(self):
-        try:
+        with pytest.raises(TypeError):
             _ps_escape_single_quoted(42)
-            assert False, "Should have raised TypeError"
-        except TypeError:
-            pass
 
 
 class TestPSResult:
@@ -81,7 +71,7 @@ class TestParseJsonOutput:
         assert len(result) == 2
 
     def test_json_scalar(self):
-        result = PowerShellRunner._parse_json_output('42')
+        result = PowerShellRunner._parse_json_output("42")
         assert result == [{"value": 42}]
 
     def test_invalid_json(self):

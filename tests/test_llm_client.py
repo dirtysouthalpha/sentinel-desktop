@@ -1,11 +1,12 @@
 """Tests for core/llm_client.py — error messages, headers, tool conversion."""
 
+import pytest
+
 from core.llm_client import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_TIMEOUT,
-    LLMClient,
-    LLMError,
     RETRY_STATUSES,
+    LLMClient,
     _friendly_http_error,
 )
 
@@ -124,8 +125,5 @@ class TestMakeAnthropicVisionMessage:
 class TestLLMClientChat:
     def test_unknown_provider_raises(self):
         client = LLMClient()
-        try:
+        with pytest.raises(ValueError, match="nonexistent_provider"):
             client.chat("nonexistent_provider", "key", "model", [])
-            assert False, "Should have raised ValueError"
-        except ValueError as exc:
-            assert "nonexistent_provider" in str(exc)

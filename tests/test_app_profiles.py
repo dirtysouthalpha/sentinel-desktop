@@ -1,6 +1,5 @@
 """Tests for core/app_profiles.py — application detection and profiles."""
 
-
 from core.app_profiles import (
     PROFILES,
     AppProfile,

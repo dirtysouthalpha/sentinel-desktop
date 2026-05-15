@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from core.script_engine import (
     ScriptEngine,
     ScriptResult,
@@ -118,7 +120,7 @@ class TestScriptEngine:
             def __init__(self, res):
                 self._results = list(res)
                 self._idx = 0
-                self._dispatch_table = {"click": True}
+                self._dispatch_table = {"click": True, "type_text": True}
 
             def execute_sync(self, action_dict):
                 if self._idx < len(self._results):
@@ -207,11 +209,8 @@ class TestScriptEngine:
 
     def test_invalid_error_policy_raises(self):
         engine = ScriptEngine(self._make_executor())
-        try:
+        with pytest.raises(ValueError):
             engine.set_on_error_policy("explode")
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_dry_run_returns_previews(self):
         engine = ScriptEngine(self._make_executor())
@@ -230,11 +229,8 @@ class TestScriptEngine:
 
     def test_dry_run_invalid_raises(self):
         engine = ScriptEngine(self._make_executor())
-        try:
+        with pytest.raises(ValueError):
             engine.dry_run({"steps": []})
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_progress_callback(self):
         executor = self._make_executor([{"success": True, "output": "ok"}] * 2)

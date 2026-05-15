@@ -1,8 +1,5 @@
 """Tests for core/auth.py — RBAC, password hashing, session management."""
 
-import json
-import time
-
 import pytest
 
 from core.auth import (

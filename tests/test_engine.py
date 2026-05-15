@@ -86,16 +86,18 @@ class TestParseAction:
 
     def test_tool_call_envelope(self):
         engine = AgentEngine.__new__(AgentEngine)
-        payload = json.dumps({
-            "tool_calls": [
-                {
-                    "function": {
-                        "name": "click",
-                        "arguments": '{"x": 50, "y": 60}',
+        payload = json.dumps(
+            {
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "click",
+                            "arguments": '{"x": 50, "y": 60}',
+                        }
                     }
-                }
-            ]
-        })
+                ]
+            }
+        )
         result = engine._parse_action(payload)
         assert result is not None
         assert result["action"] == "click"
@@ -114,9 +116,7 @@ class TestParseAction:
 
 class TestActionFromToolCall:
     def test_openai_shape(self):
-        tool_calls = [
-            {"function": {"name": "click", "arguments": '{"x": 10, "y": 20}'}}
-        ]
+        tool_calls = [{"function": {"name": "click", "arguments": '{"x": 10, "y": 20}'}}]
         result = AgentEngine._action_from_tool_call(tool_calls)
         assert result == {"action": "click", "x": 10, "y": 20}
 
@@ -141,16 +141,12 @@ class TestActionFromToolCall:
         assert AgentEngine._action_from_tool_call([{"function": {}}]) is None
 
     def test_drops_action_from_args(self):
-        tool_calls = [
-            {"function": {"name": "click", "arguments": '{"action":"click","x":1}'}}
-        ]
+        tool_calls = [{"function": {"name": "click", "arguments": '{"action":"click","x":1}'}}]
         result = AgentEngine._action_from_tool_call(tool_calls)
         assert result == {"action": "click", "x": 1}
 
     def test_invalid_json_arguments(self):
-        tool_calls = [
-            {"function": {"name": "click", "arguments": "not json{{{"}}
-        ]
+        tool_calls = [{"function": {"name": "click", "arguments": "not json{{{"}}]
         result = AgentEngine._action_from_tool_call(tool_calls)
         assert result is not None
         assert result["action"] == "click"

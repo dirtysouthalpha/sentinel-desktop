@@ -118,7 +118,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S106", "S603", "S607", "E701"]
+"tests/*" = ["S101", "S105", "S106", "S603", "S607", "E701"]
 "installer/*" = ["S603", "S607"]
 "core/auth.py" = ["S324"]  # SHA-256 password hashing — see TODO to migrate to bcrypt
 

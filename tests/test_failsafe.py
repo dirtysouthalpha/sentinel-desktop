@@ -1,7 +1,5 @@
 """Tests for core/failsafe.py — Esc-x3 panic stop listener."""
 
-
-
 from core.failsafe import PANIC_PRESS_COUNT, FailsafeListener
 
 
