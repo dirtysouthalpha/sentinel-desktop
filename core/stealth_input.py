@@ -252,7 +252,8 @@ def _get_focus_hwnd(parent: int) -> int | None:
         info.cbSize = ctypes.sizeof(info)
         if ctypes.windll.user32.GetGUIThreadInfo(thread_id, ctypes.byref(info)):
             return int(info.hwndFocus) or None
-    except Exception:
+    except Exception as exc:
+        logger.debug("get_focused_control failed: %s", exc)
         return None
     return None
 

@@ -467,7 +467,8 @@ class _Win32VirtualDesktop:
                 from core import window_manager as wm
 
                 return wm.list_windows()
-            except Exception:
+            except Exception as exc:
+                logger.debug("window_manager fallback failed: %s", exc)
                 return windows
 
         try:
@@ -660,7 +661,8 @@ class _StubVirtualDesktop:
             from core import window_manager as wm
 
             return wm.list_windows()
-        except Exception:
+        except Exception as exc:
+            logger.debug("list_windows fallback failed: %s", exc)
             return []
 
     def close(self) -> None:

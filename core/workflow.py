@@ -298,7 +298,8 @@ class WorkflowEngine:
                             result.step_results[-1] = sr
                             retried = True
                             break
-                        except Exception:
+                        except Exception as exc:
+                            logger.debug("Step retry %d/%d failed: %s", retries, step.max_retries, exc)
                             time.sleep(0.5)
                     if not retried:
                         result.error = f"Step {step.id} failed after {step.max_retries} retries"

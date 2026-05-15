@@ -354,7 +354,8 @@ def _uia_check() -> DetectionResult | None:
         for win in root.GetChildren():
             try:
                 title = win.Name or ""
-            except Exception:
+            except Exception as exc:
+                logger.debug("Failed to read window name: %s", exc)
                 title = ""
 
             # If the window already matches by title, skip — the title
@@ -372,7 +373,8 @@ def _uia_check() -> DetectionResult | None:
             for ctrl in win.GetChildren():
                 try:
                     ctrl_type = ctrl.ControlTypeName
-                except Exception:
+                except Exception as exc:
+                    logger.debug("Failed to read control type: %s", exc)
                     continue
 
                 # Password edit controls
@@ -380,8 +382,8 @@ def _uia_check() -> DetectionResult | None:
                     try:
                         if getattr(ctrl, "IsPassword", False):
                             found_password = True
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("IsPassword check failed: %s", exc)
 
                 # Text elements matching auth patterns
                 if ctrl_type in ("TextControl", "StaticControl"):
@@ -394,8 +396,8 @@ def _uia_check() -> DetectionResult | None:
                                     found_auth_text = True
                                     prompt_text_parts.append(text[:120])
                                     break
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Text pattern matching failed: %s", exc)
 
             if found_password or found_auth_text:
                 det_type = "credential" if found_password else "mfa"

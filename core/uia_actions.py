@@ -613,8 +613,8 @@ class UIAActionPipeline:
                     (bounds["center_x"], bounds["center_y"]),
                 )
                 return int(hwnd) if hwnd else None
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("_uia_hwnd fallback failed: %s", exc)
         return None
 
     def _uia_menu_walk(
@@ -665,13 +665,13 @@ class UIAActionPipeline:
                         if pattern:
                             pattern.Invoke()
                             return True
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Invoke pattern failed, trying click: %s", exc)
                     try:
                         target.Click(simulateMove=False)
                         return True
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Click fallback failed: %s", exc)
                     return False
                 else:
                     # Intermediate item — expand to reveal submenu.
@@ -682,8 +682,8 @@ class UIAActionPipeline:
                             time.sleep(0.05)
                             current = target
                             continue
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Expand pattern failed, trying click: %s", exc)
                     # Fallback: click to open submenu.
                     try:
                         target.Click(simulateMove=False)
@@ -707,8 +707,8 @@ class UIAActionPipeline:
                     return child
                 if needle in (child.Name or "").lower():
                     return child
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("_find_child_by_name failed: %s", exc)
         return None
 
 

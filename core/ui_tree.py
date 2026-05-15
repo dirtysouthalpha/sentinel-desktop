@@ -124,8 +124,8 @@ def click_control(
             if pattern is not None:
                 pattern.Invoke()
                 invoked = True
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("InvokePattern failed: %s", exc)
 
         if not invoked:
             # SelectionItemPattern handles list-box rows, tabs, etc.
@@ -134,8 +134,8 @@ def click_control(
                 if sel is not None:
                     sel.Select()
                     invoked = True
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("SelectionItemPattern failed: %s", exc)
 
         if not invoked:
             # Last resort: physical click, but skip the visual cursor sweep.
@@ -182,8 +182,8 @@ def set_text(
             pattern = ctrl.GetValuePattern()
             pattern.SetValue(text)
             return True
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("ValuePattern failed, falling back to SendKeys: %s", exc)
         ctrl.SetFocus()
         # SendKeys with curly-brace escaping for safety.
         _auto.SendKeys(text, waitTime=0.02)  # type: ignore[union-attr]
@@ -237,13 +237,14 @@ def _walk(
                 "is_offscreen": bool(getattr(node, "IsOffscreen", False)),
             }
         )
-    except Exception:
+    except Exception as exc:
+        logger.debug("_walk: failed to read node properties: %s", exc)
         return
     try:
         for child in node.GetChildren():
             _walk(child, out, depth + 1, max_depth, max_results)
-    except Exception:
-        return
+    except Exception as exc:
+        logger.debug("_walk: failed to get children: %s", exc)
 
 
 def _find_control(
@@ -307,6 +308,7 @@ def _find_control(
             try:
                 for child in node.GetChildren():
                     queue.append((child, depth + 1))
-            except Exception:
+            except Exception as exc:
+                logger.debug("_find_best_match: failed to get children: %s", exc)
                 continue
     return best

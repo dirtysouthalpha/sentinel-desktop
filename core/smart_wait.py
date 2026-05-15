@@ -501,7 +501,8 @@ class SmartWait:
             from core.ocr import _ocr_image, read_screen_text  # type: ignore[attr-defined]
 
             _ocr_available = True
-        except Exception:
+        except Exception as exc:
+            logger.debug("OCR import unavailable: %s", exc)
             _ocr_available = False
 
         if not _ocr_available:

@@ -149,7 +149,8 @@ class PowerShellRunner:
                 )
                 if r.returncode == 0:
                     return candidate
-            except Exception:
+            except Exception as exc:
+                logger.debug("PowerShell candidate %s failed validation: %s", candidate, exc)
                 continue
         return self.POWERSHELL_EXE
 
