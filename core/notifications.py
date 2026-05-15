@@ -469,7 +469,6 @@ class NotificationManager:
             import ctypes  # type: ignore
 
             def _show_box() -> None:
-                # MB_ICONINFORMATION = 0x40
                 ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
                     0,
                     message,

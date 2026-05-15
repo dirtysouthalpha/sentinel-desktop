@@ -58,7 +58,7 @@ if _IS_WINDOWS:
     #     CRYPTPROTECT_PROMPTSTRUCT *pPromptStruct,  # optional prompt
     #     DWORD      dwFlags,        # CRYPTPROTECT_UI_FORBIDDEN etc.
     #     DATA_BLOB *pDataOut        # out – encrypted blob
-    # )
+    # )  # noqa: ERA001
     _CryptProtectData = _crypt32.CryptProtectData
     _CryptProtectData.argtypes = [
         POINTER(_DATA_BLOB),  # pDataIn
@@ -332,7 +332,7 @@ class CredentialVault:
             try:
                 return base64.b64decode(ciphertext)
             except ValueError:
-                logger.error("base64 decode failed for non-Windows vault entry")
+                logger.exception("base64 decode failed for non-Windows vault entry")
                 return None
 
     # ------------------------------------------------------------------
@@ -351,7 +351,7 @@ class CredentialVault:
                 raise ValueError("Invalid vault structure")
             return data
         except (OSError, json.JSONDecodeError, ValueError) as exc:
-            logger.error("Failed to load vault from %s: %s", self._path, exc)
+            logger.exception("Failed to load vault from %s", self._path)
             return {"version": _VAULT_VERSION, "keys": {}}
 
     def _save(self) -> bool:
@@ -366,5 +366,5 @@ class CredentialVault:
             tmp.replace(self._path)
             return True
         except OSError as exc:
-            logger.error("Failed to save vault to %s: %s", self._path, exc)
+            logger.exception("Failed to save vault to %s", self._path)
             return False

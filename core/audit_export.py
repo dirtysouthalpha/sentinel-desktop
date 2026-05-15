@@ -9,9 +9,9 @@ Sensitive fields (password, token, key, secret) are automatically masked.
 import csv
 import json
 import logging
-import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -106,9 +106,9 @@ class AuditExporter:
     def __init__(self, output_dir: str = "reports") -> None:
         self.output_dir = output_dir
         try:
-            os.makedirs(self.output_dir, exist_ok=True)
-        except OSError as exc:
-            logger.error("Failed to create output dir %s: %s", self.output_dir, exc)
+            Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+        except OSError:
+            logger.exception("Failed to create output dir %s", self.output_dir)
 
     # ------------------------------------------------------------------
     # Public API
@@ -145,7 +145,8 @@ class AuditExporter:
         }
         handler = dispatch.get(format.lower())
         if handler is None:
-            raise ValueError(f"Unsupported format '{format}'. Choose from: {', '.join(dispatch)}")
+            _msg = f"Unsupported format '{format}'. Choose from: {', '.join(dispatch)}"
+            raise ValueError(_msg)
         return handler(log, metadata)
 
     # ------------------------------------------------------------------
@@ -166,13 +167,15 @@ class AuditExporter:
         }
 
         filename = self._filename("audit_report", "json")
+        filepath = Path(filename)
         try:
-            with open(filename, "w", encoding="utf-8") as fh:
+            with filepath.open("w", encoding="utf-8") as fh:
                 json.dump(report, fh, indent=2, ensure_ascii=False, default=str)
-        except OSError as exc:
-            logger.error("Failed to write JSON report %s: %s", filename, exc)
+        except OSError:
+            logger.exception("Failed to write JSON report %s", filename)
             raise
-        return os.path.abspath(filename)
+        else:
+            return str(filepath.resolve())
 
     # ------------------------------------------------------------------
     # CSV  (RFC 4180)
@@ -184,8 +187,9 @@ class AuditExporter:
         filename = self._filename("audit_report", "csv")
 
         fieldnames = ["step", "timestamp", "action", "params", "result", "duration"]
+        filepath = Path(filename)
         try:
-            with open(filename, "w", newline="", encoding="utf-8") as fh:
+            with filepath.open("w", newline="", encoding="utf-8") as fh:
                 writer = csv.DictWriter(
                     fh,
                     fieldnames=fieldnames,
@@ -205,10 +209,11 @@ class AuditExporter:
                         "duration": entry.get("duration", ""),
                     }
                     writer.writerow(row)
-        except OSError as exc:
-            logger.error("Failed to write CSV report %s: %s", filename, exc)
+        except OSError:
+            logger.exception("Failed to write CSV report %s", filename)
             raise
-        return os.path.abspath(filename)
+        else:
+            return str(filepath.resolve())
 
     # ------------------------------------------------------------------
 
@@ -286,13 +291,15 @@ class AuditExporter:
         lines.append("=" * 72)
 
         filename = self._filename("audit_report", "txt")
+        filepath = Path(filename)
         try:
-            with open(filename, "w", encoding="utf-8") as fh:
+            with filepath.open("w", encoding="utf-8") as fh:
                 fh.write("\n".join(lines))
-        except OSError as exc:
-            logger.error("Failed to write text report %s: %s", filename, exc)
+        except OSError:
+            logger.exception("Failed to write text report %s", filename)
             raise
-        return os.path.abspath(filename)
+        else:
+            return str(filepath.resolve())
 
     # ------------------------------------------------------------------
     # HTML (dark sentinel theme)
@@ -310,13 +317,15 @@ class AuditExporter:
         html += self._html_postamble()
 
         filename = self._filename("audit_report", "html")
+        filepath = Path(filename)
         try:
-            with open(filename, "w", encoding="utf-8") as fh:
+            with filepath.open("w", encoding="utf-8") as fh:
                 fh.write(html)
-        except OSError as exc:
-            logger.error("Failed to write HTML report %s: %s", filename, exc)
+        except OSError:
+            logger.exception("Failed to write HTML report %s", filename)
             raise
-        return os.path.abspath(filename)
+        else:
+            return str(filepath.resolve())
 
     # ------------------------------------------------------------------
     # HTML helpers
@@ -524,7 +533,7 @@ class AuditExporter:
 
     def _filename(self, base: str, ext: str) -> str:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return os.path.join(self.output_dir, f"{base}_{ts}.{ext}")
+        return str(Path(self.output_dir) / f"{base}_{ts}.{ext}")
 
 
 # ---------------------------------------------------------------------------

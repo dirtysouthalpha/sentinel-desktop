@@ -285,7 +285,7 @@ def base64_to_image(b64_str: str) -> Image.Image:
         data = base64.b64decode(b64_str)
         return Image.open(io.BytesIO(data))
     except (ValueError, OSError) as exc:
-        logger.error("base64_to_image failed: %s", exc)
+        logger.exception("base64_to_image failed")
         raise ValueError(f"Invalid base64 image data: {exc}") from exc
 
 
@@ -302,7 +302,7 @@ def find_template(
         import cv2
         import numpy as np
     except ImportError:
-        logger.error("opencv-python required for template matching")
+        logger.exception("opencv-python required for template matching")
         return None
 
     screenshot = capture_screen(monitor=monitor)

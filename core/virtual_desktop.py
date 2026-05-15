@@ -136,7 +136,7 @@ def _get_current_desktop_name() -> str:
             return "Default"
 
         name = buf.value
-        return name if name else "Default"
+        return name or "Default"
     except Exception as exc:
         logger.debug("_get_current_desktop_name failed: %s", exc)
         return "Default"

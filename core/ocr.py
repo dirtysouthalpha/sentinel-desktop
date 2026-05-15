@@ -267,7 +267,7 @@ def _exact_substring_hit(
     for b in boxes:
         by_line.setdefault(b["line_id"], []).append(b)
 
-    for line_id, words in by_line.items():
+    for _line_id, words in by_line.items():
         words.sort(key=lambda w: w["x"])
         joined = " ".join(w["text"] for w in words).lower()
         if needle in joined:

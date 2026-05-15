@@ -8,9 +8,9 @@ inside the main SentinelApp window.
 
 import json
 import logging
-import os
 import threading
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, messagebox
 from typing import Any
 
@@ -18,11 +18,11 @@ import customtkinter as ctk
 
 logger = logging.getLogger(__name__)
 
-SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
+SCRIPTS_DIR = str(Path(__file__).resolve().parent.parent / "scripts")
 
 
 def _ensure_scripts_dir() -> str:
-    os.makedirs(SCRIPTS_DIR, exist_ok=True)
+    Path(SCRIPTS_DIR).mkdir(parents=True, exist_ok=True)
     return SCRIPTS_DIR
 
 
@@ -190,7 +190,7 @@ class RecorderPanel(ctk.CTkFrame):
             script.name = name
             safe = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in name)
             try:
-                script.save(os.path.join(_ensure_scripts_dir(), f"{safe}.json"))
+                script.save(str(Path(_ensure_scripts_dir()) / f"{safe}.json"))
             except OSError as exc:
                 messagebox.showerror("Save Error", f"Cannot save script:\n{exc}")
                 return
@@ -213,7 +213,7 @@ class RecorderPanel(ctk.CTkFrame):
         if not path:
             return
         try:
-            with open(path, encoding="utf-8") as fh:
+            with Path(path).open(encoding="utf-8") as fh:
                 script_data = json.load(fh)
         except (json.JSONDecodeError, OSError) as exc:
             messagebox.showerror("Playback Error", f"Cannot load script:\n{exc}")
@@ -345,7 +345,7 @@ class RecorderPanel(ctk.CTkFrame):
             p = info.get("path", "")
             sc = 0
             try:
-                with open(p, encoding="utf-8") as fh:
+                with Path(p).open(encoding="utf-8") as fh:
                     sc = len(json.load(fh).get("steps", []))
             except (OSError, json.JSONDecodeError) as exc:
                 logger.debug("Failed to read workflow step count: %s", exc)
@@ -414,9 +414,9 @@ class RecorderPanel(ctk.CTkFrame):
         ).grid(row=3, column=0, pady=(4, 12))
 
     def _delete_script(self, path: str, parent: ctk.CTkToplevel) -> None:
-        if messagebox.askyesno("Delete Script", f"Delete {os.path.basename(path)}?"):
+        if messagebox.askyesno("Delete Script", f"Delete {Path(path).name}?"):
             try:
-                os.remove(path)
+                Path(path).unlink()
             except OSError as exc:
                 messagebox.showerror("Delete Error", str(exc))
                 return

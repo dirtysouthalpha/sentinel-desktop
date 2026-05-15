@@ -345,7 +345,7 @@ class TaskScheduler:
                 json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
             )
         except OSError as exc:
-            logger.error("Failed to save tasks to %s: %s", self._tasks_path, exc)
+            logger.exception("Failed to save tasks to %s", self._tasks_path)
 
     def load(self) -> None:
         """Load tasks from the JSON file (replaces in-memory state)."""
@@ -356,7 +356,7 @@ class TaskScheduler:
             raw = self._tasks_path.read_text(encoding="utf-8")
             items = json.loads(raw)
         except (OSError, json.JSONDecodeError) as exc:
-            logger.error("Failed to load tasks from %s: %s", self._tasks_path, exc)
+            logger.exception("Failed to load tasks from %s", self._tasks_path)
             return
 
         if not isinstance(items, list):

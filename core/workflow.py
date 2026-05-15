@@ -13,6 +13,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -171,11 +172,11 @@ class WorkflowEngine:
         """Execute a workflow from a JSON file."""
         start_time = time.time()
 
-        if not os.path.exists(path):
+        if not Path(path).exists():
             return WorkflowResult(success=False, error=f"Workflow not found: {path}")
 
         try:
-            with open(path, encoding="utf-8") as f:
+            with Path(path).open(encoding="utf-8") as f:
                 wf_data = json.load(f)
         except (json.JSONDecodeError, OSError) as exc:
             return WorkflowResult(success=False, error=f"Failed to load workflow: {exc}")
@@ -276,7 +277,7 @@ class WorkflowEngine:
                 current = next_id
 
             except Exception as exc:
-                logger.error("Step [%s] failed: %s", step.id, exc)
+                logger.exception("Step [%s] failed", step.id)
                 result.step_results.append({"success": False, "error": str(exc)})
 
                 if step.error_policy == "stop":
@@ -413,35 +414,36 @@ class WorkflowEngine:
     def save_workflow(path: str, workflow_data: dict[str, Any]) -> None:
         """Save a workflow definition to JSON."""
         try:
-            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
+            p = Path(path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with p.open("w", encoding="utf-8") as f:
                 json.dump(workflow_data, f, indent=2, ensure_ascii=False)
         except OSError as exc:
-            logger.error("Failed to save workflow to %s: %s", path, exc)
+            logger.exception("Failed to save workflow to %s", path)
             raise
 
     @staticmethod
     def list_workflows(directory: str = "workflows") -> list[dict[str, Any]]:
         """List all workflow files in a directory."""
         workflows: list[dict[str, Any]] = []
-        if not os.path.isdir(directory):
+        dir_path = Path(directory)
+        if not dir_path.is_dir():
             return workflows
-        for fname in sorted(os.listdir(directory)):
-            if not fname.endswith(".json"):
+        for filepath in sorted(dir_path.iterdir()):
+            if filepath.suffix != ".json":
                 continue
-            fpath = os.path.join(directory, fname)
             try:
-                with open(fpath, encoding="utf-8") as f:
+                with filepath.open(encoding="utf-8") as f:
                     data = json.load(f)
                 workflows.append(
                     {
-                        "name": data.get("name", fname),
+                        "name": data.get("name", filepath.name),
                         "description": data.get("description", ""),
-                        "path": fpath,
+                        "path": str(filepath),
                         "steps": len(data.get("steps", [])),
                         "variables": list(data.get("variables", {}).keys()),
                     }
                 )
             except (json.JSONDecodeError, OSError) as exc:
-                logger.warning("Skipping invalid workflow %s: %s", fpath, exc)
+                logger.warning("Skipping invalid workflow %s: %s", filepath, exc)
         return workflows

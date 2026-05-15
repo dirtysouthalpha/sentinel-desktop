@@ -26,6 +26,7 @@ import time
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
@@ -382,15 +383,13 @@ class SentinelServer:
         """List all available scripts in the scripts/ directory."""
         self._check_auth(authorization)
         try:
-            import os
-
             from core.recorder import ActionRecorder
-
-            scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
-            scripts = ActionRecorder.list_scripts(scripts_dir)
-            return {"scripts": scripts}
         except Exception as exc:
             return {"scripts": [], "error": str(exc)}
+        else:
+            scripts_dir = Path(__file__).resolve().parent.parent / "scripts"
+            scripts = ActionRecorder.list_scripts(str(scripts_dir))
+            return {"scripts": scripts}
 
     async def _handle_script_run(
         self, req: ScriptRunRequest, authorization: str | None = Header(default=None)
@@ -452,13 +451,11 @@ class SentinelServer:
         desc = req.description
         script.name = name
         script.description = desc or script.description
-        import os
-
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
-        os.makedirs(scripts_dir, exist_ok=True)
-        path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
-        script.save(path)
-        return {"status": "saved", "path": path, "steps": len(script.steps)}
+        scripts_dir = Path(__file__).resolve().parent.parent / "scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        path = scripts_dir / f"{name.replace(' ', '_').lower()}.json"
+        script.save(str(path))
+        return {"status": "saved", "path": str(path), "steps": len(script.steps)}
 
     # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
 
@@ -468,14 +465,12 @@ class SentinelServer:
         """List available workflows."""
         self._check_auth(authorization)
         try:
-            import os
-
             from core.workflow import WorkflowEngine
-
-            wf_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workflows")
-            return {"workflows": WorkflowEngine.list_workflows(wf_dir)}
         except Exception as exc:
             return {"workflows": [], "error": str(exc)}
+        else:
+            wf_dir = Path(__file__).resolve().parent.parent / "workflows"
+            return {"workflows": WorkflowEngine.list_workflows(str(wf_dir))}
 
     async def _handle_workflow_run(
         self, req: WorkflowRunRequest, authorization: str | None = Header(default=None)

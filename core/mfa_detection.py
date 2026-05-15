@@ -40,7 +40,6 @@ _IS_WINDOWS = platform.system() == "Windows"
 # Integration constants
 # ---------------------------------------------------------------------------
 
-# (title_substring, detection_type)
 AUTH_WINDOW_TITLES: list[tuple[str, str]] = [
     ("Windows Security", "credential"),
     ("User Account Control", "uac"),
@@ -66,7 +65,6 @@ _GENERIC_TITLE_KEYWORDS: list[tuple[str, str]] = [
     ("authentication", "mfa"),
 ]
 
-# (pattern_text, detection_type)
 MFA_PATTERNS: list[tuple[str, str]] = [
     ("verify your identity", "mfa"),
     ("enter the code", "2fa"),
@@ -392,7 +390,7 @@ def _uia_check() -> DetectionResult | None:
                         text = (ctrl.Name or "").strip()
                         if text:
                             tl_text = text.lower()
-                            for pattern, det_type in MFA_PATTERNS:
+                            for pattern, _det_type in MFA_PATTERNS:
                                 if pattern.lower() in tl_text:
                                     found_auth_text = True
                                     prompt_text_parts.append(text[:120])

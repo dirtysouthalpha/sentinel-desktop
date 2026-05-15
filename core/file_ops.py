@@ -63,13 +63,13 @@ def read_file(path: str, encoding: str = "utf-8") -> str | None:
     try:
         safe = _resolve_safe(path)
     except PermissionError as exc:
-        logger.error("read_file(%s) blocked: %s", path, exc)
+        logger.exception("read_file(%s) blocked", path)
         return None
     try:
         with open(safe, encoding=encoding) as f:
             return f.read()
     except (OSError, UnicodeDecodeError) as exc:
-        logger.error("read_file(%s) failed: %s", path, exc)
+        logger.exception("read_file(%s) failed", path)
         return None
 
 
@@ -78,7 +78,7 @@ def write_file(path: str, content: str, encoding: str = "utf-8") -> bool:
     try:
         safe = _resolve_safe(path)
     except PermissionError as exc:
-        logger.error("write_file(%s) blocked: %s", path, exc)
+        logger.exception("write_file(%s) blocked", path)
         return False
     try:
         parent = safe.parent
@@ -88,7 +88,7 @@ def write_file(path: str, content: str, encoding: str = "utf-8") -> bool:
             f.write(content)
         return True
     except OSError as exc:
-        logger.error("write_file(%s) failed: %s", path, exc)
+        logger.exception("write_file(%s) failed", path)
         return False
 
 
@@ -97,7 +97,7 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
     try:
         safe = _resolve_safe(path)
     except PermissionError as exc:
-        logger.error("list_directory(%s) blocked: %s", path, exc)
+        logger.exception("list_directory(%s) blocked", path)
         return None
     try:
         entries: list[dict[str, Any]] = []
@@ -111,5 +111,5 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
             )
         return sorted(entries, key=lambda e: (not e["is_dir"], e["name"].lower()))
     except OSError as exc:
-        logger.error("list_directory(%s) failed: %s", path, exc)
+        logger.exception("list_directory(%s) failed", path)
         return None

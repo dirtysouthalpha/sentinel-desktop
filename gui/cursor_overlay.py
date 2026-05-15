@@ -204,7 +204,7 @@ class CursorOverlay:
             ring_color = "#95E400"  # lime (Override success)
         elif action_type in ("press_key", "hotkey"):
             ring_color = "#FBBC00"  # amber (Override warning)
-        elif action_type in ("scroll",):
+        elif action_type == "scroll":
             ring_color = "#8a5cff"  # phantom purple
         else:
             ring_color = self._accent

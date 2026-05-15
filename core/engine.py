@@ -484,11 +484,11 @@ class AgentEngine:
                     )
                 except LLMError as exc:
                     # Already a clean, user-facing message.
-                    logger.error("LLM call failed: %s", exc)
+                    logger.exception("LLM call failed")
                     self.notes.append(f"LLM error at step {self.step}: {exc}")
                     break
                 except Exception as exc:
-                    logger.error("LLM call failed: %s", exc)
+                    logger.exception("LLM call failed")
                     self.notes.append(f"LLM error at step {self.step}: {exc}")
                     break
 
@@ -716,9 +716,7 @@ class AgentEngine:
             {
                 "step": e.get("step"),
                 "action": e.get("action"),
-                "params": {
-                    k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
-                },
+                "params": {k: v for k, v in (e.get("params") or {}).items() if k != "screenshot"},
                 "ok": e.get("result", {}).get("ok", True),
                 "output_preview": str(e.get("result", {}).get("msg", ""))[:200],
                 "timestamp": e.get("timestamp"),
@@ -746,7 +744,7 @@ class AgentEngine:
                     "step": e.get("step"),
                     "action": e.get("action"),
                     "params": {
-                        k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
+                        k: v for k, v in (e.get("params") or {}).items() if k != "screenshot"
                     },
                     "error": e.get("result", {}).get("msg", "")[:300],
                     "timestamp": e.get("timestamp"),

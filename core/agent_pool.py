@@ -332,9 +332,7 @@ class AgentPool:
 
         logger.info("AgentPool shutdown complete")
 
-    # ------------------------------------------------------------------
-    # Internal: dispatcher
-    # ------------------------------------------------------------------
+    # Internal: dispatcher  # noqa: ERA001
 
     def _running_count(self) -> int:
         """Must be called with ``self._lock`` held."""

@@ -5,8 +5,8 @@ Full settings panel with sections for all configuration.
 
 import json
 import logging
-import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import customtkinter as ctk
@@ -326,7 +326,7 @@ class SettingsTab:
             self._refresh_plugin_list()
             logger.info("Plugins reloaded")
         except Exception as exc:
-            logger.error("Plugin reload failed: %s", exc)
+            logger.exception("Plugin reload failed")
 
     # ── Buttons ─────────────────────────────────────────────────────
 
@@ -370,18 +370,16 @@ class SettingsTab:
     def _save(self) -> None:
         """Save current settings to config/config.json."""
         cfg = self._gather_config()
-        config_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "config.json"
-        )
+        config_path = Path(__file__).resolve().parent.parent / "config" / "config.json"
         try:
-            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            config_path.parent.mkdir(parents=True, exist_ok=True)
             # Merge with existing config
             existing = {}
-            if os.path.exists(config_path):
-                with open(config_path, encoding="utf-8") as f:
+            if config_path.exists():
+                with config_path.open(encoding="utf-8") as f:
                     existing = json.load(f)
             existing.update(cfg)
-            with open(config_path, "w", encoding="utf-8") as f:
+            with config_path.open("w", encoding="utf-8") as f:
                 json.dump(existing, f, indent=2)
             logger.info("Settings saved to %s", config_path)
 
@@ -390,7 +388,7 @@ class SettingsTab:
                 self.app.set_theme(cfg["theme"])
 
         except (OSError, json.JSONDecodeError) as exc:
-            logger.error("Failed to save settings: %s", exc)
+            logger.exception("Failed to save settings")
 
     def _reset(self) -> None:
         """Reset all fields to defaults."""

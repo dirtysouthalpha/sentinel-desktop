@@ -111,7 +111,7 @@ class TestResolveCron:
         assert resolve_cron("30 8 * * 1-5") == "30 8 * * 1-5"
 
     def test_all_presets_are_valid_cron(self):
-        for name, expr in PRESETS.items():
+        for _name, expr in PRESETS.items():
             # Should not raise
             cron_matches(expr, datetime(2025, 1, 1, 0, 0))
 

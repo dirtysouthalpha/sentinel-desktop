@@ -68,7 +68,7 @@ def test_script_save_io_error(tmp_path):
     from unittest.mock import patch
 
     script = Script(name="Bad")
-    with patch("builtins.open", side_effect=OSError("disk full")):
+    with patch("pathlib.Path.open", side_effect=OSError("disk full")):
         with pytest.raises(OSError, match="disk full"):
             script.save(str(tmp_path / "script.json"))
 

@@ -374,8 +374,10 @@ class HistoryTab(ctk.CTkFrame):
                 f.write(f"Steps: {len(session.get('steps', []))}\n")
                 f.write(f"{'=' * 50}\n\n")
 
-                for i, step in enumerate(session.get("steps", [])):
-                    f.write(f"Step {i + 1}: {json.dumps(step, indent=2, default=str)}\n\n")
+                f.writelines(
+                    f"Step {i + 1}: {json.dumps(step, indent=2, default=str)}\n\n"
+                    for i, step in enumerate(session.get("steps", []))
+                )
         except OSError as exc:
             logger.error("Export failed: %s", exc)
             return

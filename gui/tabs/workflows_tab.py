@@ -6,8 +6,8 @@ Workflow management tab with left-panel list and right-panel detail view.
 
 import json
 import logging
-import os
 import threading
+from pathlib import Path
 from typing import Any
 
 import customtkinter as ctk
@@ -16,10 +16,7 @@ from core.workflow import WorkflowEngine
 
 logger = logging.getLogger(__name__)
 
-WORKFLOWS_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "workflows",
-)
+WORKFLOWS_DIR = str(Path(__file__).resolve().parent.parent.parent / "workflows")
 
 STEP_ICONS = {
     "script": "📜",
@@ -245,7 +242,7 @@ class WorkflowsTab(ctk.CTkFrame):
         self._selected_path = path
 
         try:
-            with open(path, encoding="utf-8") as f:
+            with Path(path).open(encoding="utf-8") as f:
                 self._workflow_data = json.load(f)
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning("Failed to load workflow %s: %s", path, exc)
@@ -430,9 +427,10 @@ class WorkflowsTab(ctk.CTkFrame):
 
     def _new_workflow(self) -> None:
         """Create a minimal new workflow file and select it."""
-        os.makedirs(WORKFLOWS_DIR, exist_ok=True)
+        workflows_dir = Path(WORKFLOWS_DIR)
+        workflows_dir.mkdir(parents=True, exist_ok=True)
         idx = len(self._workflows) + 1
-        fpath = os.path.join(WORKFLOWS_DIR, f"workflow_{idx}.json")
+        fpath = str(workflows_dir / f"workflow_{idx}.json")
         data = {
             "name": f"New Workflow {idx}",
             "description": "Describe this workflow…",

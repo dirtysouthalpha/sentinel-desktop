@@ -91,7 +91,7 @@ def run_gui() -> None:
     try:
         import customtkinter as ctk  # noqa: F401  (availability check)
     except ImportError:
-        logger.error("customtkinter not installed. Run: pip install -r requirements.txt")
+        logger.exception("customtkinter not installed. Run: pip install -r requirements.txt")
         sys.exit(1)
 
     from config import Config
@@ -108,7 +108,7 @@ def run_api(host: str = "0.0.0.0", port: int = 8091) -> None:
     try:
         import uvicorn
     except ImportError:
-        logger.error("uvicorn not installed. Run: pip install -r requirements.txt")
+        logger.exception("uvicorn not installed. Run: pip install -r requirements.txt")
         sys.exit(1)
 
     from api.server import SentinelServer

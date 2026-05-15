@@ -10,14 +10,13 @@ reads state from the main thread.
 """
 
 import base64
-import glob
 import hashlib
 import json
 import logging
-import os
 import threading
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -73,21 +72,22 @@ class Script:
     def save(self, path: str) -> None:
         """Write the script JSON to *path*, creating parent dirs as needed."""
         try:
-            os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
-            with open(path, "w", encoding="utf-8") as fh:
+            p = Path(path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with p.open("w", encoding="utf-8") as fh:
                 fh.write(self.to_json())
         except OSError as exc:
-            logger.error("Failed to save script to %s: %s", path, exc)
+            logger.exception("Failed to save script to %s", path)
             raise
 
     @classmethod
     def load(cls: type["Script"], path: str) -> "Script":
         """Load a Script from a JSON file on disk."""
         try:
-            with open(path, encoding="utf-8") as fh:
+            with Path(path).open(encoding="utf-8") as fh:
                 data = json.load(fh)
         except (OSError, json.JSONDecodeError) as exc:
-            logger.error("Failed to load script from %s: %s", path, exc)
+            logger.exception("Failed to load script from %s", path)
             raise
         return cls(
             name=data.get("name", "Untitled Script"),
@@ -248,19 +248,19 @@ class ActionRecorder:
         ``{"name": ..., "description": ..., "tags": [...], "path": ...}``.
         """
         results: list[dict[str, Any]] = []
-        pattern = os.path.join(directory, "*.json")
-        for filepath in sorted(glob.glob(pattern)):
+        dir_path = Path(directory)
+        for filepath in sorted(dir_path.glob("*.json")):
             try:
-                with open(filepath, encoding="utf-8") as fh:
+                with filepath.open(encoding="utf-8") as fh:
                     data = json.load(fh)
                 if not isinstance(data, dict):
                     continue
                 results.append(
                     {
-                        "name": data.get("name", os.path.basename(filepath)),
+                        "name": data.get("name", filepath.name),
                         "description": data.get("description", ""),
                         "tags": data.get("tags", []),
-                        "path": filepath,
+                        "path": str(filepath),
                     }
                 )
             except (json.JSONDecodeError, OSError):
@@ -283,7 +283,7 @@ class ActionRecorder:
             return "Empty recording — no actions captured."
 
         action_parts: list[str] = []
-        for idx, step in enumerate(steps):
+        for _idx, step in enumerate(steps):
             action = step.get("action", "unknown")
             params = step.get("params", {})
             desc = step.get("description", "")

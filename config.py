@@ -8,6 +8,7 @@ or ~/.sentinel-desktop/ on other platforms.
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -84,14 +85,11 @@ DEFAULTS: dict[str, Any] = {
 # Config directory
 # ---------------------------------------------------------------------------
 if os.name == "nt":
-    _CONFIG_DIR = os.path.join(
-        os.environ.get("APPDATA", os.path.expanduser("~")),
-        "SentinelDesktop",
-    )
+    _CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "SentinelDesktop"
 else:
-    _CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".sentinel-desktop")
+    _CONFIG_DIR = Path.home() / ".sentinel-desktop"
 
-_CONFIG_PATH = os.path.join(_CONFIG_DIR, "config.json")
+_CONFIG_PATH = _CONFIG_DIR / "config.json"
 
 
 class Config:
@@ -125,9 +123,9 @@ class Config:
 
     def load(self) -> dict[str, Any]:
         """Load config from disk, merge with defaults. Returns the dict."""
-        if os.path.isfile(self._path):
+        if Path(self._path).is_file():
             try:
-                with open(self._path, encoding="utf-8") as fh:
+                with Path(self._path).open(encoding="utf-8") as fh:
                     data = json.load(fh)
                 self._data.update(data)
                 logger.info("Config loaded from %s", self._path)
@@ -139,13 +137,13 @@ class Config:
         """Persist config to disk. Optionally merge in new data first."""
         if data:
             self._data.update(data)
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
+        Path(self._path).parent.mkdir(parents=True, exist_ok=True)
         try:
-            with open(self._path, "w", encoding="utf-8") as fh:
+            with Path(self._path).open("w", encoding="utf-8") as fh:
                 json.dump(self._data, fh, indent=2, ensure_ascii=False)
             logger.info("Config saved to %s", self._path)
-        except (OSError, TypeError) as exc:
-            logger.error("Failed to save config: %s", exc)
+        except (OSError, TypeError):
+            logger.exception("Failed to save config")
 
     def reset(self) -> None:
         self._data = {**DEFAULTS}

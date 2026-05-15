@@ -32,7 +32,7 @@ def clipboard_read() -> str:
     try:
         return cb.paste()
     except Exception as e:
-        logger.error("clipboard_read failed: %s", e)
+        logger.exception("clipboard_read failed")
         return ""
 
 
@@ -44,5 +44,5 @@ def clipboard_write(text: str) -> bool:
         cb.copy(text)
         return True
     except Exception as e:
-        logger.error("clipboard_write failed: %s", e)
+        logger.exception("clipboard_write failed")
         return False

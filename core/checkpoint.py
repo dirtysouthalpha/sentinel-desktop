@@ -9,13 +9,13 @@ feature.
 Thread-safe. Uses only stdlib modules.
 """
 
-import glob
 import json
 import logging
 import os
 import threading
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -25,14 +25,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 if os.name == "nt":
-    _BASE_DIR = os.path.join(
-        os.environ.get("APPDATA", os.path.expanduser("~")),
-        "SentinelDesktop",
-    )
+    _BASE_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "SentinelDesktop"
 else:
-    _BASE_DIR = os.path.join(os.path.expanduser("~"), ".sentinel-desktop")
+    _BASE_DIR = Path.home() / ".sentinel-desktop"
 
-_CHECKPOINT_DIR = os.path.join(_BASE_DIR, "checkpoints")
+_CHECKPOINT_DIR = _BASE_DIR / "checkpoints"
 
 # Age-out threshold — checkpoints older than this are considered stale.
 _STALE_THRESHOLD = timedelta(hours=1)
@@ -52,18 +49,15 @@ def _iso_now() -> str:
 
 def _checkpoint_path(checkpoint_id: str) -> str:
     """Return the file path for a given checkpoint id."""
-    return os.path.join(_CHECKPOINT_DIR, f"{checkpoint_id}.json")
+    return str(_CHECKPOINT_DIR / f"{checkpoint_id}.json")
 
 
-def _discover_checkpoint_files(directory: str | None = None) -> list[str]:
+def _discover_checkpoint_files(directory: str | None = None) -> list[Path]:
     """Return all checkpoint JSON files sorted newest-first by mtime."""
-    target = directory or _CHECKPOINT_DIR
-    if not os.path.isdir(target):
+    target = Path(directory) if directory else _CHECKPOINT_DIR
+    if not target.is_dir():
         return []
-    pattern = os.path.join(target, "*.json")
-    files = glob.glob(pattern)
-    # Secondary sort by path for deterministic order when mtimes are equal
-    files.sort(key=lambda f: (os.path.getmtime(f), f), reverse=True)
+    files = sorted(target.glob("*.json"), key=lambda f: (f.stat().st_mtime, f), reverse=True)
     return files
 
 
@@ -106,8 +100,8 @@ class CheckpointManager:
 
     def __init__(self, checkpoint_dir: str | None = None) -> None:
         self._lock = threading.Lock()
-        self._dir = checkpoint_dir or _CHECKPOINT_DIR
-        os.makedirs(self._dir, exist_ok=True)
+        self._dir = Path(checkpoint_dir) if checkpoint_dir else _CHECKPOINT_DIR
+        self._dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
     # Save
@@ -163,11 +157,11 @@ class CheckpointManager:
             "model": config.get("model", ""),
         }
 
-        dest = os.path.join(self._dir, f"{checkpoint_id}.json")
+        dest = self._dir / f"{checkpoint_id}.json"
         saved = False
         with self._lock:
             try:
-                with open(dest, "w", encoding="utf-8") as fh:
+                with dest.open("w", encoding="utf-8") as fh:
                     json.dump(record, fh, indent=2, default=str, ensure_ascii=False)
                 saved = True
                 logger.info(
@@ -176,8 +170,8 @@ class CheckpointManager:
                     step_num,
                     status,
                 )
-            except (OSError, TypeError, ValueError) as exc:
-                logger.error("Failed to save checkpoint %s: %s", checkpoint_id[:8], exc)
+            except (OSError, TypeError, ValueError):
+                logger.exception("Failed to save checkpoint %s", checkpoint_id[:8])
 
         return checkpoint_id if saved else None
 
@@ -193,7 +187,7 @@ class CheckpointManager:
         trigger a warning log but are **not** deleted — the caller can
         still load them explicitly via :meth:`load`.
         """
-        files = _discover_checkpoint_files(self._dir)
+        files = _discover_checkpoint_files(str(self._dir))
         if not files:
             return None
 
@@ -201,7 +195,7 @@ class CheckpointManager:
 
         for fpath in files:
             try:
-                with open(fpath, encoding="utf-8") as fh:
+                with fpath.open(encoding="utf-8") as fh:
                     record = json.load(fh)
             except (json.JSONDecodeError, OSError) as exc:
                 logger.warning("Skipping corrupt checkpoint %s: %s", fpath, exc)
@@ -245,12 +239,12 @@ class CheckpointManager:
         Each element is a dict with keys:
         ``id``, ``goal_preview``, ``step_num``, ``timestamp``, ``status``.
         """
-        files = _discover_checkpoint_files(self._dir)
+        files = _discover_checkpoint_files(str(self._dir))
         result: list[dict[str, Any]] = []
 
         for fpath in files:
             try:
-                with open(fpath, encoding="utf-8") as fh:
+                with fpath.open(encoding="utf-8") as fh:
                     record = json.load(fh)
             except (json.JSONDecodeError, OSError) as exc:
                 logger.debug("Skipping corrupt checkpoint %s: %s", fpath, exc)
@@ -277,55 +271,58 @@ class CheckpointManager:
         Returns the checkpoint dict, or ``None`` if not found or corrupt.
         """
         # Sanitise — prevent directory traversal.
-        safe_id = os.path.basename(checkpoint_id)
-        fpath = os.path.join(self._dir, f"{safe_id}.json")
+        safe_id = Path(checkpoint_id).name
+        fpath = self._dir / f"{safe_id}.json"
 
-        if not os.path.isfile(fpath):
+        if not fpath.is_file():
             logger.warning("Checkpoint not found: %s", safe_id)
             return None
 
         try:
-            with open(fpath, encoding="utf-8") as fh:
+            with fpath.open(encoding="utf-8") as fh:
                 record = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            logger.exception("Failed to load checkpoint %s", safe_id[:8])
+            return None
+        else:
             logger.info("Checkpoint loaded: %s", safe_id[:8])
             return record
-        except (json.JSONDecodeError, OSError) as exc:
-            logger.error("Failed to load checkpoint %s: %s", safe_id[:8], exc)
-            return None
 
     def delete(self, checkpoint_id: str) -> bool:
         """Delete a single checkpoint by ``id``.
 
         Returns ``True`` on success (including when the file didn't exist).
         """
-        safe_id = os.path.basename(checkpoint_id)
-        fpath = os.path.join(self._dir, f"{safe_id}.json")
+        safe_id = Path(checkpoint_id).name
+        fpath = self._dir / f"{safe_id}.json"
 
         with self._lock:
             try:
-                if os.path.isfile(fpath):
-                    os.remove(fpath)
+                if fpath.is_file():
+                    fpath.unlink()
                     logger.info("Checkpoint deleted: %s", safe_id[:8])
-                return True
-            except OSError as exc:
-                logger.error("Failed to delete checkpoint %s: %s", safe_id[:8], exc)
+            except OSError:
+                logger.exception("Failed to delete checkpoint %s", safe_id[:8])
                 return False
+            else:
+                return True
 
     def clear_all(self) -> int:
         """Delete **all** checkpoint files.
 
         Returns the number of files removed.
         """
-        files = _discover_checkpoint_files(self._dir)
+        files = _discover_checkpoint_files(str(self._dir))
         removed = 0
 
         with self._lock:
             for fpath in files:
                 try:
-                    os.remove(fpath)
-                    removed += 1
+                    fpath.unlink()
                 except OSError as exc:
                     logger.warning("Failed to remove %s: %s", fpath, exc)
+                else:
+                    removed += 1
 
         logger.info("Cleared %d checkpoint(s)", removed)
         return removed

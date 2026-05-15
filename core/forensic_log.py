@@ -11,10 +11,10 @@ Thread-safe. Uses only stdlib modules.
 import csv
 import json
 import logging
-import os
 import threading
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -42,14 +42,16 @@ SENSITIVE_KEY_PARTS = (
 # ---------------------------------------------------------------------------
 def _default_log_dir() -> str:
     """Return the platform-appropriate log directory under AppData."""
+    import os
+
     if os.name == "nt":
         base = os.environ.get(
             "APPDATA",
-            os.path.join(os.path.expanduser("~"), "AppData", "Roaming"),
+            str(Path.home() / "AppData" / "Roaming"),
         )
     else:
-        base = os.path.expanduser("~")
-    return os.path.join(base, "sentinel-desktop", "logs")
+        base = str(Path.home())
+    return str(Path(base) / "sentinel-desktop" / "logs")
 
 
 # ---------------------------------------------------------------------------
@@ -350,16 +352,16 @@ class ForensicLog:
             }
 
         try:
-            parent = os.path.dirname(path)
-            if parent:
-                os.makedirs(parent, exist_ok=True)
-            with open(path, "w", encoding="utf-8") as fh:
+            file_path = Path(path)
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with file_path.open("w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
+        except (OSError, TypeError, ValueError):
+            logger.exception("export_json failed")
+            return False
+        else:
             logger.debug("Forensic JSON exported to %s", path)
             return True
-        except (OSError, TypeError, ValueError) as exc:
-            logger.error("export_json failed: %s", exc)
-            return False
 
     def export_csv(self, path: str) -> bool:
         """Write all steps to an RFC-4180 quoted CSV file.
@@ -410,10 +412,9 @@ class ForensicLog:
             )
 
         try:
-            parent = os.path.dirname(path)
-            if parent:
-                os.makedirs(parent, exist_ok=True)
-            with open(path, "w", encoding="utf-8", newline="") as fh:
+            file_path = Path(path)
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with file_path.open("w", encoding="utf-8", newline="") as fh:
                 writer = csv.DictWriter(
                     fh,
                     fieldnames=columns,
@@ -421,11 +422,12 @@ class ForensicLog:
                 )
                 writer.writeheader()
                 writer.writerows(rows)
+        except (OSError, csv.Error):
+            logger.exception("export_csv failed")
+            return False
+        else:
             logger.debug("Forensic CSV exported to %s (%d rows)", path, len(rows))
             return True
-        except (OSError, csv.Error) as exc:
-            logger.error("export_csv failed: %s", exc)
-            return False
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -448,15 +450,15 @@ class ForensicLog:
         run_id = self._run.get("run_id")
         if not run_id:
             return
-        dest = os.path.join(self._log_dir, f"{run_id}.json")
+        dest = Path(self._log_dir) / f"{run_id}.json"
         try:
-            os.makedirs(self._log_dir, exist_ok=True)
+            dest.parent.mkdir(parents=True, exist_ok=True)
             with self._lock:
                 payload = {
                     "run": dict(self._run),
                     "steps": [dict(s) for s in self._steps],
                 }
-            with open(dest, "w", encoding="utf-8") as fh:
+            with dest.open("w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
         except (OSError, TypeError) as exc:
             logger.warning("Forensic auto-save failed: %s", exc)

@@ -276,7 +276,7 @@ class PluginLoader:
                 info = self.load_plugin(filepath)
                 results.append(info)
             except Exception as exc:
-                logger.error("Failed to load plugin %s: %s", filepath, exc)
+                logger.exception("Failed to load plugin %s", filepath)
                 results.append(
                     {
                         "name": filepath.stem,
@@ -427,7 +427,7 @@ class PluginLoader:
             info = self.load_plugin(filepath)
             return info.get("loaded", False)
         except Exception as exc:
-            logger.error("Failed to reload plugin '%s': %s", name, exc)
+            logger.exception("Failed to reload plugin '%s'", name)
             return False
 
     # -- querying -----------------------------------------------------------
