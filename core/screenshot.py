@@ -194,7 +194,11 @@ def capture_focused_window() -> Image.Image | None:
         x, y, w, h, _title = target
     if w <= 0 or h <= 0:
         return None
-    return capture_region(x, y, w, h)
+    try:
+        return capture_region(x, y, w, h)
+    except OSError as exc:
+        logger.error("capture_focused_window failed: %s", exc)
+        return None
 
 
 def capture_focused_window_with_title() -> tuple[Image.Image, str] | None:
@@ -215,7 +219,11 @@ def capture_focused_window_with_title() -> tuple[Image.Image, str] | None:
         x, y, w, h, title = target
     if w <= 0 or h <= 0:
         return None
-    return (capture_region(x, y, w, h), title)
+    try:
+        return (capture_region(x, y, w, h), title)
+    except OSError as exc:
+        logger.error("capture_focused_window_with_title failed: %s", exc)
+        return None
 
 
 def capture_window(title: str) -> Image.Image | None:
@@ -237,7 +245,11 @@ def capture_window(title: str) -> Image.Image | None:
     x, y, w, h = rect
     if w <= 0 or h <= 0:
         return None
-    return capture_region(x, y, w, h)
+    try:
+        return capture_region(x, y, w, h)
+    except OSError as exc:
+        logger.error("capture_window(%s) failed: %s", title, exc)
+        return None
 
 
 def capture_region(x: int, y: int, w: int, h: int) -> Image.Image:

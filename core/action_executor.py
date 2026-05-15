@@ -68,7 +68,7 @@ class ActionExecutor:
 
     def __init__(
         self,
-        approval_callback: Callable[..., Any] | None = None,
+        approval_callback: Callable[[dict[str, Any]], bool] | None = None,
         dry_run: bool = False,
         pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
         click_offset: tuple[int, int] = (0, 0),

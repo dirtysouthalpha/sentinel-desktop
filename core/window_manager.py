@@ -270,7 +270,9 @@ def restore_window(title: str) -> bool:
     needle = title.lower()
     for w in list_windows():
         if needle in (w.get("title") or "").lower():
-            return restore_window_hwnd(w.get("hwnd"))
+            hwnd = w.get("hwnd")
+            if hwnd is not None:
+                return restore_window_hwnd(hwnd)
     return False
 
 

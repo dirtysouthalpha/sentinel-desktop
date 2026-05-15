@@ -433,27 +433,39 @@ def create_default_palette(app: Any) -> CommandPalette:
 
 
 def _start_recording(app: Any) -> None:
-    if hasattr(app, "engine") and app.engine:
-        app.engine.recorder.start_recording("")
-        if hasattr(app, "recorder_panel"):
-            app.recorder_panel._on_record_click()
+    try:
+        if hasattr(app, "engine") and app.engine:
+            app.engine.recorder.start_recording("")
+            if hasattr(app, "recorder_panel"):
+                app.recorder_panel._on_record_click()
+    except Exception as exc:
+        logger.error("start_recording failed: %s", exc)
 
 
 def _stop_recording(app: Any) -> None:
-    if hasattr(app, "engine") and app.engine:
-        app.engine.recorder.stop_recording()
-        if hasattr(app, "recorder_panel"):
-            app.recorder_panel._on_stop_click()
+    try:
+        if hasattr(app, "engine") and app.engine:
+            app.engine.recorder.stop_recording()
+            if hasattr(app, "recorder_panel"):
+                app.recorder_panel._on_stop_click()
+    except Exception as exc:
+        logger.error("stop_recording failed: %s", exc)
 
 
 def _run_script_dialog(app: Any) -> None:
-    if hasattr(app, "recorder_panel"):
-        app.recorder_panel._on_play_click()
+    try:
+        if hasattr(app, "recorder_panel"):
+            app.recorder_panel._on_play_click()
+    except Exception as exc:
+        logger.error("run_script_dialog failed: %s", exc)
 
 
 def _show_script_library(app: Any) -> None:
-    if hasattr(app, "recorder_panel"):
-        app.recorder_panel._on_library_click()
+    try:
+        if hasattr(app, "recorder_panel"):
+            app.recorder_panel._on_library_click()
+    except Exception as exc:
+        logger.error("show_script_library failed: %s", exc)
 
 
 def _run_powershell_dialog(app: Any) -> None:
