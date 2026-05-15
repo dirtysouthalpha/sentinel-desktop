@@ -158,7 +158,7 @@ class _Indicator:
 # ---------------------------------------------------------------------------
 
 
-def _coords_from_action(action: dict[str, Any]):
+def _coords_from_action(action: dict[str, Any]) -> tuple[int, int] | None:
     """Pull (x, y) from an action dict if it has them."""
     if "x" in action and "y" in action:
         try:

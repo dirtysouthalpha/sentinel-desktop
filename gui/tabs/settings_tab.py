@@ -29,7 +29,7 @@ class SettingsTab:
         "text2": ("text_secondary", "#b9cacb"),
     }
 
-    def __init__(self, parent, app):
+    def __init__(self, parent: ctk.CTkFrame, app: Any) -> None:
         self.app = app
         self.root = parent
         self._vars: dict[str, Any] = {}
@@ -42,7 +42,7 @@ class SettingsTab:
 
     # ── Build ────────────────────────────────────────────────────────
 
-    def _build(self):
+    def _build(self) -> None:
         """Build the scrollable settings panel."""
         self.scroll = ctk.CTkScrollableFrame(
             self.root,

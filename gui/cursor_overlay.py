@@ -39,7 +39,7 @@ class CursorOverlay:
     cursor overlay. Thread-safe — call show_action() from any thread.
     """
 
-    def __init__(self, accent_color: str = "#00F0FF"):
+    def __init__(self, accent_color: str = "#00F0FF") -> None:
         self._accent = accent_color
         self._thread: threading.Thread | None = None
         self._running = False
@@ -68,7 +68,7 @@ class CursorOverlay:
         self._thread.start()
         return True
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the overlay thread."""
         self._running = False
         if self._root:
@@ -77,21 +77,18 @@ class CursorOverlay:
             except Exception as exc:
                 logger.debug("Cursor overlay destroy failed: %s", exc)
 
-    def show_action(self, action: dict[str, Any]):
-        """
-        Queue an action for visual display. Thread-safe.
-        Action dict should have: type, x, y, label (optional)
-        """
+    def show_action(self, action: dict[str, Any]) -> None:
+        """Queue an action for visual display. Thread-safe."""
         with self._queue_lock:
             self._queue.append(action)
 
-    def set_accent(self, color: str):
+    def set_accent(self, color: str) -> None:
         """Update the accent color."""
         self._accent = color
 
     # ── Internal ────────────────────────────────────────────────────
 
-    def _run_loop(self):
+    def _run_loop(self) -> None:
         """Background Tk mainloop."""
         import tkinter as tk
 
@@ -159,7 +156,7 @@ class CursorOverlay:
         finally:
             self._running = False
 
-    def _make_click_through(self):
+    def _make_click_through(self) -> None:
         """Set WS_EX_TRANSPARENT | WS_EX_LAYERED on Windows for click-through."""
         try:
             import ctypes
@@ -177,7 +174,7 @@ class CursorOverlay:
         except Exception as exc:
             logger.debug("Click-through setup failed (non-Windows?): %s", exc)
 
-    def _process_queue(self):
+    def _process_queue(self) -> None:
         """Process queued actions, animating each one."""
         if not self._running:
             return
@@ -192,7 +189,7 @@ class CursorOverlay:
 
         self._root.after(16, self._process_queue)  # ~60fps check
 
-    def _animate_action(self, action: dict):
+    def _animate_action(self, action: dict[str, Any]) -> None:
         """Animate a single action: glide → pulse → fade."""
         target_x = action.get("x", 0)
         target_y = action.get("y", 0)
@@ -290,12 +287,12 @@ def start_overlay(accent_color: str = "#00F0FF") -> bool:
     return o.start()
 
 
-def show_action(action: dict[str, Any]):
+def show_action(action: dict[str, Any]) -> None:
     """Show an action on the overlay. Thread-safe."""
     get_overlay().show_action(action)
 
 
-def stop_overlay():
+def stop_overlay() -> None:
     """Stop the cursor overlay."""
     global _overlay
     if _overlay:

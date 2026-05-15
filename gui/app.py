@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class SentinelApp:
     """Main application window."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         self.config = config
         self.cfg = config.load()
 
@@ -391,7 +391,7 @@ class SentinelApp:
             self.goal_entry.insert("1.0", self._placeholder_text)
             self.goal_entry.configure(text_color=self._t("text_secondary", "#849495"))
 
-    def _on_recent_pick(self, choice: str):
+    def _on_recent_pick(self, choice: str) -> None:
         # The dropdown shows truncated text — find the full prompt by prefix.
         recent = self.cfg.get("recent_prompts") or []
         target = next(
@@ -422,7 +422,7 @@ class SentinelApp:
 
     # ── Chat display ────────────────────────────────────────────────────
 
-    def _add_chat(self, text: str, tag: str = "system"):
+    def _add_chat(self, text: str, tag: str = "system") -> None:
         """Append a line to the chat log. Safe to call from any thread."""
         # Marshal Tk widget updates to the main thread.
         try:
@@ -431,7 +431,7 @@ class SentinelApp:
             # Root may already be destroyed during shutdown — drop silently.
             pass
 
-    def _add_chat_main(self, text: str, tag: str):
+    def _add_chat_main(self, text: str, tag: str) -> None:
         self.chat_display.configure(state="normal")
         ts = datetime.now().strftime("%H:%M:%S")
         prefix_map = {
@@ -450,7 +450,7 @@ class SentinelApp:
 
     # ── Event handlers ──────────────────────────────────────────────────
 
-    def _on_submit(self, event=None):
+    def _on_submit(self, event: Any = None) -> str | None:
         goal = self._get_goal_text()
         if not goal:
             return "break" if event else None
@@ -463,12 +463,12 @@ class SentinelApp:
         # Ctrl-Enter (the default binding would otherwise add one).
         return "break" if event else None
 
-    def _on_stop(self):
+    def _on_stop(self) -> None:
         if self.engine and self.engine.running:
             self.engine.stop()
             self._add_chat("Agent stopped by user.", "system")
 
-    def _run_goal(self, goal: str):
+    def _run_goal(self, goal: str) -> None:
         """Start agent in background thread."""
         if self.engine and self.engine.running:
             self._add_chat("Agent already running. Stop it first.", "error")
@@ -594,7 +594,7 @@ class SentinelApp:
         self.engine_thread = threading.Thread(target=_run, daemon=True)
         self.engine_thread.start()
 
-    def _update_step_labels(self, step: int):
+    def _update_step_labels(self, step: int) -> None:
         """Main-thread helper for updating the step/notes labels."""
         if not self.engine:
             return
@@ -677,7 +677,7 @@ class SentinelApp:
         event.wait(timeout=60)
         return decision["approved"]
 
-    def _update_screenshot(self, b64_data: str):
+    def _update_screenshot(self, b64_data: str) -> None:
         """Update the screenshot preview."""
         try:
             import base64
@@ -699,11 +699,11 @@ class SentinelApp:
 
     # ── Settings ────────────────────────────────────────────────────────
 
-    def _open_settings(self):
+    def _open_settings(self) -> None:
         """Open settings window."""
         SettingsWindow(self.root, self.config, self._on_settings_saved, app=self)
 
-    def _on_settings_saved(self):
+    def _on_settings_saved(self) -> None:
         self.cfg = self.config.load()
         provider = self.cfg.get("provider", "none")
         model = self.cfg.get("model", "none")
@@ -711,7 +711,7 @@ class SentinelApp:
 
     # ── Command palette ─────────────────────────────────────────────────
 
-    def _show_command_palette(self, event=None):
+    def _show_command_palette(self, event: Any = None) -> None:
         palette = ctk.CTkToplevel(self.root)
         palette.title("Command Palette")
         palette.geometry("500x400")
@@ -745,14 +745,14 @@ class SentinelApp:
 
         entry.focus()
 
-    def _take_screenshot(self):
+    def _take_screenshot(self) -> None:
         from core.screenshot import capture_to_base64
 
         b64 = capture_to_base64()
         self._update_screenshot(b64)
         self._add_chat("Screenshot captured.", "system")
 
-    def _export_log(self):
+    def _export_log(self) -> None:
         if not self.engine:
             self._add_chat("No log to export.", "system")
             return
@@ -767,7 +767,7 @@ class SentinelApp:
 
     # ── Resume Checkpoint ────────────────────────────────────────────────
 
-    def _check_resume_checkpoint(self):
+    def _check_resume_checkpoint(self) -> None:
         """Check for resumable checkpoints and show banner."""
         try:
             from core.checkpoint import CheckpointManager
@@ -788,7 +788,7 @@ class SentinelApp:
         except Exception as exc:
             logger.debug("Checkpoint check failed: %s", exc)
 
-    def _do_resume_checkpoint(self):
+    def _do_resume_checkpoint(self) -> None:
         """Resume from the latest checkpoint."""
         try:
             from core.checkpoint import CheckpointManager
@@ -810,7 +810,7 @@ class SentinelApp:
 
     # ── Action History ────────────────────────────────────────────────────
 
-    def _build_history_panel(self, parent):
+    def _build_history_panel(self, parent: ctk.CTkFrame) -> ctk.CTkFrame:
         """Build action history sidebar."""
         history_frame = ctk.CTkFrame(parent)
         history_frame.grid_rowconfigure(1, weight=1)
@@ -833,7 +833,7 @@ class SentinelApp:
         self.history_display.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
         return history_frame
 
-    def _add_history_entry(self, step: int, action_name: str, result: dict):
+    def _add_history_entry(self, step: int, action_name: str, result: dict[str, Any]) -> None:
         """Add an entry to the action history sidebar."""
         import time as _t
 
@@ -853,7 +853,7 @@ class SentinelApp:
 
     # ── Before/After Screenshots ──────────────────────────────────────────
 
-    def _update_screenshot_with_diff(self, before_b64: str, after_b64: str):
+    def _update_screenshot_with_diff(self, before_b64: str, after_b64: str) -> None:
         """Show before/after screenshots side by side in the right panel."""
         try:
             import base64
@@ -891,7 +891,7 @@ class SentinelApp:
 
     # ── Tray ────────────────────────────────────────────────────────────
 
-    def _start_tray_if_enabled(self):
+    def _start_tray_if_enabled(self) -> None:
         if not self.cfg.get("minimize_to_tray") and not self.cfg.get("start_in_tray"):
             return
         if not _tray_available():
@@ -913,7 +913,7 @@ class SentinelApp:
             # Hide the main window on launch.
             self.root.after(100, self._hide_to_tray)
 
-    def _hide_to_tray(self):
+    def _hide_to_tray(self) -> None:
         if not self.tray:
             return
         try:
@@ -921,7 +921,7 @@ class SentinelApp:
         except Exception as exc:
             logger.debug("Failed to withdraw window: %s", exc)
 
-    def _show_from_tray(self):
+    def _show_from_tray(self) -> None:
         try:
             self.root.after(0, self.root.deiconify)
             self.root.after(0, self.root.lift)
@@ -930,14 +930,14 @@ class SentinelApp:
         except Exception as exc:
             logger.debug("Failed to show window from tray: %s", exc)
 
-    def _on_close_window(self):
+    def _on_close_window(self) -> None:
         """User clicked the window's X button."""
         if self.cfg.get("minimize_to_tray") and self.tray:
             self._hide_to_tray()
         else:
             self.root.destroy()
 
-    def run(self):
+    def run(self) -> None:
         self._add_chat(
             "Sentinel Desktop v3.0 ready. Describe a goal and press Enter.\n"
             "Ctrl+K for command palette. ⚙ for settings.",
@@ -964,7 +964,7 @@ class SentinelApp:
 class SettingsWindow:
     """Settings modal for provider/API key configuration."""
 
-    def __init__(self, parent, config: Config, on_save=None, app=None):
+    def __init__(self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None) -> None:
         self.config = config
         self.cfg = config.load()
         self.on_save = on_save
@@ -978,7 +978,7 @@ class SettingsWindow:
 
         self._build()
 
-    def _build(self):
+    def _build(self) -> None:
         from core.provider_registry import PROVIDERS, get_provider_names
 
         # Provider
@@ -1089,7 +1089,7 @@ class SettingsWindow:
         # Build advanced settings (monitor, run mode, step budget, save).
         self._build_advanced()
 
-    def _on_theme_change(self, choice):
+    def _on_theme_change(self, choice: str) -> None:
         """Live theme switch from settings."""
         if self.app:
             self.app.current_theme = get_theme(choice)
@@ -1098,7 +1098,7 @@ class SettingsWindow:
             self.app.status_label.configure(text_color=self.app._t("status_idle", "#849495"))
             self.app.provider_label.configure(text_color=self.app._t("text_secondary", "#849495"))
 
-    def _build_advanced(self):
+    def _build_advanced(self) -> None:
         """Build monitor, run-mode, step-budget, and save controls.
 
         Called from _build() so these controls are always present, not only
@@ -1231,7 +1231,7 @@ class SettingsWindow:
             command=self._save,
         ).pack(fill="x", padx=20, pady=(20, 20))
 
-    def _on_provider_change(self, choice):
+    def _on_provider_change(self, choice: str) -> None:
         """When the provider changes, refresh the Base URL placeholder."""
         from core.provider_registry import PROVIDERS
 
@@ -1241,14 +1241,14 @@ class SettingsWindow:
         if not current or current in {p.get("base_url", "") for p in PROVIDERS.values()}:
             self.base_url_var.set(catalog_url)
 
-    def _reset_base_url(self):
+    def _reset_base_url(self) -> None:
         """Restore the selected provider's catalog default base URL."""
         from core.provider_registry import PROVIDERS
 
         provider = self.provider_var.get()
         self.base_url_var.set(PROVIDERS.get(provider, {}).get("base_url", ""))
 
-    def _detect_models(self):
+    def _detect_models(self) -> None:
         """Fetch available models from the selected provider."""
         from core.provider_registry import fetch_models
 
@@ -1269,7 +1269,7 @@ class SettingsWindow:
             self.model_var.set("")
             self.model_entry.configure(placeholder_text="No models found. Enter manually.")
 
-    def _save(self):
+    def _save(self) -> None:
         from core.provider_registry import PROVIDERS
 
         provider = self.provider_var.get()
