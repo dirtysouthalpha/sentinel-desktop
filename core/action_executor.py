@@ -235,7 +235,7 @@ class ActionExecutor:
             )
             return {"success": True, "output": f"{desc} ({sx}, {sy})"}
         except Exception as exc:
-            logger.debug("click failed at (%s,%s): %s", sx, sy, exc)
+            logger.warning("click failed at (%s,%s): %s", sx, sy, exc)
             return {
                 "success": False,
                 "output": f"click error at ({sx},{sy}): {exc}",
@@ -280,7 +280,7 @@ class ActionExecutor:
                         "fallback": "uia",
                     }
             except Exception as exc:
-                logger.debug("click_text UIA fallback failed: %s", exc)
+                logger.warning("click_text UIA fallback failed: %s", exc)
 
             return {
                 "success": False,
@@ -289,7 +289,7 @@ class ActionExecutor:
                 "hint": "Try list_controls() to find the element, or use click(x,y) with coordinates from the screenshot",
             }
         except Exception as exc:
-            logger.debug("click_text failed: %s", exc)
+            logger.warning("click_text failed: %s", exc)
             return {
                 "success": False,
                 "output": f"click_text error: {exc}",
@@ -342,7 +342,7 @@ class ActionExecutor:
                 )
             return result
         except Exception as exc:
-            logger.debug("read_text failed: %s", exc)
+            logger.warning("read_text failed: %s", exc)
             return {
                 "success": False,
                 "output": f"read_text error: {exc}",
@@ -368,7 +368,7 @@ class ActionExecutor:
                 )
             return result
         except Exception as exc:
-            logger.debug("read_window failed: %s", exc)
+            logger.warning("read_window failed: %s", exc)
             return {
                 "success": False,
                 "output": f"read_window error: {exc}",
@@ -421,7 +421,7 @@ class ActionExecutor:
                             "fallback": "ocr",
                         }
                 except Exception as exc:
-                    logger.debug("click_control OCR fallback failed: %s", exc)
+                    logger.warning("click_control OCR fallback failed: %s", exc)
 
             return {
                 "success": False,
@@ -431,7 +431,7 @@ class ActionExecutor:
                 "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
             }
         except Exception as exc:
-            logger.debug("click_control failed: %s", exc)
+            logger.warning("click_control failed: %s", exc)
             return {
                 "success": False,
                 "output": f"click_control error: {exc}",
@@ -466,7 +466,7 @@ class ActionExecutor:
             ]
             return {"success": True, "output": slim, "count": len(slim)}
         except Exception as exc:
-            logger.debug("list_controls failed: %s", exc)
+            logger.warning("list_controls failed: %s", exc)
             return {
                 "success": False,
                 "output": f"list_controls error: {exc}",
@@ -536,7 +536,7 @@ class ActionExecutor:
                         "fallback": "click_and_type",
                     }
             except Exception as exc:
-                logger.debug("set_text click+type fallback failed: %s", exc)
+                logger.warning("set_text click+type fallback failed: %s", exc)
 
             return {
                 "success": False,
@@ -545,7 +545,7 @@ class ActionExecutor:
                 "hint": "Try click_text() on the field label, then type_text()",
             }
         except Exception as exc:
-            logger.debug("set_text failed: %s", exc)
+            logger.warning("set_text failed: %s", exc)
             return {
                 "success": False,
                 "output": f"set_text error: {exc}",
@@ -574,7 +574,7 @@ class ActionExecutor:
                 "output": f"Template {'found and clicked' if found else 'not found'}",
             }
         except Exception as exc:
-            logger.debug("click_image failed: %s", exc)
+            logger.warning("click_image failed: %s", exc)
             return {
                 "success": False,
                 "output": f"click_image error: {exc}",
@@ -596,7 +596,7 @@ class ActionExecutor:
             self._desktop.type_text(text)
             return {"success": True, "output": f"Typed {len(text)} characters"}
         except Exception as exc:
-            logger.debug("pyautogui type_text failed, trying clipboard: %s", exc)
+            logger.warning("pyautogui type_text failed, trying clipboard: %s", exc)
             try:
                 import pyperclip
 
@@ -608,7 +608,7 @@ class ActionExecutor:
                     "fallback": "clipboard",
                 }
             except Exception as exc2:
-                logger.debug("clipboard type fallback failed: %s", exc2)
+                logger.warning("clipboard type fallback failed: %s", exc2)
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
     def _press_key(self, *, key: str, **_: Any) -> dict[str, Any]:
@@ -619,7 +619,7 @@ class ActionExecutor:
             self._desktop.press_key(key)
             return {"success": True, "output": f"Pressed {key}"}
         except Exception as exc:
-            logger.debug("press_key failed for %r: %s", key, exc)
+            logger.warning("press_key failed for %r: %s", key, exc)
             return {
                 "success": False,
                 "output": f"Press key failed: {exc}",
@@ -634,7 +634,7 @@ class ActionExecutor:
             self._desktop.hotkey(*keys)
             return {"success": True, "output": f"Hotkey: {'+'.join(keys)}"}
         except Exception as exc:
-            logger.debug("hotkey failed for %s: %s", keys, exc)
+            logger.warning("hotkey failed for %s: %s", keys, exc)
             return {"success": False, "output": f"Hotkey failed: {exc}", "error": "hotkey_failed"}
 
     def _drag(
@@ -682,7 +682,7 @@ class ActionExecutor:
                     "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y}) — stealth",
                 }
             except Exception as exc:
-                logger.debug("Stealth drag failed, falling back: %s", exc)
+                logger.warning("Stealth drag failed, falling back: %s", exc)
         self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
         return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
 
@@ -691,7 +691,7 @@ class ActionExecutor:
             self._desktop.scroll(amount)
             return {"success": True, "output": f"Scrolled {amount}"}
         except Exception as exc:
-            logger.debug("scroll failed: %s", exc)
+            logger.warning("scroll failed: %s", exc)
             return {"success": False, "output": f"Scroll failed: {exc}", "error": "scroll_failed"}
 
     def _screenshot(self, **_: Any) -> dict[str, Any]:
@@ -727,7 +727,7 @@ class ActionExecutor:
                 "error": "image_not_found",
             }
         except Exception as exc:
-            logger.debug("find_image failed: %s", exc)
+            logger.warning("find_image failed: %s", exc)
             return {
                 "success": False,
                 "output": f"find_image error: {exc}",
@@ -754,7 +754,7 @@ class ActionExecutor:
                 }
             return {"success": False, "output": f"Timed out after {timeout}s", "error": "timeout"}
         except Exception as exc:
-            logger.debug("wait_for_image failed: %s", exc)
+            logger.warning("wait_for_image failed: %s", exc)
             return {
                 "success": False,
                 "output": f"wait_for_image error: {exc}",
@@ -781,7 +781,7 @@ class ActionExecutor:
         except Exception as exc:
             import time as _t
 
-            logger.debug("smart_wait failed, sleeping as fallback: %s", exc)
+            logger.warning("smart_wait failed, sleeping as fallback: %s", exc)
             _t.sleep(min(float(timeout), 5.0))
             return {
                 "success": False,
@@ -815,7 +815,7 @@ class ActionExecutor:
         except Exception as exc:
             import time as _t
 
-            logger.debug("wait_for_stable failed, sleeping as fallback: %s", exc)
+            logger.warning("wait_for_stable failed, sleeping as fallback: %s", exc)
             _t.sleep(3.0)
             return {
                 "success": False,
@@ -845,7 +845,7 @@ class ActionExecutor:
                 "elapsed": result.elapsed,
             }
         except Exception as exc:
-            logger.debug("wait_for_text failed: %s", exc)
+            logger.warning("wait_for_text failed: %s", exc)
             return {
                 "success": False,
                 "output": f"Wait-for-text fallback: {exc}",
@@ -859,7 +859,7 @@ class ActionExecutor:
                 return {"success": True, "output": f"Started process (pid {pid})"}
             return {"success": False, "output": "Failed to start process"}
         except Exception as exc:
-            logger.debug("open_app failed: %s", exc)
+            logger.warning("open_app failed: %s", exc)
             return {
                 "success": False,
                 "output": f"open_app error: {exc}",
@@ -890,7 +890,7 @@ class ActionExecutor:
                 "fallback": "powershell",
             }
         except Exception as exc:
-            logger.debug("smart_open PowerShell fallback failed: %s", exc)
+            logger.warning("smart_open PowerShell fallback failed: %s", exc)
 
         result["hint"] = "Try open_app() with the full executable path"
         return result
@@ -912,7 +912,7 @@ class ActionExecutor:
                 "output": f"Process {target} {'killed' if killed else 'not found'}",
             }
         except Exception as exc:
-            logger.debug("close_app failed: %s", exc)
+            logger.warning("close_app failed: %s", exc)
             return {
                 "success": False,
                 "output": f"close_app error: {exc}",
@@ -955,7 +955,7 @@ class ActionExecutor:
                 "hint": "Try list_windows() to see what's actually open",
             }
         except Exception as exc:
-            logger.debug("focus_window failed: %s", exc)
+            logger.warning("focus_window failed: %s", exc)
             return {
                 "success": False,
                 "output": f"focus_window error: {exc}",
@@ -967,7 +967,7 @@ class ActionExecutor:
             ok = wm.close_window(title)
             return {"success": ok, "output": f"Window '{title}' {'closed' if ok else 'not found'}"}
         except Exception as exc:
-            logger.debug("close_window failed: %s", exc)
+            logger.warning("close_window failed: %s", exc)
             return {
                 "success": False,
                 "output": f"close_window error: {exc}",
@@ -979,7 +979,7 @@ class ActionExecutor:
             windows = wm.list_windows()
             return {"success": True, "output": windows}
         except Exception as exc:
-            logger.debug("list_windows failed: %s", exc)
+            logger.warning("list_windows failed: %s", exc)
             return {
                 "success": False,
                 "output": f"list_windows error: {exc}",
@@ -998,7 +998,7 @@ class ActionExecutor:
                 "error": "file_not_found",
             }
         except Exception as exc:
-            logger.debug("read_file failed: %s", exc)
+            logger.warning("read_file failed: %s", exc)
             return {
                 "success": False,
                 "output": f"read_file error: {exc}",
@@ -1034,7 +1034,7 @@ class ActionExecutor:
             text = clip.clipboard_read()
             return {"success": text is not None, "output": text or ""}
         except Exception as exc:
-            logger.debug("clipboard_read failed: %s", exc)
+            logger.warning("clipboard_read failed: %s", exc)
             return {
                 "success": False,
                 "output": f"clipboard_read error: {exc}",
@@ -1046,7 +1046,7 @@ class ActionExecutor:
             ok = clip.clipboard_write(text)
             return {"success": ok, "output": f"Clipboard {'updated' if ok else 'failed'}"}
         except Exception as exc:
-            logger.debug("clipboard_write failed: %s", exc)
+            logger.warning("clipboard_write failed: %s", exc)
             return {
                 "success": False,
                 "output": f"clipboard_write error: {exc}",
@@ -1058,7 +1058,7 @@ class ActionExecutor:
             info = sysinfo.system_info()
             return {"success": True, "output": info}
         except Exception as exc:
-            logger.debug("system_info failed: %s", exc)
+            logger.warning("system_info failed: %s", exc)
             return {
                 "success": False,
                 "output": f"system_info error: {exc}",
@@ -1070,7 +1070,7 @@ class ActionExecutor:
             procs = pm.list_processes()
             return {"success": True, "output": procs[:100]}
         except Exception as exc:
-            logger.debug("list_processes failed: %s", exc)
+            logger.warning("list_processes failed: %s", exc)
             return {
                 "success": False,
                 "output": f"list_processes error: {exc}",
@@ -1130,7 +1130,7 @@ class ActionExecutor:
                 "objects": result.objects[:50] if result.objects else [],
             }
         except Exception as exc:
-            logger.debug("powershell failed: %s", exc)
+            logger.warning("powershell failed: %s", exc)
             return {
                 "success": False,
                 "output": f"PowerShell error: {exc}",

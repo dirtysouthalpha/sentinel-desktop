@@ -560,7 +560,7 @@ class AgentEngine:
                         screen = capture_screen()
                         mfa_result = self.mfa_detector.check_screen(screen)
                     except Exception as exc:
-                        logger.debug("MFA screenshot capture failed: %s", exc)
+                        logger.warning("MFA screenshot capture failed: %s", exc)
                 if mfa_result.detected:
                     self._mfa_paused = True
                     self.logger.log_event(
@@ -582,7 +582,7 @@ class AgentEngine:
                                 },
                             )
                         except Exception as exc:
-                            logger.debug("MFA on_step_callback failed: %s", exc)
+                            logger.warning("MFA on_step_callback failed: %s", exc)
                     # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
                     for _ in range(150):
                         time.sleep(2)
@@ -632,7 +632,7 @@ class AgentEngine:
                             messages=messages,
                         )
                     except Exception as exc:
-                        logger.debug("Checkpoint save failed: %s", exc)
+                        logger.warning("Checkpoint save failed: %s", exc)
 
                 # Note actions are no-ops at the executor level; record once
                 # here so we don't double-log.
@@ -649,7 +649,7 @@ class AgentEngine:
                             screenshot=screenshot_b64,
                         )
                     except Exception as exc:
-                        logger.debug("on_step_callback raised: %s", exc)
+                        logger.warning("on_step_callback raised: %s", exc)
 
                 # Take new screenshot for next iteration
                 if self.running and self.config.get("auto_screenshot", True):
@@ -683,7 +683,7 @@ class AgentEngine:
 
             play_sound("complete" if self.finish_summary else "error")
         except Exception as exc:
-            logger.debug("Sound notification failed: %s", exc)
+            logger.warning("Sound notification failed: %s", exc)
 
         return {
             "steps": self.step,
@@ -788,7 +788,7 @@ class AgentEngine:
         try:
             info = sysinfo.brief_system_info()
         except Exception as exc:
-            logger.debug("brief_system_info failed: %s", exc)
+            logger.warning("brief_system_info failed: %s", exc)
             info = ""
         active_win = ""
         try:
@@ -798,7 +798,7 @@ class AgentEngine:
                     active_win = f"\nActive Window: {w['title']}"
                     break
         except Exception as exc:
-            logger.debug("Window enumeration for env context failed: %s", exc)
+            logger.warning("Window enumeration for env context failed: %s", exc)
         tenant = ""
         if self.config.get("tenant_name"):
             tenant = f"\nTenant: {self.config['tenant_name']}"
@@ -839,7 +839,7 @@ class AgentEngine:
                     lines.append(f"  - {action}: {' → '.join(path)}")
             return "\n".join(lines)
         except Exception as exc:
-            logger.debug("App context build failed: %s", exc)
+            logger.warning("App context build failed: %s", exc)
             return ""
 
     def _add_vision_message(
