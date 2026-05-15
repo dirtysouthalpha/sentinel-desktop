@@ -174,7 +174,9 @@ class TestReadFile:
     def test_read_failure(self, fake_executor, monkeypatch):
         from core import file_ops
 
-        monkeypatch.setattr(file_ops, "read_file", lambda p: (_ for _ in ()).throw(RuntimeError("disk error")))
+        monkeypatch.setattr(
+            file_ops, "read_file", lambda p: (_ for _ in ()).throw(RuntimeError("disk error"))
+        )
 
         ex = fake_executor()
         out = ex.execute_sync({"action": "read_file", "path": "/bad"})
@@ -238,7 +240,9 @@ class TestClipboardRead:
     def test_failure(self, fake_executor, monkeypatch):
         from core import clipboard
 
-        monkeypatch.setattr(clipboard, "clipboard_read", lambda: (_ for _ in ()).throw(RuntimeError("no clipboard")))
+        monkeypatch.setattr(
+            clipboard, "clipboard_read", lambda: (_ for _ in ()).throw(RuntimeError("no clipboard"))
+        )
 
         ex = fake_executor()
         out = ex.execute_sync({"action": "clipboard_read"})
@@ -279,7 +283,9 @@ class TestSystemInfo:
     def test_failure(self, fake_executor, monkeypatch):
         from core import system_info
 
-        monkeypatch.setattr(system_info, "system_info", lambda: (_ for _ in ()).throw(RuntimeError("fail")))
+        monkeypatch.setattr(
+            system_info, "system_info", lambda: (_ for _ in ()).throw(RuntimeError("fail"))
+        )
 
         ex = fake_executor()
         out = ex.execute_sync({"action": "system_info"})
@@ -402,7 +408,9 @@ class TestScreenshot:
         import core.action_executor as ae_mod
 
         monkeypatch.setattr(
-            ae_mod, "capture_to_base64", lambda monitor=None: (_ for _ in ()).throw(RuntimeError("no screen"))
+            ae_mod,
+            "capture_to_base64",
+            lambda monitor=None: (_ for _ in ()).throw(RuntimeError("no screen")),
         )
 
         ex = fake_executor()

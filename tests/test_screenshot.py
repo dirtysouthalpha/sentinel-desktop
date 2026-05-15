@@ -91,7 +91,9 @@ class TestCaptureRegionToBase64:
         from core.screenshot import capture_region_to_base64
 
         # Mock capture_region to avoid actual screenshot
-        with patch("core.screenshot.capture_region", return_value=Image.new("RGB", (10, 10), "red")):
+        with patch(
+            "core.screenshot.capture_region", return_value=Image.new("RGB", (10, 10), "red")
+        ):
             b64 = capture_region_to_base64(0, 0, 10, 10)
             raw = base64.b64decode(b64)
             assert raw[:4] == b"\x89PNG"

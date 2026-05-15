@@ -62,9 +62,7 @@ class TestBuildAppContext:
 
     @patch("core.engine.wm")
     def test_returns_profile_context_for_known_app(self, mock_wm):
-        mock_wm.list_windows.return_value = [
-            {"title": "Calculator", "is_focused": True}
-        ]
+        mock_wm.list_windows.return_value = [{"title": "Calculator", "is_focused": True}]
         eng = AgentEngine({})
         result = eng._build_app_context()
         # Should return a string (may be empty if Calculator isn't profiled)

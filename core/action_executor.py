@@ -542,7 +542,9 @@ class ActionExecutor:
                 "error": "set_text_failed",
             }
 
-    def _click_image(self, *, template_path: str, confidence: float = 0.8, **_: Any) -> dict[str, Any]:
+    def _click_image(
+        self, *, template_path: str, confidence: float = 0.8, **_: Any
+    ) -> dict[str, Any]:
         # Find the template position; click via stealth if enabled so the
         # cursor stays put.
         try:
@@ -694,7 +696,9 @@ class ActionExecutor:
                 "error": "capture_failed",
             }
 
-    def _find_image(self, *, template_path: str, confidence: float = 0.8, **_: Any) -> dict[str, Any]:
+    def _find_image(
+        self, *, template_path: str, confidence: float = 0.8, **_: Any
+    ) -> dict[str, Any]:
         try:
             pos = find_template(template_path, confidence)
             if pos:
@@ -864,7 +868,9 @@ class ActionExecutor:
         result["hint"] = "Try open_app() with the full executable path"
         return result
 
-    def _close_app(self, *, name: str | None = None, pid: int | None = None, **_: Any) -> dict[str, Any]:
+    def _close_app(
+        self, *, name: str | None = None, pid: int | None = None, **_: Any
+    ) -> dict[str, Any]:
         target = pid or name
         if target is None:
             return {
