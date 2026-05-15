@@ -151,7 +151,7 @@ class UIAActionPipeline:
                 )
                 if result is not None:
                     return _result(True, {"x": result[0], "y": result[1]}, "uia")
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("UIA click_element failed: %s", exc)
 
         # --- Tier 2: PostMessage at element centre ---
@@ -168,7 +168,7 @@ class UIAActionPipeline:
                             {"x": bounds["center_x"], "y": bounds["center_y"]},
                             "postmessage",
                         )
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("PostMessage click_element failed: %s", exc)
 
         # --- Tier 3: pyautogui ---
@@ -185,7 +185,7 @@ class UIAActionPipeline:
                     {"x": bounds["center_x"], "y": bounds["center_y"]},
                     "physical",
                 )
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical click_element failed: %s", exc)
 
         return _result(False, f"Element '{name}' not found or click failed", "physical")
@@ -208,7 +208,7 @@ class UIAActionPipeline:
 
                 if set_text(text, name=name, window_title=window_title):
                     return _result(True, text, "uia")
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("UIA type_into_field failed: %s", exc)
 
         # --- Tier 2: PostMessage WM_CHAR ---
@@ -220,7 +220,7 @@ class UIAActionPipeline:
 
                     if post_text(text, hwnd=hwnd):
                         return _result(True, text, "postmessage")
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("PostMessage type_into_field failed: %s", exc)
 
         # --- Tier 3: pyautogui ---
@@ -232,7 +232,7 @@ class UIAActionPipeline:
                 time.sleep(0.05)
                 desktop.type_text(text)
                 return _result(True, text, "physical")
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical type_into_field failed: %s", exc)
 
         return _result(False, f"Field '{name}' not found or typing failed", "physical")
@@ -257,7 +257,7 @@ class UIAActionPipeline:
                 result = self._uia_menu_walk(segments, window_title)
                 if result:
                     return _result(True, path, "uia")
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("UIA select_menu_item failed: %s", exc)
 
         # --- Tier 2: PostMessage (limited — try to invoke menu via Alt+letter) ---
@@ -271,7 +271,7 @@ class UIAActionPipeline:
                     time.sleep(0.1)
                     # We can't reliably navigate menus via PostMessage alone,
                     # so fall through to physical.
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("PostMessage select_menu_item failed: %s", exc)
 
         # --- Tier 3: pyautogui fallback ---
@@ -294,7 +294,7 @@ class UIAActionPipeline:
                 pyautogui.press("enter") if segment == segments[-1] else pyautogui.press("right")
                 time.sleep(0.05)
             return _result(True, path, "physical")
-        except Exception as exc:
+        except (ImportError, OSError, AttributeError) as exc:
             logger.debug("Physical select_menu_item failed: %s", exc)
 
         return _result(False, f"Menu path '{path}' not found", "physical")
@@ -323,14 +323,14 @@ class UIAActionPipeline:
 
                 if post_click(x, y, button=button, clicks=clicks):
                     return _result(True, {"x": x, "y": y}, "postmessage")
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("PostMessage click_at failed: %s", exc)
 
         # --- Tier 3: pyautogui ---
         try:
             self._get_physical_desktop().click(x, y, button=button, clicks=clicks)
             return _result(True, {"x": x, "y": y}, "physical")
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical click_at failed: %s", exc)
 
         return _result(False, f"click_at({x}, {y}) failed", "physical")
@@ -354,14 +354,14 @@ class UIAActionPipeline:
 
                 if post_text(text, hwnd=hwnd):
                     return _result(True, text, "postmessage")
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("PostMessage type_text failed: %s", exc)
 
         # --- Tier 3: pyautogui ---
         try:
             self._get_physical_desktop().type_text(text)
             return _result(True, text, "physical")
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical type_text failed: %s", exc)
 
         return _result(False, "type_text failed", "physical")
@@ -382,14 +382,14 @@ class UIAActionPipeline:
 
                 if post_named_key(key, hwnd=hwnd):
                     return _result(True, key, "postmessage")
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("PostMessage press_key failed: %s", exc)
 
         # --- Tier 3: pyautogui ---
         try:
             self._get_physical_desktop().press_key(key)
             return _result(True, key, "physical")
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical press_key failed: %s", exc)
 
         return _result(False, f"press_key('{key}') failed", "physical")
@@ -413,14 +413,14 @@ class UIAActionPipeline:
 
                 if post_hotkey(keys, hwnd=hwnd):
                     return _result(True, list(keys), "postmessage")
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("PostMessage hotkey failed: %s", exc)
 
         # --- Tier 3: pyautogui ---
         try:
             self._get_physical_desktop().hotkey(*keys)
             return _result(True, list(keys), "physical")
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical hotkey failed: %s", exc)
 
         return _result(False, f"hotkey({keys}) failed", "physical")
@@ -459,7 +459,7 @@ class UIAActionPipeline:
                         {"x": x, "y": y, "amount": amount},
                         "postmessage",
                     )
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("PostMessage scroll_at failed: %s", exc)
 
         # --- Tier 3: pyautogui ---
@@ -470,7 +470,7 @@ class UIAActionPipeline:
                 {"x": x, "y": y, "amount": amount},
                 "physical",
             )
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical scroll_at failed: %s", exc)
 
         return _result(False, f"scroll_at({x}, {y}, {amount}) failed", "physical")
@@ -502,7 +502,7 @@ class UIAActionPipeline:
                 if ctrl is not None:
                     info = self._control_to_dict(ctrl)
                     return _result(True, info, "uia")
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("UIA find_element failed: %s", exc)
 
         return _result(False, f"Element '{name}' not found", "uia")
@@ -521,7 +521,7 @@ class UIAActionPipeline:
 
                 controls = _list_controls(window_title)
                 return _result(True, controls, "uia")
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("UIA list_controls failed: %s", exc)
 
         return _result(False, "UIA unavailable or no controls found", "uia")
@@ -563,7 +563,7 @@ class UIAActionPipeline:
                 "is_enabled": bool(getattr(ctrl, "IsEnabled", True)),
                 "is_offscreen": bool(getattr(ctrl, "IsOffscreen", False)),
             }
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("_control_to_dict failed: %s", exc)
             return {"name": getattr(ctrl, "Name", ""), "error": str(exc)}
 
@@ -595,7 +595,7 @@ class UIAActionPipeline:
                 "center_x": (rect.left + rect.right) // 2,
                 "center_y": (rect.top + rect.bottom) // 2,
             }
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Bounding box lookup failed: %s", exc)
             return None
 
@@ -614,7 +614,7 @@ class UIAActionPipeline:
                     (bounds["center_x"], bounds["center_y"]),
                 )
                 return int(hwnd) if hwnd else None
-        except Exception as exc:
+        except OSError as exc:
             logger.debug("_uia_hwnd fallback failed: %s", exc)
         return None
 
@@ -666,12 +666,12 @@ class UIAActionPipeline:
                         if pattern:
                             pattern.Invoke()
                             return True
-                    except Exception as exc:
+                    except (OSError, AttributeError, RuntimeError) as exc:
                         logger.debug("Invoke pattern failed, trying click: %s", exc)
                     try:
                         target.Click(simulateMove=False)
                         return True
-                    except Exception as exc:
+                    except (OSError, AttributeError, RuntimeError) as exc:
                         logger.debug("Click fallback failed: %s", exc)
                     return False
                 else:
@@ -683,19 +683,19 @@ class UIAActionPipeline:
                             time.sleep(0.05)
                             current = target
                             continue
-                    except Exception as exc:
+                    except (OSError, AttributeError, RuntimeError) as exc:
                         logger.debug("Expand pattern failed, trying click: %s", exc)
                     # Fallback: click to open submenu.
                     try:
                         target.Click(simulateMove=False)
                         time.sleep(0.05)
                         current = target
-                    except Exception as exc:
+                    except (OSError, AttributeError, RuntimeError) as exc:
                         logger.debug("Menu walk click fallback failed: %s", exc)
                         return False
 
             return False  # shouldn't reach here
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("_uia_menu_walk failed: %s", exc)
             return False
 
@@ -709,7 +709,7 @@ class UIAActionPipeline:
                     return child
                 if needle in (child.Name or "").lower():
                     return child
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("_find_child_by_name failed: %s", exc)
         return None
 
