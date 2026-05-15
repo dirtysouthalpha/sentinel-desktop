@@ -603,7 +603,7 @@ class SentinelApp:
 
     # ── Approval prompt ─────────────────────────────────────────────────
 
-    def _approve_action(self, action: dict) -> bool:
+    def _approve_action(self, action: dict[str, Any]) -> bool:
         """Pop up an approval dialog for a state-changing action.
 
         Called from the engine worker thread. We use a threading.Event to

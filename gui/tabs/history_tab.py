@@ -7,6 +7,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
+from typing import Any
 
 import customtkinter as ctk
 
@@ -16,10 +17,10 @@ logger = logging.getLogger(__name__)
 class HistoryTab(ctk.CTkFrame):
     """Run history browser — session list + detail timeline."""
 
-    def __init__(self, parent, app):
+    def __init__(self, parent: ctk.CTkFrame, app: Any) -> None:
         super().__init__(parent, fg_color="transparent")
         self.app = app
-        self.sessions: list[dict] = []
+        self.sessions: list[dict[str, Any]] = []
         self.selected_index = -1
 
         self.grid_columnconfigure(0, weight=1)
@@ -35,7 +36,7 @@ class HistoryTab(ctk.CTkFrame):
 
     # ── Left panel ────────────────────────────────────────────────────
 
-    def _build_left(self):
+    def _build_left(self) -> None:
         left = ctk.CTkFrame(self, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=4)
         left.grid(row=0, column=0, sticky="nsew", padx=(4, 2), pady=4)
         left.grid_columnconfigure(0, weight=1)
@@ -83,7 +84,7 @@ class HistoryTab(ctk.CTkFrame):
 
     # ── Right panel ───────────────────────────────────────────────────
 
-    def _build_right(self):
+    def _build_right(self) -> None:
         right = ctk.CTkFrame(self, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=4)
         right.grid(row=0, column=1, sticky="nsew", padx=(2, 4), pady=4)
         right.grid_columnconfigure(0, weight=1)
@@ -151,7 +152,7 @@ class HistoryTab(ctk.CTkFrame):
 
     # ── Data ──────────────────────────────────────────────────────────
 
-    def refresh_history(self):
+    def refresh_history(self) -> None:
         """Reload session history from forensic log."""
         self.sessions.clear()
 
@@ -205,7 +206,7 @@ class HistoryTab(ctk.CTkFrame):
         self._apply_filter()
         self._render_sessions()
 
-    def _apply_filter(self):
+    def _apply_filter(self) -> None:
         """Apply current filter to sessions."""
         f = self.filter_var.get()
         now = datetime.now()
@@ -219,7 +220,7 @@ class HistoryTab(ctk.CTkFrame):
         elif f == "Failed":
             self.sessions = [s for s in self.sessions if s.get("status") == "failed"]
 
-    def _render_sessions(self):
+    def _render_sessions(self) -> None:
         """Render session cards in left panel."""
         for w in self.session_list.winfo_children():
             w.destroy()
@@ -270,7 +271,7 @@ class HistoryTab(ctk.CTkFrame):
             idx = i
             card.bind("<Button-1>", lambda e, idx=idx: self.select_session(idx))
 
-    def select_session(self, index: int):
+    def select_session(self, index: int) -> None:
         """Show session details in right panel."""
         self.selected_index = index
         if index < 0 or index >= len(self.sessions):
@@ -341,7 +342,7 @@ class HistoryTab(ctk.CTkFrame):
 
         self._render_sessions()
 
-    def _replay_session(self):
+    def _replay_session(self) -> None:
         """Re-run the selected session's goal."""
         if self.selected_index < 0 or self.selected_index >= len(self.sessions):
             return
@@ -352,7 +353,7 @@ class HistoryTab(ctk.CTkFrame):
             self.app.goal_entry.insert("1.0", goal)
             self.app._on_run()
 
-    def _export_log(self):
+    def _export_log(self) -> None:
         """Export forensic log as text file."""
         if self.selected_index < 0 or self.selected_index >= len(self.sessions):
             return

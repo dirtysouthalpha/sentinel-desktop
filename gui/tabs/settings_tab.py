@@ -152,7 +152,7 @@ class SettingsTab:
 
     # ── Sections ────────────────────────────────────────────────────
 
-    def _section_provider(self):
+    def _section_provider(self) -> None:
         s = self._make_section("🤖 Provider")
         s.grid_columnconfigure(1, weight=1)
         self._add_field(
@@ -178,7 +178,7 @@ class SettingsTab:
             s, "Temperature", "temperature", "0.3", "slider", values=[0.0, 2.0, 20], row=3
         )
 
-    def _section_agent(self):
+    def _section_agent(self) -> None:
         s = self._make_section("🤖 Agent")
         self._add_field(s, "Max Steps", "max_steps", "50", "slider", values=[5, 200, 39], row=0)
         self._add_field(s, "Timeout (s)", "timeout", "300", "entry", row=1)
@@ -192,7 +192,7 @@ class SettingsTab:
             row=2,
         )
 
-    def _section_theme(self):
+    def _section_theme(self) -> None:
         s = self._make_section("🎨 Theme")
         self._add_field(
             s,
@@ -220,23 +220,23 @@ class SettingsTab:
             row=0,
         )
 
-    def _section_scheduler(self):
+    def _section_scheduler(self) -> None:
         s = self._make_section("⏰ Scheduler")
         self._add_field(s, "Enable Scheduler", "scheduler_enabled", "false", "checkbox", row=0)
 
-    def _section_notifications(self):
+    def _section_notifications(self) -> None:
         s = self._make_section("🔔 Notifications")
         self._add_field(s, "Toast", "notify_toast", "true", "checkbox", row=0)
         self._add_field(s, "Log", "notify_log", "true", "checkbox", row=1)
         self._add_field(s, "Discord Webhook", "notify_discord_webhook", "", "entry", row=2)
         self._add_field(s, "HTTP Webhook", "notify_webhook_url", "", "entry", row=3)
 
-    def _section_security(self):
+    def _section_security(self) -> None:
         s = self._make_section("🔒 Security")
         self._add_field(s, "Session Timeout (h)", "session_timeout", "24", "entry", row=0)
         self._add_field(s, "Encrypt Credentials", "encrypt_credentials", "true", "checkbox", row=1)
 
-    def _section_advanced(self):
+    def _section_advanced(self) -> None:
         s = self._make_section("⚙️ Advanced")
         self._add_field(
             s,
@@ -258,7 +258,7 @@ class SettingsTab:
             row=2,
         )
 
-    def _section_plugins(self):
+    def _section_plugins(self) -> None:
         s = self._make_section("🔌 Plugins")
         self.plugin_list_frame = ctk.CTkFrame(s, fg_color="transparent")
         self.plugin_list_frame.pack(fill="x", pady=4)
@@ -276,7 +276,7 @@ class SettingsTab:
 
     # ── Plugin List ─────────────────────────────────────────────────
 
-    def _refresh_plugin_list(self):
+    def _refresh_plugin_list(self) -> None:
         for w in self.plugin_list_frame.winfo_children():
             w.destroy()
 
@@ -319,7 +319,7 @@ class SettingsTab:
                 font=ctk.CTkFont(size=11),
             ).pack(side="left", padx=8, pady=4)
 
-    def _reload_plugins(self):
+    def _reload_plugins(self) -> None:
         try:
             if hasattr(self.app, "engine") and self.app.engine:
                 self.app.engine.plugin_loader.load_all()
@@ -330,7 +330,7 @@ class SettingsTab:
 
     # ── Buttons ─────────────────────────────────────────────────────
 
-    def _build_buttons(self):
+    def _build_buttons(self) -> None:
         btn_frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         btn_frame.pack(fill="x", padx=4, pady=10)
 
@@ -355,7 +355,7 @@ class SettingsTab:
 
     # ── Save / Load ─────────────────────────────────────────────────
 
-    def _gather_config(self) -> dict:
+    def _gather_config(self) -> dict[str, Any]:
         """Read all UI vars into a config dict."""
         cfg = {}
         for name, var in self._vars.items():
@@ -367,7 +367,7 @@ class SettingsTab:
                 cfg[name] = var.get()
         return cfg
 
-    def _save(self):
+    def _save(self) -> None:
         """Save current settings to config/config.json."""
         cfg = self._gather_config()
         config_path = os.path.join(
@@ -392,7 +392,7 @@ class SettingsTab:
         except Exception as exc:
             logger.error("Failed to save settings: %s", exc)
 
-    def _reset(self):
+    def _reset(self) -> None:
         """Reset all fields to defaults."""
         defaults = {
             "model": "gpt-4o",
@@ -425,7 +425,7 @@ class SettingsTab:
                     var.set(val)
         logger.info("Settings reset to defaults")
 
-    def load_config(self, config: dict):
+    def load_config(self, config: dict[str, Any]) -> None:
         """Load values from a config dict into UI vars."""
         for name, val in config.items():
             if name in self._vars:
