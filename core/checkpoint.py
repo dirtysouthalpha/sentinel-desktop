@@ -55,11 +55,12 @@ def _checkpoint_path(checkpoint_id: str) -> str:
     return os.path.join(_CHECKPOINT_DIR, f"{checkpoint_id}.json")
 
 
-def _discover_checkpoint_files() -> list[str]:
+def _discover_checkpoint_files(directory: str | None = None) -> list[str]:
     """Return all checkpoint JSON files sorted newest-first by mtime."""
-    if not os.path.isdir(_CHECKPOINT_DIR):
+    target = directory or _CHECKPOINT_DIR
+    if not os.path.isdir(target):
         return []
-    pattern = os.path.join(_CHECKPOINT_DIR, "*.json")
+    pattern = os.path.join(target, "*.json")
     files = glob.glob(pattern)
     files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
     return files
@@ -191,7 +192,7 @@ class CheckpointManager:
         trigger a warning log but are **not** deleted — the caller can
         still load them explicitly via :meth:`load`.
         """
-        files = _discover_checkpoint_files()
+        files = _discover_checkpoint_files(self._dir)
         if not files:
             return None
 
@@ -243,7 +244,7 @@ class CheckpointManager:
         Each element is a dict with keys:
         ``id``, ``goal_preview``, ``step_num``, ``timestamp``, ``status``.
         """
-        files = _discover_checkpoint_files()
+        files = _discover_checkpoint_files(self._dir)
         result: list[dict[str, Any]] = []
 
         for fpath in files:
@@ -313,7 +314,7 @@ class CheckpointManager:
 
         Returns the number of files removed.
         """
-        files = _discover_checkpoint_files()
+        files = _discover_checkpoint_files(self._dir)
         removed = 0
 
         with self._lock:
