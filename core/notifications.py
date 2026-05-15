@@ -55,7 +55,7 @@ import platform
 import smtplib
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any
@@ -494,7 +494,7 @@ class NotificationManager:
             "message": message,
             "level": level,
             "source": "sentinel-desktop",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         return _send_http(url, payload)
 
@@ -512,7 +512,7 @@ class NotificationManager:
             "description": message,
             "color": colour,
             "footer": {"text": "Sentinel Desktop v3.0"},
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         payload = {"embeds": [embed]}
         return _send_http(url, payload)
@@ -539,7 +539,7 @@ class NotificationManager:
             f"Sentinel Desktop Notification\n"
             f"{'=' * 40}\n"
             f"Level: {level.upper()}\n"
-            f"Time:  {datetime.utcnow().isoformat()}Z\n\n"
+            f"Time:  {datetime.now(timezone.utc).isoformat()}\n\n"
             f"{message}\n"
         )
 
