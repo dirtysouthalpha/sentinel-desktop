@@ -410,7 +410,7 @@ class _Win32VirtualDesktop:
 
                 os.kill(pid, signal.SIGTERM)
             except (ProcessLookupError, PermissionError, OSError):
-                pass
+                logger.debug("Could not terminate PID %s during cleanup", pid)
         self._launched_pids.clear()
 
     # -- screenshot ----------------------------------------------------------

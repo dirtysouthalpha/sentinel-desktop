@@ -21,7 +21,7 @@ def list_processes(sort_by: str = "cpu", limit: int = 50) -> list[dict[str, Any]
             del info["memory_info"]
             procs.append(info)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
+            logger.debug("Skipping vanished/inaccessible process")
 
     key = "cpu_percent" if sort_by == "cpu" else "memory_mb"
     procs.sort(key=lambda p: p.get(key, 0) or 0, reverse=True)
@@ -61,9 +61,10 @@ def kill_process(target: int | str) -> bool:
                     p.kill()
                     killed = True
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
+                    logger.debug("Process %s vanished during kill", p.info.get("name", "?"))
         return killed
     except psutil.NoSuchProcess:
+        logger.debug("Process %s no longer exists", target)
         return False
     except (psutil.AccessDenied, OSError):
         logger.exception("kill_process(%s) failed", target)
