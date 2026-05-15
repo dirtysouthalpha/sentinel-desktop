@@ -83,14 +83,14 @@ class SettingsTab:
 
     def _add_field(
         self,
-        parent,
+        parent: Any,
         label: str,
         var_name: str,
         default: str = "",
         field_type: str = "entry",
         values: list[str] = None,
         row: int = 0,
-    ):
+    ) -> None:
         """Add a labeled field to a section."""
         ctk.CTkLabel(
             parent,

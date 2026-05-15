@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from gui.app import SentinelApp
@@ -193,7 +193,7 @@ class SystemTrayIcon:
             menu=menu,
         )
 
-        def _runner():
+        def _runner() -> None:
             try:
                 self._running.set()
                 self._icon.run()  # type: ignore[union-attr]
@@ -347,15 +347,15 @@ class SystemTrayIcon:
 
     # ── Menu callbacks ──────────────────────────────────────────────────
 
-    def _on_new_task(self, icon, item) -> None:
+    def _on_new_task(self, icon: Any, item: Any) -> None:
         """Show window and focus the input."""
         self._invoke_on_app("_tray_new_task")
 
-    def _on_record(self, icon, item) -> None:
+    def _on_record(self, icon: Any, item: Any) -> None:
         """Toggle recording."""
         self._invoke_on_app("_tray_toggle_record")
 
-    def _on_run_last_script(self, icon, item) -> None:
+    def _on_run_last_script(self, icon: Any, item: Any) -> None:
         """Run the most recently used script."""
         self._invoke_on_app("_tray_run_last_script")
 
@@ -375,13 +375,13 @@ class SystemTrayIcon:
         """Restore the main window from minimized / hidden state."""
         self._invoke_on_app("_tray_show_window")
 
-    def _on_exit(self, icon, item) -> None:
+    def _on_exit(self, icon: Any, item: Any) -> None:
         """Shut down the application."""
         self._invoke_on_app("_tray_quit")
 
     # ── Thread-safe app invocation ──────────────────────────────────────
 
-    def _invoke_on_app(self, method_name: str, *args) -> None:
+    def _invoke_on_app(self, method_name: str, *args: Any) -> None:
         """Safely invoke a method on the app via ``root.after(0, ...)``."""
         app = self._app
         if app is None:

@@ -183,7 +183,7 @@ class RecorderPanel(ctk.CTkFrame):
         bf = ctk.CTkFrame(dlg, fg_color="transparent")
         bf.grid(row=4, column=0, columnspan=2, pady=10)
 
-        def _save():
+        def _save() -> None:
             name = name_e.get().strip() or script.name
             script.description = desc_e.get("1.0", "end-1c").strip() or script.description
             script.tags = [t.strip() for t in tags_e.get().split(",") if t.strip()]
@@ -246,7 +246,7 @@ class RecorderPanel(ctk.CTkFrame):
 
         br = len(parameters)
 
-        def _ok():
+        def _ok() -> None:
             for n, e in entries.items():
                 result[n] = e.get()
             cancelled[0] = False
@@ -275,7 +275,7 @@ class RecorderPanel(ctk.CTkFrame):
             )
         )
 
-        def _worker():
+        def _worker() -> None:
             res = engine.run_script(path, params)
             self.after(0, lambda: self._on_play_done(res))
 
@@ -322,7 +322,7 @@ class RecorderPanel(ctk.CTkFrame):
         lf.grid(row=2, column=0, sticky="nsew", padx=12, pady=4)
         items: list[dict] = []
 
-        def _refresh(*_):
+        def _refresh(*_: Any) -> None:
             q = sv.get().lower()
             for it in items:
                 d, r = it["data"], it["row"]
@@ -375,7 +375,7 @@ class RecorderPanel(ctk.CTkFrame):
                     text_color=self._t("accent", "#00F0FF"),
                 ).pack(anchor="w")
 
-            def _run(pp=p):
+            def _run(pp: str = p) -> None:
                 dlg.destroy()
                 self._run_script(pp, {}, {})
 

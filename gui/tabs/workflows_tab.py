@@ -400,7 +400,7 @@ class WorkflowsTab(ctk.CTkFrame):
         path = self._selected_path
         variables = self._collect_variables()
 
-        def _run():
+        def _run() -> None:
             engine = WorkflowEngine()
             result = engine.run_workflow(path, variables)
             lines = [

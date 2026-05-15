@@ -484,7 +484,7 @@ class SentinelApp:
             pre_action_callback=self.overlay.show_action,
         )
 
-        def _on_step(**kwargs):
+        def _on_step(**kwargs: Any) -> None:
             """Callback from engine on each step. Runs on worker thread."""
             step = kwargs.get("step", 0)
             action = kwargs.get("action", {})
@@ -517,7 +517,7 @@ class SentinelApp:
 
         self.engine.on_step_callback = _on_step
 
-        def _run():
+        def _run() -> None:
             try:
                 result = self.engine.run(goal)
                 steps = result.get("steps", 0)
@@ -613,7 +613,7 @@ class SentinelApp:
         decision = {"approved": False}
         event = threading.Event()
 
-        def _prompt():
+        def _prompt() -> None:
             try:
                 top = ctk.CTkToplevel(self.root)
                 top.title("Approve action?")
@@ -642,12 +642,12 @@ class SentinelApp:
                 btn_frame = ctk.CTkFrame(top)
                 btn_frame.pack(fill="x", padx=16, pady=12)
 
-                def _approve():
+                def _approve() -> None:
                     decision["approved"] = True
                     event.set()
                     top.destroy()
 
-                def _reject():
+                def _reject() -> None:
                     decision["approved"] = False
                     event.set()
                     top.destroy()

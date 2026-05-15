@@ -471,7 +471,7 @@ def get_theme_names() -> list:
     return [(k, v["label"]) for k, v in THEMES.items()]
 
 
-def apply_theme(name_or_dict) -> dict[str, Any]:
+def apply_theme(name_or_dict: str | dict[str, Any]) -> dict[str, Any]:
     """Apply a named theme or theme dict to customtkinter. Returns the theme dict."""
     try:
         import customtkinter as ctk

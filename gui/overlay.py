@@ -30,7 +30,7 @@ _RING_RADIUS = 28
 class ActionOverlay:
     """Owns a hidden Tk root and exposes ``show_action()`` for cross-thread use."""
 
-    def __init__(self, master) -> None:
+    def __init__(self, master: Any) -> None:
         self.master = master
         self._lock = threading.Lock()
         self._current: _Indicator | None = None
@@ -49,7 +49,7 @@ class ActionOverlay:
 
     # ── main-thread implementation ─────────────────────────────────
 
-    def _show_main(self, coords, label: str, action_name: str) -> None:
+    def _show_main(self, coords: tuple[int, int], label: str, action_name: str) -> None:
         x, y = coords
         try:
             with self._lock:
@@ -74,7 +74,7 @@ class ActionOverlay:
 class _Indicator:
     """A single overlay instance — created and destroyed in <1 second."""
 
-    def __init__(self, master, *, x: int, y: int, label: str, kind: str) -> None:
+    def __init__(self, master: Any, *, x: int, y: int, label: str, kind: str) -> None:
         import tkinter as tk
 
         self.tk = tk
@@ -206,7 +206,7 @@ def _color_for_kind(kind: str) -> str:
     return "#e8793a"  # sentinel orange — default
 
 
-def _make_clickthrough(window) -> None:
+def _make_clickthrough(window: Any) -> None:
     """Make a Tk window click-through on Windows.
 
     Adds the WS_EX_TRANSPARENT extended style so clicks pass to the window

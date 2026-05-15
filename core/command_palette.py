@@ -29,7 +29,7 @@ class Command:
         category: str,
         handler: Callable,
         keywords: list[str] | None = None,
-    ):
+    ) -> None:
         self.name = name
         self.shortcut = shortcut
         self.category = category

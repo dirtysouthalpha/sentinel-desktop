@@ -28,7 +28,7 @@ _DIR_MAP = {
 class ScriptsTab:
     """Script Library tab — browse, parameterise, and run automation scripts."""
 
-    def __init__(self, parent_frame: ctk.CTkFrame, app) -> None:
+    def __init__(self, parent_frame: ctk.CTkFrame, app: Any) -> None:
         self.app = app
         self._t = app._t
         self._scripts: list[dict[str, Any]] = []
@@ -396,7 +396,7 @@ class ScriptsTab:
         self._run_btn.configure(state="disabled", text="⏳ Running…")
         script_path = self._selected_path
 
-        def _run():
+        def _run() -> None:
             try:
                 from core.action_executor import ActionExecutor
                 from core.script_engine import ScriptEngine
@@ -459,7 +459,7 @@ class ScriptsTab:
     def _append_output(self, text: str) -> None:
         """Append text to the output box (thread-safe)."""
 
-        def _do():
+        def _do() -> None:
             self._output_box.configure(state="normal")
             self._output_box.insert("end", text + "\n")
             self._output_box.configure(state="disabled")

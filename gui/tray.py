@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ class SentinelTray:
         if not _HAS_TRAY:
             return False
 
-        def _quit(icon, item):
+        def _quit(icon: Any, item: Any) -> None:
             try:
                 if self._on_quit:
                     self._on_quit()
@@ -99,7 +100,7 @@ class SentinelTray:
             menu=menu,
         )
 
-        def _runner():
+        def _runner() -> None:
             try:
                 self._icon.run()
             except Exception as exc:
