@@ -13,10 +13,7 @@ class TestFetchModelsUnexpectedShape:
         mock_response = MagicMock()
         mock_response.json.return_value = {"data": "not a list"}
         mock_response.raise_for_status = MagicMock()
-        with patch("core.provider_registry.httpx.Client") as mock_client:
-            mock_client.return_value.__enter__ = MagicMock(return_value=mock_client.return_value)
-            mock_client.return_value.__exit__ = MagicMock(return_value=False)
-            mock_client.return_value.get.return_value = mock_response
+        with patch("core.provider_registry.requests.get", return_value=mock_response):
             models = fetch_models("openai", api_key="sk-test")
         assert models == []
 
@@ -25,10 +22,7 @@ class TestFetchModelsUnexpectedShape:
         mock_response = MagicMock()
         mock_response.json.return_value = {"other": 42}
         mock_response.raise_for_status = MagicMock()
-        with patch("core.provider_registry.httpx.Client") as mock_client:
-            mock_client.return_value.__enter__ = MagicMock(return_value=mock_client.return_value)
-            mock_client.return_value.__exit__ = MagicMock(return_value=False)
-            mock_client.return_value.get.return_value = mock_response
+        with patch("core.provider_registry.requests.get", return_value=mock_response):
             models = fetch_models("openai", api_key="sk-test")
         # {"other": 42} -> data.get("data", data.get("models", [])) -> []
         # [] is a list, so it passes isinstance check and returns []

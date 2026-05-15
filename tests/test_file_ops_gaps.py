@@ -15,7 +15,7 @@ class TestGetLockdownRootErrors:
 
     def test_os_error_returns_none(self) -> None:
         mock_config = __import__("unittest.mock", fromlist=["MagicMock"]).MagicMock()
-        mock_config.return_value.load.side_effect = OSError("config missing")
+        mock_config.Config.return_value.load.side_effect = OSError("config missing")
         with patch.dict("sys.modules", {"config": mock_config}):
             result = _get_lockdown_root()
         assert result is None
