@@ -757,9 +757,12 @@ class SentinelApp:
             self._add_chat("No log to export.", "system")
             return
         path = f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(path, "w") as f:
-            json.dump(self.engine.forensic_log, f, indent=2)
-        self._add_chat(f"Log exported to {path}", "system")
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(self.engine.forensic_log, f, indent=2)
+            self._add_chat(f"Log exported to {path}", "system")
+        except OSError as exc:
+            self._add_chat(f"Failed to export log: {exc}", "error")
 
     # ── Run ─────────────────────────────────────────────────────────────
 

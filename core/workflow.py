@@ -412,9 +412,13 @@ class WorkflowEngine:
     @staticmethod
     def save_workflow(path: str, workflow_data: dict[str, Any]) -> None:
         """Save a workflow definition to JSON."""
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(workflow_data, f, indent=2, ensure_ascii=False)
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(workflow_data, f, indent=2, ensure_ascii=False)
+        except OSError as exc:
+            logger.error("Failed to save workflow to %s: %s", path, exc)
+            raise
 
     @staticmethod
     def list_workflows(directory: str = "workflows") -> list[dict[str, Any]]:

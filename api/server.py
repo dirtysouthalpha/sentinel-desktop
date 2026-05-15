@@ -681,21 +681,28 @@ class SentinelServer:
     async def _handle_ws(self, ws: WebSocket) -> None:
         await ws.accept()
         # Require authentication via first message: {"type": "auth", "token": "..."}
-        try:
-            auth_msg = await asyncio.wait_for(ws.receive_text(), timeout=10)
-            auth_data = json.loads(auth_msg)
-            auth_token = auth_data.get("token", "")
-            # Validate the token.
-            api_token = os.environ.get(API_TOKEN_ENV)
-            if api_token and auth_token != api_token:
-                await ws.send_json({"type": "auth_error", "message": "Invalid token"})
+        api_token = os.environ.get(API_TOKEN_ENV)
+        if api_token:
+            try:
+                auth_msg = await asyncio.wait_for(ws.receive_text(), timeout=10)
+                auth_data = json.loads(auth_msg)
+                auth_token = auth_data.get("token", "")
+                if auth_token != api_token:
+                    await ws.send_json({"type": "auth_error", "message": "Invalid token"})
+                    await ws.close()
+                    return
+            except asyncio.TimeoutError:
+                logger.warning("WS auth timeout — closing connection")
                 await ws.close()
                 return
-        except (asyncio.TimeoutError, json.JSONDecodeError):
-            # No auth required (token not configured) or timeout — allow through.
-            pass
-        except Exception:
-            logger.warning("Unexpected error during WS auth; allowing through", exc_info=True)
+            except json.JSONDecodeError:
+                logger.warning("WS auth message not valid JSON — closing connection")
+                await ws.close()
+                return
+            except Exception:
+                logger.warning("Unexpected error during WS auth — closing connection", exc_info=True)
+                await ws.close()
+                return
 
         with self._ws_lock:
             self._ws_clients.append(ws)
