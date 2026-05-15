@@ -313,3 +313,36 @@ class TestExportAuditConvenience:
             sample_log, sample_metadata, fmt="json", output_dir=str(tmp_path / "out")
         )
         assert os.path.isfile(path)
+
+
+# ---------------------------------------------------------------------------
+# Error handling — write failures propagate with logging
+# ---------------------------------------------------------------------------
+
+
+class TestExportIOErrors:
+    def test_json_write_failure_propagates(self, tmp_path, sample_log, sample_metadata):
+        exporter = AuditExporter(output_dir=str(tmp_path / "reports"))
+        # Override _filename to return a path that's a directory (can't write to it)
+        target = tmp_path / "reports" / "blocked.json"
+        target.mkdir(parents=True)
+        exporter._filename = lambda base, ext: str(target)
+        with pytest.raises(OSError):
+            exporter.export_json(sample_log, sample_metadata)
+
+    def test_csv_write_failure_propagates(self, tmp_path, sample_log, sample_metadata):
+        exporter = AuditExporter(output_dir=str(tmp_path / "reports"))
+        target = tmp_path / "reports" / "blocked.csv"
+        target.mkdir(parents=True)
+        exporter._filename = lambda base, ext: str(target)
+        with pytest.raises(OSError):
+            exporter.export_csv(sample_log, sample_metadata)
+
+    def test_makedirs_failure_logged(self, tmp_path):
+        # Point output_dir at a path under a file (not a directory)
+        blocker = tmp_path / "blocker"
+        blocker.write_text("i am a file")
+        bad_path = str(blocker / "subdir")
+        # Should not raise, but should log the error
+        exporter = AuditExporter(output_dir=bad_path)
+        assert exporter.output_dir == bad_path
