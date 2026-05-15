@@ -147,6 +147,58 @@ def test_smart_open_known_alias_with_uri_protocol_still_works(monkeypatch):
 
 def test_is_safe_launch_token_unit():
     assert launcher._is_safe_launch_token("chrome")
+
+
+def test_smart_open_launch_failure_returns_error(monkeypatch):
+    """When Popen raises, smart_open should return a failure dict."""
+    monkeypatch.setattr(wm, "list_windows", lambda: [])
+    monkeypatch.setattr(
+        launcher.subprocess, "Popen", lambda *a, **kw: (_ for _ in ()).throw(OSError("not found"))
+    )
+
+    result = launcher.smart_open("some-app")
+    assert result["success"] is False
+    assert "not found" in result.get("output", "")
+
+
+def test_smart_open_focus_failure_falls_back_to_launch(monkeypatch):
+    """When focus_window raises, smart_open should fall back to launching."""
+    spawned = []
+
+    def fake_list_windows():
+        return [{"title": "Outlook", "is_focused": False}]
+
+    def fake_focus_window(title):
+        raise OSError("access denied")
+
+    def fake_popen(cmd, *a, **kw):
+        spawned.append(cmd)
+        return type("P", (), {"pid": 42})()
+
+    monkeypatch.setattr(wm, "list_windows", fake_list_windows)
+    monkeypatch.setattr(wm, "focus_window", fake_focus_window)
+    monkeypatch.setattr(launcher.subprocess, "Popen", fake_popen)
+
+    result = launcher.smart_open("outlook")
+    assert result["success"] is True
+    assert spawned, "should have launched after focus failed"
+
+
+def test_smart_open_list_windows_exception(monkeypatch):
+    """When list_windows raises, smart_open should fall back to launching."""
+    spawned = []
+
+    monkeypatch.setattr(wm, "list_windows", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+
+    def fake_popen(cmd, *a, **kw):
+        spawned.append(cmd)
+        return type("P", (), {"pid": 7})()
+
+    monkeypatch.setattr(launcher.subprocess, "Popen", fake_popen)
+
+    result = launcher.smart_open("notepad")
+    assert result["success"] is True
+    assert spawned
     assert launcher._is_safe_launch_token("notepad++")
     assert launcher._is_safe_launch_token("v1.2.3-rc")
     assert not launcher._is_safe_launch_token("")

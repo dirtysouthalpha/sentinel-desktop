@@ -196,3 +196,76 @@ def test_test_channel_unknown():
     nm = NotificationManager()
     with pytest.raises(ValueError, match="Unknown channel"):
         nm.test_channel("nonexistent")
+
+
+def test_email_smtp_error():
+    """SMTPException during send should return (False, error detail)."""
+    import smtplib
+
+    nm = NotificationManager(
+        {
+            "smtp_server": "smtp.example.com:587",
+            "email_from": "bot@example.com",
+            "email_to": "user@example.com",
+            "smtp_use_tls": False,
+        }
+    )
+    with patch("core.notifications.smtplib.SMTP") as mock_smtp:
+        instance = MagicMock()
+        instance.sendmail.side_effect = smtplib.SMTPException("auth failed")
+        mock_smtp.return_value = instance
+        ok, detail = nm._send_email("T", "M", "info")
+
+    assert ok is False
+    assert "smtp" in detail.lower() or "error" in detail.lower()
+
+
+def test_notify_with_channels_override():
+    """The channels parameter should override enabled_channels."""
+    nm = NotificationManager({"enabled_channels": ["log"]})
+    # Override to an empty list — no channels should fire.
+    result = nm.notify("T", "M", channels=[])
+    assert result is True  # returns True even with no channels
+
+
+def test_send_http_success():
+    """_send_http with a valid URL and mocked urlopen should succeed."""
+    with patch("core.notifications.urlopen") as mock_urlopen:
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.read.return_value = b"ok"
+        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_resp
+        ok, detail = _send_http("https://example.com/hook", {"text": "hello"})
+
+    assert ok is True
+    assert "200" in detail
+
+
+def test_send_http_non_2xx_response():
+    """_send_http with a non-2xx response should return failure."""
+    with patch("core.notifications.urlopen") as mock_urlopen:
+        mock_resp = MagicMock()
+        mock_resp.status = 500
+        mock_resp.read.return_value = b"error"
+        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_resp
+        ok, detail = _send_http("https://example.com/hook", {"text": "hello"})
+
+    assert ok is False
+    assert "500" in detail
+
+
+def test_notify_handler_exception_does_not_crash():
+    """If a channel handler raises unexpectedly, notify should still return."""
+    nm = NotificationManager({"enabled_channels": ["log"]})
+
+    def bad_handler(title, message, level):
+        raise RuntimeError("unexpected crash")
+
+    nm._dispatch_map = lambda: {"log": bad_handler}
+    # Should not raise — graceful degradation.
+    result = nm.notify("T", "M")
+    assert result is False

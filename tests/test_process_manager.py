@@ -154,3 +154,50 @@ def test_kill_process_no_such_pid():
         result = process_manager.kill_process(9999)
 
     assert result is False
+
+
+def test_kill_process_access_denied():
+    """kill_process with AccessDenied should return False."""
+    import psutil
+
+    with patch("core.process_manager.psutil.Process", side_effect=psutil.AccessDenied(1234)):
+        result = process_manager.kill_process(1234)
+
+    assert result is False
+
+
+def test_kill_process_by_name_access_denied():
+    """kill by name: AccessDenied on individual process should continue."""
+    import psutil
+
+    info = {"name": "Locked.exe", "pid": 100}
+    mock_proc = MagicMock(info=info)
+    mock_proc.kill.side_effect = psutil.AccessDenied(100)
+
+    with patch("core.process_manager.psutil.process_iter", return_value=[mock_proc]):
+        result = process_manager.kill_process("locked")
+
+    assert result is False
+
+
+def test_list_processes_skips_access_denided():
+    """AccessDenied during iteration should be silently skipped."""
+    import psutil
+
+    info = MagicMock()
+    info.__getitem__ = MagicMock(side_effect=psutil.AccessDenied(1))
+    mock_proc = MagicMock()
+    mock_proc.info = info
+
+    with patch("core.process_manager.psutil.process_iter", return_value=[mock_proc]):
+        result = process_manager.list_processes()
+
+    assert result == []
+
+
+def test_start_process_file_not_found():
+    """start_process with FileNotFoundError should return 0."""
+    with patch("core.process_manager.subprocess.Popen", side_effect=FileNotFoundError("not found")):
+        pid = process_manager.start_process("/missing/binary")
+
+    assert pid == 0

@@ -79,3 +79,102 @@ def test_reset_restores_defaults():
     c.set("provider", "anthropic")
     c.reset()
     assert c.get("provider") == DEFAULTS["provider"]
+
+
+# ---------------------------------------------------------------------------
+# Dict-like access
+# ---------------------------------------------------------------------------
+
+
+def test_contains():
+    c = Config()
+    assert "provider" in c
+    assert "nonexistent_key_xyz" not in c
+
+
+def test_as_dict_returns_copy():
+    c = Config()
+    d = c.as_dict()
+    assert isinstance(d, dict)
+    assert d is not c._data
+    assert d == c._data
+
+
+def test_get_with_default():
+    c = Config()
+    assert c.get("nonexistent_key_xyz", "fallback") == "fallback"
+
+
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
+
+
+def test_load_returns_defaults_when_no_file(tmp_path):
+    c = Config()
+    c._path = str(tmp_path / "nonexistent.json")
+    data = c.load()
+    assert data["provider"] == DEFAULTS["provider"]
+
+
+def test_save_with_data_arg(tmp_path):
+    path = tmp_path / "config.json"
+    c = Config()
+    c._path = str(path)
+    c.save(data={"provider": "ollama", "model": "llama3"})
+    assert path.exists()
+    c2 = Config()
+    c2._path = str(path)
+    data = c2.load()
+    assert data["provider"] == "ollama"
+    assert data["model"] == "llama3"
+
+
+def test_save_handles_oserror(tmp_path, monkeypatch):
+    c = Config()
+    c._path = str(tmp_path / "subdir" / "config.json")
+
+    monkeypatch.setattr(
+        "builtins.open", lambda *a, **kw: (_ for _ in ()).throw(OSError("disk full"))
+    )
+    # Should not raise — logs the error and returns.
+    c.save()
+
+
+# ---------------------------------------------------------------------------
+# Convenience properties
+# ---------------------------------------------------------------------------
+
+
+def test_provider_property():
+    c = Config()
+    assert c.provider == DEFAULTS["provider"]
+    c["provider"] = "anthropic"
+    assert c.provider == "anthropic"
+
+
+def test_api_key_property():
+    c = Config()
+    c.set("api_key", "sk-test")
+    assert c.api_key == "sk-test"
+
+
+def test_model_property():
+    c = Config()
+    c.set("model", "gpt-4o")
+    assert c.model == "gpt-4o"
+
+
+def test_max_steps_property():
+    c = Config()
+    assert isinstance(c.max_steps, int)
+    assert c.max_steps > 0
+
+
+def test_approval_mode_property():
+    c = Config()
+    default_val = DEFAULTS.get("approval_mode", True)
+    assert c.approval_mode == default_val
+    c.approval_mode = False
+    assert c.approval_mode is False
+    assert c["approval_mode"] is False
