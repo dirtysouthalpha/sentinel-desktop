@@ -26,7 +26,9 @@ class TestNoDuplicateToolNames:
 
     def test_no_duplicate_names(self):
         names = [t["function"]["name"] for t in TOOLS]
-        assert len(names) == len(set(names)), f"Duplicates: {[n for n in names if names.count(n) > 1]}"
+        assert len(names) == len(set(names)), (
+            f"Duplicates: {[n for n in names if names.count(n) > 1]}"
+        )
 
 
 class TestAllToolsHaveDescription:
@@ -47,7 +49,9 @@ class TestRequiredParamsPresent:
             required = params.get("required", [])
             properties = params.get("properties", {})
             for req in required:
-                assert req in properties, f"{tool['function']['name']}: required '{req}' not in properties"
+                assert req in properties, (
+                    f"{tool['function']['name']}: required '{req}' not in properties"
+                )
 
 
 class TestAllDispatchEntriesHaveSchemas:
@@ -115,4 +119,6 @@ class TestParameterTypes:
         for tool in TOOLS:
             for pname, pdef in tool["function"].get("parameters", {}).get("properties", {}).items():
                 ptype = pdef.get("type")
-                assert ptype in valid_types, f"{tool['function']['name']}.{pname} has invalid type: {ptype}"
+                assert ptype in valid_types, (
+                    f"{tool['function']['name']}.{pname} has invalid type: {ptype}"
+                )

@@ -1,8 +1,7 @@
 """Gap tests for _send_http retry loop and network error paths."""
 
-from urllib.error import URLError
-
 from unittest.mock import MagicMock, patch
+from urllib.error import URLError
 
 from core.notifications import _send_http
 

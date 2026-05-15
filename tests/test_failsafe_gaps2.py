@@ -37,6 +37,7 @@ class TestOnPanicCallbackException:
         fl = failsafe.FailsafeListener(on_panic=callback)
         # Simulate 3 quick presses
         import time
+
         fl._presses = [time.monotonic()] * 3
         with patch("core.failsafe.logger"):
             fl._on_esc(None)  # Should not raise
@@ -47,6 +48,7 @@ class TestOnEscWindowTooWide:
 
     def test_spread_out_presses_no_panic(self):
         import time
+
         callback = MagicMock()
         fl = failsafe.FailsafeListener(on_panic=callback)
         now = time.monotonic()

@@ -319,7 +319,9 @@ class TestScreenshotHandler:
 
     def test_screenshot_capture_error(self):
         ex = _make_executor()
-        with patch("core.action_executor.capture_to_base64", side_effect=RuntimeError("no display")):
+        with patch(
+            "core.action_executor.capture_to_base64", side_effect=RuntimeError("no display")
+        ):
             result = ex.execute_sync({"action": "screenshot"})
         assert result["success"] is False
         assert result["error"] == "capture_failed"
@@ -348,6 +350,7 @@ class TestDispatchTableCompleteness:
 
     def test_all_state_changing_have_handler(self):
         from core.action_executor import STATE_CHANGING_ACTIONS
+
         ex = _make_executor()
         for action in STATE_CHANGING_ACTIONS:
             assert action in ex._dispatch_table, f"{action} missing from dispatch"
