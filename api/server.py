@@ -278,7 +278,7 @@ class SentinelServer:
 
     async def _handle_command(
         self, req: CommandRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         self._check_auth(authorization)
         cfg = self.config.load()
         engine = AgentEngine(cfg)
@@ -296,7 +296,7 @@ class SentinelServer:
 
         return engine.executor.execute_sync(payload)
 
-    async def _handle_stop(self, authorization: str | None = Header(default=None)):
+    async def _handle_stop(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine and self.engine.running:
             self.engine.stop()
@@ -305,12 +305,12 @@ class SentinelServer:
 
     # ── Information endpoints ───────────────────────────────────────
 
-    async def _handle_screenshot(self, authorization: str | None = Header(default=None)):
+    async def _handle_screenshot(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         b64 = capture_to_base64()
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
-    async def _handle_status(self, authorization: str | None = Header(default=None)):
+    async def _handle_status(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine:
             return {
@@ -321,19 +321,19 @@ class SentinelServer:
             }
         return {"running": False, "step": 0}
 
-    async def _handle_windows(self, authorization: str | None = Header(default=None)):
+    async def _handle_windows(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         return {"windows": wm.list_windows()}
 
-    async def _handle_processes(self, authorization: str | None = Header(default=None)):
+    async def _handle_processes(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         return {"processes": pm.list_processes(limit=100)}
 
-    async def _handle_system(self, authorization: str | None = Header(default=None)):
+    async def _handle_system(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         return {"system": sysinfo.system_info()}
 
-    async def _handle_get_config(self, authorization: str | None = Header(default=None)):
+    async def _handle_get_config(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         # Never leak the API key over the wire.
         cfg = dict(self.config.load())
@@ -343,7 +343,7 @@ class SentinelServer:
 
     async def _handle_put_config(
         self, req: ConfigUpdate, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         self._check_auth(authorization)
         cfg = self.config.load()
         # Pydantic v2 prefers model_dump; v1 only has .dict(). Support both.
@@ -353,7 +353,7 @@ class SentinelServer:
         self.config.save(cfg)
         return {"status": "saved"}
 
-    async def _handle_log(self, authorization: str | None = Header(default=None)):
+    async def _handle_log(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine:
             return {"log": self.engine.forensic_log}
@@ -361,7 +361,7 @@ class SentinelServer:
 
     # ── Script / Recorder / PowerShell endpoints ──────────────────────
 
-    async def _handle_scripts_list(self, authorization: str | None = Header(default=None)):
+    async def _handle_scripts_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List all available scripts in the scripts/ directory."""
         self._check_auth(authorization)
         try:
@@ -377,7 +377,7 @@ class SentinelServer:
 
     async def _handle_script_run(
         self, req: ScriptRunRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Run a script by path with optional parameters."""
         self._check_auth(authorization)
         if not self.engine:
@@ -395,7 +395,7 @@ class SentinelServer:
 
     async def _handle_powershell(
         self, req: PowerShellRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Run a PowerShell command."""
         self._check_auth(authorization)
         try:
@@ -413,7 +413,7 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_recorder_start(self, authorization: str | None = Header(default=None)):
+    async def _handle_recorder_start(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """Start recording actions."""
         self._check_auth(authorization)
         if not self.engine:
@@ -423,7 +423,7 @@ class SentinelServer:
 
     async def _handle_recorder_stop(
         self, req: RecorderStopRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Stop recording and save the script."""
         self._check_auth(authorization)
         if not self.engine:
@@ -443,7 +443,7 @@ class SentinelServer:
 
     # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
 
-    async def _handle_workflows_list(self, authorization: str | None = Header(default=None)):
+    async def _handle_workflows_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List available workflows."""
         self._check_auth(authorization)
         try:
@@ -458,7 +458,7 @@ class SentinelServer:
 
     async def _handle_workflow_run(
         self, req: WorkflowRunRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Run a workflow."""
         self._check_auth(authorization)
         if not self.engine:
@@ -475,7 +475,7 @@ class SentinelServer:
             "elapsed": result.elapsed_seconds,
         }
 
-    async def _handle_schedule_list(self, authorization: str | None = Header(default=None)):
+    async def _handle_schedule_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List scheduled tasks."""
         self._check_auth(authorization)
         if not self.engine:
@@ -484,7 +484,7 @@ class SentinelServer:
 
     async def _handle_schedule_add(
         self, req: ScheduleAddRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Add a scheduled task."""
         self._check_auth(authorization)
         if not self.engine:
@@ -494,7 +494,7 @@ class SentinelServer:
 
     async def _handle_schedule_remove(
         self, req: ScheduleRemoveRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Remove a scheduled task."""
         self._check_auth(authorization)
         if not self.engine:
@@ -504,7 +504,7 @@ class SentinelServer:
 
     async def _handle_schedule_run(
         self, req: ScheduleRunRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Run a scheduled task immediately."""
         self._check_auth(authorization)
         if not self.engine:
@@ -514,7 +514,7 @@ class SentinelServer:
 
     async def _handle_notify(
         self, req: NotifyRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Send a notification."""
         self._check_auth(authorization)
         if not self.engine:
@@ -526,7 +526,7 @@ class SentinelServer:
         )
         return {"success": success}
 
-    async def _handle_plugins_list(self, authorization: str | None = Header(default=None)):
+    async def _handle_plugins_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List loaded plugins."""
         self._check_auth(authorization)
         if not self.engine:
@@ -535,7 +535,7 @@ class SentinelServer:
 
     async def _handle_plugins_reload(
         self, req: PluginReloadRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Reload a plugin."""
         self._check_auth(authorization)
         if not self.engine:
@@ -546,7 +546,7 @@ class SentinelServer:
 
     # ── v3.0 Phase 3+4 endpoints ──────────────────────────────────────
 
-    async def _handle_agents_list(self, authorization: str | None = Header(default=None)):
+    async def _handle_agents_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List all agent pool sessions."""
         self._check_auth(authorization)
         if not self.engine:
@@ -555,7 +555,7 @@ class SentinelServer:
 
     async def _handle_agents_submit(
         self, req: AgentSubmitRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Submit a goal to the agent pool."""
         self._check_auth(authorization)
         if not self.engine:
@@ -569,7 +569,7 @@ class SentinelServer:
 
     async def _handle_agents_cancel(
         self, req: AgentCancelRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Cancel an agent session."""
         self._check_auth(authorization)
         if not self.engine:
@@ -579,7 +579,7 @@ class SentinelServer:
 
     async def _handle_agent_status(
         self, session_id: str, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Get status of a specific agent session."""
         self._check_auth(authorization)
         if not self.engine:
@@ -591,7 +591,7 @@ class SentinelServer:
 
     async def _handle_auth_login(
         self, req: AuthLoginRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Authenticate and get a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
@@ -613,14 +613,14 @@ class SentinelServer:
 
     async def _handle_auth_logout(
         self, req: AuthLogoutRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         """Revoke a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         self.engine.auth_manager.revoke_session(req.token)
         return {"status": "logged_out"}
 
-    async def _handle_auth_users(self, authorization: str | None = Header(default=None)):
+    async def _handle_auth_users(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List users (admin only)."""
         self._check_auth(authorization)
         if not self.engine:
@@ -629,7 +629,7 @@ class SentinelServer:
 
     async def _handle_audit_export(
         self, authorization: str | None = Header(default=None), format: str = "html"
-    ):
+    ) -> dict[str, Any]:
         """Export audit log as HTML/JSON/CSV/Text."""
         self._check_auth(authorization)
         if not self.engine:
@@ -640,7 +640,7 @@ class SentinelServer:
         )
         return {"path": path, "format": format}
 
-    async def _handle_vault_keys(self, authorization: str | None = Header(default=None)):
+    async def _handle_vault_keys(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List credential vault keys."""
         self._check_auth(authorization)
         if not self.engine:
@@ -662,7 +662,7 @@ class SentinelServer:
             return
         asyncio.run_coroutine_threadsafe(self._async_broadcast(event), loop)
 
-    async def _async_broadcast(self, event: dict[str, Any]):
+    async def _async_broadcast(self, event: dict[str, Any]) -> None:
         with self._ws_lock:
             clients = list(self._ws_clients)
         dead = []
@@ -678,7 +678,7 @@ class SentinelServer:
                     if ws in self._ws_clients:
                         self._ws_clients.remove(ws)
 
-    async def _handle_ws(self, ws: WebSocket):
+    async def _handle_ws(self, ws: WebSocket) -> None:
         await ws.accept()
         # Require authentication via first message: {"type": "auth", "token": "..."}
         try:
