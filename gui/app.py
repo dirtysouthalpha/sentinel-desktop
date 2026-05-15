@@ -964,7 +964,9 @@ class SentinelApp:
 class SettingsWindow:
     """Settings modal for provider/API key configuration."""
 
-    def __init__(self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None) -> None:
+    def __init__(
+        self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None
+    ) -> None:
         self.config = config
         self.cfg = config.load()
         self.on_save = on_save
