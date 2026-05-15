@@ -154,8 +154,8 @@ def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False) -> None:
     try:
         engine = AgentEngine(cfg)
         result = engine.run(goal)
-    except Exception:
-        logger.exception("Engine execution failed")
+    except Exception as exc:
+        logger.exception("Engine execution failed: %s", exc)
         sys.exit(1)
 
     print(f"\n{'=' * 60}")

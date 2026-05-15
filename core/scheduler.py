@@ -501,8 +501,8 @@ class TaskScheduler:
         while not self._stop_event.is_set():
             try:
                 self._tick()
-            except Exception:
-                logger.exception("Unexpected error in scheduler tick.")
+            except Exception as exc:
+                logger.exception("Unexpected error in scheduler tick: %s", exc)
             self._stop_event.wait(CHECK_INTERVAL)
         logger.debug("Scheduler loop exited.")
 
@@ -542,8 +542,8 @@ class TaskScheduler:
             if self._on_task_complete is not None:
                 try:
                     self._on_task_complete(result)
-                except Exception:
-                    logger.exception("on_task_complete callback raised.")
+                except Exception as exc:
+                    logger.exception("on_task_complete callback raised: %s", exc)
 
         if tasks_to_run:
             self.save()
