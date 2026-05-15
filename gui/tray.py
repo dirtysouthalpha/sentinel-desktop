@@ -26,6 +26,7 @@ try:
     _HAS_TRAY = True
 except Exception:
     _HAS_TRAY = False
+    logger.debug("pystray/Pillow not available — tray icon disabled")
 
 
 def is_available() -> bool:

@@ -84,11 +84,17 @@ def clean() -> None:
     """Remove build artifacts."""
     for path in [BUILD_DIR, DIST_DIR]:
         if os.path.exists(path):
-            shutil.rmtree(path)
-            print(f"  Removed {path}")
+            try:
+                shutil.rmtree(path)
+                print(f"  Removed {path}")
+            except OSError as exc:
+                print(f"  ⚠ Could not remove {path}: {exc}")
     if os.path.exists(SPEC_FILE):
-        os.remove(SPEC_FILE)
-        print(f"  Removed {SPEC_FILE}")
+        try:
+            os.remove(SPEC_FILE)
+            print(f"  Removed {SPEC_FILE}")
+        except OSError as exc:
+            print(f"  ⚠ Could not remove {SPEC_FILE}: {exc}")
     print("✅ Clean complete")
 
 
@@ -147,7 +153,11 @@ def build_exe() -> bool:
     )
 
     print("  Running PyInstaller...")
-    result = subprocess.run(cmd, cwd=ROOT_DIR)
+    try:
+        result = subprocess.run(cmd, cwd=ROOT_DIR)
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"❌ PyInstaller invocation failed: {exc}")
+        return False
 
     if result.returncode == 0:
         exe_path = os.path.join(DIST_DIR, f"{APP_NAME}.exe")
@@ -214,9 +224,13 @@ Name: "{{autodesktop}}\\{{#MyAppName}}"; Filename: "{{app}}\\{{#MyAppExeName}}";
 Filename: "{{app}}\\{{#MyAppExeName}}"; Description: "{{cm:LaunchProgram,{{#MyAppName}}}}"; Flags: nowait postinstall skipifsilent
 """
     iss_path = os.path.join(INSTALLER_DIR, "sentinel-desktop.iss")
-    os.makedirs(INSTALLER_DIR, exist_ok=True)
-    with open(iss_path, "w", encoding="utf-8") as f:
-        f.write(iss_content)
+    try:
+        os.makedirs(INSTALLER_DIR, exist_ok=True)
+        with open(iss_path, "w", encoding="utf-8") as f:
+            f.write(iss_content)
+    except OSError as exc:
+        print(f"❌ Failed to write .iss file: {exc}")
+        return ""
 
     print(f"✅ Generated: {iss_path}")
     return iss_path

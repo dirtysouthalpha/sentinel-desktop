@@ -1311,7 +1311,13 @@ class SettingsWindow:
         self.cfg["minimize_to_tray"] = bool(self.tray_var.get())
         self.cfg["start_in_tray"] = bool(self.start_tray_var.get())
 
-        self.config.save(self.cfg)
+        try:
+            self.config.save(self.cfg)
+        except OSError as exc:
+            from tkinter import messagebox
+
+            messagebox.showerror("Save Error", f"Cannot save settings:\n{exc}")
+            return
         if self.on_save:
             self.on_save()
         self.win.destroy()

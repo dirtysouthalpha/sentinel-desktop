@@ -189,7 +189,11 @@ class RecorderPanel(ctk.CTkFrame):
             script.tags = [t.strip() for t in tags_e.get().split(",") if t.strip()]
             script.name = name
             safe = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in name)
-            script.save(os.path.join(_ensure_scripts_dir(), f"{safe}.json"))
+            try:
+                script.save(os.path.join(_ensure_scripts_dir(), f"{safe}.json"))
+            except OSError as exc:
+                messagebox.showerror("Save Error", f"Cannot save script:\n{exc}")
+                return
             dlg.destroy()
             self.status_label.configure(text=f"Saved: {name}")
 
@@ -259,7 +263,7 @@ class RecorderPanel(ctk.CTkFrame):
         dlg.wait_window()
         return None if cancelled[0] else result
 
-    def _run_script(self, path: str, params: dict[str, Any], script_data: dict) -> None:
+    def _run_script(self, path: str, params: dict[str, Any], script_data: dict[str, Any]) -> None:
         engine = getattr(self.app, "script_engine", None)
         if engine is None:
             messagebox.showwarning("Playback", "No script engine available.")

@@ -466,7 +466,7 @@ def get_theme(name: str) -> dict[str, Any]:
     return THEMES.get(name, THEMES["sentinel"])
 
 
-def get_theme_names() -> list:
+def get_theme_names() -> list[tuple[str, str]]:
     """Return list of (key, label) tuples for all themes."""
     return [(k, v["label"]) for k, v in THEMES.items()]
 

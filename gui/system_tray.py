@@ -44,6 +44,7 @@ try:
     _HAS_PYSTRAY = True
 except Exception:
     _HAS_PYSTRAY = False
+    logger.debug("pystray not available — system tray disabled")
 
 try:
     from PIL import Image, ImageDraw  # type: ignore[import-untyped]
@@ -51,6 +52,7 @@ try:
     _HAS_PIL = True
 except Exception:
     _HAS_PIL = False
+    logger.debug("Pillow not available — system tray icon disabled")
 
 _AVAILABLE = _HAS_PYSTRAY and _HAS_PIL
 
