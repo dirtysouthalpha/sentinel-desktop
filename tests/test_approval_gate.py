@@ -133,3 +133,89 @@ class TestApprovalGate:
         t.start()
         gate.evaluate({"action": "click"}, step_num=1)
         assert callback_called.is_set()
+
+    def test_modify_returns_modified_action(self):
+        gate = ApprovalGate(enabled=True)
+        original = {"action": "click", "x": 100}
+        modified = {"action": "click", "x": 200}
+
+        def modify_later():
+            import time
+
+            time.sleep(0.05)
+            gate.respond_current(ApprovalDecision.MODIFY, modified)
+
+        t = threading.Thread(target=modify_later, daemon=True)
+        t.start()
+        decision, action = gate.evaluate(original, step_num=1)
+        assert decision == ApprovalDecision.MODIFY
+        assert action == modified
+
+    def test_timeout_auto_approves(self):
+        import unittest.mock
+
+        gate = ApprovalGate(enabled=True)
+        with unittest.mock.patch.object(ApprovalRequest, "wait", return_value=False):
+            decision, action = gate.evaluate({"action": "click"}, step_num=1)
+        assert decision == ApprovalDecision.APPROVE
+        assert action == {"action": "click"}
+
+    def test_stats_approved_increments(self):
+        gate = ApprovalGate(enabled=True)
+
+        def approve_later():
+            import time
+
+            time.sleep(0.05)
+            gate.respond_current(ApprovalDecision.APPROVE)
+
+        t = threading.Thread(target=approve_later, daemon=True)
+        t.start()
+        gate.evaluate({"action": "click"}, step_num=1)
+        assert gate.get_stats()["approved"] == 1
+
+    def test_stats_skipped_increments(self):
+        gate = ApprovalGate(enabled=True)
+
+        def skip_later():
+            import time
+
+            time.sleep(0.05)
+            gate.respond_current(ApprovalDecision.SKIP)
+
+        t = threading.Thread(target=skip_later, daemon=True)
+        t.start()
+        gate.evaluate({"action": "click"}, step_num=1)
+        assert gate.get_stats()["skipped"] == 1
+
+    def test_stats_aborted_increments(self):
+        gate = ApprovalGate(enabled=True)
+
+        def abort_later():
+            import time
+
+            time.sleep(0.05)
+            gate.respond_current(ApprovalDecision.ABORT)
+
+        t = threading.Thread(target=abort_later, daemon=True)
+        t.start()
+        gate.evaluate({"action": "click"}, step_num=1)
+        assert gate.get_stats()["aborted"] == 1
+
+    def test_stats_modified_increments(self):
+        gate = ApprovalGate(enabled=True)
+
+        def modify_later():
+            import time
+
+            time.sleep(0.05)
+            gate.respond_current(ApprovalDecision.MODIFY, {"action": "click", "x": 50})
+
+        t = threading.Thread(target=modify_later, daemon=True)
+        t.start()
+        gate.evaluate({"action": "click"}, step_num=1)
+        assert gate.get_stats()["modified"] == 1
+
+    def test_pending_request_property(self):
+        gate = ApprovalGate(enabled=True)
+        assert gate.pending_request is None

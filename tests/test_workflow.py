@@ -2,6 +2,7 @@
 
 import json
 import os
+from unittest.mock import MagicMock
 
 from core.workflow import (
     ErrorPolicy,
@@ -273,3 +274,199 @@ class TestWorkflowEngine:
     def test_list_workflows_nonexistent_dir(self):
         result = WorkflowEngine.list_workflows("/nonexistent/path")
         assert result == []
+
+    def test_run_loop_step(self, tmp_path):
+        wf_data = {
+            "steps": [
+                {
+                    "id": "s1",
+                    "type": "loop",
+                    "over": "a,b,c",
+                    "body_step": "s2",
+                    "next_step": None,
+                },
+                {"id": "s2", "type": "delay", "delay_seconds": 0.01},
+            ]
+        }
+        wf = tmp_path / "loop.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine()
+        result = engine.run_workflow(str(wf))
+        assert result.success is True
+        # Loop step + 3 body iterations counted
+        assert result.steps_completed >= 1
+        loop_output = result.outputs.get("s1", {})
+        assert loop_output.get("success") is True
+        assert loop_output.get("items_processed") == 3
+
+    def test_run_notify_step(self, tmp_path):
+        wf_data = {
+            "steps": [
+                {"id": "s1", "type": "notify", "message": "Hello {{name}}", "next_step": None},
+            ]
+        }
+        wf = tmp_path / "notify.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine()
+        result = engine.run_workflow(str(wf), variables={"name": "World"})
+        assert result.success is True
+        assert result.steps_completed == 1
+        assert result.step_results[0]["success"] is True
+        assert result.step_results[0]["type"] == "notify"
+
+    def test_run_sub_workflow(self, tmp_path):
+        # Create the sub-workflow
+        sub_data = {"steps": [{"id": "s1", "type": "delay", "delay_seconds": 0.01}]}
+        sub_path = tmp_path / "sub.json"
+        sub_path.write_text(json.dumps(sub_data), encoding="utf-8")
+
+        wf_data = {
+            "steps": [
+                {"id": "s1", "type": "sub_workflow", "path": str(sub_path), "next_step": None},
+            ]
+        }
+        wf = tmp_path / "main.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine()
+        result = engine.run_workflow(str(wf))
+        assert result.success is True
+        assert result.steps_completed == 1
+        assert result.step_results[0]["success"] is True
+
+    def test_error_policy_skip(self, tmp_path):
+        executor = MagicMock()
+        executor.execute_sync.side_effect = RuntimeError("boom")
+        wf_data = {
+            "steps": [
+                {
+                    "id": "s1",
+                    "type": "action",
+                    "action": {"type": "click"},
+                    "error_policy": "skip",
+                    "next_step": "s2",
+                },
+                {"id": "s2", "type": "delay", "delay_seconds": 0.01},
+            ]
+        }
+        wf = tmp_path / "skip.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine(action_executor=executor)
+        result = engine.run_workflow(str(wf))
+        assert result.success is True
+        # Failed step not counted in steps_completed, but next step runs
+        assert result.steps_completed == 1
+        assert len(result.step_results) == 2
+
+    def test_error_policy_retry(self, tmp_path):
+        executor = MagicMock()
+        executor.execute_sync.side_effect = RuntimeError("boom")
+        wf_data = {
+            "steps": [
+                {
+                    "id": "s1",
+                    "type": "action",
+                    "action": {"type": "click"},
+                    "error_policy": "retry",
+                    "max_retries": 2,
+                    "next_step": None,
+                },
+            ]
+        }
+        wf = tmp_path / "retry.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine(action_executor=executor)
+        result = engine.run_workflow(str(wf))
+        assert result.success is False
+        assert "retries" in result.error
+
+    def test_error_policy_retry_succeeds(self, tmp_path):
+        executor = MagicMock()
+        call_count = {"n": 0}
+
+        def fake_exec(action):
+            call_count["n"] += 1
+            if call_count["n"] < 3:
+                raise RuntimeError("not yet")
+            return {"success": True}
+
+        executor.execute_sync.side_effect = fake_exec
+        wf_data = {
+            "steps": [
+                {
+                    "id": "s1",
+                    "type": "action",
+                    "action": {"type": "click"},
+                    "error_policy": "retry",
+                    "max_retries": 3,
+                    "next_step": None,
+                },
+            ]
+        }
+        wf = tmp_path / "retry_ok.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine(action_executor=executor)
+        result = engine.run_workflow(str(wf))
+        assert result.success is True
+
+    def test_fire_callbacks_during_workflow(self, tmp_path):
+        events = []
+        wf_data = {
+            "steps": [
+                {"id": "s1", "type": "delay", "delay_seconds": 0.01, "next_step": None},
+            ]
+        }
+        wf = tmp_path / "cb.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine()
+        engine.set_callback("on_step_start", lambda sid: events.append(("start", sid)))
+        engine.set_callback("on_step_complete", lambda sid, sr: events.append(("complete", sid)))
+        engine.set_callback("on_workflow_complete", lambda r: events.append(("done",)))
+        engine.run_workflow(str(wf))
+        assert ("start", "s1") in events
+        assert ("complete", "s1") in events
+        assert ("done",) in events
+
+    def test_condition_false_branch(self, tmp_path):
+        wf_data = {
+            "steps": [
+                {
+                    "id": "s1",
+                    "type": "condition",
+                    "check": "false",
+                    "true_next": "s2",
+                    "false_next": "s3",
+                },
+                {"id": "s2", "type": "delay", "delay_seconds": 0.01},
+                {"id": "s3", "type": "delay", "delay_seconds": 0.01},
+            ]
+        }
+        wf = tmp_path / "cond_false.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine()
+        result = engine.run_workflow(str(wf))
+        assert result.success is True
+        # Should have condition + s3 (false branch), not s2
+        assert result.steps_completed == 2
+
+    def test_action_with_executor_and_variables(self, tmp_path):
+        executor = MagicMock()
+        executor.execute_sync.return_value = {"success": True, "x": 1, "y": 2}
+        wf_data = {
+            "variables": {"target": "100"},
+            "steps": [
+                {
+                    "id": "s1",
+                    "type": "action",
+                    "action": {"type": "click", "x": "{{target}}"},
+                    "next_step": None,
+                },
+            ],
+        }
+        wf = tmp_path / "action_var.json"
+        wf.write_text(json.dumps(wf_data), encoding="utf-8")
+        engine = WorkflowEngine(action_executor=executor)
+        result = engine.run_workflow(str(wf))
+        assert result.success is True
+        # Verify variable was resolved in the action
+        call_args = executor.execute_sync.call_args[0][0]
+        assert call_args["x"] == "100"

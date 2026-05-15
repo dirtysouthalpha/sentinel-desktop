@@ -2,12 +2,14 @@
 
 import json
 from datetime import datetime
+from unittest.mock import MagicMock
 
 import pytest
 
 from core.scheduler import (
     PRESETS,
     TaskScheduler,
+    _next_run_after,
     _parse_cron_field,
     cron_matches,
     resolve_cron,
@@ -297,3 +299,132 @@ class TestTaskSchedulerRunNow:
         task = scheduler.add_task("T", "script", "* * * * *", path="x.py")
         scheduler.run_task_now(task["id"])
         assert len(results) == 0
+
+
+# ---------------------------------------------------------------------------
+# _next_run_after
+# ---------------------------------------------------------------------------
+
+
+class TestNextRunAfter:
+    def test_finds_next_minute(self):
+        after = datetime(2025, 1, 1, 12, 0)
+        result = _next_run_after("* * * * *", after)
+        assert result == datetime(2025, 1, 1, 12, 1)
+
+    def test_finds_specific_hour(self):
+        after = datetime(2025, 1, 1, 8, 30)
+        result = _next_run_after("0 9 * * *", after)
+        assert result == datetime(2025, 1, 1, 9, 0)
+
+    def test_wraps_to_next_day(self):
+        after = datetime(2025, 1, 1, 23, 59)
+        result = _next_run_after("0 0 * * *", after)
+        assert result == datetime(2025, 1, 2, 0, 0)
+
+    def test_defaults_to_now(self):
+        # Should not raise and should return a datetime
+        result = _next_run_after("* * * * *")
+        assert isinstance(result, datetime)
+
+
+# ---------------------------------------------------------------------------
+# TaskScheduler — scheduler loop
+# ---------------------------------------------------------------------------
+
+
+class TestSchedulerLoop:
+    def test_start_and_stop(self, scheduler):
+        scheduler.start()
+        assert scheduler._running is True
+        scheduler.stop()
+        assert scheduler._running is False
+
+    def test_tick_runs_due_tasks(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+
+        # Use every-minute cron so it's always due
+        ts.add_task("Always", "script", "* * * * *", path="x.py")
+        results = []
+        ts.set_on_task_complete(lambda r: results.append(r))
+
+        ts._tick()
+        assert len(results) == 1
+        assert results[0]["task_name"] == "Always"
+        ts.stop()
+
+    def test_tick_skips_disabled_tasks(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+
+        task = ts.add_task("Disabled", "script", "* * * * *", path="x.py")
+        ts.disable_task(task["id"])
+
+        results = []
+        ts.set_on_task_complete(lambda r: results.append(r))
+        ts._tick()
+        assert len(results) == 0
+        ts.stop()
+
+    def test_tick_updates_last_run(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+
+        ts.add_task("T", "script", "* * * * *", path="x.py")
+        ts._tick()
+
+        updated = ts.get_task(ts.list_tasks()[0]["id"])
+        assert updated["last_run"] is not None
+        ts.stop()
+
+
+# ---------------------------------------------------------------------------
+# TaskScheduler — _handle_on_complete
+# ---------------------------------------------------------------------------
+
+
+class TestHandleOnComplete:
+    def test_on_complete_disable(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        task = ts.add_task("AutoDisable", "script", "* * * * *", path="x.py", on_complete="disable")
+        ts._tick()
+        updated = ts.get_task(task["id"])
+        assert updated["enabled"] is False
+        ts.stop()
+
+    def test_on_complete_remove(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        task = ts.add_task("AutoRemove", "script", "* * * * *", path="x.py", on_complete="remove")
+        ts._tick()
+        assert ts.get_task(task["id"]) is None
+        ts.stop()
+
+
+# ---------------------------------------------------------------------------
+# TaskScheduler — powershell dispatch
+# ---------------------------------------------------------------------------
+
+
+class TestTaskSchedulerPowerShell:
+    def test_run_powershell_no_engine(self, scheduler):
+        task = scheduler.add_task("PS", "powershell", "* * * * *", command="Get-Date")
+        result = scheduler.run_task_now(task["id"])
+        assert result["success"] is False
+        assert "No engine" in result["error"]
+
+    def test_run_powershell_with_mock_engine(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        engine = MagicMock()
+        ps = MagicMock()
+        ps.run_command.return_value = MagicMock(
+            success=True, exit_code=0, stdout="output", stderr="", objects=[]
+        )
+        engine.powershell = ps
+        ts = TaskScheduler(engine=engine, tasks_path=path)
+        task = ts.add_task("PS", "powershell", "* * * * *", command="Get-Date")
+        result = ts.run_task_now(task["id"])
+        assert result["success"] is True
+        ts.stop()
