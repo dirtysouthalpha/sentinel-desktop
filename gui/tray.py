@@ -1,5 +1,11 @@
 """
-Sentinel Desktop v2 — System tray integration.
+Sentinel Desktop v2 — System tray integration (legacy).
+
+.. deprecated:: 3.1.0
+    This module is superseded by :mod:`gui.system_tray` which provides a
+    richer tray icon with status colours, IT quick actions, and a more
+    comprehensive context menu.  It is still imported by ``gui/app.py``
+    and will be removed once the app migrates to ``SystemTrayIcon``.
 
 Optional. When ``pystray`` is installed, the GUI can minimize itself to a
 system tray icon instead of cluttering the taskbar — and the user can

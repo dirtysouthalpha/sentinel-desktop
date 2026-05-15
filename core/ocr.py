@@ -1,7 +1,7 @@
 """
-Sentinel Desktop v2 — OCR (text-on-screen) utilities.
+Sentinel Desktop v3.1 — OCR (text-on-screen) utilities.
 
-Uses ``pytesseract`` when Tesseract is installed on the host. With Tesseract
+Uses ``pytesseract`` when Tesseract is installed on the host.  With Tesseract
 the agent gains:
 
 * ``click_text``: locate visible text and click its centre.
@@ -15,8 +15,10 @@ model's pixel reasoning.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
+import time
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -37,6 +39,16 @@ PREPROCESS_DEFAULT = True
 # per line we flag the result as "low confidence" so the LLM can fall back
 # to the vision model.
 _MIN_ALNUM_PER_LINE_FOR_CONFIDENT = 6
+
+# Minimum average Tesseract confidence score (0-100) to consider OCR reliable.
+_MIN_AVG_CONFIDENCE = 60.0
+
+# Maximum screenshot resolution before downsampling for OCR.
+_MAX_OCR_RESOLUTION = (1920, 1080)
+
+# OCR result cache: (cache_key) → (text, confidence_data, timestamp)
+_ocr_cache: dict[str, tuple[str, dict[str, Any], float]] = {}
+_CACHE_TTL = 3.0  # seconds
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +75,64 @@ def _have_tesseract() -> bool:
         )
         _TESSERACT_OK = False
     return _TESSERACT_OK
+
+
+def _image_cache_key(img: Image.Image) -> str:
+    """Lightweight cache key based on image dimensions and mean pixel value."""
+    w, h = img.size
+    # Compute a quick fingerprint: size + a few sampled pixel values
+    # Using mean of a small region as a cheap hash
+    try:
+        # Sample a few pixels for a lightweight fingerprint
+        sample_points = [
+            img.getpixel((0, 0)),
+            img.getpixel((w // 2, h // 2)),
+            img.getpixel((w - 1, h - 1)),
+            img.getpixel((w // 4, h // 4)),
+            img.getpixel((3 * w // 4, 3 * h // 4)),
+        ]
+        fingerprint = f"{w}x{h}:{sample_points}"
+    except Exception:
+        fingerprint = f"{w}x{h}"
+    return hashlib.md5(fingerprint.encode()).hexdigest()
+
+
+def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:
+    """Return cached OCR result if still valid, else None."""
+    if key in _ocr_cache:
+        text, conf_data, ts = _ocr_cache[key]
+        if time.monotonic() - ts < _CACHE_TTL:
+            return (text, conf_data)
+        # Expired — remove
+        del _ocr_cache[key]
+    return None
+
+
+def _store_cache(key: str, text: str, conf_data: dict[str, Any]) -> None:
+    """Store an OCR result in the cache."""
+    _ocr_cache[key] = (text, conf_data, time.monotonic())
+    # Prune expired entries periodically
+    now = time.monotonic()
+    expired = [k for k, (_, _, ts) in _ocr_cache.items() if now - ts >= _CACHE_TTL]
+    for k in expired:
+        del _ocr_cache[k]
+
+
+def _downsample_if_needed(img: Image.Image) -> Image.Image:
+    """Downsample image to 1080p if resolution exceeds 1920x1080.
+
+    Tesseract is faster and more accurate at moderate resolutions.
+    """
+    w, h = img.size
+    max_w, max_h = _MAX_OCR_RESOLUTION
+    if w > max_w or h > max_h:
+        # Compute scale to fit within max resolution while preserving aspect ratio
+        scale = min(max_w / w, max_h / h)
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        logger.debug("Downsampling OCR image from %dx%d to %dx%d", w, h, new_w, new_h)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+    return img
 
 
 def preprocess_for_ocr(img: Image.Image) -> Image.Image:
@@ -97,19 +167,113 @@ def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
     if not _have_tesseract():
         return ""
     try:
+        # Downsample if resolution is too high
+        img = _downsample_if_needed(img)
         target = preprocess_for_ocr(img) if preprocess else img
-        return _pytesseract.image_to_string(target)  # type: ignore[union-attr]
+
+        # Check cache
+        cache_key = _image_cache_key(target)
+        cached = _check_cache(cache_key)
+        if cached is not None:
+            return cached[0]
+
+        result = _pytesseract.image_to_string(target)  # type: ignore[union-attr]
+
+        # Store in cache
+        _store_cache(cache_key, result, {})
+
+        return result
     except Exception as exc:
         logger.warning("Tesseract failed: %s", exc)
         return ""
 
 
-def looks_low_confidence(text: str) -> bool:
+def _ocr_image_with_confidence(
+    img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT
+) -> tuple[str, dict[str, Any]]:
+    """OCR a PIL Image and return text + confidence data.
+
+    Returns:
+        (text, confidence_data) where confidence_data has:
+        - avg_confidence: average Tesseract confidence (0-100)
+        - word_count: number of words detected
+        - low_confidence_words: list of words with confidence < 50
+        - low_confidence_regions: list of (text, confidence) for low-confidence words
+    """
+    empty_conf = {
+        "avg_confidence": 0.0,
+        "word_count": 0,
+        "low_confidence_words": [],
+        "low_confidence_regions": [],
+    }
+    if not _have_tesseract():
+        return ("", empty_conf)
+    try:
+        # Downsample if resolution is too high
+        img = _downsample_if_needed(img)
+        target = preprocess_for_ocr(img) if preprocess else img
+
+        # Check cache
+        cache_key = _image_cache_key(target)
+        cached = _check_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        # Get both text and detailed data for confidence scoring
+        text = _pytesseract.image_to_string(target)  # type: ignore[union-attr]
+        data = _pytesseract.image_to_data(  # type: ignore[union-attr]
+            target,
+            output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
+        )
+
+        # Extract confidence scores
+        confidences = []
+        low_conf_words = []
+        low_conf_regions = []
+        n = len(data.get("text", []))
+        for i in range(n):
+            word = (data["text"][i] or "").strip()
+            if not word:
+                continue
+            try:
+                conf = float(data["conf"][i])
+            except (TypeError, ValueError):
+                conf = 0.0
+            if conf > 0:  # Tesseract returns -1 for blocks/paragraphs
+                confidences.append(conf)
+                if conf < 50:
+                    low_conf_words.append(word)
+                    low_conf_regions.append({"text": word, "confidence": conf})
+
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
+        conf_data = {
+            "avg_confidence": round(avg_conf, 1),
+            "word_count": len(confidences),
+            "low_confidence_words": low_conf_words,
+            "low_confidence_regions": low_conf_regions,
+        }
+
+        # Store in cache
+        _store_cache(cache_key, text, conf_data)
+
+        return (text, conf_data)
+    except Exception as exc:
+        logger.warning("Tesseract (with confidence) failed: %s", exc)
+        return ("", empty_conf)
+
+
+def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = None) -> bool:
     """Heuristic: does this OCR output look like garbled junk?
 
     Returns True for strings that are mostly punctuation, special symbols,
-    or have very few alphanumeric characters per line. The agent uses this
-    to decide whether to fall back to the vision model.
+    have very few alphanumeric characters per line, or have low average
+    Tesseract confidence scores. The agent uses this to decide whether to
+    fall back to the vision model.
+
+    Args:
+        text: The OCR text output.
+        confidence_data: Optional dict from _ocr_image_with_confidence with
+            avg_confidence, low_confidence_words, etc.
     """
     if not text or not text.strip():
         return True
@@ -120,7 +284,31 @@ def looks_low_confidence(text: str) -> bool:
     if total_alnum < 20:
         return True
     avg_alnum_per_line = total_alnum / len(lines)
-    return avg_alnum_per_line < _MIN_ALNUM_PER_LINE_FOR_CONFIDENT
+    if avg_alnum_per_line < _MIN_ALNUM_PER_LINE_FOR_CONFIDENT:
+        return True
+
+    # Check Tesseract confidence scores if available
+    if confidence_data:
+        avg_conf = confidence_data.get("avg_confidence", 0)
+        if avg_conf > 0 and avg_conf < _MIN_AVG_CONFIDENCE:
+            logger.debug(
+                "OCR low confidence: avg=%.1f (threshold=%.1f)",
+                avg_conf,
+                _MIN_AVG_CONFIDENCE,
+            )
+            return True
+        # If many individual words are low-confidence, flag it
+        low_conf_words = confidence_data.get("low_confidence_words", [])
+        word_count = confidence_data.get("word_count", 0)
+        if word_count > 3 and len(low_conf_words) / max(word_count, 1) > 0.5:
+            logger.debug(
+                "OCR low confidence: %d/%d words below threshold",
+                len(low_conf_words),
+                word_count,
+            )
+            return True
+
+    return False
 
 
 def read_screen_text(monitor: int | None = None, preprocess: bool = PREPROCESS_DEFAULT) -> str:
@@ -133,6 +321,20 @@ def read_screen_text(monitor: int | None = None, preprocess: bool = PREPROCESS_D
     except Exception as exc:
         logger.warning("read_screen_text failed: %s", exc)
         return ""
+
+
+def read_screen_text_with_confidence(
+    monitor: int | None = None, preprocess: bool = PREPROCESS_DEFAULT
+) -> tuple[str, dict[str, Any]]:
+    """OCR the screen and return text + confidence data."""
+    if not _have_tesseract():
+        return ("", {"avg_confidence": 0, "word_count": 0, "low_confidence_words": [], "low_confidence_regions": []})
+    try:
+        img = capture_screen(monitor=monitor)
+        return _ocr_image_with_confidence(img, preprocess=preprocess)
+    except Exception as exc:
+        logger.warning("read_screen_text_with_confidence failed: %s", exc)
+        return ("", {"avg_confidence": 0, "word_count": 0, "low_confidence_words": [], "low_confidence_regions": []})
 
 
 def read_focused_window_text() -> str:

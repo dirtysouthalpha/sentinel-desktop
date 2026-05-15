@@ -223,6 +223,12 @@ class LLMClient:
     ) -> str:
         """Send a chat request with a screenshot image.
 
+        .. deprecated:: 3.1.0
+            This method is no longer called by the engine loop. Vision
+            messages are now constructed directly by
+            ``AgentEngine._add_vision_message`` and sent via ``chat()``.
+            Kept for backward compatibility with external callers.
+
         The *image_base64* string is embedded as a ``data:`` URI in a vision
         message appended to *messages*.
 

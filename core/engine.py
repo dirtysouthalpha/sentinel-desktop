@@ -10,15 +10,13 @@ Supports both sync and async usage:
   - async: await engine.run_goal(goal) — for future async callers
 """
 
-from __future__ import annotations
-
 import json
 import logging
+import os
 import re
 import time
 from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from core import failsafe
@@ -32,6 +30,7 @@ from core.checkpoint import CheckpointManager
 from core.forensic_log import ForensicLog
 from core.llm_client import LLMClient, LLMError
 from core.mfa_detection import MFADetector
+from core.recovery import RecoveryEngine, RecoverySuggestion
 from core.screenshot import capture_to_base64, get_capture_offset
 from core.smart_wait import SmartWait
 from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
@@ -76,15 +75,10 @@ and take actions to accomplish the user's goal.
 {env_context}
 {app_context}
 
-## Coordinates
-Screenshot coordinates map 1:1 to screen pixels. (0,0) is top-left. Click the \
-exact pixel location you see in the screenshot. For multi-monitor setups, \
-coordinates may be offset — check the environment context for monitor info.
-
 ## Loop
 1. LOOK at the screenshot.
 2. Return ONE JSON action.
-3. Observe the result screenshot.
+3. Observe the next screenshot.
 4. Repeat until done, then finish.
 
 ## Actions — return ONE JSON object per step. No markdown. No commentary.
@@ -101,7 +95,7 @@ coordinates may be offset — check the environment context for monitor info.
 {"action": "click_text", "text": "Save"}
 {"action": "click_text", "text": "File", "button": "right"}
 {"action": "click_control", "name": "OK"} or {"action": "click_control", "automation_id": "btnOK", "control_type": "ButtonControl"}
-{"action": "list_controls"} — accessible controls in the foreground window. Use when coordinates are unclear.
+{"action": "list_controls"} — returns accessible controls in the foreground window. Use when you can't find the right coordinates.
 
 ### Keyboard
 {"action": "type_text", "text": "Hello World"}
@@ -110,9 +104,9 @@ Keys: enter, tab, escape, space, backspace, up, down, left, right, home, end, pa
 {"action": "hotkey", "keys": ["ctrl", "c"]}
 {"action": "hotkey", "keys": ["alt", "f4"]}
 
-### Text input by control
+### Text input by control name
 {"action": "set_text", "text": "query terms", "name": "Search"}
-PREFER set_text over click+type when you know the field name — it targets the control directly and is more reliable than coordinate-based typing.
+Use set_text instead of click+type when you know the field name. More reliable than coords.
 
 ### Screen reading
 {"action": "screenshot"} — take a fresh screenshot
@@ -120,14 +114,14 @@ PREFER set_text over click+type when you know the field name — it targets the 
 {"action": "read_text", "scope": "all"} — OCR the entire screen
 {"action": "read_text", "window": "Notepad"} — OCR a specific window by title
 {"action": "read_window", "title": "Calculator"} — OCR a specific window
-You are a vision model. READ THE SCREENSHOT DIRECTLY. Use read_text only when the screenshot is unclear. If OCR returns low_confidence, trust your eyes over OCR.
+IMPORTANT: You are a vision model. READ THE SCREENSHOT DIRECTLY. Use read_text only as a supplement when the screenshot is unclear. If OCR returns low_confidence, ignore it and trust your eyes.
 
 ### Image matching
 {"action": "find_image", "template_path": "C:/path/to/button.png", "confidence": 0.8}
 
 ### Waiting (prefer over fixed wait)
 {"action": "smart_wait", "timeout": 10} — wait until the screen changes
-{"action": "wait_for_stable", "timeout": 10, "stable_time": 1.5} — wait until screen stops changing (use after opening apps, loading pages)
+{"action": "wait_for_stable", "timeout": 10, "stable_time": 1.5} — wait until the screen stops changing (use after opening apps, clicking links, loading pages)
 {"action": "wait_for_text", "text": "Loading complete", "timeout": 10}
 {"action": "wait_for_image", "template_path": "C:/path/to/icon.png", "timeout": 10}
 {"action": "wait", "seconds": 2} — fixed wait, LAST RESORT
@@ -159,41 +153,56 @@ You are a vision model. READ THE SCREENSHOT DIRECTLY. Use read_text only when th
 {"action": "note", "text": "observation — no side effects"}
 {"action": "finish", "summary": "Task completed. Opened Chrome and navigated to example.com."}
 
-## Self-Healing — try alternatives BEFORE reporting failure
+## Self-Healing — ALWAYS try alternatives before reporting failure
 
-Click missed / nothing happened:
-  screenshot → re-identify target → click_control → tab+enter
+Wrong click / nothing happened:
+  1. Take a screenshot to see current state
+  2. Re-identify the target coordinates
+  3. Try click_control with the button name
+  4. Try keyboard: tab to the control then press enter
 
-Text not found by OCR:
-  Trust your eyes over OCR → use coordinates → list_controls
+OCR garbled / text not found:
+  1. IGNORE the OCR output — read the screenshot directly with your vision
+  2. Use coordinates from the screenshot to click
+  3. Use list_controls() to find the target by accessibility metadata
 
 App didn't open:
-  wait_for_stable(3) → smart_open again → open_app with full path → powershell Start-Process
+  1. wait_for_stable(3) then screenshot
+  2. smart_open again
+  3. open_app with full path
+  4. powershell "Start-Process appname"
 
 Window not found:
-  list_windows → use partial title → alt+tab to cycle
+  1. list_windows() to see actual titles
+  2. Use partial title from the list
+  3. hotkey ["alt", "tab"] to cycle
 
-Unexpected popup:
-  Read popup → dismiss (escape/OK/X) → wait_for_stable(2) → continue
+Unexpected popup / dialog:
+  1. Read the popup from the screenshot
+  2. Handle it (escape, click OK, click X)
+  3. wait_for_stable(2) then continue original task
 
 UAC / credential prompt:
-  note("UAC prompt — requires manual intervention") → finish("Blocked by UAC")
+  1. note("UAC prompt — requires manual intervention")
+  2. finish("Blocked by UAC")
 
 Minimized window:
-  focus_window → powershell to restore → screenshot to verify
+  1. focus_window with title
+  2. If that fails, powershell to restore it
+  3. screenshot to verify
 
 NEVER give up silently. Try at least 2 different approaches before finish() with a failure summary.
 
 ## Stopping Rules
-- Finish IMMEDIATELY when the goal is met.
+- Finish IMMEDIATELY when the goal is met. A 3-step success beats a 15-step success.
 - If you can see the answer in the current screenshot, finish NOW.
-- Extra steps compound errors — stop as soon as done.
+- Extra steps compound errors — stop as soon as the goal is met.
 
 ## Safety
 - Never type passwords unless explicitly instructed.
 - Never delete files or kill processes unless explicitly instructed.
 - If unsure about a destructive action, use note() and wait for guidance.
-- Report failures honestly. Mark uncertain results [UNVERIFIED].
+- Report failures honestly with [UNVERIFIED] for uncertain results.
 
 Return ONLY a JSON object. No markdown fences. No commentary.
 """
@@ -204,10 +213,10 @@ class AgentEngine:
 
     def __init__(
         self,
-        config: dict[str, Any] | None = None,
-        approval_callback: Callable[[dict[str, Any]], bool] | None = None,
-        pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
-    ) -> None:
+        config: dict | None = None,
+        approval_callback: Callable[[dict], bool] | None = None,
+        pre_action_callback: Callable[[dict], None] | None = None,
+    ):
         self.config = config or {}
         self.llm = LLMClient()
         # approval_callback(action_dict) -> bool. When set AND
@@ -231,8 +240,8 @@ class AgentEngine:
         self.max_steps = self.config.get("max_steps", 100)
         self.image_history = int(self.config.get("image_history", DEFAULT_IMAGE_HISTORY))
         self.notes: list[str] = []
-        self.forensic_log: list[dict[str, Any]] = []
-        self.on_step_callback: Callable[..., Any] | None = None
+        self.forensic_log: list[dict] = []
+        self.on_step_callback: Callable | None = None
         self.finish_summary: str = ""
 
         # ── Core subsystems (always needed) ──────────────────────────
@@ -246,6 +255,10 @@ class AgentEngine:
         self.mfa_detector = MFADetector()
         self._mfa_paused = False
         self.smart_waiter = SmartWait()
+
+        # Failure tracking and recovery
+        self._consecutive_failures = 0
+        self._recovery_engine = RecoveryEngine()
 
         # ── Lazy-loaded subsystems (only created when accessed) ──────
         self._recorder = None
@@ -261,10 +274,9 @@ class AgentEngine:
         self._agent_pool = None
 
     # ── Lazy subsystem accessors ─────────────────────────────────────
-    # noqa: F821 — names are imported lazily inside each property to avoid circular deps
 
     @property
-    def recorder(self) -> ActionRecorder:  # noqa: F821
+    def recorder(self):
         if self._recorder is None:
             from core.recorder import ActionRecorder
 
@@ -272,7 +284,7 @@ class AgentEngine:
         return self._recorder
 
     @property
-    def script_engine(self) -> ScriptEngine:  # noqa: F821
+    def script_engine(self):
         if self._script_engine is None:
             from core.script_engine import ScriptEngine
 
@@ -280,7 +292,7 @@ class AgentEngine:
         return self._script_engine
 
     @property
-    def powershell(self) -> PowerShellRunner:  # noqa: F821
+    def powershell(self):
         if self._powershell is None:
             from core.powershell import PowerShellRunner
 
@@ -288,7 +300,7 @@ class AgentEngine:
         return self._powershell
 
     @property
-    def workflow_engine(self) -> WorkflowEngine:  # noqa: F821
+    def workflow_engine(self):
         if self._workflow_engine is None:
             from core.workflow import WorkflowEngine
 
@@ -296,7 +308,7 @@ class AgentEngine:
         return self._workflow_engine
 
     @property
-    def scheduler(self) -> TaskScheduler:  # noqa: F821
+    def scheduler(self):
         if self._scheduler is None:
             from core.scheduler import TaskScheduler
 
@@ -304,7 +316,7 @@ class AgentEngine:
         return self._scheduler
 
     @property
-    def notifications(self) -> NotificationManager:  # noqa: F821
+    def notifications(self):
         if self._notifications is None:
             from core.notifications import NotificationManager
 
@@ -317,12 +329,12 @@ class AgentEngine:
         return self._notifications
 
     @property
-    def plugin_loader(self) -> PluginLoader:  # noqa: F821
+    def plugin_loader(self):
         if self._plugin_loader is None:
             from core.plugin_loader import PluginLoader
 
             self._plugin_loader = PluginLoader(
-                str(Path(__file__).resolve().parent.parent / "plugins")
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
             )
             try:
                 loaded = self._plugin_loader.load_all()
@@ -333,7 +345,7 @@ class AgentEngine:
         return self._plugin_loader
 
     @property
-    def auth_manager(self) -> AuthManager:  # noqa: F821
+    def auth_manager(self):
         if self._auth_manager is None:
             from core.auth import AuthManager
 
@@ -341,7 +353,7 @@ class AgentEngine:
         return self._auth_manager
 
     @property
-    def vault(self) -> CredentialVault:  # noqa: F821
+    def vault(self):
         if self._vault is None:
             from core.encryption import CredentialVault
 
@@ -349,7 +361,7 @@ class AgentEngine:
         return self._vault
 
     @property
-    def audit_exporter(self) -> AuditExporter:  # noqa: F821
+    def audit_exporter(self):
         if self._audit_exporter is None:
             from core.audit_export import AuditExporter
 
@@ -357,7 +369,7 @@ class AgentEngine:
         return self._audit_exporter
 
     @property
-    def agent_pool(self) -> AgentPool:  # noqa: F821
+    def agent_pool(self):
         if self._agent_pool is None:
             from core.agent_pool import AgentPool
 
@@ -402,8 +414,8 @@ class AgentEngine:
             if vd:
                 try:
                     vd.switch_to("Default")
-                except Exception as exc:
-                    logger.warning("Failed to switch back to default desktop: %s", exc)
+                except Exception:
+                    pass
 
     def _run_inner(self, goal: str) -> dict[str, Any]:
         """Inner agent loop — called by run() with virtual desktop wrapping."""
@@ -470,27 +482,44 @@ class AgentEngine:
                     self.config.get("use_tools", True) and provider in TOOL_CAPABLE_PROVIDERS
                 )
                 tools = ACTION_TOOLS if use_tools else None
-                try:
-                    response_text = self.llm.chat(
-                        provider=provider,
-                        api_key=api_key,
-                        model=model,
-                        messages=_clean_messages_for_api(messages),
-                        tools=tools,
-                        temperature=0.1,
-                        custom_url=self.config.get("custom_base_url") or None,
-                        max_retries=int(self.config.get("llm_max_retries", 3)),
-                        retry_base_delay=float(self.config.get("llm_retry_base_delay", 1.0)),
+
+                # LLM call with exponential backoff retry for network/rate-limit errors.
+                response_text = self._call_llm_with_retry(
+                    provider=provider,
+                    api_key=api_key,
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                )
+                if response_text is None:
+                    # LLM call failed after all retries -- count as a failure
+                    self._consecutive_failures += 1
+                    logger.warning(
+                        "LLM call failed (consecutive_failures=%d)", self._consecutive_failures
                     )
-                except LLMError as exc:
-                    # Already a clean, user-facing message.
-                    logger.exception("LLM call failed")
-                    self.notes.append(f"LLM error at step {self.step}: {exc}")
-                    break
-                except Exception as exc:
-                    logger.exception("LLM call failed")
-                    self.notes.append(f"LLM error at step {self.step}: {exc}")
-                    break
+                    if self._consecutive_failures >= 8:
+                        self.notes.append(
+                            f"Terminating: {self._consecutive_failures} consecutive failures"
+                        )
+                        self.logger.log_event(
+                            "abort",
+                            {"reason": "max_consecutive_failures", "count": self._consecutive_failures},
+                        )
+                        break
+                    if self._consecutive_failures >= 5:
+                        # Inject a recovery prompt asking for a different strategy
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "[SYSTEM] Multiple consecutive failures have occurred. "
+                                    "Please take a completely different approach. "
+                                    "Re-evaluate the situation from the current screenshot "
+                                    "and try an alternative strategy."
+                                ),
+                            }
+                        )
+                    continue
 
                 # Add to conversation
                 messages.append({"role": "assistant", "content": response_text})
@@ -500,12 +529,29 @@ class AgentEngine:
                 if not action:
                     # LLM didn't return valid JSON, try to continue
                     self.notes.append(f"Step {self.step}: No valid action parsed from LLM response")
+                    self._consecutive_failures += 1
                     messages.append(
                         {
                             "role": "user",
                             "content": "Please respond with a valid JSON action. Only JSON, no other text.",
                         }
                     )
+                    if self._consecutive_failures >= 5:
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "[SYSTEM] Multiple parse failures. Please return a simple "
+                                    "action like {\"action\": \"finish\", \"summary\": \"...\"} "
+                                    "or {\"action\": \"note\", \"text\": \"...\"}."
+                                ),
+                            }
+                        )
+                    if self._consecutive_failures >= 8:
+                        self.notes.append(
+                            f"Terminating: {self._consecutive_failures} consecutive failures"
+                        )
+                        break
                     continue
 
                 # Schema-validate against per-action pydantic models. Modeled
@@ -559,8 +605,8 @@ class AgentEngine:
 
                         screen = capture_screen()
                         mfa_result = self.mfa_detector.check_screen(screen)
-                    except Exception as exc:
-                        logger.warning("MFA screenshot capture failed: %s", exc)
+                    except Exception:
+                        pass
                 if mfa_result.detected:
                     self._mfa_paused = True
                     self.logger.log_event(
@@ -581,8 +627,8 @@ class AgentEngine:
                                     "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}",
                                 },
                             )
-                        except Exception as exc:
-                            logger.warning("MFA on_step_callback failed: %s", exc)
+                        except Exception:
+                            pass
                     # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
                     for _ in range(150):
                         time.sleep(2)
@@ -597,8 +643,99 @@ class AgentEngine:
                 # Log the action
                 self._log_step(action, {"pending": True})
 
-                # Execute the action
-                result = self.executor.execute_sync(action)
+                # Execute the action -- wrapped in try/except for per-action failure tracking
+                action_error = None
+                result = None
+                try:
+                    result = self.executor.execute_sync(action)
+                except Exception as exc:
+                    logger.exception("Action '%s' threw an exception", action_name)
+                    action_error = exc
+                    result = {
+                        "success": False,
+                        "output": f"Action execution error: {exc}",
+                        "error": type(exc).__name__,
+                    }
+
+                # If action failed, run recovery analysis and handle failure tracking
+                action_succeeded = result.get("success", True) and action_error is None
+                if not action_succeeded:
+                    self._consecutive_failures += 1
+                    error_msg = result.get("output", str(action_error))
+                    logger.warning(
+                        "Action '%s' failed (consecutive_failures=%d): %s",
+                        action_name,
+                        self._consecutive_failures,
+                        error_msg[:200],
+                    )
+
+                    # Consult recovery engine
+                    suggestion = self._recovery_engine.analyze_failure(
+                        action,
+                        error_msg,
+                        {"step": self.step, "consecutive_failures": self._consecutive_failures},
+                    )
+                    self.logger.log_event(
+                        "recovery_suggestion",
+                        {
+                            "pattern": suggestion.pattern,
+                            "strategy": suggestion.strategy,
+                            "confidence": suggestion.confidence,
+                            "action": action_name,
+                        },
+                    )
+
+                    # Add error to message history so the LLM can adapt
+                    recovery_msg = (
+                        f"Action '{action_name}' failed: {error_msg[:300]}."
+                    )
+                    if suggestion.recovery_prompt:
+                        recovery_msg += f"\n\nRecovery hint: {suggestion.recovery_prompt}"
+
+                    # Inject recovery prompt into conversation
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": recovery_msg,
+                        }
+                    )
+
+                    # Check failure thresholds
+                    if self._consecutive_failures >= 8:
+                        error_summary = (
+                            f"Run terminated after {self._consecutive_failures} consecutive failures. "
+                            f"Last error: {error_msg[:200]}"
+                        )
+                        self.notes.append(error_summary)
+                        self.logger.log_event(
+                            "abort",
+                            {
+                                "reason": "max_consecutive_failures",
+                                "count": self._consecutive_failures,
+                                "last_error": error_msg[:200],
+                            },
+                        )
+                        break
+
+                    if self._consecutive_failures >= 5:
+                        # Inject a strong recovery prompt
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "[SYSTEM RECOVERY] You have had multiple consecutive failures. "
+                                    "Please completely change your approach. Consider: "
+                                    "1) Taking a fresh screenshot to reassess, "
+                                    "2) Using a different action type (e.g., list_controls, read_text), "
+                                    "3) Trying keyboard navigation instead of mouse clicks, "
+                                    "4) Finishing with a note if the goal is partially achieved."
+                                ),
+                            }
+                        )
+                    continue  # skip screenshot below, go to next iteration
+                else:
+                    # Action succeeded -- reset consecutive failure counter
+                    self._consecutive_failures = 0
 
                 # Capture for script recorder if recording
                 if self.recorder.is_recording:
@@ -632,7 +769,7 @@ class AgentEngine:
                             messages=messages,
                         )
                     except Exception as exc:
-                        logger.warning("Checkpoint save failed: %s", exc)
+                        logger.debug("Checkpoint save failed: %s", exc)
 
                 # Note actions are no-ops at the executor level; record once
                 # here so we don't double-log.
@@ -648,8 +785,8 @@ class AgentEngine:
                             result=log_result,
                             screenshot=screenshot_b64,
                         )
-                    except Exception as exc:
-                        logger.warning("on_step_callback raised: %s", exc)
+                    except Exception:
+                        pass
 
                 # Take new screenshot for next iteration
                 if self.running and self.config.get("auto_screenshot", True):
@@ -682,8 +819,8 @@ class AgentEngine:
             from core.sound import play_sound
 
             play_sound("complete" if self.finish_summary else "error")
-        except Exception as exc:
-            logger.warning("Sound notification failed: %s", exc)
+        except Exception:
+            pass
 
         return {
             "steps": self.step,
@@ -693,6 +830,74 @@ class AgentEngine:
             "elapsed_seconds": round(elapsed, 2),
             "report": self._generate_report(goal, elapsed),
         }
+
+    # ------------------------------------------------------------------
+    # LLM call with per-step exponential backoff
+    # ------------------------------------------------------------------
+
+    _LLM_RETRY_DELAYS = (2.0, 4.0, 8.0)  # seconds between retries
+
+    def _call_llm_with_retry(
+        self,
+        *,
+        provider: str,
+        api_key: str,
+        model: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+    ) -> str | None:
+        """Call the LLM with per-step retry for network/rate-limit errors.
+
+        Uses a separate retry loop (3 retries with 2s/4s/8s delays) that is
+        independent of the LLMClient's own internal retry mechanism. Returns
+        the response text, or None if the call failed after all retries.
+        """
+        for attempt, delay in enumerate((0, *self._LLM_RETRY_DELAYS)):
+            if attempt > 0:
+                logger.info(
+                    "LLM retry attempt %d/%d (delay=%.1fs)",
+                    attempt,
+                    len(self._LLM_RETRY_DELAYS) + 1,
+                    delay,
+                )
+                time.sleep(delay)
+            try:
+                return self.llm.chat(
+                    provider=provider,
+                    api_key=api_key,
+                    model=model,
+                    messages=_clean_messages_for_api(messages),
+                    tools=tools,
+                    temperature=0.1,
+                    custom_url=self.config.get("custom_base_url") or None,
+                    max_retries=0,  # disable client-level retry; we handle it here
+                    retry_base_delay=0,
+                )
+            except LLMError as exc:
+                # Non-retriable LLM errors (auth, model not found, etc.)
+                logger.error("LLM error (non-retriable): %s", exc)
+                self.notes.append(f"LLM error at step {self.step}: {exc}")
+                return None
+            except Exception as exc:
+                # Network / transient errors -- retry
+                logger.warning(
+                    "LLM call attempt %d failed: %s: %s",
+                    attempt + 1,
+                    type(exc).__name__,
+                    exc,
+                )
+                if attempt >= len(self._LLM_RETRY_DELAYS):
+                    # Exhausted all retries
+                    logger.error(
+                        "LLM call failed after %d retries: %s",
+                        len(self._LLM_RETRY_DELAYS) + 1,
+                        exc,
+                    )
+                    self.notes.append(
+                        f"LLM error at step {self.step} (after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
+                    )
+                    return None
+        return None  # unreachable, but satisfies type checker
 
     def _generate_report(self, goal: str, elapsed: float) -> dict[str, Any]:
         """Generate a structured run report for MSP work notes.
@@ -716,7 +921,9 @@ class AgentEngine:
             {
                 "step": e.get("step"),
                 "action": e.get("action"),
-                "params": {k: v for k, v in (e.get("params") or {}).items() if k != "screenshot"},
+                "params": {
+                    k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
+                },
                 "ok": e.get("result", {}).get("ok", True),
                 "output_preview": str(e.get("result", {}).get("msg", ""))[:200],
                 "timestamp": e.get("timestamp"),
@@ -744,7 +951,7 @@ class AgentEngine:
                     "step": e.get("step"),
                     "action": e.get("action"),
                     "params": {
-                        k: v for k, v in (e.get("params") or {}).items() if k != "screenshot"
+                        k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
                     },
                     "error": e.get("result", {}).get("msg", "")[:300],
                     "timestamp": e.get("timestamp"),
@@ -777,7 +984,7 @@ class AgentEngine:
         report["text"] = "\n".join(lines)
         return report
 
-    def stop(self) -> None:
+    def stop(self):
         """Stop the agent loop."""
         self.running = False
         logger.info("Agent stop requested")
@@ -788,7 +995,7 @@ class AgentEngine:
         try:
             info = sysinfo.brief_system_info()
         except Exception as exc:
-            logger.warning("brief_system_info failed: %s", exc)
+            logger.debug("brief_system_info failed: %s", exc)
             info = ""
         active_win = ""
         try:
@@ -797,8 +1004,8 @@ class AgentEngine:
                 if w.get("is_focused"):
                     active_win = f"\nActive Window: {w['title']}"
                     break
-        except Exception as exc:
-            logger.warning("Window enumeration for env context failed: %s", exc)
+        except Exception:
+            pass
         tenant = ""
         if self.config.get("tenant_name"):
             tenant = f"\nTenant: {self.config['tenant_name']}"
@@ -838,13 +1045,10 @@ class AgentEngine:
                 for action, path in profile.menu_paths.items():
                     lines.append(f"  - {action}: {' → '.join(path)}")
             return "\n".join(lines)
-        except Exception as exc:
-            logger.warning("App context build failed: %s", exc)
+        except Exception:
             return ""
 
-    def _add_vision_message(
-        self, messages: list[dict[str, Any]], screenshot_b64: str, text: str
-    ) -> None:
+    def _add_vision_message(self, messages: list, screenshot_b64: str, text: str):
         """Add a vision message (screenshot + text) to the conversation.
 
         capture_to_base64() encodes PNG by default; the media type below must
@@ -889,7 +1093,7 @@ class AgentEngine:
                 }
             )
 
-    def _prune_old_screenshots(self, messages: list[dict[str, Any]]) -> None:
+    def _prune_old_screenshots(self, messages: list) -> None:
         """Drop the image bytes from older screenshot messages, but PRESERVE
         any text in those messages (which often includes the original goal!).
 
@@ -923,7 +1127,7 @@ class AgentEngine:
             new_content = f"{preserved_text}\n{stub}" if preserved_text else stub
             messages[idx] = {"role": "user", "content": new_content}
 
-    def _parse_action(self, response: str) -> dict[str, Any] | None:
+    def _parse_action(self, response: str) -> dict | None:
         """Extract an action dict from an LLM response.
 
         Handles three shapes:
@@ -965,7 +1169,7 @@ class AgentEngine:
         return None
 
     @staticmethod
-    def _action_from_tool_call(tool_calls: list[Any] | None) -> dict[str, Any] | None:
+    def _action_from_tool_call(tool_calls) -> dict | None:
         """Convert the first tool_call into an action dict for the executor.
 
         Defensive: tool_calls coming from real providers occasionally arrive
@@ -998,7 +1202,7 @@ class AgentEngine:
             args = {k: v for k, v in args.items() if k != "action"}
         return {"action": str(name), **(args if isinstance(args, dict) else {})}
 
-    def _log_step(self, action: dict[str, Any], result: dict[str, Any]) -> None:
+    def _log_step(self, action: dict, result: dict):
         self.forensic_log.append(
             {
                 "step": self.step,
@@ -1009,7 +1213,7 @@ class AgentEngine:
             }
         )
 
-    def _log_step_result(self, step: int, result: dict[str, Any]) -> None:
+    def _log_step_result(self, step: int, result: dict):
         for entry in reversed(self.forensic_log):
             if entry.get("step") == step:
                 entry["result"] = result
@@ -1024,7 +1228,7 @@ class AgentEngine:
 # ---------------------------------------------------------------------------
 
 
-def _find_balanced_json_with_key(text: str, key: str) -> dict[str, Any] | None:
+def _find_balanced_json_with_key(text: str, key: str) -> dict | None:
     """Scan *text* for a balanced ``{...}`` JSON object that contains *key*.
 
     Handles strings and escape characters so nested braces don't break the
@@ -1066,7 +1270,7 @@ def _find_balanced_json_with_key(text: str, key: str) -> dict[str, Any] | None:
     return None
 
 
-def _clean_messages_for_api(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _clean_messages_for_api(messages: list) -> list:
     """Return a copy of *messages* with internal ``_sentinel_*`` keys stripped.
 
     The engine attaches private markers like ``_sentinel_has_image`` so it can
