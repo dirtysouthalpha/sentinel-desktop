@@ -39,7 +39,7 @@ def start_process(path: str, args: list[str] | None = None) -> int:
         return 0
 
 
-def kill_process(target: int | str) -> bool:
+def kill_process(target: int | str | None) -> bool:
     """Kill a process by PID (int) or name (str). Returns True on success."""
     if target is None or target == "":
         logger.warning("kill_process called with empty target")
