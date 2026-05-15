@@ -62,13 +62,13 @@ def read_file(path: str, encoding: str = "utf-8") -> str | None:
     """Read file contents. Returns string or ``None`` on error."""
     try:
         safe = _resolve_safe(path)
-    except PermissionError as exc:
+    except PermissionError:
         logger.exception("read_file(%s) blocked", path)
         return None
     try:
         with open(safe, encoding=encoding) as f:
             return f.read()
-    except (OSError, UnicodeDecodeError) as exc:
+    except (OSError, UnicodeDecodeError):
         logger.exception("read_file(%s) failed", path)
         return None
 
@@ -77,7 +77,7 @@ def write_file(path: str, content: str, encoding: str = "utf-8") -> bool:
     """Write file contents. Creates parent dirs. Returns ``True`` on success."""
     try:
         safe = _resolve_safe(path)
-    except PermissionError as exc:
+    except PermissionError:
         logger.exception("write_file(%s) blocked", path)
         return False
     try:
@@ -87,7 +87,7 @@ def write_file(path: str, content: str, encoding: str = "utf-8") -> bool:
         with open(safe, "w", encoding=encoding) as f:
             f.write(content)
         return True
-    except OSError as exc:
+    except OSError:
         logger.exception("write_file(%s) failed", path)
         return False
 
@@ -96,7 +96,7 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
     """List directory contents. Returns list of dicts or ``None`` on error."""
     try:
         safe = _resolve_safe(path)
-    except PermissionError as exc:
+    except PermissionError:
         logger.exception("list_directory(%s) blocked", path)
         return None
     try:
@@ -110,6 +110,6 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
                 }
             )
         return sorted(entries, key=lambda e: (not e["is_dir"], e["name"].lower()))
-    except OSError as exc:
+    except OSError:
         logger.exception("list_directory(%s) failed", path)
         return None

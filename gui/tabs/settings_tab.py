@@ -325,7 +325,7 @@ class SettingsTab:
                 self.app.engine.plugin_loader.load_all()
             self._refresh_plugin_list()
             logger.info("Plugins reloaded")
-        except Exception as exc:
+        except Exception:
             logger.exception("Plugin reload failed")
 
     # ── Buttons ─────────────────────────────────────────────────────
@@ -387,7 +387,7 @@ class SettingsTab:
             if "theme" in cfg and hasattr(self.app, "set_theme"):
                 self.app.set_theme(cfg["theme"])
 
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, json.JSONDecodeError):
             logger.exception("Failed to save settings")
 
     def _reset(self) -> None:

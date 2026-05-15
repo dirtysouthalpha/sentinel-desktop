@@ -202,3 +202,247 @@ def test_get_base_url_empty_custom_falls_back():
 
 def test_get_base_url_none_custom_falls_back():
     assert get_base_url("openai", None) == "https://api.openai.com/v1"
+
+
+# ---------------------------------------------------------------------------
+# Additional tests for broader coverage
+# ---------------------------------------------------------------------------
+
+
+def test_get_provider_returns_dict_for_known():
+    p = get_provider("openai")
+    assert isinstance(p, dict)
+    assert "base_url" in p
+    assert "chat_endpoint" in p
+    assert "auth_header" in p
+
+
+def test_get_provider_anthropic_has_native_flag():
+    p = get_provider("anthropic")
+    assert p is not None
+    assert p.get("anthropic_native") is True
+
+
+def test_get_provider_ollama_has_no_auth():
+    p = get_provider("ollama")
+    assert p is not None
+    assert p.get("no_auth") is True
+
+
+def test_get_provider_lmstudio_has_no_auth():
+    p = get_provider("lmstudio")
+    assert p is not None
+    assert p.get("no_auth") is True
+
+
+def test_provider_names_includes_all_major():
+    names = get_provider_names()
+    for expected in ["openai", "anthropic", "google", "ollama", "custom"]:
+        assert expected in names
+
+
+def test_display_name_returns_human_name():
+    assert "Ollama" in get_provider_display_name("ollama")
+    assert "DeepSeek" in get_provider_display_name("deepseek")
+    assert "Groq" in get_provider_display_name("groq")
+
+
+def test_get_base_url_for_anthropic():
+    assert get_base_url("anthropic") == "https://api.anthropic.com/v1"
+
+
+def test_get_base_url_for_ollama():
+    assert get_base_url("ollama") == "http://localhost:11434/v1"
+
+
+def test_get_base_url_for_azure_empty():
+    """Azure OpenAI has empty base_url in catalog."""
+    assert get_base_url("azure_openai") == ""
+
+
+def test_get_base_url_custom_override_for_any_provider():
+    """custom_url overrides even for non-custom providers."""
+    url = get_base_url("openai", "https://my-proxy.example.com/v1/")
+    assert url == "https://my-proxy.example.com/v1"
+
+
+def test_fetch_models_returns_sorted():
+    """Model lists should always be sorted."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": [
+                {"id": "z-model"},
+                {"id": "a-model"},
+                {"id": "m-model"},
+            ]
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("openai", api_key="sk-test")
+
+    assert models == ["a-model", "m-model", "z-model"]
+
+
+def test_fetch_models_extracts_name_field():
+    """Some providers use 'name' instead of 'id'."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": [
+                {"name": "model-via-name"},
+            ]
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("openai", api_key="sk-test")
+
+    assert "model-via-name" in models
+
+
+def test_fetch_models_extracts_model_field():
+    """Some providers use 'model' instead of 'id'."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": [
+                {"model": "model-via-model"},
+            ]
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("openai", api_key="sk-test")
+
+    assert "model-via-model" in models
+
+
+def test_fetch_models_string_entries():
+    """Response entries that are plain strings (not dicts)."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": ["plain-model-a", "plain-model-b"]}
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("openai", api_key="sk-test")
+
+    assert "plain-model-a" in models
+    assert "plain-model-b" in models
+
+
+def test_fetch_models_uses_models_key_fallback():
+    """Response with 'models' key instead of 'data'."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"models": [{"id": "m1"}, {"id": "m2"}]}
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("openai", api_key="sk-test")
+
+    assert "m1" in models
+    assert "m2" in models
+
+
+def test_fetch_models_generic_exception_returns_empty():
+    """Any non-specific exception should result in empty list."""
+    with patch(
+        "core.provider_registry.requests.get",
+        side_effect=ValueError("unexpected"),
+    ):
+        assert fetch_models("openai", "sk-test") == []
+
+
+def test_fetch_models_no_auth_no_key_no_header():
+    """Provider with no_auth=True and empty api_key should send no auth header."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": [{"id": "llama3"}]}
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("ollama", api_key="")
+
+    assert "llama3" in models
+    headers = mock_get.call_args[1]["headers"]
+    assert headers == {}
+
+
+def test_fetch_models_skips_empty_ids():
+    """Entries with empty/falsy id should be filtered out."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": [
+                {"id": "valid-model"},
+                {"id": ""},
+                {"id": None},
+            ]
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("openai", api_key="sk-test")
+
+    assert models == ["valid-model"]
+
+
+def test_fetch_models_zai_manual():
+    """zai has models_endpoint=None, so manual models are returned."""
+    models = fetch_models("zai")
+    assert "glm-5" in models
+    assert models == sorted(models)
+
+
+def test_fetch_models_minimax_manual():
+    """minimax has models_endpoint=None, so manual models are returned."""
+    models = fetch_models("minimax")
+    assert "MiniMax-M1" in models
+    assert models == sorted(models)
+
+
+def test_fetch_models_manual_with_http_mock():
+    """Provider with a real endpoint + manual_models falls back to HTTP when available."""
+    with patch("core.provider_registry.requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": [
+                {"id": "deepseek-chat"},
+                {"id": "deepseek-reasoner"},
+            ]
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        models = fetch_models("deepseek", api_key="sk-test")
+
+    assert "deepseek-chat" in models
+    assert "deepseek-reasoner" in models
+
+
+def test_azure_openai_has_empty_base_url():
+    assert PROVIDERS["azure_openai"]["base_url"] == ""
+
+
+def test_custom_has_empty_base_url():
+    assert PROVIDERS["custom"]["base_url"] == ""
+
+
+def test_every_provider_has_auth_header():
+    for name, p in PROVIDERS.items():
+        assert "auth_header" in p, f"{name} missing 'auth_header'"
+        assert "auth_prefix" in p, f"{name} missing 'auth_prefix'"
+
+
+def test_openai_manual_models():
+    models = PROVIDERS["openai"]["manual_models"]
+    assert "gpt-4o" in models
+    assert "o3" in models
+
+
+def test_google_manual_models():
+    models = PROVIDERS["google"]["manual_models"]
+    assert "gemini-2.5-pro" in models

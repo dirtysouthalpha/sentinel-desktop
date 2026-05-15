@@ -350,7 +350,7 @@ class CredentialVault:
             if not isinstance(data, dict) or "keys" not in data:
                 raise ValueError("Invalid vault structure")
             return data
-        except (OSError, json.JSONDecodeError, ValueError) as exc:
+        except (OSError, json.JSONDecodeError, ValueError):
             logger.exception("Failed to load vault from %s", self._path)
             return {"version": _VAULT_VERSION, "keys": {}}
 
@@ -365,6 +365,6 @@ class CredentialVault:
             )
             tmp.replace(self._path)
             return True
-        except OSError as exc:
+        except OSError:
             logger.exception("Failed to save vault to %s", self._path)
             return False

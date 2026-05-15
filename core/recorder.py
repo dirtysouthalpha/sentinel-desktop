@@ -76,7 +76,7 @@ class Script:
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open("w", encoding="utf-8") as fh:
                 fh.write(self.to_json())
-        except OSError as exc:
+        except OSError:
             logger.exception("Failed to save script to %s", path)
             raise
 
@@ -86,7 +86,7 @@ class Script:
         try:
             with Path(path).open(encoding="utf-8") as fh:
                 data = json.load(fh)
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, json.JSONDecodeError):
             logger.exception("Failed to load script from %s", path)
             raise
         return cls(

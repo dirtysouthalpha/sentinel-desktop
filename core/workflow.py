@@ -417,7 +417,7 @@ class WorkflowEngine:
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open("w", encoding="utf-8") as f:
                 json.dump(workflow_data, f, indent=2, ensure_ascii=False)
-        except OSError as exc:
+        except OSError:
             logger.exception("Failed to save workflow to %s", path)
             raise
 

@@ -665,7 +665,6 @@ class TestHandleAuthLogin:
         assert exc_info.value.status_code == 401
 
     def test_login_rate_limited(self):
-        from collections import defaultdict
         from fastapi import HTTPException
 
         server = self._make_login_server()
@@ -674,13 +673,6 @@ class TestHandleAuthLogin:
         fake_id = 42
         server._login_attempts[fake_id] = [time.monotonic()] * server._login_limit
         # Patch id in the module to return our controlled id
-        import api.server as srv_mod
-
-        orig_id = id
-        srv_mod_id_ref = (
-            srv_mod.__builtins__["id"] if isinstance(srv_mod.__builtins__, dict) else None
-        )
-        # Use monkeypatch approach: temporarily replace id in builtins
         import builtins as _bi
 
         _orig_id = _bi.id

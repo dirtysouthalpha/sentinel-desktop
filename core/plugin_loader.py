@@ -426,7 +426,7 @@ class PluginLoader:
         try:
             info = self.load_plugin(filepath)
             return info.get("loaded", False)
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to reload plugin '%s'", name)
             return False
 
