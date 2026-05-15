@@ -43,7 +43,7 @@ class CursorOverlay:
         self._accent = accent_color
         self._thread: threading.Thread | None = None
         self._running = False
-        self._queue: list[dict] = []
+        self._queue: list[dict[str, Any]] = []
         self._queue_lock = threading.Lock()
         self._root = None
         self._canvas = None

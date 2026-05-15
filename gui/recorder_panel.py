@@ -324,7 +324,7 @@ class RecorderPanel(ctk.CTkFrame):
 
         lf = ctk.CTkScrollableFrame(dlg)
         lf.grid(row=2, column=0, sticky="nsew", padx=12, pady=4)
-        items: list[dict] = []
+        items: list[dict[str, Any]] = []
 
         def _refresh(*_: Any) -> None:
             q = sv.get().lower()

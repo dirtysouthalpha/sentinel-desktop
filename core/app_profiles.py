@@ -24,7 +24,7 @@ class AppProfile:
     window_title_patterns: list[str]
     stealth_compatible: str = "partial"  # "full", "partial", "none"
     preferred_input: str = "uia"  # "uia", "postmessage", "physical"
-    timing: dict = field(
+    timing: dict[str, float] = field(
         default_factory=lambda: {
             "launch_delay": 2.0,
             "action_delay": 0.3,
