@@ -26,10 +26,12 @@ def test_notify_unknown_level_defaults_to_info():
 def test_notify_batch():
     """notify_batch should return per-title results."""
     nm = NotificationManager({"enabled_channels": ["log"]})
-    results = nm.notify_batch([
-        {"title": "A", "message": "a"},
-        {"title": "B", "message": "b"},
-    ])
+    results = nm.notify_batch(
+        [
+            {"title": "A", "message": "a"},
+            {"title": "B", "message": "b"},
+        ]
+    )
     assert results["A"] is True
     assert results["B"] is True
 
@@ -122,23 +124,27 @@ def test_email_missing_config():
 
 
 def test_email_invalid_smtp_port():
-    nm = NotificationManager({
-        "smtp_server": "smtp.example.com:notaport",
-        "email_from": "a@b.com",
-        "email_to": "c@d.com",
-    })
+    nm = NotificationManager(
+        {
+            "smtp_server": "smtp.example.com:notaport",
+            "email_from": "a@b.com",
+            "email_to": "c@d.com",
+        }
+    )
     ok, detail = nm._send_email("T", "M", "info")
     assert ok is False
     assert "invalid" in detail.lower() or "smtp" in detail.lower()
 
 
 def test_email_sends_with_valid_config():
-    nm = NotificationManager({
-        "smtp_server": "smtp.example.com:587",
-        "email_from": "bot@example.com",
-        "email_to": "user@example.com",
-        "smtp_use_tls": False,
-    })
+    nm = NotificationManager(
+        {
+            "smtp_server": "smtp.example.com:587",
+            "email_from": "bot@example.com",
+            "email_to": "user@example.com",
+            "smtp_use_tls": False,
+        }
+    )
     with patch("core.notifications.smtplib.SMTP") as mock_smtp:
         instance = MagicMock()
         mock_smtp.return_value = instance
@@ -151,12 +157,14 @@ def test_email_sends_with_valid_config():
 
 
 def test_email_multiple_recipients():
-    nm = NotificationManager({
-        "smtp_server": "smtp.example.com:587",
-        "email_from": "bot@example.com",
-        "email_to": "a@b.com, c@d.com",
-        "smtp_use_tls": False,
-    })
+    nm = NotificationManager(
+        {
+            "smtp_server": "smtp.example.com:587",
+            "email_from": "bot@example.com",
+            "email_to": "a@b.com, c@d.com",
+            "smtp_use_tls": False,
+        }
+    )
     with patch("core.notifications.smtplib.SMTP") as mock_smtp:
         instance = MagicMock()
         mock_smtp.return_value = instance

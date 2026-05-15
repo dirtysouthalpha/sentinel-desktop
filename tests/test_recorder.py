@@ -35,7 +35,16 @@ def test_script_to_dict_keys():
     s = Script(name="X")
     d = s.to_dict()
 
-    for key in ("name", "description", "author", "created", "version", "tags", "parameters", "steps"):
+    for key in (
+        "name",
+        "description",
+        "author",
+        "created",
+        "version",
+        "tags",
+        "parameters",
+        "steps",
+    ):
         assert key in d
 
 
@@ -186,7 +195,9 @@ def test_generate_description_multiple():
 def test_list_scripts(tmp_path):
     """list_scripts should find .json files and skip invalid ones."""
     valid = tmp_path / "good.json"
-    valid.write_text(json.dumps({"name": "Good Script", "description": "x", "tags": []}), encoding="utf-8")
+    valid.write_text(
+        json.dumps({"name": "Good Script", "description": "x", "tags": []}), encoding="utf-8"
+    )
 
     invalid = tmp_path / "bad.json"
     invalid.write_text("not json", encoding="utf-8")

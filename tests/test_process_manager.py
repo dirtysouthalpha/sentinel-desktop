@@ -7,7 +7,12 @@ from core import process_manager
 
 def test_list_processes_returns_list():
     """list_processes should return a list of dicts sorted by cpu."""
-    fake_info = {"pid": 1, "name": "test.exe", "cpu_percent": 5.0, "memory_info": MagicMock(rss=100 * 1024 * 1024)}
+    fake_info = {
+        "pid": 1,
+        "name": "test.exe",
+        "cpu_percent": 5.0,
+        "memory_info": MagicMock(rss=100 * 1024 * 1024),
+    }
     mock_proc = MagicMock(info=fake_info)
 
     with patch("core.process_manager.psutil.process_iter", return_value=[mock_proc]):
@@ -26,7 +31,12 @@ def test_list_processes_sorts_by_memory():
     """When sort_by='memory', results should be sorted by memory_mb."""
     procs = []
     for pid, mem in [(1, 200), (2, 50), (3, 150)]:
-        info = {"pid": pid, "name": f"p{pid}", "cpu_percent": 0, "memory_info": MagicMock(rss=mem * 1024 * 1024)}
+        info = {
+            "pid": pid,
+            "name": f"p{pid}",
+            "cpu_percent": 0,
+            "memory_info": MagicMock(rss=mem * 1024 * 1024),
+        }
         procs.append(MagicMock(info=info))
 
     with patch("core.process_manager.psutil.process_iter", return_value=procs):
