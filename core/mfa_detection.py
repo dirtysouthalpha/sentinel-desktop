@@ -217,7 +217,8 @@ def _get_window_titles() -> list[str]:
                     titles.append(title)
 
         win32gui.EnumWindows(_enum, None)
-    except Exception:
+    except Exception as exc:
+        logger.debug("win32gui EnumWindows failed, falling back: %s", exc)
         # Fall back to our own window_manager if win32gui is unavailable.
         try:
             from core import window_manager as wm

@@ -315,7 +315,8 @@ class PluginLoader:
 
             try:
                 spec.loader.exec_module(module)  # type: ignore[union-attr]
-            except Exception:
+            except Exception as exc:
+                logger.debug("Plugin module exec failed for %s: %s", module_name, exc)
                 # Clean up the broken module reference.
                 sys.modules.pop(module_name, None)
                 raise
@@ -349,7 +350,8 @@ class PluginLoader:
 
             try:
                 module.register(api)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Plugin register() failed for %s: %s", module_name, exc)
                 sys.modules.pop(module_name, None)
                 raise
 
