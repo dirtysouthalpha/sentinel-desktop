@@ -13,13 +13,21 @@ logger = logging.getLogger(__name__)
 
 def brief_system_info() -> str:
     """Return a concise system summary string for the agent prompt."""
-    mem = psutil.virtual_memory()
-    cpu_pct = psutil.cpu_percent(interval=0.5)
+    try:
+        mem = psutil.virtual_memory()
+        cpu_pct = psutil.cpu_percent(interval=0.5)
+        cpu_count = psutil.cpu_count()
+        ram_line = f"RAM: {mem.used / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent}%)"
+    except Exception as exc:
+        logger.warning("psutil call failed in brief_system_info: %s", exc)
+        cpu_pct = 0.0
+        cpu_count = 0
+        ram_line = "RAM: unavailable"
     return (
         f"OS: {platform.system()} {platform.release()} ({platform.machine()})\n"
         f"Hostname: {socket.gethostname()}\n"
-        f"CPU: {cpu_pct}% used, {psutil.cpu_count()} cores\n"
-        f"RAM: {mem.used / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent}%)\n"
+        f"CPU: {cpu_pct}% used, {cpu_count} cores\n"
+        f"{ram_line}\n"
         f"Screen: {_screen_resolution()}"
     )
 
