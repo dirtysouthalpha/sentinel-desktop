@@ -62,7 +62,8 @@ def _discover_checkpoint_files(directory: str | None = None) -> list[str]:
         return []
     pattern = os.path.join(target, "*.json")
     files = glob.glob(pattern)
-    files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
+    # Secondary sort by path for deterministic order when mtimes are equal
+    files.sort(key=lambda f: (os.path.getmtime(f), f), reverse=True)
     return files
 
 
