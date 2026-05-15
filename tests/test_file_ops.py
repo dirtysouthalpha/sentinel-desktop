@@ -97,3 +97,41 @@ def test_lockdown_off_passthrough(tmp_path, monkeypatch):
     p = tmp_path / "ok.txt"
     assert file_ops.write_file(str(p), "data") is True
     assert file_ops.read_file(str(p)) == "data"
+
+
+# ---------------------------------------------------------------------------
+# Additional edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_write_file_returns_false_on_oserror(tmp_path, monkeypatch):
+    """write_file should return False when OS prevents write."""
+
+    def bad_open(*a, **kw):
+        raise OSError("disk full")
+
+    monkeypatch.setattr("builtins.open", bad_open)
+    assert file_ops.write_file(str(tmp_path / "fail.txt"), "x") is False
+
+
+def test_read_file_with_encoding(tmp_path):
+    """read_file should respect the encoding parameter."""
+    p = tmp_path / "utf16.txt"
+    p.write_text("hello", encoding="utf-16")
+    assert file_ops.read_file(str(p), encoding="utf-16") == "hello"
+
+
+def test_list_directory_includes_file_size(tmp_path):
+    """list_directory entries should include size for regular files."""
+    (tmp_path / "sized.txt").write_text("12345", encoding="utf-8")
+    entries = file_ops.list_directory(str(tmp_path))
+    sized = next(e for e in entries if e["name"] == "sized.txt")
+    assert sized["size"] == 5
+    assert sized["is_dir"] is False
+
+
+def test_read_file_unicode_error_returns_none(tmp_path):
+    """read_file should return None when file can't be decoded."""
+    p = tmp_path / "binary.bin"
+    p.write_bytes(b"\x80\x81\x82\xff")
+    assert file_ops.read_file(str(p), encoding="utf-8") is None
