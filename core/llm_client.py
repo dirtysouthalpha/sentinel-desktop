@@ -470,8 +470,13 @@ class LLMClient:
         if last_status is not None:
             raise LLMError(_friendly_http_error(last_status, last_body))
         if last_exc is not None:
-            raise LLMError(f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}")
-        raise LLMError(f"{provider_label}: request failed for unknown reasons")
+            raise LLMError(
+                f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}"
+            ) from last_exc
+        raise LLMError(
+            f"{provider_label}: request failed for unknown reasons "
+            f"({max_retries + 1} attempts)"
+        )
 
     @staticmethod
     def _build_headers(

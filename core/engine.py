@@ -414,8 +414,8 @@ class AgentEngine:
             if vd:
                 try:
                     vd.switch_to("Default")
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Failed to switch back to default desktop: %s", exc)
 
     def _run_inner(self, goal: str) -> dict[str, Any]:
         """Inner agent loop — called by run() with virtual desktop wrapping."""
@@ -455,7 +455,11 @@ class AgentEngine:
         messages = [{"role": "system", "content": system_prompt}]
 
         # Initial screenshot + goal
-        screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+        try:
+            screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+        except OSError as exc:
+            logger.warning("Initial screen capture failed: %s", exc)
+            screenshot_b64 = ""
         self._add_vision_message(
             messages,
             screenshot_b64,
@@ -608,8 +612,8 @@ class AgentEngine:
 
                         screen = capture_screen()
                         mfa_result = self.mfa_detector.check_screen(screen)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("MFA screen check failed: %s", exc)
                 if mfa_result.detected:
                     self._mfa_paused = True
                     self.logger.log_event(
