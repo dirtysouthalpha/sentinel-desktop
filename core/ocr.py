@@ -68,7 +68,7 @@ def _have_tesseract() -> bool:
         pytesseract.get_tesseract_version()
         _pytesseract = pytesseract
         _TESSERACT_OK = True
-    except Exception as exc:
+    except (ImportError, OSError) as exc:
         logger.info(
             "OCR disabled — install Tesseract + pytesseract to enable click_text / read_text (%s)",
             exc,
@@ -92,9 +92,9 @@ def _image_cache_key(img: Image.Image) -> str:
             img.getpixel((3 * w // 4, 3 * h // 4)),
         ]
         fingerprint = f"{w}x{h}:{sample_points}"
-    except Exception:
+    except (IndexError, OSError):
         fingerprint = f"{w}x{h}"
-    return hashlib.md5(fingerprint.encode()).hexdigest()
+    return hashlib.md5(fingerprint.encode()).hexdigest()  # noqa: S324
 
 
 def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:
@@ -328,13 +328,29 @@ def read_screen_text_with_confidence(
 ) -> tuple[str, dict[str, Any]]:
     """OCR the screen and return text + confidence data."""
     if not _have_tesseract():
-        return ("", {"avg_confidence": 0, "word_count": 0, "low_confidence_words": [], "low_confidence_regions": []})
+        return (
+            "",
+            {
+                "avg_confidence": 0,
+                "word_count": 0,
+                "low_confidence_words": [],
+                "low_confidence_regions": [],
+            },
+        )
     try:
         img = capture_screen(monitor=monitor)
         return _ocr_image_with_confidence(img, preprocess=preprocess)
     except Exception as exc:
         logger.warning("read_screen_text_with_confidence failed: %s", exc)
-        return ("", {"avg_confidence": 0, "word_count": 0, "low_confidence_words": [], "low_confidence_regions": []})
+        return (
+            "",
+            {
+                "avg_confidence": 0,
+                "word_count": 0,
+                "low_confidence_words": [],
+                "low_confidence_regions": [],
+            },
+        )
 
 
 def read_focused_window_text() -> str:

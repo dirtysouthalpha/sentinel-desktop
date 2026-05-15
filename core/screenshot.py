@@ -297,7 +297,7 @@ def image_to_base64(img: Image.Image, quality: int = 85, fmt: str = "PNG") -> st
             img.convert("RGB").save(buf, format="JPEG", quality=quality)
         else:
             img.save(buf, format=fmt)
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         logger.error("Failed to encode image to %s: %s", fmt, exc)
         raise ValueError(f"Image encoding to {fmt} failed: {exc}") from exc
     return base64.b64encode(buf.getvalue()).decode("utf-8")
