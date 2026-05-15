@@ -331,7 +331,7 @@ class CredentialVault:
             # Non-Windows fallback
             try:
                 return base64.b64decode(ciphertext)
-            except Exception:
+            except ValueError:
                 logger.error("base64 decode failed for non-Windows vault entry")
                 return None
 
@@ -350,7 +350,7 @@ class CredentialVault:
             if not isinstance(data, dict) or "keys" not in data:
                 raise ValueError("Invalid vault structure")
             return data
-        except Exception as exc:
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
             logger.error("Failed to load vault from %s: %s", self._path, exc)
             return {"version": _VAULT_VERSION, "keys": {}}
 
@@ -365,6 +365,6 @@ class CredentialVault:
             )
             tmp.replace(self._path)
             return True
-        except Exception as exc:
+        except OSError as exc:
             logger.error("Failed to save vault to %s: %s", self._path, exc)
             return False
