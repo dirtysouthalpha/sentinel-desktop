@@ -5,6 +5,7 @@ Workflow management tab with left-panel list and right-panel detail view.
 """
 
 import json
+import logging
 import os
 import threading
 from typing import Any
@@ -12,6 +13,8 @@ from typing import Any
 import customtkinter as ctk
 
 from core.workflow import WorkflowEngine
+
+logger = logging.getLogger(__name__)
 
 WORKFLOWS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -244,7 +247,8 @@ class WorkflowsTab(ctk.CTkFrame):
         try:
             with open(path, encoding="utf-8") as f:
                 self._workflow_data = json.load(f)
-        except Exception as exc:
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to load workflow %s: %s", path, exc)
             self._name_label.configure(text="Error loading workflow")
             self._desc_label.configure(text=str(exc))
             return

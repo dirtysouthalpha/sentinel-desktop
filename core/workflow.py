@@ -442,6 +442,6 @@ class WorkflowEngine:
                         "variables": list(data.get("variables", {}).keys()),
                     }
                 )
-            except Exception:
-                logger.warning("Skipping invalid workflow: %s", fpath)
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Skipping invalid workflow %s: %s", fpath, exc)
         return workflows

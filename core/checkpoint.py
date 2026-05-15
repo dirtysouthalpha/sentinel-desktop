@@ -175,7 +175,7 @@ class CheckpointManager:
                     step_num,
                     status,
                 )
-            except Exception as exc:
+            except (OSError, TypeError, ValueError) as exc:
                 logger.error("Failed to save checkpoint %s: %s", checkpoint_id[:8], exc)
 
         return checkpoint_id if saved else None
@@ -202,7 +202,7 @@ class CheckpointManager:
             try:
                 with open(fpath, encoding="utf-8") as fh:
                     record = json.load(fh)
-            except Exception as exc:
+            except (json.JSONDecodeError, OSError) as exc:
                 logger.warning("Skipping corrupt checkpoint %s: %s", fpath, exc)
                 continue
 
@@ -251,7 +251,7 @@ class CheckpointManager:
             try:
                 with open(fpath, encoding="utf-8") as fh:
                     record = json.load(fh)
-            except Exception as exc:
+            except (json.JSONDecodeError, OSError) as exc:
                 logger.debug("Skipping corrupt checkpoint %s: %s", fpath, exc)
                 continue
 
@@ -288,7 +288,7 @@ class CheckpointManager:
                 record = json.load(fh)
             logger.info("Checkpoint loaded: %s", safe_id[:8])
             return record
-        except Exception as exc:
+        except (json.JSONDecodeError, OSError) as exc:
             logger.error("Failed to load checkpoint %s: %s", safe_id[:8], exc)
             return None
 
@@ -306,7 +306,7 @@ class CheckpointManager:
                     os.remove(fpath)
                     logger.info("Checkpoint deleted: %s", safe_id[:8])
                 return True
-            except Exception as exc:
+            except OSError as exc:
                 logger.error("Failed to delete checkpoint %s: %s", safe_id[:8], exc)
                 return False
 
@@ -323,7 +323,7 @@ class CheckpointManager:
                 try:
                     os.remove(fpath)
                     removed += 1
-                except Exception as exc:
+                except OSError as exc:
                     logger.warning("Failed to remove %s: %s", fpath, exc)
 
         logger.info("Cleared %d checkpoint(s)", removed)

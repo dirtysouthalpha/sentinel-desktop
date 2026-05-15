@@ -357,7 +357,7 @@ class ForensicLog:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
             logger.debug("Forensic JSON exported to %s", path)
             return True
-        except Exception as exc:
+        except (OSError, TypeError, ValueError) as exc:
             logger.error("export_json failed: %s", exc)
             return False
 
@@ -423,7 +423,7 @@ class ForensicLog:
                 writer.writerows(rows)
             logger.debug("Forensic CSV exported to %s (%d rows)", path, len(rows))
             return True
-        except Exception as exc:
+        except (OSError, csv.Error) as exc:
             logger.error("export_csv failed: %s", exc)
             return False
 
@@ -458,5 +458,5 @@ class ForensicLog:
                 }
             with open(dest, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
-        except Exception as exc:
+        except (OSError, TypeError) as exc:
             logger.warning("Forensic auto-save failed: %s", exc)

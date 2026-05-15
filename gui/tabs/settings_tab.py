@@ -378,10 +378,10 @@ class SettingsTab:
             # Merge with existing config
             existing = {}
             if os.path.exists(config_path):
-                with open(config_path) as f:
+                with open(config_path, encoding="utf-8") as f:
                     existing = json.load(f)
             existing.update(cfg)
-            with open(config_path, "w") as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(existing, f, indent=2)
             logger.info("Settings saved to %s", config_path)
 
@@ -389,7 +389,7 @@ class SettingsTab:
             if "theme" in cfg and hasattr(self.app, "set_theme"):
                 self.app.set_theme(cfg["theme"])
 
-        except Exception as exc:
+        except (OSError, json.JSONDecodeError) as exc:
             logger.error("Failed to save settings: %s", exc)
 
     def _reset(self) -> None:

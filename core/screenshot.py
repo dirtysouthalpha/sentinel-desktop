@@ -22,7 +22,8 @@ try:
     import mss  # type: ignore
 
     _HAS_MSS = True
-except Exception:
+except Exception as exc:
+    logger.debug("mss unavailable, falling back to pyautogui: %s", exc)
     _HAS_MSS = False
 
 
@@ -280,8 +281,12 @@ def image_to_base64(img: Image.Image, quality: int = 85, fmt: str = "PNG") -> st
 
 def base64_to_image(b64_str: str) -> Image.Image:
     """Convert a base64 string → PIL Image."""
-    data = base64.b64decode(b64_str)
-    return Image.open(io.BytesIO(data))
+    try:
+        data = base64.b64decode(b64_str)
+        return Image.open(io.BytesIO(data))
+    except Exception as exc:
+        logger.error("base64_to_image failed: %s", exc)
+        raise ValueError(f"Invalid base64 image data: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------

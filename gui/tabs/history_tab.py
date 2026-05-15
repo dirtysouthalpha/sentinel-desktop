@@ -359,12 +359,12 @@ class HistoryTab(ctk.CTkFrame):
             return
         session = self.sessions[self.selected_index]
 
+        export_path = os.path.join(
+            os.path.expanduser("~"),
+            "Desktop",
+            f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        )
         try:
-            export_path = os.path.join(
-                os.path.expanduser("~"),
-                "Desktop",
-                f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-            )
             with open(export_path, "w", encoding="utf-8") as f:
                 f.write("Sentinel Desktop — Session Log\n")
                 f.write(f"{'=' * 50}\n")
@@ -376,9 +376,10 @@ class HistoryTab(ctk.CTkFrame):
 
                 for i, step in enumerate(session.get("steps", [])):
                     f.write(f"Step {i + 1}: {json.dumps(step, indent=2, default=str)}\n\n")
-
-            self.output_text.configure(state="normal")
-            self.output_text.insert("end", f"\n✅ Log exported to: {export_path}")
-            self.output_text.configure(state="disabled")
-        except Exception as exc:
+        except OSError as exc:
             logger.error("Export failed: %s", exc)
+            return
+
+        self.output_text.configure(state="normal")
+        self.output_text.insert("end", f"\n Log exported to: {export_path}")
+        self.output_text.configure(state="disabled")
