@@ -1,8 +1,10 @@
 """Tests for core/screenshot.py — image conversion and monitor helpers."""
 
+from unittest.mock import patch
+
 from PIL import Image
 
-from core.screenshot import base64_to_image, image_to_base64
+from core.screenshot import base64_to_image, get_capture_offset, image_to_base64, resolve_monitor
 
 
 class TestImageToBase64:
@@ -51,3 +53,45 @@ class TestBase64ToImage:
         high = image_to_base64(img, fmt="JPEG", quality=95)
         # Higher quality should produce larger output
         assert len(high) > len(low)
+
+
+class TestResolveMonitor:
+    def test_int_passthrough(self):
+        assert resolve_monitor(2) == 2
+
+    def test_none_passthrough(self):
+        assert resolve_monitor(None) is None
+
+    @patch("core.screenshot._HAS_MSS", False)
+    def test_auto_without_mss_returns_none(self):
+        assert resolve_monitor("auto") is None
+
+    @patch("core.screenshot._HAS_MSS", True)
+    def test_auto_with_no_focused_window(self):
+        from core import window_manager
+
+        with patch.object(window_manager, "get_focused_window_rect", return_value=None):
+            assert resolve_monitor("auto") == 1
+
+
+class TestGetCaptureOffset:
+    def test_returns_zero_without_mss(self):
+        with patch("core.screenshot._HAS_MSS", False):
+            assert get_capture_offset(1) == (0, 0)
+
+    def test_returns_zero_for_none(self):
+        with patch("core.screenshot._HAS_MSS", True):
+            assert get_capture_offset(None) == (0, 0)
+
+
+class TestCaptureRegionToBase64:
+    def test_produces_valid_png(self):
+        import base64
+
+        from core.screenshot import capture_region_to_base64
+
+        # Mock capture_region to avoid actual screenshot
+        with patch("core.screenshot.capture_region", return_value=Image.new("RGB", (10, 10), "red")):
+            b64 = capture_region_to_base64(0, 0, 10, 10)
+            raw = base64.b64decode(b64)
+            assert raw[:4] == b"\x89PNG"
