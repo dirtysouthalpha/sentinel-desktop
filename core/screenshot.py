@@ -22,7 +22,7 @@ try:
     import mss  # type: ignore
 
     _HAS_MSS = True
-except Exception as exc:
+except ImportError as exc:
     logger.debug("mss unavailable, falling back to pyautogui: %s", exc)
     _HAS_MSS = False
 

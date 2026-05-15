@@ -36,7 +36,7 @@ try:
     import win32gui  # type: ignore
 
     _HAS_WIN32 = True
-except Exception:
+except ImportError:
     _HAS_WIN32 = False
 
 

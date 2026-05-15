@@ -24,7 +24,7 @@ try:
     from PIL import Image, ImageDraw
 
     _HAS_TRAY = True
-except Exception:
+except ImportError:
     _HAS_TRAY = False
     logger.debug("pystray/Pillow not available — tray icon disabled")
 

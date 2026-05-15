@@ -47,7 +47,7 @@ try:
     import numpy as np  # type: ignore
 
     _HAS_NUMPY = True
-except Exception:
+except ImportError:
     np = None  # type: ignore[assignment]
     _HAS_NUMPY = False
 
@@ -501,7 +501,7 @@ class SmartWait:
             from core.ocr import _ocr_image, read_screen_text  # type: ignore[attr-defined]
 
             _ocr_available = True
-        except Exception as exc:
+        except ImportError as exc:
             logger.debug("OCR import unavailable: %s", exc)
             _ocr_available = False
 
