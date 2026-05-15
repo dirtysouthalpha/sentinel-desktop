@@ -459,7 +459,23 @@ def _run_powershell_dialog(app):
 
     cmd = sd.askstring("PowerShell", "Enter PowerShell command:", parent=app.root)
     if cmd and hasattr(app, "engine") and app.engine:
-        result = app.engine.powershell.run_command(cmd)
+        try:
+            result = app.engine.powershell.run_command(cmd)
+        except Exception as exc:
+            result = None
+            err_msg = str(exc)
+            if hasattr(app, "chat_display"):
+                app.root.after(
+                    0,
+                    lambda: app.chat_display.configure(
+                        state="normal", text_color=app._t("text_primary", "#e6edf3")
+                    ),
+                )
+                app.root.after(
+                    0,
+                    lambda: app.chat_display.insert("end", f"\n[PS] > {cmd}\nError: {err_msg}\n"),
+                )
+            return
         if hasattr(app, "chat_display"):
             app.root.after(
                 0,
@@ -483,10 +499,18 @@ def _run_it_script(app, script_name):
     if not os.path.exists(path):
         return
     if hasattr(app, "engine") and app.engine:
-        from core.script_engine import ScriptEngine
+        try:
+            from core.script_engine import ScriptEngine
 
-        engine = ScriptEngine(app.engine.executor)
-        result = engine.run_script(path)
+            engine = ScriptEngine(app.engine.executor)
+            result = engine.run_script(path)
+        except Exception as exc:
+            err_msg = str(exc)
+            if hasattr(app, "notes_label"):
+                app.root.after(
+                    0, lambda: app.notes_label.configure(text=f"Script error: {err_msg}")
+                )
+            return
         if hasattr(app, "notes_label"):
             status = (
                 f"✅ {result.steps_completed}/{result.steps_total}"

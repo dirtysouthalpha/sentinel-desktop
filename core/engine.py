@@ -402,8 +402,8 @@ class AgentEngine:
             if vd:
                 try:
                     vd.switch_to("Default")
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Failed to switch back to default desktop: %s", exc)
 
     def _run_inner(self, goal: str) -> dict[str, Any]:
         """Inner agent loop — called by run() with virtual desktop wrapping."""
@@ -559,8 +559,8 @@ class AgentEngine:
 
                         screen = capture_screen()
                         mfa_result = self.mfa_detector.check_screen(screen)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("MFA screenshot capture failed: %s", exc)
                 if mfa_result.detected:
                     self._mfa_paused = True
                     self.logger.log_event(
@@ -581,8 +581,8 @@ class AgentEngine:
                                     "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}",
                                 },
                             )
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.debug("MFA on_step_callback failed: %s", exc)
                     # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
                     for _ in range(150):
                         time.sleep(2)
@@ -648,8 +648,8 @@ class AgentEngine:
                             result=log_result,
                             screenshot=screenshot_b64,
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("on_step_callback raised: %s", exc)
 
                 # Take new screenshot for next iteration
                 if self.running and self.config.get("auto_screenshot", True):
@@ -682,8 +682,8 @@ class AgentEngine:
             from core.sound import play_sound
 
             play_sound("complete" if self.finish_summary else "error")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Sound notification failed: %s", exc)
 
         return {
             "steps": self.step,
@@ -799,8 +799,8 @@ class AgentEngine:
                 if w.get("is_focused"):
                     active_win = f"\nActive Window: {w['title']}"
                     break
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Window enumeration for env context failed: %s", exc)
         tenant = ""
         if self.config.get("tenant_name"):
             tenant = f"\nTenant: {self.config['tenant_name']}"
@@ -840,7 +840,8 @@ class AgentEngine:
                 for action, path in profile.menu_paths.items():
                     lines.append(f"  - {action}: {' → '.join(path)}")
             return "\n".join(lines)
-        except Exception:
+        except Exception as exc:
+            logger.debug("App context build failed: %s", exc)
             return ""
 
     def _add_vision_message(

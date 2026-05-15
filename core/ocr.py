@@ -146,21 +146,29 @@ def read_focused_window_text_with_title() -> tuple[str, str]:
     window was actually read. Useful for debugging multi-monitor confusion."""
     if not _have_tesseract():
         return ("", "")
-    pair = capture_focused_window_with_title()
-    if pair is None:
-        return (read_screen_text(), "<full screen fallback>")
-    img, title = pair
-    return (_ocr_image(img), title)
+    try:
+        pair = capture_focused_window_with_title()
+        if pair is None:
+            return (read_screen_text(), "<full screen fallback>")
+        img, title = pair
+        return (_ocr_image(img), title)
+    except Exception as exc:
+        logger.debug("read_focused_window_text_with_title failed: %s", exc)
+        return ("", "")
 
 
 def read_window_text(title: str) -> str:
     """OCR a window whose title contains *title*. Returns '' if not found."""
     if not title or not _have_tesseract():
         return ""
-    img = capture_window(title)
-    if img is None:
+    try:
+        img = capture_window(title)
+        if img is None:
+            return ""
+        return _ocr_image(img)
+    except Exception as exc:
+        logger.debug("read_window_text(%s) failed: %s", title, exc)
         return ""
-    return _ocr_image(img)
 
 
 def find_text(

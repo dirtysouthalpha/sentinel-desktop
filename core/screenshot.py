@@ -120,7 +120,8 @@ def list_monitors() -> list[dict[str, int | bool]]:
 
     try:
         w, h = pyautogui.size()
-    except Exception:
+    except Exception as exc:
+        logger.debug("pyautogui.size() failed: %s", exc)
         w, h = 0, 0
     return [
         {

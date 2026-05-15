@@ -251,7 +251,8 @@ class CheckpointManager:
             try:
                 with open(fpath, encoding="utf-8") as fh:
                     record = json.load(fh)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Skipping corrupt checkpoint %s: %s", fpath, exc)
                 continue
 
             if not isinstance(record, dict) or "id" not in record:
