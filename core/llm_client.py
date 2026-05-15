@@ -474,8 +474,7 @@ class LLMClient:
                 f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}"
             ) from last_exc
         raise LLMError(
-            f"{provider_label}: request failed for unknown reasons "
-            f"({max_retries + 1} attempts)"
+            f"{provider_label}: request failed for unknown reasons ({max_retries + 1} attempts)"
         )
 
     @staticmethod

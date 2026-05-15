@@ -634,8 +634,8 @@ class AgentEngine:
                                     "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}",
                                 },
                             )
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.debug("MFA step callback failed: %s", exc)
                     # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
                     for _ in range(150):
                         time.sleep(2)
@@ -790,8 +790,8 @@ class AgentEngine:
                             result=log_result,
                             screenshot=screenshot_b64,
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("Step callback failed: %s", exc)
 
                 # Take new screenshot for next iteration
                 if self.running and self.config.get("auto_screenshot", True):
@@ -824,8 +824,8 @@ class AgentEngine:
             from core.sound import play_sound
 
             play_sound("complete" if self.finish_summary else "error")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Sound notification failed: %s", exc)
 
         return {
             "steps": self.step,
