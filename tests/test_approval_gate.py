@@ -2,8 +2,6 @@
 
 import threading
 
-import pytest
-
 from core.approval_gate import ApprovalDecision, ApprovalGate, ApprovalRequest
 
 

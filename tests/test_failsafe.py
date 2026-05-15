@@ -1,11 +1,8 @@
 """Tests for core/failsafe.py — Esc-x3 panic stop listener."""
 
-import time
-from unittest.mock import MagicMock
 
-import pytest
 
-from core.failsafe import FailsafeListener, PANIC_PRESS_COUNT, PANIC_WINDOW_SECONDS
+from core.failsafe import PANIC_PRESS_COUNT, FailsafeListener
 
 
 class TestFailsafeListener:

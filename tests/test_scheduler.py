@@ -1,0 +1,299 @@
+"""Tests for core/scheduler.py — cron matching and TaskScheduler CRUD."""
+
+import json
+from datetime import datetime
+
+import pytest
+
+from core.scheduler import (
+    PRESETS,
+    TaskScheduler,
+    _parse_cron_field,
+    cron_matches,
+    resolve_cron,
+)
+
+# ---------------------------------------------------------------------------
+# _parse_cron_field
+# ---------------------------------------------------------------------------
+
+
+class TestParseCronField:
+    def test_wildcard_matches_any(self):
+        assert _parse_cron_field("*", 5, (0, 59)) is True
+        assert _parse_cron_field("*", 0, (0, 59)) is True
+
+    def test_step_divisible(self):
+        assert _parse_cron_field("*/5", 0, (0, 59)) is True
+        assert _parse_cron_field("*/5", 5, (0, 59)) is True
+        assert _parse_cron_field("*/5", 10, (0, 59)) is True
+        assert _parse_cron_field("*/5", 3, (0, 59)) is False
+
+    def test_exact_value(self):
+        assert _parse_cron_field("15", 15, (0, 59)) is True
+        assert _parse_cron_field("15", 14, (0, 59)) is False
+
+    def test_range(self):
+        assert _parse_cron_field("1-5", 1, (0, 59)) is True
+        assert _parse_cron_field("1-5", 3, (0, 59)) is True
+        assert _parse_cron_field("1-5", 5, (0, 59)) is True
+        assert _parse_cron_field("1-5", 6, (0, 59)) is False
+        assert _parse_cron_field("1-5", 0, (0, 59)) is False
+
+    def test_comma_list(self):
+        assert _parse_cron_field("1,15,30", 1, (0, 59)) is True
+        assert _parse_cron_field("1,15,30", 15, (0, 59)) is True
+        assert _parse_cron_field("1,15,30", 30, (0, 59)) is True
+        assert _parse_cron_field("1,15,30", 7, (0, 59)) is False
+
+    def test_comma_with_spaces(self):
+        assert _parse_cron_field("1, 15, 30", 15, (0, 59)) is True
+
+
+# ---------------------------------------------------------------------------
+# cron_matches
+# ---------------------------------------------------------------------------
+
+
+class TestCronMatches:
+    def test_every_minute(self):
+        assert cron_matches("* * * * *", datetime(2025, 1, 1, 12, 30)) is True
+
+    def test_specific_minute(self):
+        assert cron_matches("30 * * * *", datetime(2025, 1, 1, 12, 30)) is True
+        assert cron_matches("30 * * * *", datetime(2025, 1, 1, 12, 31)) is False
+
+    def test_specific_hour_and_minute(self):
+        assert cron_matches("0 9 * * *", datetime(2025, 1, 1, 9, 0)) is True
+        assert cron_matches("0 9 * * *", datetime(2025, 1, 1, 10, 0)) is False
+
+    def test_specific_month(self):
+        assert cron_matches("* * 1 1 *", datetime(2025, 1, 1, 0, 0)) is True
+        assert cron_matches("* * 1 1 *", datetime(2025, 2, 1, 0, 0)) is False
+
+    def test_day_of_week_sunday(self):
+        # 2025-01-05 is a Sunday
+        assert cron_matches("* * * * 0", datetime(2025, 1, 5, 12, 0)) is True
+        # 2025-01-06 is a Monday
+        assert cron_matches("* * * * 0", datetime(2025, 1, 6, 12, 0)) is False
+
+    def test_day_of_week_monday(self):
+        # 2025-01-06 is a Monday — dow field 1
+        assert cron_matches("* * * * 1", datetime(2025, 1, 6, 12, 0)) is True
+
+    def test_step_every_5_minutes(self):
+        assert cron_matches("*/5 * * * *", datetime(2025, 1, 1, 12, 0)) is True
+        assert cron_matches("*/5 * * * *", datetime(2025, 1, 1, 12, 5)) is True
+        assert cron_matches("*/5 * * * *", datetime(2025, 1, 1, 12, 3)) is False
+
+    def test_invalid_cron_raises(self):
+        with pytest.raises(ValueError, match="expected 5 fields"):
+            cron_matches("* * *")
+
+    def test_uses_current_time_by_default(self):
+        result = cron_matches("* * * * *")
+        assert result is True
+
+
+# ---------------------------------------------------------------------------
+# resolve_cron
+# ---------------------------------------------------------------------------
+
+
+class TestResolveCron:
+    def test_preset_resolved(self):
+        assert resolve_cron("every_5m") == "*/5 * * * *"
+        assert resolve_cron("daily_9am") == "0 9 * * *"
+
+    def test_unknown_passed_through(self):
+        assert resolve_cron("30 8 * * 1-5") == "30 8 * * 1-5"
+
+    def test_all_presets_are_valid_cron(self):
+        for name, expr in PRESETS.items():
+            # Should not raise
+            cron_matches(expr, datetime(2025, 1, 1, 0, 0))
+
+
+# ---------------------------------------------------------------------------
+# TaskScheduler — CRUD
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def scheduler(tmp_path):
+    path = str(tmp_path / "tasks.json")
+    ts = TaskScheduler(engine=None, tasks_path=path)
+    yield ts
+    ts.stop()
+
+
+class TestTaskSchedulerAdd:
+    def test_add_returns_task_dict(self, scheduler):
+        task = scheduler.add_task("Test", "script", "*/5 * * * *", path="test.py")
+        assert task["name"] == "Test"
+        assert task["type"] == "script"
+        assert task["enabled"] is True
+        assert "id" in task
+        assert "cron_expr" in task
+
+    def test_add_presolves_preset(self, scheduler):
+        task = scheduler.add_task("Daily", "goal", "daily_9am", goal="Do stuff")
+        assert task["cron_expr"] == "0 9 * * *"
+
+    def test_add_invalid_type_raises(self, scheduler):
+        with pytest.raises(ValueError, match="Invalid task type"):
+            scheduler.add_task("Bad", "invalid_type", "* * * * *")
+
+    def test_add_invalid_cron_raises(self, scheduler):
+        with pytest.raises(ValueError):
+            scheduler.add_task("Bad", "script", "bad cron", path="x.py")
+
+
+class TestTaskSchedulerRemove:
+    def test_remove_existing(self, scheduler):
+        task = scheduler.add_task("Remove me", "script", "*/5 * * * *", path="x.py")
+        assert scheduler.remove_task(task["id"]) is True
+
+    def test_remove_nonexistent(self, scheduler):
+        assert scheduler.remove_task("nope") is False
+
+
+class TestTaskSchedulerUpdate:
+    def test_update_name(self, scheduler):
+        task = scheduler.add_task("Old", "script", "*/5 * * * *", path="x.py")
+        updated = scheduler.update_task(task["id"], name="New")
+        assert updated["name"] == "New"
+
+    def test_update_nonexistent_returns_none(self, scheduler):
+        assert scheduler.update_task("nope", name="X") is None
+
+    def test_update_schedule_recomputes_cron(self, scheduler):
+        task = scheduler.add_task("T", "script", "*/5 * * * *", path="x.py")
+        updated = scheduler.update_task(task["id"], schedule="daily_9am")
+        assert updated["cron_expr"] == "0 9 * * *"
+
+    def test_update_invalid_type_raises(self, scheduler):
+        task = scheduler.add_task("T", "script", "* * * * *", path="x.py")
+        with pytest.raises(ValueError, match="Invalid task type"):
+            scheduler.update_task(task["id"], type="bad")
+
+
+class TestTaskSchedulerGetList:
+    def test_get_task(self, scheduler):
+        task = scheduler.add_task("Find me", "script", "* * * * *", path="x.py")
+        found = scheduler.get_task(task["id"])
+        assert found is not None
+        assert found["name"] == "Find me"
+
+    def test_get_nonexistent(self, scheduler):
+        assert scheduler.get_task("nope") is None
+
+    def test_list_tasks(self, scheduler):
+        scheduler.add_task("A", "script", "* * * * *", path="a.py")
+        scheduler.add_task("B", "script", "* * * * *", path="b.py")
+        tasks = scheduler.list_tasks()
+        assert len(tasks) == 2
+
+    def test_list_enabled_only(self, scheduler):
+        t1 = scheduler.add_task("On", "script", "* * * * *", path="a.py")
+        scheduler.add_task("Off", "script", "* * * * *", path="b.py", enabled=False)
+        scheduler.disable_task(t1["id"])
+        enabled = scheduler.list_tasks(enabled_only=True)
+        assert len(enabled) == 0
+
+
+class TestTaskSchedulerEnableDisable:
+    def test_disable_task(self, scheduler):
+        task = scheduler.add_task("T", "script", "* * * * *", path="x.py")
+        assert scheduler.disable_task(task["id"]) is True
+        assert scheduler.get_task(task["id"])["enabled"] is False
+
+    def test_enable_task(self, scheduler):
+        task = scheduler.add_task("T", "script", "* * * * *", path="x.py", enabled=False)
+        assert scheduler.enable_task(task["id"]) is True
+        assert scheduler.get_task(task["id"])["enabled"] is True
+
+    def test_enable_nonexistent(self, scheduler):
+        assert scheduler.enable_task("nope") is False
+
+
+# ---------------------------------------------------------------------------
+# TaskScheduler — persistence
+# ---------------------------------------------------------------------------
+
+
+class TestTaskSchedulerPersistence:
+    def test_save_and_load(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        ts1 = TaskScheduler(engine=None, tasks_path=path)
+        ts1.add_task("Persist", "script", "*/5 * * * *", path="x.py")
+        ts1.stop()
+
+        ts2 = TaskScheduler(engine=None, tasks_path=path)
+        tasks = ts2.list_tasks()
+        assert len(tasks) == 1
+        assert tasks[0]["name"] == "Persist"
+        ts2.stop()
+
+    def test_load_corrupt_json(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        with open(path, "w") as f:
+            f.write("not json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        assert ts.list_tasks() == []
+        ts.stop()
+
+    def test_load_non_array(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        with open(path, "w") as f:
+            json.dump({"not": "a list"}, f)
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        assert ts.list_tasks() == []
+        ts.stop()
+
+    def test_load_backfills_cron_expr(self, tmp_path):
+        path = str(tmp_path / "tasks.json")
+        with open(path, "w") as f:
+            json.dump(
+                [{"id": "abc", "name": "T", "type": "script", "schedule": "every_5m"}],
+                f,
+            )
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        task = ts.get_task("abc")
+        assert task["cron_expr"] == "*/5 * * * *"
+        ts.stop()
+
+
+# ---------------------------------------------------------------------------
+# TaskScheduler — run_task_now (no engine)
+# ---------------------------------------------------------------------------
+
+
+class TestTaskSchedulerRunNow:
+    def test_run_script_no_engine(self, scheduler):
+        task = scheduler.add_task("T", "script", "* * * * *", path="x.py")
+        result = scheduler.run_task_now(task["id"])
+        assert result["success"] is False
+        assert "No engine" in result["error"]
+
+    def test_run_goal_no_engine(self, scheduler):
+        task = scheduler.add_task("T", "goal", "* * * * *", goal="Do it")
+        result = scheduler.run_task_now(task["id"])
+        assert result["success"] is False
+
+    def test_run_nonexistent(self, scheduler):
+        assert scheduler.run_task_now("nope") is None
+
+    def test_run_updates_last_run(self, scheduler):
+        task = scheduler.add_task("T", "script", "* * * * *", path="x.py")
+        scheduler.run_task_now(task["id"])
+        updated = scheduler.get_task(task["id"])
+        assert updated["last_run"] is not None
+
+    def test_run_task_now_does_not_call_on_complete(self, scheduler):
+        # run_task_now does not invoke _on_task_complete; only the scheduler tick does.
+        results = []
+        scheduler.set_on_task_complete(lambda r: results.append(r))
+        task = scheduler.add_task("T", "script", "* * * * *", path="x.py")
+        scheduler.run_task_now(task["id"])
+        assert len(results) == 0

@@ -10,6 +10,8 @@ Supports both sync and async usage:
   - async: await engine.run_goal(goal) — for future async callers
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -259,9 +261,10 @@ class AgentEngine:
         self._agent_pool = None
 
     # ── Lazy subsystem accessors ─────────────────────────────────────
+    # noqa: F821 — names are imported lazily inside each property to avoid circular deps
 
     @property
-    def recorder(self) -> "ActionRecorder":
+    def recorder(self) -> ActionRecorder:  # noqa: F821
         if self._recorder is None:
             from core.recorder import ActionRecorder
 
@@ -269,7 +272,7 @@ class AgentEngine:
         return self._recorder
 
     @property
-    def script_engine(self) -> "ScriptEngine":
+    def script_engine(self) -> ScriptEngine:  # noqa: F821
         if self._script_engine is None:
             from core.script_engine import ScriptEngine
 
@@ -277,7 +280,7 @@ class AgentEngine:
         return self._script_engine
 
     @property
-    def powershell(self) -> "PowerShellRunner":
+    def powershell(self) -> PowerShellRunner:  # noqa: F821
         if self._powershell is None:
             from core.powershell import PowerShellRunner
 
@@ -285,7 +288,7 @@ class AgentEngine:
         return self._powershell
 
     @property
-    def workflow_engine(self) -> "WorkflowEngine":
+    def workflow_engine(self) -> WorkflowEngine:  # noqa: F821
         if self._workflow_engine is None:
             from core.workflow import WorkflowEngine
 
@@ -293,7 +296,7 @@ class AgentEngine:
         return self._workflow_engine
 
     @property
-    def scheduler(self) -> "TaskScheduler":
+    def scheduler(self) -> TaskScheduler:  # noqa: F821
         if self._scheduler is None:
             from core.scheduler import TaskScheduler
 
@@ -301,7 +304,7 @@ class AgentEngine:
         return self._scheduler
 
     @property
-    def notifications(self) -> "NotificationManager":
+    def notifications(self) -> NotificationManager:  # noqa: F821
         if self._notifications is None:
             from core.notifications import NotificationManager
 
@@ -314,7 +317,7 @@ class AgentEngine:
         return self._notifications
 
     @property
-    def plugin_loader(self) -> "PluginLoader":
+    def plugin_loader(self) -> PluginLoader:  # noqa: F821
         if self._plugin_loader is None:
             from core.plugin_loader import PluginLoader
 
@@ -330,7 +333,7 @@ class AgentEngine:
         return self._plugin_loader
 
     @property
-    def auth_manager(self) -> "AuthManager":
+    def auth_manager(self) -> AuthManager:  # noqa: F821
         if self._auth_manager is None:
             from core.auth import AuthManager
 
@@ -338,7 +341,7 @@ class AgentEngine:
         return self._auth_manager
 
     @property
-    def vault(self) -> "CredentialVault":
+    def vault(self) -> CredentialVault:  # noqa: F821
         if self._vault is None:
             from core.encryption import CredentialVault
 
@@ -346,7 +349,7 @@ class AgentEngine:
         return self._vault
 
     @property
-    def audit_exporter(self) -> "AuditExporter":
+    def audit_exporter(self) -> AuditExporter:  # noqa: F821
         if self._audit_exporter is None:
             from core.audit_export import AuditExporter
 
@@ -354,7 +357,7 @@ class AgentEngine:
         return self._audit_exporter
 
     @property
-    def agent_pool(self) -> "AgentPool":
+    def agent_pool(self) -> AgentPool:  # noqa: F821
         if self._agent_pool is None:
             from core.agent_pool import AgentPool
 

@@ -4,10 +4,7 @@ import json
 import os
 import tempfile
 
-import pytest
-
 from core.forensic_log import ForensicLog, _preview, _redact_params
-
 
 # ---------------------------------------------------------------------------
 # Redaction helpers
