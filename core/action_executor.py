@@ -704,7 +704,11 @@ class ActionExecutor:
                     "output": f"Found at ({pos[0]}, {pos[1]})",
                     "position": list(pos),
                 }
-            return {"success": False, "output": "Image not found on screen"}
+            return {
+                "success": False,
+                "output": "Image not found on screen",
+                "error": "image_not_found",
+            }
         except Exception as exc:
             return {
                 "success": False,
@@ -850,7 +854,11 @@ class ActionExecutor:
     def _close_app(self, *, name: str | None = None, pid: int | None = None, **_) -> dict:
         target = pid or name
         if target is None:
-            return {"success": False, "output": "Provide 'name' or 'pid'", "error": "missing_target"}
+            return {
+                "success": False,
+                "output": "Provide 'name' or 'pid'",
+                "error": "missing_target",
+            }
         try:
             killed = pm.kill_process(target)
             return {
@@ -934,7 +942,11 @@ class ActionExecutor:
             if content is not None:
                 preview = content[:5000]
                 return {"success": True, "output": preview, "length": len(content)}
-            return {"success": False, "output": "File not found or unreadable", "error": "file_not_found"}
+            return {
+                "success": False,
+                "output": "File not found or unreadable",
+                "error": "file_not_found",
+            }
         except Exception as exc:
             return {
                 "success": False,
