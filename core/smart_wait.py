@@ -131,6 +131,8 @@ def _compute_change_score(
         diff = np.abs(arr_a - arr_b)
         # A pixel is "changed" if *any* channel exceeds the threshold.
         changed_mask = np.any(diff > _CHANNEL_THRESHOLD, axis=2)
+        if changed_mask.size == 0:
+            return 0.0
         return float(np.count_nonzero(changed_mask)) / float(changed_mask.size)
 
     # Pure-PIL fallback — slower but dependency-free.
