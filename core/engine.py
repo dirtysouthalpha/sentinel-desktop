@@ -30,7 +30,7 @@ from core.checkpoint import CheckpointManager
 from core.forensic_log import ForensicLog
 from core.llm_client import LLMClient, LLMError
 from core.mfa_detection import MFADetector
-from core.recovery import RecoveryEngine, RecoverySuggestion
+from core.recovery import RecoveryEngine
 from core.screenshot import capture_to_base64, get_capture_offset
 from core.smart_wait import SmartWait
 from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
@@ -503,7 +503,10 @@ class AgentEngine:
                         )
                         self.logger.log_event(
                             "abort",
-                            {"reason": "max_consecutive_failures", "count": self._consecutive_failures},
+                            {
+                                "reason": "max_consecutive_failures",
+                                "count": self._consecutive_failures,
+                            },
                         )
                         break
                     if self._consecutive_failures >= 5:
@@ -542,8 +545,8 @@ class AgentEngine:
                                 "role": "user",
                                 "content": (
                                     "[SYSTEM] Multiple parse failures. Please return a simple "
-                                    "action like {\"action\": \"finish\", \"summary\": \"...\"} "
-                                    "or {\"action\": \"note\", \"text\": \"...\"}."
+                                    'action like {"action": "finish", "summary": "..."} '
+                                    'or {"action": "note", "text": "..."}.'
                                 ),
                             }
                         )
@@ -686,9 +689,7 @@ class AgentEngine:
                     )
 
                     # Add error to message history so the LLM can adapt
-                    recovery_msg = (
-                        f"Action '{action_name}' failed: {error_msg[:300]}."
-                    )
+                    recovery_msg = f"Action '{action_name}' failed: {error_msg[:300]}."
                     if suggestion.recovery_prompt:
                         recovery_msg += f"\n\nRecovery hint: {suggestion.recovery_prompt}"
 

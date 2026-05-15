@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RecoverySuggestion:
@@ -85,6 +86,7 @@ def _match_pattern(error_msg: str) -> str | None:
 # ---------------------------------------------------------------------------
 # Recovery handlers
 # ---------------------------------------------------------------------------
+
 
 def _recover_element_not_found(
     action: dict[str, Any], error: str, context: dict[str, Any]
@@ -255,17 +257,15 @@ def _recover_input_failed(
     """Keyboard input failure -- suggest clipboard paste as alternative."""
     text = action.get("text", "")
     alt = None
-    prompt = (
-        "A keyboard input action failed. "
-    )
+    prompt = "A keyboard input action failed. "
     if text:
         alt = {
             "action": "hotkey",
             "keys": "ctrl+v",
         }
         prompt += (
-            f"Try copying the text to clipboard first and then using Ctrl+V "
-            f"to paste instead of typing it character by character."
+            "Try copying the text to clipboard first and then using Ctrl+V "
+            "to paste instead of typing it character by character."
         )
     else:
         prompt += "Try a different keyboard approach or use the on-screen keyboard."
@@ -295,6 +295,7 @@ _RECOVERY_HANDLERS: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # RecoveryEngine
 # ---------------------------------------------------------------------------
+
 
 class RecoveryEngine:
     """Analyzes action failures and produces recovery suggestions.

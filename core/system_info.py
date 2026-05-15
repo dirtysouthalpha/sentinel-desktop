@@ -20,7 +20,7 @@ def brief_system_info() -> str:
         ram_line = (
             f"RAM: {mem.used / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent}%)"
         )
-    except (OSError, psutil.Error) as exc:
+    except Exception as exc:
         logger.warning("psutil call failed in brief_system_info: %s", exc)
         cpu_pct = 0.0
         cpu_count = 0
@@ -44,7 +44,7 @@ def system_info() -> dict[str, Any]:
         root = "/"
     try:
         disk = psutil.disk_usage(root)
-    except (OSError, psutil.Error) as exc:
+    except Exception as exc:
         logger.warning("disk_usage(%s) failed: %s", root, exc)
 
         class _ZeroDisk:

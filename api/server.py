@@ -590,7 +590,9 @@ class SentinelServer:
         return status
 
     async def _handle_auth_login(
-        self, req: AuthLoginRequest, authorization: str | None = Header(default=None),
+        self,
+        req: AuthLoginRequest,
+        authorization: str | None = Header(default=None),
         request: Request = None,
     ):
         """Authenticate and get a session token."""
