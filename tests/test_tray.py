@@ -23,7 +23,7 @@ def test_module_loads_without_pystray():
 
 
 def test_sentinel_tray_run_returns_false_without_pystray():
-    from gui.tray import SentinelTray, _HAS_TRAY
+    from gui.tray import _HAS_TRAY, SentinelTray
 
     if _HAS_TRAY:
         return  # Can't test fallback when pystray IS installed
