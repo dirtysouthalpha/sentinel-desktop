@@ -81,7 +81,7 @@ def list_controls(
     out: list[dict[str, Any]] = []
     try:
         _walk(root, out, depth=0, max_depth=max_depth, max_results=max_results)
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.warning("list_controls failed: %s", exc)
     return out
 
@@ -124,7 +124,7 @@ def click_control(
             if pattern is not None:
                 pattern.Invoke()
                 invoked = True
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("InvokePattern failed: %s", exc)
 
         if not invoked:
@@ -134,7 +134,7 @@ def click_control(
                 if sel is not None:
                     sel.Select()
                     invoked = True
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("SelectionItemPattern failed: %s", exc)
 
         if not invoked:
@@ -146,7 +146,7 @@ def click_control(
             else:
                 ctrl.Click(simulateMove=False)
         return (cx, cy)
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.warning("click_control failed: %s", exc)
         return None
 
@@ -182,13 +182,13 @@ def set_text(
             pattern = ctrl.GetValuePattern()
             pattern.SetValue(text)
             return True
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("ValuePattern failed, falling back to SendKeys: %s", exc)
         ctrl.SetFocus()
         # SendKeys with curly-brace escaping for safety.
         _auto.SendKeys(text, waitTime=0.02)  # type: ignore[union-attr]
         return True
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.warning("set_text failed: %s", exc)
         return False
 
@@ -211,7 +211,7 @@ def _find_window(window_title: str | None) -> Any | None:
                     return w
             return None
         return _auto.GetForegroundControl()
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("_find_window failed: %s", exc)
         return None
 
