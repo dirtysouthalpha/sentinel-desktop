@@ -99,7 +99,9 @@ class TestGetWindowTitles:
 
         with patch("core.mfa_detection._IS_WINDOWS", True):
             with patch.object(win32gui, "EnumWindows", side_effect=RuntimeError("fail")):
-                with patch("core.window_manager.list_windows", side_effect=RuntimeError("also fail")):
+                with patch(
+                    "core.window_manager.list_windows", side_effect=RuntimeError("also fail")
+                ):
                     titles = _get_window_titles()
         assert titles == []
 
