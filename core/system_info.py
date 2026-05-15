@@ -17,7 +17,9 @@ def brief_system_info() -> str:
         mem = psutil.virtual_memory()
         cpu_pct = psutil.cpu_percent(interval=0.5)
         cpu_count = psutil.cpu_count()
-        ram_line = f"RAM: {mem.used / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent}%)"
+        ram_line = (
+            f"RAM: {mem.used / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent}%)"
+        )
     except Exception as exc:
         logger.warning("psutil call failed in brief_system_info: %s", exc)
         cpu_pct = 0.0

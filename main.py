@@ -98,7 +98,12 @@ def run_gui() -> None:
     from gui.app import SentinelApp
 
     logger.info("Starting Sentinel Desktop in GUI mode")
-    config = Config()
+    try:
+        config = Config()
+        config.load()
+    except (OSError, ValueError) as exc:
+        logger.warning("Config load failed (%s) — proceeding with defaults", exc)
+        config = Config()
     app = SentinelApp(config)
     app.run()
 
@@ -114,7 +119,12 @@ def run_api(host: str = "0.0.0.0", port: int = 8091) -> None:
     from api.server import SentinelServer
     from config import Config
 
-    config = Config()
+    try:
+        config = Config()
+        config.load()
+    except (OSError, ValueError) as exc:
+        logger.warning("Config load failed (%s) — proceeding with defaults", exc)
+        config = Config()
     server = SentinelServer(config)
     app = server.create_app()
 
@@ -127,19 +137,26 @@ def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False) -> None:
     from config import Config
     from core.engine import AgentEngine
 
-    logger.info(f"CLI mode — executing goal: {goal}")
+    logger.info("CLI mode — executing goal: %s", goal)
 
-    config = Config()
-    cfg = config.load()
+    try:
+        config = Config()
+        cfg = config.load()
+    except (OSError, ValueError) as exc:
+        logger.warning("Config load failed (%s) — proceeding with defaults", exc)
+        cfg: dict[str, object] = {}
     if dry_run:
         cfg["dry_run"] = True
         logger.info("DRY-RUN mode: state-changing actions will be logged, not executed")
     if autonomous:
         cfg["autonomous"] = True
         logger.info("AUTONOMOUS mode: no approval prompts")
-    engine = AgentEngine(cfg)
-
-    result = engine.run(goal)
+    try:
+        engine = AgentEngine(cfg)
+        result = engine.run(goal)
+    except Exception:
+        logger.exception("Engine execution failed")
+        sys.exit(1)
 
     print(f"\n{'=' * 60}")
     print(f"Goal: {goal}")
@@ -165,8 +182,13 @@ def main() -> None:
         if args.dry_run or args.autonomous:
             from config import Config
 
-            cfg = Config()
-            data = cfg.load()
+            try:
+                cfg = Config()
+                data = cfg.load()
+            except (OSError, ValueError) as exc:
+                logger.warning("Config load failed (%s) — using defaults", exc)
+                cfg = Config()
+                data = cfg.as_dict()
             if args.dry_run:
                 data["dry_run"] = True
                 logger.info("DRY-RUN mode enabled for this session")
