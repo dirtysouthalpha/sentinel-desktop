@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import tkinter as tk
 from datetime import datetime
 from typing import Any
 
@@ -668,7 +669,7 @@ class SentinelApp:
                 ).pack(side="right", padx=4)
 
                 top.protocol("WM_DELETE_WINDOW", _reject)
-            except Exception as exc:
+            except (RuntimeError, tk.TclError) as exc:
                 logger.warning("approval prompt failed: %s", exc)
                 event.set()
 
@@ -851,7 +852,7 @@ class SentinelApp:
             self.history_display.insert("end", line)
             self.history_display.configure(state="disabled")
             self.history_display.see("end")
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("History display update failed (panel not built yet): %s", exc)
 
     # ── Before/After Screenshots ──────────────────────────────────────────
@@ -921,7 +922,7 @@ class SentinelApp:
             return
         try:
             self.root.withdraw()
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("Failed to withdraw window: %s", exc)
 
     def _show_from_tray(self) -> None:
@@ -930,7 +931,7 @@ class SentinelApp:
             self.root.after(0, self.root.lift)
             self.root.after(0, lambda: self.root.attributes("-topmost", True))
             self.root.after(200, lambda: self.root.attributes("-topmost", False))
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("Failed to show window from tray: %s", exc)
 
     def _on_close_window(self) -> None:

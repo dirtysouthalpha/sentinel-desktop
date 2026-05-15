@@ -16,6 +16,7 @@ import logging
 import math
 import threading
 import time
+import tkinter as tk
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ class CursorOverlay:
         if self._root:
             try:
                 self._root.after(0, self._root.destroy)
-            except Exception as exc:
+            except (RuntimeError, tk.TclError) as exc:
                 logger.debug("Cursor overlay destroy failed: %s", exc)
 
     def show_action(self, action: dict[str, Any]) -> None:
@@ -100,7 +101,7 @@ class CursorOverlay:
         # Make click-through on Windows
         try:
             self._root.wm_attributes("-transparentcolor", "white")
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("Transparent color attribute not supported: %s", exc)
 
         # Create canvas covering the full screen
@@ -151,7 +152,7 @@ class CursorOverlay:
 
         try:
             self._root.mainloop()
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("Cursor overlay mainloop exited: %s", exc)
         finally:
             self._running = False

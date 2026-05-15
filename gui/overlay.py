@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import tkinter as tk
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ class ActionOverlay:
         # Marshal to the Tk main thread.
         try:
             self.master.after(0, self._show_main, coords, label, action.get("action", ""))
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("overlay schedule failed: %s", exc)
 
     # ── main-thread implementation ─────────────────────────────────
@@ -58,7 +59,7 @@ class ActionOverlay:
                 self._current = _Indicator(self.master, x=x, y=y, label=label, kind=action_name)
             # Auto-dismiss.
             self.master.after(_SHOW_MS, self._dismiss)
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("overlay draw failed: %s", exc)
 
     def _dismiss(self) -> None:
@@ -66,7 +67,7 @@ class ActionOverlay:
             if self._current is not None:
                 try:
                     self._current.destroy()
-                except Exception as exc:
+                except (RuntimeError, tk.TclError) as exc:
                     logger.debug("Overlay destroy failed: %s", exc)
                 self._current = None
 
@@ -90,7 +91,7 @@ class _Indicator:
         try:
             self.win.attributes("-alpha", 0.85)
             self.win.attributes("-transparentcolor", "#010203")
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("Overlay transparency attributes not supported: %s", exc)
         # Position centered on (x, y).
         gx = max(0, x - w // 2)
@@ -149,7 +150,7 @@ class _Indicator:
     def destroy(self) -> None:
         try:
             self.win.destroy()
-        except Exception as exc:
+        except (RuntimeError, tk.TclError) as exc:
             logger.debug("Indicator destroy failed: %s", exc)
 
 
