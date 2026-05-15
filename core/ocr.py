@@ -238,6 +238,7 @@ def _boxes_from_data(data: dict[str, list[Any]]) -> list[dict[str, Any]]:
         try:
             conf = float(data["conf"][i])
         except (TypeError, ValueError):
+            logger.debug("Invalid confidence value at index %d: %r", i, data["conf"][i])
             conf = 0.0
         if conf < 30:  # Drop low-confidence cells.
             continue

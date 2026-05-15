@@ -202,6 +202,7 @@ class ForensicLog:
                     curr = datetime.fromisoformat(now)
                     duration_ms = int((curr - prev).total_seconds() * 1000)
                 except (ValueError, TypeError):
+                    logger.debug("Failed to compute step duration from timestamps")
                     duration_ms = 0
             else:
                 duration_ms = 0
@@ -254,6 +255,7 @@ class ForensicLog:
                     curr = datetime.fromisoformat(now)
                     duration_ms = int((curr - prev).total_seconds() * 1000)
                 except (ValueError, TypeError):
+                    logger.debug("Failed to compute step duration from timestamps")
                     duration_ms = 0
             else:
                 duration_ms = 0

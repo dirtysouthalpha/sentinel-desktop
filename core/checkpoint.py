@@ -66,6 +66,7 @@ def _parse_timestamp(ts: str) -> datetime | None:
     try:
         return datetime.fromisoformat(ts)
     except (ValueError, TypeError):
+        logger.debug("Failed to parse timestamp: %r", ts)
         return None
 
 

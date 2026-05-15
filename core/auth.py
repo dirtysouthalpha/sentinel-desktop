@@ -158,6 +158,7 @@ def _verify_password(password: str, stored_hash: str, legacy_salt: str = "") -> 
         try:
             return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("ascii"))
         except (ValueError, TypeError):
+            logger.debug("bcrypt verification failed for stored_hash prefix %s", stored_hash[:8])
             return False
     legacy = _hash_password(password, legacy_salt)
     return secrets.compare_digest(legacy, stored_hash)
