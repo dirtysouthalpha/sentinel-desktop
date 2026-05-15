@@ -94,7 +94,10 @@ class TestLoad:
         assert cm.load("does-not-exist") is None
 
     def test_load_latest(self, cm):
+        import time
+
         _save_checkpoint(cm, goal="First")
+        time.sleep(0.05)
         _save_checkpoint(cm, goal="Second")
         latest = cm.load_latest()
         assert latest is not None

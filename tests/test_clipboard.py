@@ -35,8 +35,7 @@ class TestClipboardRead:
         import core.clipboard as mod
 
         mod._clipboard = None
-        with patch.dict("sys.modules", {"pyperclip": None}):
-            # _get_clipboard will fail to import pyperclip
+        with patch.object(mod, "pyperclip", None):
             assert clipboard_read() == ""
 
     def test_returns_empty_on_exception(self):
@@ -64,7 +63,7 @@ class TestClipboardWrite:
         import core.clipboard as mod
 
         mod._clipboard = None
-        with patch.dict("sys.modules", {"pyperclip": None}):
+        with patch.object(mod, "pyperclip", None):
             assert clipboard_write("test") is False
 
     def test_returns_false_on_exception(self):

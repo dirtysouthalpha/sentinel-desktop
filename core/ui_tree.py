@@ -124,7 +124,7 @@ def click_control(
             if pattern is not None:
                 pattern.Invoke()
                 invoked = True
-        except (OSError, AttributeError, RuntimeError) as exc:
+        except Exception as exc:
             logger.debug("InvokePattern failed: %s", exc)
 
         if not invoked:
@@ -134,7 +134,7 @@ def click_control(
                 if sel is not None:
                     sel.Select()
                     invoked = True
-            except (OSError, AttributeError, RuntimeError) as exc:
+            except Exception as exc:
                 logger.debug("SelectionItemPattern failed: %s", exc)
 
         if not invoked:
@@ -182,7 +182,7 @@ def set_text(
             pattern = ctrl.GetValuePattern()
             pattern.SetValue(text)
             return True
-        except (OSError, AttributeError, RuntimeError) as exc:
+        except Exception as exc:
             logger.debug("ValuePattern failed, falling back to SendKeys: %s", exc)
         ctrl.SetFocus()
         # SendKeys with curly-brace escaping for safety.
