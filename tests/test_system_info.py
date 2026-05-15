@@ -125,5 +125,51 @@ class TestScreenResolution:
             if saved is not None:
                 sys.modules["pyautogui"] = saved
 
+    def test_generic_exception_returns_unknown(self):
+        """Any exception (not just ImportError) returns 'unknown'."""
+        mock_pyauto = MagicMock()
+        mock_pyauto.size.side_effect = RuntimeError("display driver crashed")
+        with patch.dict("sys.modules", {"pyautogui": mock_pyauto}):
+            result = _screen_resolution()
+            assert result == "unknown"
+
     def test_callable(self):
         assert callable(_screen_resolution)
+
+
+class TestBriefSystemInfoPsutilFailure:
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    def test_psutil_virtual_memory_raises(self, mock_psutil, mock_screen):
+        """brief_system_info handles psutil failure gracefully."""
+        mock_psutil.virtual_memory.side_effect = RuntimeError("snmp blocked")
+        mock_psutil.cpu_percent.return_value = 0.0
+        mock_psutil.cpu_count.return_value = 0
+
+        result = brief_system_info()
+        assert "RAM: unavailable" in result
+        assert "CPU: 0.0% used, 0 cores" in result
+
+
+class TestSystemInfoNonWindows:
+    @patch("core.system_info.platform.system", return_value="Linux")
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    def test_uses_slash_root_on_linux(self, mock_psutil, mock_screen, mock_platform):
+        """system_info uses '/' disk path on non-Windows."""
+        mock_mem = MagicMock()
+        mock_mem.total = 16 * 1024**3
+        mock_mem.used = 8 * 1024**3
+        mock_mem.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_mem
+        mock_psutil.cpu_percent.return_value = 10.0
+        mock_psutil.cpu_count.return_value = 4
+        mock_disk = MagicMock()
+        mock_disk.total = 200 * 1024**3
+        mock_disk.used = 100 * 1024**3
+        mock_disk.percent = 50.0
+        mock_psutil.disk_usage.return_value = mock_disk
+
+        result = system_info()
+        mock_psutil.disk_usage.assert_called_once_with("/")
+        assert result["disk_total_gb"] == 200.0

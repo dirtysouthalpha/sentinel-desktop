@@ -201,3 +201,83 @@ def test_start_process_file_not_found():
         pid = process_manager.start_process("/missing/binary")
 
     assert pid == 0
+
+
+def test_start_process_subprocess_error():
+    """start_process with SubprocessError should return 0."""
+    import subprocess
+
+    with patch(
+        "core.process_manager.subprocess.Popen",
+        side_effect=subprocess.SubprocessError("broken pipe"),
+    ):
+        pid = process_manager.start_process("cmd.exe")
+
+    assert pid == 0
+
+
+def test_kill_process_by_name_empty_after_lower():
+    """kill_process with whitespace-only string returns False."""
+    assert process_manager.kill_process("   ") is False
+
+
+def test_kill_process_by_pid_oserror():
+    """kill_process with OSError from psutil.Process should return False."""
+    with patch("core.process_manager.psutil.Process", side_effect=OSError("kernel error")):
+        result = process_manager.kill_process(42)
+
+    assert result is False
+
+
+def test_kill_process_by_name_no_such_process_during_kill():
+    """kill by name: NoSuchProcess during kill should be skipped gracefully."""
+    import psutil
+
+    info = {"name": "Zombie.exe", "pid": 555}
+    mock_proc = MagicMock(info=info)
+    mock_proc.kill.side_effect = psutil.NoSuchProcess(555)
+
+    with patch("core.process_manager.psutil.process_iter", return_value=[mock_proc]):
+        result = process_manager.kill_process("zombie")
+
+    assert result is False
+
+
+def test_list_processes_cpu_percent_none():
+    """cpu_percent=None should sort as 0 (via 'or 0' fallback)."""
+    info_low = {
+        "pid": 1,
+        "name": "low",
+        "cpu_percent": None,
+        "memory_info": MagicMock(rss=10 * 1024 * 1024),
+    }
+    info_high = {
+        "pid": 2,
+        "name": "high",
+        "cpu_percent": 50.0,
+        "memory_info": MagicMock(rss=10 * 1024 * 1024),
+    }
+    procs = [MagicMock(info=info_low), MagicMock(info=info_high)]
+
+    with patch("core.process_manager.psutil.process_iter", return_value=procs):
+        result = process_manager.list_processes(sort_by="cpu", limit=10)
+
+    assert result[0]["pid"] == 2  # 50.0 sorts before None-as-0
+
+
+def test_list_processes_limit_cuts():
+    """list_processes should enforce the limit parameter."""
+    procs = []
+    for i in range(20):
+        info = {
+            "pid": i,
+            "name": f"p{i}",
+            "cpu_percent": float(i),
+            "memory_info": MagicMock(rss=50 * 1024 * 1024),
+        }
+        procs.append(MagicMock(info=info))
+
+    with patch("core.process_manager.psutil.process_iter", return_value=procs):
+        result = process_manager.list_processes(limit=5)
+
+    assert len(result) == 5
