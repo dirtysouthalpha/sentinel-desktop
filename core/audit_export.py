@@ -8,10 +8,13 @@ Sensitive fields (password, token, key, secret) are automatically masked.
 
 import csv
 import json
+import logging
 import os
 import re
 from datetime import datetime, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Sensitive-field masking
@@ -102,7 +105,10 @@ class AuditExporter:
 
     def __init__(self, output_dir: str = "reports") -> None:
         self.output_dir = output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
+        try:
+            os.makedirs(self.output_dir, exist_ok=True)
+        except OSError as exc:
+            logger.error("Failed to create output dir %s: %s", self.output_dir, exc)
 
     # ------------------------------------------------------------------
     # Public API
@@ -160,8 +166,12 @@ class AuditExporter:
         }
 
         filename = self._filename("audit_report", "json")
-        with open(filename, "w", encoding="utf-8") as fh:
-            json.dump(report, fh, indent=2, ensure_ascii=False, default=str)
+        try:
+            with open(filename, "w", encoding="utf-8") as fh:
+                json.dump(report, fh, indent=2, ensure_ascii=False, default=str)
+        except OSError as exc:
+            logger.error("Failed to write JSON report %s: %s", filename, exc)
+            raise
         return os.path.abspath(filename)
 
     # ------------------------------------------------------------------
@@ -174,31 +184,32 @@ class AuditExporter:
         filename = self._filename("audit_report", "csv")
 
         fieldnames = ["step", "timestamp", "action", "params", "result", "duration"]
-        with open(filename, "w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(
-                fh,
-                fieldnames=fieldnames,
-                quoting=csv.QUOTE_ALL,
-                quotechar='"',
-                doublequote=True,
-            )
-            writer.writeheader()
+        try:
+            with open(filename, "w", newline="", encoding="utf-8") as fh:
+                writer = csv.DictWriter(
+                    fh,
+                    fieldnames=fieldnames,
+                    quoting=csv.QUOTE_ALL,
+                    quotechar='"',
+                    doublequote=True,
+                )
+                writer.writeheader()
 
-            for entry in masked:
-                row = {
-                    "step": entry.get("step", ""),
-                    "timestamp": entry.get("timestamp", ""),
-                    "action": entry.get("action", ""),
-                    "params": json.dumps(entry.get("params", {}), default=str),
-                    "result": json.dumps(entry.get("result"), default=str),
-                    "duration": entry.get("duration", ""),
-                }
-                writer.writerow(row)
-
+                for entry in masked:
+                    row = {
+                        "step": entry.get("step", ""),
+                        "timestamp": entry.get("timestamp", ""),
+                        "action": entry.get("action", ""),
+                        "params": json.dumps(entry.get("params", {}), default=str),
+                        "result": json.dumps(entry.get("result"), default=str),
+                        "duration": entry.get("duration", ""),
+                    }
+                    writer.writerow(row)
+        except OSError as exc:
+            logger.error("Failed to write CSV report %s: %s", filename, exc)
+            raise
         return os.path.abspath(filename)
 
-    # ------------------------------------------------------------------
-    # Text (ASCII tables)
     # ------------------------------------------------------------------
 
     def export_text(self, log: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
@@ -275,8 +286,12 @@ class AuditExporter:
         lines.append("=" * 72)
 
         filename = self._filename("audit_report", "txt")
-        with open(filename, "w", encoding="utf-8") as fh:
-            fh.write("\n".join(lines))
+        try:
+            with open(filename, "w", encoding="utf-8") as fh:
+                fh.write("\n".join(lines))
+        except OSError as exc:
+            logger.error("Failed to write text report %s: %s", filename, exc)
+            raise
         return os.path.abspath(filename)
 
     # ------------------------------------------------------------------
@@ -295,8 +310,12 @@ class AuditExporter:
         html += self._html_postamble()
 
         filename = self._filename("audit_report", "html")
-        with open(filename, "w", encoding="utf-8") as fh:
-            fh.write(html)
+        try:
+            with open(filename, "w", encoding="utf-8") as fh:
+                fh.write(html)
+        except OSError as exc:
+            logger.error("Failed to write HTML report %s: %s", filename, exc)
+            raise
         return os.path.abspath(filename)
 
     # ------------------------------------------------------------------

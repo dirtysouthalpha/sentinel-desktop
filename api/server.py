@@ -691,9 +691,11 @@ class SentinelServer:
                 await ws.send_json({"type": "auth_error", "message": "Invalid token"})
                 await ws.close()
                 return
-        except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
+        except (asyncio.TimeoutError, json.JSONDecodeError):
             # No auth required (token not configured) or timeout — allow through.
             pass
+        except Exception:
+            logger.warning("Unexpected error during WS auth; allowing through", exc_info=True)
 
         with self._ws_lock:
             self._ws_clients.append(ws)
