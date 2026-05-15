@@ -134,7 +134,7 @@ class AuthLogoutRequest(BaseModel):
 
 
 class SentinelServer:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         self.config = config
         self.engine: AgentEngine | None = None
         self._run_thread: threading.Thread | None = None
@@ -239,7 +239,7 @@ class SentinelServer:
 
     async def _handle_goal(
         self, req: GoalRequest, authorization: str | None = Header(default=None)
-    ):
+    ) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine and self.engine.running:
             raise HTTPException(409, "Agent already running — stop it first")
@@ -649,13 +649,13 @@ class SentinelServer:
 
     # ── WebSocket broadcasting ──────────────────────────────────────
 
-    def _broadcast_step(self, **kwargs):
+    def _broadcast_step(self, **kwargs: Any) -> None:
         """Engine step callback (runs on worker thread). Schedules a broadcast."""
         # Avoid sending raw base64 screenshots over WS — too large by default.
         kwargs.pop("screenshot", None)
         self._broadcast_event({"type": "step", **kwargs})
 
-    def _broadcast_event(self, event: dict[str, Any]):
+    def _broadcast_event(self, event: dict[str, Any]) -> None:
         """Thread-safe broadcast to all WebSocket clients."""
         loop = self._loop
         if loop is None:

@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from difflib import SequenceMatcher
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class CommandPalette:
     The actual popup UI is rendered by the GUI layer.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._commands: list[Command] = []
 
     def register(
@@ -83,7 +84,7 @@ class CommandPalette:
         category: str,
         handler: Callable,
         keywords: list[str] | None = None,
-    ):
+    ) -> None:
         """Register a command."""
         self._commands.append(Command(name, shortcut, category, handler, keywords))
 
@@ -112,7 +113,7 @@ class CommandPalette:
 # ── Default command registry ────────────────────────────────────────
 
 
-def create_default_palette(app) -> CommandPalette:
+def create_default_palette(app: Any) -> CommandPalette:
     """
     Create and register all default commands for the Sentinel Desktop app.
     `app` is the SentinelApp instance (gui/app.py).
@@ -430,31 +431,31 @@ def create_default_palette(app) -> CommandPalette:
 # ── Command handler helpers ────────────────────────────────────────────
 
 
-def _start_recording(app):
+def _start_recording(app: Any) -> None:
     if hasattr(app, "engine") and app.engine:
         app.engine.recorder.start_recording("")
         if hasattr(app, "recorder_panel"):
             app.recorder_panel._on_record_click()
 
 
-def _stop_recording(app):
+def _stop_recording(app: Any) -> None:
     if hasattr(app, "engine") and app.engine:
         app.engine.recorder.stop_recording()
         if hasattr(app, "recorder_panel"):
             app.recorder_panel._on_stop_click()
 
 
-def _run_script_dialog(app):
+def _run_script_dialog(app: Any) -> None:
     if hasattr(app, "recorder_panel"):
         app.recorder_panel._on_play_click()
 
 
-def _show_script_library(app):
+def _show_script_library(app: Any) -> None:
     if hasattr(app, "recorder_panel"):
         app.recorder_panel._on_library_click()
 
 
-def _run_powershell_dialog(app):
+def _run_powershell_dialog(app: Any) -> None:
     import tkinter.simpledialog as sd
 
     cmd = sd.askstring("PowerShell", "Enter PowerShell command:", parent=app.root)
@@ -491,7 +492,7 @@ def _run_powershell_dialog(app):
             )
 
 
-def _run_it_script(app, script_name):
+def _run_it_script(app: Any, script_name: str) -> None:
     import os
 
     scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts", "it_support")

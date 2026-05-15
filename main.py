@@ -122,7 +122,7 @@ def run_api(host: str = "0.0.0.0", port: int = 8091) -> None:
     uvicorn.run(app, host=host, port=port, log_level="info")
 
 
-def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False):
+def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False) -> None:
     """Execute a single goal and exit."""
     from config import Config
     from core.engine import AgentEngine
