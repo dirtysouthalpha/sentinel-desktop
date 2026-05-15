@@ -10,10 +10,13 @@ Modes:
 The package version is sourced from ``core.__version__``.
 """
 
+from __future__ import annotations
+
 import argparse
 import logging
 import os
 import sys
+from argparse import Namespace
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -33,7 +36,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 
-def parse_args():
+def parse_args() -> Namespace:
     from core import __version__
 
     parser = argparse.ArgumentParser(
@@ -83,7 +86,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def run_gui():
+def run_gui() -> None:
     """Launch the CustomTkinter GUI."""
     try:
         import customtkinter as ctk  # noqa: F401  (availability check)
@@ -100,7 +103,7 @@ def run_gui():
     app.run()
 
 
-def run_api(host="0.0.0.0", port=8091):
+def run_api(host: str = "0.0.0.0", port: int = 8091) -> None:
     """Launch the FastAPI server."""
     try:
         import uvicorn
@@ -147,7 +150,7 @@ def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False):
     print(f"{'=' * 60}")
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     if args.debug:

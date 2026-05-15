@@ -9,6 +9,8 @@ Usage:
     python installer/build.py --clean      # Remove build artifacts
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import shutil
@@ -78,7 +80,7 @@ HIDDEN_IMPORTS = [
 ]
 
 
-def clean():
+def clean() -> None:
     """Remove build artifacts."""
     for path in [BUILD_DIR, DIST_DIR]:
         if os.path.exists(path):
@@ -90,7 +92,7 @@ def clean():
     print("✅ Clean complete")
 
 
-def build_exe():
+def build_exe() -> bool:
     """Build standalone Windows EXE via PyInstaller."""
     print(f"🔨 Building {APP_NAME} v{APP_VERSION}...")
 
@@ -157,7 +159,7 @@ def build_exe():
     return False
 
 
-def generate_inno_setup():
+def generate_inno_setup() -> str:
     """Generate Inno Setup .iss file for Windows installer."""
     print("📜 Generating Inno Setup script...")
 
@@ -220,7 +222,7 @@ Filename: "{{app}}\\{{#MyAppExeName}}"; Description: "{{cm:LaunchProgram,{{#MyAp
     return iss_path
 
 
-def build_all():
+def build_all() -> bool:
     """Build EXE then generate installer."""
     if not build_exe():
         return False
@@ -230,7 +232,7 @@ def build_all():
     return True
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Sentinel Desktop Build System")
     parser.add_argument("--exe", action="store_true", help="Build standalone EXE")
     parser.add_argument("--installer", action="store_true", help="Generate Inno Setup .iss")

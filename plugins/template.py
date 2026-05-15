@@ -37,6 +37,10 @@ continues running normally.  Fix the error, then use
 ``PluginLoader.reload_plugin(name)`` to retry without restarting.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 # -- required metadata -------------------------------------------------------
 
 PLUGIN_NAME = "Template Plugin"
@@ -46,12 +50,12 @@ PLUGIN_DESCRIPTION = "Starter template demonstrating the plugin interface."
 # -- registration entry point ------------------------------------------------
 
 
-def register(api):
+def register(api: Any) -> None:
     """Called by PluginLoader when the plugin is loaded."""
 
     api.log(f"Template Plugin v{PLUGIN_VERSION} registering...")
 
-    def template_test_handler(**kwargs):
+    def template_test_handler(**kwargs: Any) -> dict[str, Any]:
         """Dummy action handler for demonstration purposes."""
         api.log("template_test action invoked with kwargs: %s", kwargs)
         return {"success": True, "message": "Template test action executed."}
