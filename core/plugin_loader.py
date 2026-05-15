@@ -478,7 +478,11 @@ class PluginLoader:
 
     def _ensure_plugin_dir(self) -> None:
         """Create the plugin directory if it doesn't exist."""
-        self._plugin_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self._plugin_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            logger.error("Failed to create plugin directory %s: %s", self._plugin_dir, exc)
+            raise
 
     @staticmethod
     def _plugin_info(plugin: _LoadedPlugin, *, loaded: bool) -> dict[str, Any]:

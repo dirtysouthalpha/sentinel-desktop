@@ -167,7 +167,11 @@ def capture_screen(monitor: int | str | None = None) -> Image.Image:
                 )
         except Exception as exc:
             logger.warning("mss capture failed, falling back: %s", exc)
-    return pyautogui.screenshot()
+    try:
+        return pyautogui.screenshot()
+    except Exception as exc:
+        logger.error("pyautogui screenshot failed: %s", exc)
+        raise OSError(f"All screen capture methods failed: {exc}") from exc
 
 
 def capture_focused_window() -> Image.Image | None:
@@ -245,7 +249,11 @@ def capture_region(x: int, y: int, w: int, h: int) -> Image.Image:
                 return Image.frombytes("RGB", raw.size, raw.rgb)
         except Exception as exc:
             logger.debug("mss region capture failed, falling back: %s", exc)
-    return pyautogui.screenshot(region=(x, y, w, h))
+    try:
+        return pyautogui.screenshot(region=(x, y, w, h))
+    except Exception as exc:
+        logger.error("pyautogui region capture failed: %s", exc)
+        raise OSError(f"Region capture failed for ({x},{y},{w},{h}): {exc}") from exc
 
 
 def capture_to_base64(quality: int = 85, fmt: str = "PNG", monitor: int | None = None) -> str:
@@ -272,10 +280,14 @@ def capture_region_to_base64(
 def image_to_base64(img: Image.Image, quality: int = 85, fmt: str = "PNG") -> str:
     """Convert a PIL Image → base64 image (PNG by default)."""
     buf = io.BytesIO()
-    if fmt.upper() == "JPEG":
-        img.convert("RGB").save(buf, format="JPEG", quality=quality)
-    else:
-        img.save(buf, format=fmt)
+    try:
+        if fmt.upper() == "JPEG":
+            img.convert("RGB").save(buf, format="JPEG", quality=quality)
+        else:
+            img.save(buf, format=fmt)
+    except Exception as exc:
+        logger.error("Failed to encode image to %s: %s", fmt, exc)
+        raise ValueError(f"Image encoding to {fmt} failed: {exc}") from exc
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
@@ -305,24 +317,28 @@ def find_template(
         logger.exception("opencv-python required for template matching")
         return None
 
-    screenshot = capture_screen(monitor=monitor)
-    screen_arr = np.array(screenshot.convert("RGB"))
-    screen_gray = cv2.cvtColor(screen_arr, cv2.COLOR_RGB2GRAY)
+    try:
+        screenshot = capture_screen(monitor=monitor)
+        screen_arr = np.array(screenshot.convert("RGB"))
+        screen_gray = cv2.cvtColor(screen_arr, cv2.COLOR_RGB2GRAY)
 
-    template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
-    if template is None:
-        logger.error("Template not found: %s", template_path)
+        template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
+        if template is None:
+            logger.error("Template not found: %s", template_path)
+            return None
+
+        result = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+        if max_val >= confidence:
+            h, w = template.shape
+            center_x = max_loc[0] + w // 2
+            center_y = max_loc[1] + h // 2
+            return (center_x, center_y)
         return None
-
-    result = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-
-    if max_val >= confidence:
-        h, w = template.shape
-        center_x = max_loc[0] + w // 2
-        center_y = max_loc[1] + h // 2
-        return (center_x, center_y)
-    return None
+    except Exception as exc:
+        logger.error("Template matching failed: %s", exc)
+        return None
 
 
 def wait_for_template(

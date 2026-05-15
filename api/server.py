@@ -313,7 +313,12 @@ class SentinelServer:
         self, authorization: str | None = Header(default=None)
     ) -> dict[str, Any]:
         self._check_auth(authorization)
-        b64 = capture_to_base64()
+        try:
+            b64 = capture_to_base64()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500, detail=f"Screenshot capture failed: {exc}"
+            ) from exc
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
     async def _handle_status(

@@ -148,7 +148,7 @@ class PowerShellRunner:
                     text=True,
                     timeout=5,
                 )
-                if r.returncode == 0:
+                if r.returncode == 0 and r.stdout.strip():
                     return candidate
             except (OSError, subprocess.SubprocessError) as exc:
                 logger.debug("PowerShell candidate %s failed validation: %s", candidate, exc)
@@ -222,8 +222,11 @@ class PowerShellRunner:
                 else:
                     tmp_out = ""
                 if tmp_out and Path(tmp_out).is_file():
-                    with Path(tmp_out).open(encoding="utf-8", errors="replace") as fh:
-                        stdout = fh.read()
+                    try:
+                        with Path(tmp_out).open(encoding="utf-8", errors="replace") as fh:
+                            stdout = fh.read()
+                    except OSError as exc:
+                        logger.warning("Failed to read elevated output from %s: %s", tmp_out, exc)
                     try:
                         Path(tmp_out).unlink()
                     except OSError:

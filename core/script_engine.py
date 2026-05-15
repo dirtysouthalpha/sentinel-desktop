@@ -193,7 +193,7 @@ class ScriptEngine:
             )
         try:
             script = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError) as exc:
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
             return ScriptResult(
                 success=False,
                 steps_completed=0,
@@ -325,7 +325,18 @@ class ScriptEngine:
     ) -> dict[str, Any]:
         """Dispatch one step through the executor, retrying once if needed."""
         action_dict = {"action": action, **params}
-        result = self._executor.execute_sync(action_dict)
+        try:
+            result = self._executor.execute_sync(action_dict)
+        except Exception as exc:
+            logger.error("Executor raised on step %d (%s): %s", step_num, action, exc)
+            return {"success": False, "error": str(exc)}
+
+        if not isinstance(result, dict):
+            logger.error("Executor returned non-dict for step %d: %s", step_num, type(result))
+            return {
+                "success": False,
+                "error": f"Executor returned {type(result).__name__}, expected dict",
+            }
 
         if result.get("success", False):
             return result
@@ -333,6 +344,10 @@ class ScriptEngine:
         # Retry logic
         if self._on_error == "retry_once":
             logger.info("Retrying step %d (%s)…", step_num, action)
-            result = self._executor.execute_sync(action_dict)
+            try:
+                result = self._executor.execute_sync(action_dict)
+            except Exception as exc:
+                logger.error("Executor raised on retry of step %d (%s): %s", step_num, action, exc)
+                return {"success": False, "error": str(exc)}
 
         return result
