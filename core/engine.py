@@ -32,7 +32,8 @@ from core.checkpoint import CheckpointManager
 from core.forensic_log import ForensicLog
 from core.llm_client import LLMClient, LLMError
 from core.mfa_detection import MFADetector
-from core.recovery import RecoveryEngine
+from core.popup_handler import PopupHandler
+from core.recovery import RecoveryEngine, RecoverySuggestion
 from core.screenshot import capture_to_base64, get_capture_offset
 from core.smart_wait import SmartWait
 from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
@@ -281,6 +282,11 @@ class AgentEngine:
         # Failure tracking and recovery
         self._consecutive_failures = 0
         self._recovery_engine = RecoveryEngine()
+
+        # Popup dialog detection and dismissal
+        self._popup_handler = PopupHandler(
+            auto_dismiss=bool(self.config.get("auto_dismiss_popups", False)),
+        )
 
         # ── Lazy-loaded subsystems (only created when accessed) ──────
         self._recorder = None
@@ -687,6 +693,35 @@ class AgentEngine:
                             self._mfa_paused = False
                             self.logger.log_event("mfa_resume", {"msg": "Auth prompt dismissed"})
                             break
+
+                # Popup dialog detection — check for and optionally dismiss
+                # common popups that block automation (save prompts, error
+                # dialogs, certificate warnings, update notifications, etc.)
+                try:
+                    from core.screenshot import capture_screen as _cs
+
+                    _screen = _cs()
+                    _popup_result = self._popup_handler.check_and_dismiss(screenshot=_screen)
+                    if _popup_result.detected:
+                        self.logger.log_event(
+                            "popup_detected",
+                            {
+                                "type": _popup_result.popup_type,
+                                "confidence": _popup_result.confidence,
+                                "dismissed": _popup_result.dismissed,
+                                "action": _popup_result.dismiss_action,
+                            },
+                        )
+                        if _popup_result.dismissed:
+                            logger.info(
+                                "Popup auto-dismissed: %s via %s",
+                                _popup_result.popup_type,
+                                _popup_result.dismiss_action,
+                            )
+                            # Small pause for the dismiss to take effect
+                            time.sleep(0.5)
+                except Exception as exc:
+                    logger.debug("Popup handler check failed: %s", exc)
 
                 # Log the action
                 self._log_step(action, {"pending": True})
