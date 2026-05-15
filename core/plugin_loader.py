@@ -301,9 +301,10 @@ class PluginLoader:
 
         with self._lock:
             # If already loaded under the same path, unload first.
-            for existing in self._plugins.values():
-                if Path(existing.filepath) == filepath:
-                    self._unload_unlocked(existing.name)
+            # Snapshot names to avoid mutating dict during iteration.
+            for name in list(self._plugins):
+                if Path(self._plugins[name].filepath) == filepath:
+                    self._unload_unlocked(name)
 
             # --- import the module ---
             spec = importlib.util.spec_from_file_location(module_name, filepath)
