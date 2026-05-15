@@ -114,14 +114,14 @@ def smart_open(name: str) -> dict[str, Any]:
     # 1) Is there already an open window matching this app?
     try:
         existing = _find_existing(title_hint)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.debug("smart_open list_windows failed: %s", exc)
         existing = None
 
     if existing:
         try:
             ok = wm.focus_window(existing)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("smart_open focus failed for %r: %s", existing, exc)
             ok = False
         if ok:
@@ -161,7 +161,7 @@ def _find_existing(title_hint: str) -> str | None:
         return None
     try:
         windows = wm.list_windows()
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.debug("list_windows failed: %s", exc)
         return None
     best: str | None = None

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -280,7 +281,9 @@ def _recover_input_failed(
 
 
 # Map pattern names to handler functions
-_RECOVERY_HANDLERS: dict[str, Any] = {
+_RecoveryHandler = Callable[[dict[str, Any], str, dict[str, Any]], "RecoverySuggestion"]
+
+_RECOVERY_HANDLERS: dict[str, _RecoveryHandler] = {
     "element_not_found": _recover_element_not_found,
     "permission_denied": _recover_permission_denied,
     "window_not_found": _recover_window_not_found,

@@ -72,8 +72,8 @@ def _play(sound_type: str) -> None:
         else:
             # Non-Windows: print BEL character
             print("\a", end="", flush=True)
-    except Exception as exc:
-        logger.debug("Sound playback failed: %s", exc)
+    except (OSError, RuntimeError) as exc:
+        logger.warning("Sound playback failed: %s", exc)
 
 
 def play_file(filepath: str, blocking: bool = False) -> None:
@@ -87,5 +87,5 @@ def play_file(filepath: str, blocking: bool = False) -> None:
         if not blocking:
             flags |= winsound.SND_ASYNC
         winsound.PlaySound(filepath, flags)
-    except Exception as exc:
-        logger.debug("WAV playback failed: %s", exc)
+    except (OSError, RuntimeError) as exc:
+        logger.warning("WAV playback failed: %s", exc)
