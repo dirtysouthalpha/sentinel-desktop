@@ -120,7 +120,7 @@ def _validate_script(
         errors.append(f"Missing required parameters: {sorted(missing)}")
 
     # Action type existence
-    known_actions: set | None = None
+    known_actions: set[str] | None = None
     if executor is not None and hasattr(executor, "_dispatch_table"):
         known_actions = set(executor._dispatch_table.keys())
 

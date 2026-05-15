@@ -24,6 +24,7 @@ import os
 import threading
 import time
 from collections import defaultdict
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -69,7 +70,7 @@ class ConfigUpdate(BaseModel):
 
 class ScriptRunRequest(BaseModel):
     path: str
-    params: dict | None = None
+    params: dict[str, Any] | None = None
 
 
 class PowerShellRequest(BaseModel):
@@ -83,7 +84,7 @@ class RecorderStopRequest(BaseModel):
 
 class WorkflowRunRequest(BaseModel):
     path: str
-    variables: dict | None = None
+    variables: dict[str, Any] | None = None
 
 
 class ScheduleAddRequest(BaseModel):
@@ -113,7 +114,7 @@ class PluginReloadRequest(BaseModel):
 
 class AgentSubmitRequest(BaseModel):
     goal: str
-    config: dict | None = None
+    config: dict[str, Any] | None = None
     priority: str = "normal"
 
 
@@ -160,7 +161,7 @@ class SentinelServer:
         self._login_window = 300.0  # 5 minutes
 
         @asynccontextmanager
-        async def lifespan(app: FastAPI):
+        async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             self._loop = asyncio.get_running_loop()
             yield
 

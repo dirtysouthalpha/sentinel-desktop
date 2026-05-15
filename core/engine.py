@@ -967,7 +967,7 @@ class AgentEngine:
         return None
 
     @staticmethod
-    def _action_from_tool_call(tool_calls: list[Any] | None) -> dict | None:
+    def _action_from_tool_call(tool_calls: list[Any] | None) -> dict[str, Any] | None:
         """Convert the first tool_call into an action dict for the executor.
 
         Defensive: tool_calls coming from real providers occasionally arrive
@@ -1026,7 +1026,7 @@ class AgentEngine:
 # ---------------------------------------------------------------------------
 
 
-def _find_balanced_json_with_key(text: str, key: str) -> dict | None:
+def _find_balanced_json_with_key(text: str, key: str) -> dict[str, Any] | None:
     """Scan *text* for a balanced ``{...}`` JSON object that contains *key*.
 
     Handles strings and escape characters so nested braces don't break the

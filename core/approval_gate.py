@@ -70,7 +70,7 @@ class ApprovalGate:
 
     def __init__(self, enabled: bool = False) -> None:
         self.enabled = enabled
-        self._callback: Callable | None = None
+        self._callback: Callable[[ApprovalRequest], None] | None = None
         self._current_request: ApprovalRequest | None = None
         self._stats = {"approved": 0, "skipped": 0, "modified": 0, "aborted": 0}
 

@@ -65,10 +65,10 @@ class ActionExecutor:
 
     def __init__(
         self,
-        approval_callback: Callable | None = None,
+        approval_callback: Callable[..., Any] | None = None,
         dry_run: bool = False,
         pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
-        click_offset: tuple = (0, 0),
+        click_offset: tuple[int, int] = (0, 0),
         monitor: int | None = None,
         stealth: bool = False,
     ) -> None:
@@ -833,7 +833,7 @@ class ActionExecutor:
                 "error": "wait_for_text_failed",
             }
 
-    def _open_app(self, *, path: str, args: list | None = None, **_: Any) -> dict[str, Any]:
+    def _open_app(self, *, path: str, args: list[str] | None = None, **_: Any) -> dict[str, Any]:
         try:
             pid = pm.start_process(path, args)
             if pid:
@@ -1048,7 +1048,9 @@ class ActionExecutor:
                 "error": "list_processes_failed",
             }
 
-    def _start_process(self, *, path: str, args: list | None = None, **_: Any) -> dict[str, Any]:
+    def _start_process(
+        self, *, path: str, args: list[str] | None = None, **_: Any
+    ) -> dict[str, Any]:
         try:
             pid = pm.start_process(path, args)
             return {"success": pid is not None, "output": f"pid={pid}"}
@@ -1105,7 +1107,9 @@ class ActionExecutor:
                 "error": "powershell_failed",
             }
 
-    def _run_script(self, *, path: str, params: dict | None = None, **_: Any) -> dict[str, Any]:
+    def _run_script(
+        self, *, path: str, params: dict[str, Any] | None = None, **_: Any
+    ) -> dict[str, Any]:
         """Replay a recorded script from a JSON file."""
         try:
             from core.script_engine import ScriptEngine

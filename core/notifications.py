@@ -176,7 +176,7 @@ class NotificationManager:
         =================== ============= ===================================
     """
 
-    def __init__(self, config: dict | None = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         self._config: dict[str, Any] = {
             "enabled_channels": ["log"],
             "webhook_url": None,
