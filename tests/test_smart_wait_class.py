@@ -343,7 +343,7 @@ class TestWaitForMatch:
         assert result.success is False
 
     @patch("core.smart_wait.capture_screen")
-    @patch("core.smart_wait._save_snapshot", return_value="/tmp/match_snap.png")
+    @patch("core.smart_wait._save_snapshot", return_value="/tmp/match_snap.png")  # noqa: S108
     @patch("core.smart_wait.time.sleep")
     @patch("core.smart_wait.time.monotonic")
     def test_match_success_on_first_frame(self, mock_mono, mock_sleep, mock_snap, mock_cap_screen):
@@ -362,7 +362,7 @@ class TestWaitForMatch:
         assert result.success is True
         assert result.change_score == 0.9
         assert result.frames_checked == 1
-        assert result.snapshot_path == "/tmp/match_snap.png"
+        assert result.snapshot_path == "/tmp/match_snap.png"  # noqa: S108
 
 
 # ---------------------------------------------------------------------------
@@ -405,7 +405,7 @@ class TestWaitForText:
         mock_ocr.read_screen_text.return_value = "Hello World"
         mock_snap = Image.new("RGB", (10, 10))
         with patch.dict("sys.modules", {"core.ocr": mock_ocr}):
-            with patch("core.smart_wait._save_snapshot", return_value="/tmp/text_snap.png"):
+            with patch("core.smart_wait._save_snapshot", return_value="/tmp/text_snap.png"):  # noqa: S108
                 with patch("core.smart_wait._crop_to_region", return_value=mock_snap):
                     result = sw.wait_for_text(text="hello", timeout=5, interval=0.1)
         assert result.success is True
@@ -450,7 +450,7 @@ class TestWaitForText:
         mock_ocr._ocr_image.return_value = "Detected Text Here"
         fake_img = Image.new("RGB", (10, 10))
         with patch.dict("sys.modules", {"core.ocr": mock_ocr}):
-            with patch("core.smart_wait._save_snapshot", return_value="/tmp/region_snap.png"):
+            with patch("core.smart_wait._save_snapshot", return_value="/tmp/region_snap.png"):  # noqa: S108
                 with patch("core.smart_wait._crop_to_region", return_value=fake_img):
                     result = sw.wait_for_text(text="detected", timeout=5, region=(0, 0, 100, 100))
         assert result.success is True
@@ -476,7 +476,7 @@ class TestWaitForText:
 
 
 class TestWaitForColor:
-    @patch("core.smart_wait._save_snapshot", return_value="/tmp/color_snap.png")
+    @patch("core.smart_wait._save_snapshot", return_value="/tmp/color_snap.png")  # noqa: S108
     @patch("core.smart_wait.capture_region")
     @patch("core.smart_wait.time.monotonic")
     def test_color_match_immediately(self, mock_mono, mock_cap, mock_snap):
@@ -527,7 +527,7 @@ class TestWaitForColor:
             result = sw.wait_for_color(x=10, y=20, target_rgb=(0, 0, 0), timeout=5)
         assert result.success is False
 
-    @patch("core.smart_wait._save_snapshot", return_value="/tmp/color_snap.png")
+    @patch("core.smart_wait._save_snapshot", return_value="/tmp/color_snap.png")  # noqa: S108
     @patch("core.smart_wait.capture_region")
     @patch("core.smart_wait.time.monotonic")
     def test_color_within_tolerance(self, mock_mono, mock_cap, mock_snap):
@@ -560,6 +560,6 @@ class TestWaitResult:
             elapsed=2.0,
             frames_checked=3,
             change_score=0.8,
-            snapshot_path="/tmp/test.png",
+            snapshot_path="/tmp/test.png",  # noqa: S108
         )
-        assert r.snapshot_path == "/tmp/test.png"
+        assert r.snapshot_path == "/tmp/test.png"  # noqa: S108

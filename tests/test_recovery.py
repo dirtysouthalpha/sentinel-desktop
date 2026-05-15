@@ -5,14 +5,13 @@ from __future__ import annotations
 import pytest
 
 from core.recovery import (
-    RecoveryEngine,
-    RecoverySuggestion,
-    _match_pattern,
-    _compile_patterns,
     _FAILURE_PATTERNS,
     _RECOVERY_HANDLERS,
+    RecoveryEngine,
+    RecoverySuggestion,
+    _compile_patterns,
+    _match_pattern,
 )
-
 
 # ---------------------------------------------------------------------------
 # RecoverySuggestion dataclass
@@ -260,9 +259,7 @@ class TestRecoveryEngine:
         self.engine = RecoveryEngine()
 
     def test_analyze_failure_element_not_found(self) -> None:
-        suggestion = self.engine.analyze_failure(
-            {"action": "click"}, "element not found on screen"
-        )
+        suggestion = self.engine.analyze_failure({"action": "click"}, "element not found on screen")
         assert suggestion.pattern == "element_not_found"
         assert suggestion.confidence > 0
 
@@ -287,9 +284,7 @@ class TestRecoveryEngine:
         assert suggestion.pattern == "timeout"
 
     def test_analyze_failure_empty_context(self) -> None:
-        suggestion = self.engine.analyze_failure(
-            {"action": "click"}, "timeout", context=None
-        )
+        suggestion = self.engine.analyze_failure({"action": "click"}, "timeout", context=None)
         assert suggestion.pattern == "timeout"
 
     def test_should_auto_apply_high_confidence_deterministic(self) -> None:
@@ -318,16 +313,12 @@ class TestRecoveryEngine:
         assert self.engine.should_auto_apply(s) is True
 
     def test_generic_suggestion_includes_action_name(self) -> None:
-        suggestion = self.engine.analyze_failure(
-            {"action": "my_special_action"}, "weird error xyz"
-        )
+        suggestion = self.engine.analyze_failure({"action": "my_special_action"}, "weird error xyz")
         assert "my_special_action" in suggestion.recovery_prompt
 
     def test_generic_suggestion_truncates_long_error(self) -> None:
         long_error = "x" * 500
-        suggestion = self.engine.analyze_failure(
-            {"action": "test"}, long_error
-        )
+        suggestion = self.engine.analyze_failure({"action": "test"}, long_error)
         assert len(suggestion.recovery_prompt) < 500
 
 

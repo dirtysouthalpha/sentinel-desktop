@@ -94,7 +94,7 @@ def _image_cache_key(img: Image.Image) -> str:
         fingerprint = f"{w}x{h}:{sample_points}"
     except (IndexError, OSError):
         fingerprint = f"{w}x{h}"
-    return hashlib.md5(fingerprint.encode()).hexdigest()
+    return hashlib.md5(fingerprint.encode()).hexdigest()  # noqa: S324
 
 
 def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:

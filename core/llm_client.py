@@ -462,7 +462,7 @@ class LLMClient:
                 break
             # Exponential backoff with jitter (capped at 30s).
             delay = min(30.0, base_delay * (2**attempt))
-            delay += random.uniform(0, base_delay)
+            delay += random.uniform(0, base_delay)  # noqa: S311
             time.sleep(delay)
             attempt += 1
 

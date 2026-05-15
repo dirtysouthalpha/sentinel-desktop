@@ -59,7 +59,7 @@ class CursorOverlay:
         if self._running:
             return True
         try:
-            import tkinter as tk
+            import tkinter as tk  # noqa: F401
         except ImportError:
             logger.warning("tkinter not available — cursor overlay disabled")
             return False

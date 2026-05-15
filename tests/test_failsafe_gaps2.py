@@ -73,6 +73,8 @@ class TestOnPanicCallbackStoresCustomCallable:
     """FailsafeListener stores the custom on_panic callback."""
 
     def test_custom_callback_stored(self):
-        cb = lambda: None
-        fl = failsafe.FailsafeListener(on_panic=cb)
-        assert fl._on_panic is cb
+        def _cb() -> None:
+            pass
+
+        fl = failsafe.FailsafeListener(on_panic=_cb)
+        assert fl._on_panic is _cb

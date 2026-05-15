@@ -3,6 +3,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch as _patch
 
 from core.checkpoint import CheckpointManager
 
@@ -93,7 +94,6 @@ class TestDeleteWithTraversal:
 
 
 # Helper for patching json.dump to raise
-from unittest.mock import patch as _patch
 
 
 class _patch_json_dump_raises:

@@ -22,7 +22,7 @@ _ROOT = str(Path(__file__).resolve().parent.parent)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from core import __version__ as APP_VERSION
+from core import __version__ as APP_VERSION  # noqa: E402
 
 # ── Config ──────────────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ def build_exe() -> bool:
     print(f"🔨 Building {APP_NAME} v{APP_VERSION}...")
 
     try:
-        import PyInstaller
+        import PyInstaller  # noqa: F401
     except ImportError:
         print("❌ PyInstaller not installed. Run: pip install pyinstaller")
         return False
