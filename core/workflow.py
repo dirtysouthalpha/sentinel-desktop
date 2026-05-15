@@ -434,6 +434,8 @@ class WorkflowEngine:
             try:
                 with filepath.open(encoding="utf-8") as f:
                     data = json.load(f)
+                if not isinstance(data, dict):
+                    continue
                 workflows.append(
                     {
                         "name": data.get("name", filepath.name),
