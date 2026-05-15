@@ -110,8 +110,8 @@ class AuditExporter:
 
     def generate_report(
         self,
-        log: list[dict],
-        metadata: dict,
+        log: list[dict[str, Any]],
+        metadata: dict[str, Any],
         format: str = "html",
     ) -> str:
         """Dispatch to the appropriate exporter and return the file path.
@@ -146,7 +146,7 @@ class AuditExporter:
     # JSON
     # ------------------------------------------------------------------
 
-    def export_json(self, log: list[dict], metadata: dict) -> str:
+    def export_json(self, log: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
         """Export audit data as a pretty-printed JSON file."""
         masked = _mask_log(log)
         summary = _compute_summary(masked, metadata)
@@ -168,7 +168,7 @@ class AuditExporter:
     # CSV  (RFC 4180)
     # ------------------------------------------------------------------
 
-    def export_csv(self, log: list[dict], metadata: dict) -> str:
+    def export_csv(self, log: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
         """Export audit data as an RFC-4180-compliant CSV file."""
         masked = _mask_log(log)
         filename = self._filename("audit_report", "csv")

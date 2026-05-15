@@ -263,7 +263,8 @@ class WorkflowEngine:
                             try:
                                 lr = self._execute_step(body)
                                 self._step_outputs[f"{step.id}_loop_{items.index(item)}"] = lr
-                            except Exception:
+                            except Exception as exc:
+                                logger.debug("Loop step %s failed: %s", step.id, exc)
                                 if body.error_policy == "stop":
                                     loop_success = False
                                     break

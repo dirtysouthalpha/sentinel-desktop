@@ -204,9 +204,9 @@ class AgentEngine:
 
     def __init__(
         self,
-        config: dict | None = None,
-        approval_callback: Callable[[dict], bool] | None = None,
-        pre_action_callback: Callable[[dict], None] | None = None,
+        config: dict[str, Any] | None = None,
+        approval_callback: Callable[[dict[str, Any]], bool] | None = None,
+        pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.config = config or {}
         self.llm = LLMClient()
@@ -231,7 +231,7 @@ class AgentEngine:
         self.max_steps = self.config.get("max_steps", 100)
         self.image_history = int(self.config.get("image_history", DEFAULT_IMAGE_HISTORY))
         self.notes: list[str] = []
-        self.forensic_log: list[dict] = []
+        self.forensic_log: list[dict[str, Any]] = []
         self.on_step_callback: Callable | None = None
         self.finish_summary: str = ""
 
@@ -891,7 +891,7 @@ class AgentEngine:
                 }
             )
 
-    def _prune_old_screenshots(self, messages: list) -> None:
+    def _prune_old_screenshots(self, messages: list[dict[str, Any]]) -> None:
         """Drop the image bytes from older screenshot messages, but PRESERVE
         any text in those messages (which often includes the original goal!).
 
@@ -925,7 +925,7 @@ class AgentEngine:
             new_content = f"{preserved_text}\n{stub}" if preserved_text else stub
             messages[idx] = {"role": "user", "content": new_content}
 
-    def _parse_action(self, response: str) -> dict | None:
+    def _parse_action(self, response: str) -> dict[str, Any] | None:
         """Extract an action dict from an LLM response.
 
         Handles three shapes:

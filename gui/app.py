@@ -1133,7 +1133,8 @@ class SettingsWindow:
                     f"{' (primary)' if m.get('is_primary') else ''}"
                 )
                 monitor_choices.append(label)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Monitor enumeration failed, using defaults: %s", exc)
             monitor_choices.extend(
                 [
                     "0 — All monitors (virtual desktop)",

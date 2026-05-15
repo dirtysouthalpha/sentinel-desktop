@@ -299,7 +299,8 @@ def _find_control(
         visited += 1
         try:
             score = _matches(node)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Scoring failed for node: %s", exc)
             score = -1
         if score > best_score:
             best_score = score

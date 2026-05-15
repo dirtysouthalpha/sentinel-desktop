@@ -595,7 +595,8 @@ class UIAActionPipeline:
                 "center_x": (rect.left + rect.right) // 2,
                 "center_y": (rect.top + rect.bottom) // 2,
             }
-        except Exception:
+        except Exception as exc:
+            logger.debug("Bounding box lookup failed: %s", exc)
             return None
 
     @staticmethod
@@ -689,7 +690,8 @@ class UIAActionPipeline:
                         target.Click(simulateMove=False)
                         time.sleep(0.05)
                         current = target
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("Menu walk click fallback failed: %s", exc)
                         return False
 
             return False  # shouldn't reach here
