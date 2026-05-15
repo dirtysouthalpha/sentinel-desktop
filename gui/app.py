@@ -4,10 +4,13 @@ Sentinel Desktop v2 — Main GUI Application.
 Dark-themed customtkinter interface with chat, live screenshot, and settings.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import threading
 from datetime import datetime
+from typing import Any
 
 import customtkinter as ctk
 
@@ -74,7 +77,7 @@ class SentinelApp:
 
     # ── Header ──────────────────────────────────────────────────────────
 
-    def _build_header(self):
+    def _build_header(self) -> None:
         header = ctk.CTkFrame(self.root, height=50)
         header.pack(fill="x", padx=8, pady=(8, 4))
         header.pack_propagate(False)
@@ -148,7 +151,7 @@ class SentinelApp:
 
     # ── Tabbed Layout ──────────────────────────────────────────────────
 
-    def _build_tabs(self):
+    def _build_tabs(self) -> None:
         """Build tabbed interface: Dashboard | Scripts | Workflows | History."""
         self.tabview = ctk.CTkTabview(
             self.root,
@@ -218,7 +221,7 @@ class SentinelApp:
                 text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(pady=20)
 
-    def _build_main_area_into(self, parent):
+    def _build_main_area_into(self, parent: ctk.CTkFrame) -> None:
         """Build the original main area content into a given parent frame."""
         main = ctk.CTkFrame(parent, fg_color="transparent")
         main.pack(fill="both", expand=True)
@@ -265,7 +268,7 @@ class SentinelApp:
 
     # ── Recorder Panel ────────────────────────────────────────────────────
 
-    def _build_recorder_panel(self):
+    def _build_recorder_panel(self) -> None:
         """Record/playback toolbar above the input area."""
         try:
             from gui.recorder_panel import RecorderPanel
@@ -277,7 +280,7 @@ class SentinelApp:
 
     # ── Input ───────────────────────────────────────────────────────────
 
-    def _build_input(self):
+    def _build_input(self) -> None:
         """Override-style multi-line input area with quick-action chips +
         recent-prompts dropdown.
 
@@ -378,12 +381,12 @@ class SentinelApp:
         self.goal_entry.configure(text_color=self._t("text_primary", "#e2e2e8"))
         self.goal_entry.focus_set()
 
-    def _clear_placeholder(self, _event=None):
+    def _clear_placeholder(self, _event: Any = None) -> None:
         if self.goal_entry.get("1.0", "end").strip() == self._placeholder_text:
             self.goal_entry.delete("1.0", "end")
             self.goal_entry.configure(text_color=self._t("text_primary", "#e2e2e8"))
 
-    def _restore_placeholder(self, _event=None):
+    def _restore_placeholder(self, _event: Any = None) -> None:
         if not self.goal_entry.get("1.0", "end").strip():
             self.goal_entry.insert("1.0", self._placeholder_text)
             self.goal_entry.configure(text_color=self._t("text_secondary", "#849495"))
