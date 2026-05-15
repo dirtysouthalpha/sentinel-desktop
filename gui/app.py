@@ -417,8 +417,8 @@ class SentinelApp:
         self.cfg["recent_prompts"] = recent
         try:
             self.config.save(self.cfg)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Failed to save recent prompts: %s", exc)
 
     # ── Chat display ────────────────────────────────────────────────────
 
@@ -546,8 +546,8 @@ class SentinelApp:
                                 "Sentinel Desktop",
                                 f"Finished in {steps} steps. " + (summary[:120] if summary else ""),
                             )
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.debug("Tray notification failed: %s", exc)
             except Exception as e:
                 # Show the exception type + message, and dump the full traceback
                 # to a debug log so the user can paste it for diagnosis.
@@ -572,8 +572,8 @@ class SentinelApp:
                         f"   Full traceback saved to: {log_path}",
                         "system",
                     )
-                except Exception:
-                    pass
+                except Exception as exc2:
+                    logger.debug("Failed to write error log: %s", exc2)
                 logger.exception("Agent run crashed")
             finally:
                 # Belt-and-suspenders: the engine always resets this, but if the
@@ -785,8 +785,8 @@ class SentinelApp:
                 f"   Type 'resume' or press Ctrl+Shift+R to continue.",
                 "system",
             )
-        except Exception:
-            pass  # Checkpoint system not available yet
+        except Exception as exc:
+            logger.debug("Checkpoint check failed: %s", exc)
 
     def _do_resume_checkpoint(self):
         """Resume from the latest checkpoint."""
@@ -848,8 +848,8 @@ class SentinelApp:
             self.history_display.insert("end", line)
             self.history_display.configure(state="disabled")
             self.history_display.see("end")
-        except Exception:
-            pass  # Panel not built yet
+        except Exception as exc:
+            logger.debug("History display update failed (panel not built yet): %s", exc)
 
     # ── Before/After Screenshots ──────────────────────────────────────────
 
@@ -886,8 +886,8 @@ class SentinelApp:
 
             self._screenshot_photo = ImageTk.PhotoImage(combined)
             self.screenshot_label.configure(image=self._screenshot_photo, text="")
-        except Exception:
-            pass  # Fall back to single screenshot
+        except Exception as exc:
+            logger.debug("Screenshot diff rendering failed: %s", exc)
 
     # ── Tray ────────────────────────────────────────────────────────────
 
@@ -918,8 +918,8 @@ class SentinelApp:
             return
         try:
             self.root.withdraw()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Failed to withdraw window: %s", exc)
 
     def _show_from_tray(self):
         try:
@@ -927,8 +927,8 @@ class SentinelApp:
             self.root.after(0, self.root.lift)
             self.root.after(0, lambda: self.root.attributes("-topmost", True))
             self.root.after(200, lambda: self.root.attributes("-topmost", False))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Failed to show window from tray: %s", exc)
 
     def _on_close_window(self):
         """User clicked the window's X button."""
