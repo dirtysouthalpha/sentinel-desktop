@@ -88,7 +88,7 @@ def get_capture_offset(monitor: int | str | None = None) -> tuple[int, int]:
             if 0 <= resolved < len(mons):
                 m = mons[resolved]
                 return (int(m.get("left", 0)), int(m.get("top", 0)))
-    except (_ScreenShotError, OSError) as exc:
+    except (_ScreenShotError, OSError, RuntimeError) as exc:
         logger.debug("get_capture_offset failed: %s", exc)
     return (0, 0)
 
@@ -118,7 +118,7 @@ def list_monitors() -> list[dict[str, int | bool]]:
                     }
                 )
             return out
-        except (_ScreenShotError, OSError) as exc:
+        except (_ScreenShotError, OSError, RuntimeError) as exc:
             logger.warning("mss.monitors failed, falling back: %s", exc)
 
     try:
@@ -167,7 +167,7 @@ def capture_screen(monitor: int | str | None = None) -> Image.Image:
                     monitor,
                     len(mons),
                 )
-        except (_ScreenShotError, OSError) as exc:
+        except (_ScreenShotError, OSError, RuntimeError) as exc:
             logger.warning("mss capture failed, falling back: %s", exc)
     try:
         return pyautogui.screenshot()
@@ -261,7 +261,7 @@ def capture_region(x: int, y: int, w: int, h: int) -> Image.Image:
             with mss.mss() as sct:
                 raw = sct.grab({"left": x, "top": y, "width": w, "height": h})
                 return Image.frombytes("RGB", raw.size, raw.rgb)
-        except (_ScreenShotError, OSError) as exc:
+        except (_ScreenShotError, OSError, RuntimeError) as exc:
             logger.warning("mss region capture failed, falling back: %s", exc)
     try:
         return pyautogui.screenshot(region=(x, y, w, h))
