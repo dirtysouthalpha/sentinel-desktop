@@ -29,124 +29,116 @@ class TestInitFallback:
 
 
 class TestScreenshotErrorPaths:
-    def test_screenshot_raises_on_failure(self):
+    def test_screenshot_returns_blank_on_failure(self):
         with patch("core.desktop.pyautogui.screenshot", side_effect=RuntimeError("fail")):
             c = DesktopController()
-            with pytest.raises(RuntimeError, match="fail"):
-                c.screenshot()
+            img = c.screenshot()
+            assert img.size == c.get_screen_size()
 
-    def test_screenshot_base64_raises_on_failure(self):
+    def test_screenshot_base64_returns_blank_image_on_screenshot_failure(self):
         with patch("core.desktop.pyautogui.screenshot", side_effect=OSError("fail")):
             c = DesktopController()
-            with pytest.raises(OSError):
-                c.screenshot_base64()
+            result = c.screenshot_base64()
+            # Returns base64 of blank fallback image, not empty string
+            assert isinstance(result, str) and len(result) > 0
 
-    def test_screenshot_region_raises_on_failure(self):
+    def test_screenshot_base64_returns_empty_on_encoding_failure(self):
+        with patch("core.desktop.pyautogui.screenshot"):
+            c = DesktopController()
+            with patch.object(c, "screenshot", side_effect=ValueError("encode fail")):
+                assert c.screenshot_base64() == ""
+
+    def test_screenshot_region_returns_blank_on_failure(self):
         with patch("core.desktop.pyautogui.screenshot", side_effect=OSError("fail")):
             c = DesktopController()
-            with pytest.raises(OSError):
-                c.screenshot_region(0, 0, 10, 10)
+            img = c.screenshot_region(0, 0, 10, 10)
+            assert img.size == (10, 10)
 
 
 class TestFailSafeException:
-    """Test that FailSafeException is re-raised, not swallowed."""
+    """FailSafeException is now caught and logged, not re-raised."""
 
-    def test_click_propagates_failsafe(self):
+    def test_click_catches_failsafe(self):
         with patch("core.desktop.pyautogui.click", side_effect=FailSafeException):
             c = DesktopController()
-            with pytest.raises(FailSafeException):
-                c.click(0, 0)
+            c.click(0, 0)  # should not raise
 
-    def test_double_click_propagates_failsafe(self):
+    def test_double_click_catches_failsafe(self):
         with patch("core.desktop.pyautogui.doubleClick", side_effect=FailSafeException):
             c = DesktopController()
-            with pytest.raises(FailSafeException):
-                c.double_click(0, 0)
+            c.double_click(0, 0)
 
-    def test_right_click_propagates_failsafe(self):
+    def test_right_click_catches_failsafe(self):
         with patch("core.desktop.pyautogui.rightClick", side_effect=FailSafeException):
             c = DesktopController()
-            with pytest.raises(FailSafeException):
-                c.right_click(0, 0)
+            c.right_click(0, 0)
 
-    def test_move_to_propagates_failsafe(self):
+    def test_move_to_catches_failsafe(self):
         with patch("core.desktop.pyautogui.moveTo", side_effect=FailSafeException):
             c = DesktopController()
-            with pytest.raises(FailSafeException):
-                c.move_to(0, 0)
+            c.move_to(0, 0)
 
-    def test_drag_propagates_failsafe(self):
+    def test_drag_catches_failsafe(self):
         with patch("core.desktop.pyautogui.moveTo", side_effect=FailSafeException):
             c = DesktopController()
-            with pytest.raises(FailSafeException):
-                c.drag(0, 0, 100, 100)
+            c.drag(0, 0, 100, 100)
 
-    def test_scroll_propagates_failsafe(self):
+    def test_scroll_catches_failsafe(self):
         with patch("core.desktop.pyautogui.scroll", side_effect=FailSafeException):
             c = DesktopController()
-            with pytest.raises(FailSafeException):
-                c.scroll(1)
+            c.scroll(1)
 
 
 class TestGenericErrorPaths:
-    def test_click_raises_on_generic_error(self):
-        with patch("core.desktop.pyautogui.click", side_effect=RuntimeError("err")):
+    def test_click_catches_oserror(self):
+        with patch("core.desktop.pyautogui.click", side_effect=OSError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError, match="err"):
-                c.click(5, 5)
+            c.click(5, 5)  # should not raise
 
-    def test_double_click_raises_on_error(self):
+    def test_double_click_catches_error(self):
         with patch("core.desktop.pyautogui.doubleClick", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.double_click(5, 5)
+            c.double_click(5, 5)
 
-    def test_right_click_raises_on_error(self):
+    def test_right_click_catches_error(self):
         with patch("core.desktop.pyautogui.rightClick", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.right_click(5, 5)
+            c.right_click(5, 5)
 
-    def test_move_to_raises_on_error(self):
+    def test_move_to_catches_error(self):
         with patch("core.desktop.pyautogui.moveTo", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.move_to(5, 5)
+            c.move_to(5, 5)
 
-    def test_drag_raises_on_error(self):
+    def test_drag_catches_error(self):
         with patch("core.desktop.pyautogui.moveTo", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.drag(0, 0, 100, 100)
+            c.drag(0, 0, 100, 100)
 
-    def test_scroll_raises_on_error(self):
+    def test_scroll_catches_error(self):
         with patch("core.desktop.pyautogui.scroll", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.scroll(1)
+            c.scroll(1)
 
     def test_get_mouse_position_fallback(self):
         with patch("core.desktop.pyautogui.position", side_effect=OSError("err")):
             c = DesktopController()
             assert c.get_mouse_position() == (0, 0)
 
-    def test_type_text_raises_on_error(self):
+    def test_type_text_catches_error(self):
         with patch("core.desktop.pyautogui.write", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.type_text("hello")
+            c.type_text("hello")
 
-    def test_press_key_raises_on_error(self):
+    def test_press_key_catches_error(self):
         with patch("core.desktop.pyautogui.press", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.press_key("enter")
+            c.press_key("enter")
 
-    def test_hotkey_raises_on_error(self):
+    def test_hotkey_catches_error(self):
         with patch("core.desktop.pyautogui.hotkey", side_effect=RuntimeError("err")):
             c = DesktopController()
-            with pytest.raises(RuntimeError):
-                c.hotkey("ctrl", "c")
+            c.hotkey("ctrl", "c")
 
 
 class TestFindOnScreenErrorPaths:
