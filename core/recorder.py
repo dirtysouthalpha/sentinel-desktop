@@ -262,8 +262,8 @@ class ActionRecorder:
                         "path": str(filepath),
                     }
                 )
-            except (json.JSONDecodeError, OSError):
-                logger.debug("Skipping unreadable script %s", filepath)
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Skipping unreadable script %s: %s", filepath, exc)
                 continue
         return results
 

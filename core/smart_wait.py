@@ -94,10 +94,14 @@ class WaitResult:
 
 def _crop_to_region(region: tuple[int, int, int, int] | None) -> Image.Image | None:
     """Capture a screenshot, optionally restricted to *region* (x, y, w, h)."""
-    if region is not None:
-        x, y, w, h = region
-        return capture_region(x, y, w, h)
-    return capture_screen()
+    try:
+        if region is not None:
+            x, y, w, h = region
+            return capture_region(x, y, w, h)
+        return capture_screen()
+    except Exception as exc:
+        logger.warning("Screenshot capture failed: %s", exc)
+        return None
 
 
 def _downsample(img: Image.Image, factor: int = _DOWNSCALE) -> Image.Image:
@@ -228,7 +232,7 @@ class SmartWait:
     # Core capture helper
     # ------------------------------------------------------------------
 
-    def _capture(self, region: tuple[int, int, int, int] | None) -> Image.Image:
+    def _capture(self, region: tuple[int, int, int, int] | None) -> Image.Image | None:
         """Capture a frame, possibly restricted to *region*."""
         return _crop_to_region(region)
 
@@ -262,6 +266,14 @@ class SmartWait:
 
         # Capture the initial baseline and track cumulative change from it.
         baseline = self._capture(region)
+        if baseline is None:
+            return WaitResult(
+                success=False,
+                elapsed=time.monotonic() - start,
+                frames_checked=frames,
+                change_score=0.0,
+                snapshot_path=None,
+            )
         baseline_small = _downsample(baseline)
         prev_small = baseline_small
         frames += 1
@@ -287,6 +299,8 @@ class SmartWait:
 
             time.sleep(interval)
             current = self._capture(region)
+            if current is None:
+                continue
             current_small = _downsample(current)
             frames += 1
 
@@ -342,6 +356,14 @@ class SmartWait:
         last_score = 0.0
 
         prev = self._capture(region)
+        if prev is None:
+            return WaitResult(
+                success=False,
+                elapsed=time.monotonic() - start,
+                frames_checked=frames,
+                change_score=last_score,
+                snapshot_path=None,
+            )
         prev_small = _downsample(prev)
         frames += 1
 
@@ -366,6 +388,8 @@ class SmartWait:
 
             time.sleep(interval)
             current = self._capture(region)
+            if current is None:
+                continue
             current_small = _downsample(current)
             frames += 1
 
@@ -443,10 +467,18 @@ class SmartWait:
                 )
 
             frames += 1
-            pos = find_template(template_path, confidence)
+            try:
+                pos = find_template(template_path, confidence)
+            except Exception as exc:
+                logger.warning("Template matching failed: %s", exc)
+                pos = None
             if pos is not None:
-                current = capture_screen()
-                snap_path = _save_snapshot(current, prefix="match")
+                try:
+                    current = capture_screen()
+                except Exception as exc:
+                    logger.warning("Capture for match snapshot failed: %s", exc)
+                    current = None
+                snap_path = _save_snapshot(current, prefix="match") if current is not None else None
                 return WaitResult(
                     success=True,
                     elapsed=time.monotonic() - start,
@@ -546,8 +578,12 @@ class SmartWait:
                 ocr_text = ""
 
             if needle in ocr_text:
-                snap = self._capture(region)
-                snap_path = _save_snapshot(snap, prefix="text")
+                try:
+                    snap = self._capture(region)
+                except Exception as exc:
+                    logger.debug("Post-match snapshot capture failed: %s", exc)
+                    snap = None
+                snap_path = _save_snapshot(snap, prefix="text") if snap is not None else None
                 return WaitResult(
                     success=True,
                     elapsed=time.monotonic() - start,
@@ -627,8 +663,12 @@ class SmartWait:
             tr, tg, tb = target_rgb
             if abs(r - tr) <= tolerance and abs(g - tg) <= tolerance and abs(b - tb) <= tolerance:
                 # Save a slightly larger snapshot for context.
-                snap = capture_region(max(0, x - 50), max(0, y - 50), 100, 100)
-                snap_path = _save_snapshot(snap, prefix="color")
+                try:
+                    snap = capture_region(max(0, x - 50), max(0, y - 50), 100, 100)
+                except Exception as exc:
+                    logger.debug("Color match snapshot capture failed: %s", exc)
+                    snap = None
+                snap_path = _save_snapshot(snap, prefix="color") if snap is not None else None
                 return WaitResult(
                     success=True,
                     elapsed=time.monotonic() - start,
