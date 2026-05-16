@@ -393,6 +393,7 @@ class SentinelServer:
             scripts = ActionRecorder.list_scripts(scripts_dir)
             return {"scripts": scripts}
         except Exception as exc:
+            logger.error("Failed to list scripts: %s", exc)
             return {"scripts": [], "error": str(exc)}
 
     async def _handle_script_run(
@@ -455,13 +456,17 @@ class SentinelServer:
         desc = req.description
         script.name = name
         script.description = desc or script.description
-        import os
+        try:
+            import os
 
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
-        os.makedirs(scripts_dir, exist_ok=True)
-        path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
-        script.save(path)
-        return {"status": "saved", "path": path, "steps": len(script.steps)}
+            scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
+            os.makedirs(scripts_dir, exist_ok=True)
+            path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
+            script.save(path)
+            return {"status": "saved", "path": path, "steps": len(script.steps)}
+        except OSError as exc:
+            logger.error("Failed to save recorded script: %s", exc)
+            raise HTTPException(500, f"Failed to save script: {exc}") from exc
 
     # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
 
@@ -706,7 +711,7 @@ class SentinelServer:
             try:
                 await ws.send_json(event)
             except Exception as exc:
-                logger.debug("WebSocket send failed, marking dead: %s", exc)
+                logger.warning("WebSocket send failed, marking dead: %s", exc)
                 dead.append(ws)
         if dead:
             with self._ws_lock:
@@ -728,9 +733,13 @@ class SentinelServer:
                 await ws.close()
                 return
         except asyncio.TimeoutError:
-            logger.debug("WebSocket auth timed out — allowing through")
+            logger.warning("WebSocket auth timed out — closing connection")
+            await ws.close()
+            return
         except json.JSONDecodeError:
-            logger.debug("WebSocket auth message was not valid JSON — allowing through")
+            logger.warning("WebSocket auth message was not valid JSON — closing connection")
+            await ws.close()
+            return
         except Exception:
             logger.exception("Unexpected error during WebSocket auth handshake")
             await ws.close()
