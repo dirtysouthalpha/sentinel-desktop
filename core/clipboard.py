@@ -11,8 +11,11 @@ _clipboard: Any = None
 
 try:
     import pyperclip  # type: ignore[import-untyped]
+
+    _PyperclipException: type[Exception] = pyperclip.PyperclipException
 except ImportError:
     pyperclip = None  # type: ignore[assignment]
+    _PyperclipException = OSError
 
 
 def _get_clipboard() -> Any | None:
@@ -31,7 +34,7 @@ def clipboard_read() -> str:
         return ""
     try:
         return cb.paste()
-    except (pyperclip.PyperclipException, OSError) as exc:
+    except Exception as exc:
         logger.warning("clipboard_read failed: %s", exc)
         return ""
 
@@ -43,6 +46,6 @@ def clipboard_write(text: str) -> bool:
     try:
         cb.copy(text)
         return True
-    except (pyperclip.PyperclipException, OSError) as exc:
+    except Exception as exc:
         logger.warning("clipboard_write failed: %s", exc)
         return False

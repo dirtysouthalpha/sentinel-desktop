@@ -369,7 +369,7 @@ def read_focused_window_text_with_title() -> tuple[str, str]:
             return (read_screen_text(), "<full screen fallback>")
         img, title = pair
         return (_ocr_image(img), title)
-    except OSError as exc:
+    except (OSError, RuntimeError) as exc:
         logger.debug("read_focused_window_text_with_title failed: %s", exc)
         return ("", "")
 
