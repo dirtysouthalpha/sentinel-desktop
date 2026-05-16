@@ -407,6 +407,7 @@ class AgentEngine:
                 self.scheduler.start()
             except Exception as exc:
                 logger.warning("Scheduler auto-start failed: %s", exc)
+                self.notes.append(f"Scheduler start failed: {exc}")
 
         # Optional: switch to a virtual desktop so agent doesn't interrupt user
         vd = None
@@ -628,7 +629,7 @@ class AgentEngine:
                         screen = capture_screen()
                         mfa_result = self.mfa_detector.check_screen(screen)
                     except Exception as exc:
-                        logger.debug("MFA screen check failed: %s", exc)
+                        logger.warning("MFA screen check failed: %s", exc)
                 if mfa_result.detected:
                     self._mfa_paused = True
                     self.logger.log_event(
@@ -789,7 +790,7 @@ class AgentEngine:
                             messages=messages,
                         )
                     except Exception as exc:
-                        logger.debug("Checkpoint save failed: %s", exc)
+                        logger.warning("Checkpoint save failed: %s", exc)
 
                 # Note actions are no-ops at the executor level; record once
                 # here so we don't double-log.
@@ -806,7 +807,7 @@ class AgentEngine:
                             screenshot=screenshot_b64,
                         )
                     except Exception as exc:
-                        logger.debug("Step callback failed: %s", exc)
+                        logger.warning("Step callback failed: %s", exc)
 
                 # Take new screenshot for next iteration
                 if self.running and self.config.get("auto_screenshot", True):
@@ -1030,7 +1031,7 @@ class AgentEngine:
                     active_win = f"\nActive Window: {w['title']}"
                     break
         except Exception as exc:
-            logger.debug("Failed to detect active window: %s", exc)
+            logger.warning("Failed to detect active window: %s", exc)
         tenant = ""
         if self.config.get("tenant_name"):
             tenant = f"\nTenant: {self.config['tenant_name']}"
@@ -1071,7 +1072,7 @@ class AgentEngine:
                     lines.append(f"  - {action}: {' → '.join(path)}")
             return "\n".join(lines)
         except Exception as exc:
-            logger.debug("Failed to build app profile context: %s", exc)
+            logger.warning("Failed to build app profile context: %s", exc)
             return ""
 
     def _add_vision_message(

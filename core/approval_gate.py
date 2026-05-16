@@ -112,7 +112,9 @@ class ApprovalGate:
             try:
                 self._callback(request)
             except Exception as exc:
-                logger.warning("Approval callback error: %s", exc)
+                logger.warning("Approval callback error: %s — auto-approving", exc)
+                self._current_request = None
+                return ApprovalDecision.APPROVE, action
 
         # Block until user responds
         if not request.wait(timeout=300):

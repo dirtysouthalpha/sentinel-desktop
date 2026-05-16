@@ -137,8 +137,8 @@ class Config:
         """Persist config to disk. Optionally merge in new data first."""
         if data:
             self._data.update(data)
-        Path(self._path).parent.mkdir(parents=True, exist_ok=True)
         try:
+            Path(self._path).parent.mkdir(parents=True, exist_ok=True)
             with Path(self._path).open("w", encoding="utf-8") as fh:
                 json.dump(self._data, fh, indent=2, ensure_ascii=False)
             logger.info("Config saved to %s", self._path)

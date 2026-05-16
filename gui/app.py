@@ -696,8 +696,8 @@ class SentinelApp:
             # Retain reference to prevent GC from collecting the image.
             self._screenshot_ctk_img = ctk_img
             self.screenshot_label.configure(image=ctk_img, text="")
-        except Exception as e:
-            logger.debug(f"Screenshot update failed: {e}")
+        except (ValueError, OSError) as e:
+            logger.warning("Screenshot update failed: %s", e)
 
     # ── Settings ────────────────────────────────────────────────────────
 
@@ -895,8 +895,8 @@ class SentinelApp:
 
             self._screenshot_photo = ImageTk.PhotoImage(combined)
             self.screenshot_label.configure(image=self._screenshot_photo, text="")
-        except Exception as exc:
-            logger.debug("Screenshot diff rendering failed: %s", exc)
+        except (ValueError, OSError) as exc:
+            logger.warning("Screenshot diff rendering failed: %s", exc)
 
     # ── Tray ────────────────────────────────────────────────────────────
 
