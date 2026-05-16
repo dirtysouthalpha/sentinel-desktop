@@ -159,26 +159,36 @@ class HistoryTab(ctk.CTkFrame):
         if hasattr(self.app, "engine") and self.app.engine:
             flog = getattr(self.app.engine, "forensic_log", [])
             if flog:
-                # Group forensic log entries into sessions
-                current_session = {"steps": [], "goal": "", "start": "", "status": ""}
+                # Group forensic log entries into sessions by detecting boundaries.
+                # A new session starts when a "start" action appears or when the
+                # goal text changes between entries.
+                current_session: dict[str, Any] | None = None
+                current_goal: str = ""
                 for entry in flog:
                     step = entry.get("step", {})
                     action = step.get("action", "")
+                    entry_goal = entry.get("goal", "")
+
+                    # Detect session boundaries: "start" action or goal change
+                    if action == "start" or (entry_goal and entry_goal != current_goal):
+                        # Flush the previous session
+                        if current_session is not None and current_session["steps"]:
+                            self._finalize_session(current_session)
+                        current_session = {"steps": [], "goal": "", "start": "", "status": ""}
+                        current_goal = entry_goal
+
+                    if current_session is None:
+                        current_session = {"steps": [], "goal": "", "start": "", "status": ""}
+                        current_goal = entry_goal
+
                     if action == "finish":
                         current_session["status"] = "completed"
                         current_session["summary"] = step.get("summary", "")
                     current_session["steps"].append(entry)
 
-                if current_session["steps"]:
-                    current_session["goal"] = current_session["steps"][0].get("goal", "Unknown")
-                    current_session["start"] = current_session["steps"][0].get("timestamp", "")
-                    if not current_session["status"]:
-                        current_session["status"] = (
-                            "completed"
-                            if current_session["steps"][-1].get("ok", True)
-                            else "failed"
-                        )
-                    self.sessions.append(current_session)
+                # Flush the last session
+                if current_session is not None and current_session["steps"]:
+                    self._finalize_session(current_session)
 
             # Also check notes
             notes = getattr(self.app.engine, "notes", [])
@@ -205,6 +215,16 @@ class HistoryTab(ctk.CTkFrame):
 
         self._apply_filter()
         self._render_sessions()
+
+    def _finalize_session(self, session: dict[str, Any]) -> None:
+        """Fill in derived fields and append to self.sessions."""
+        if not session["goal"]:
+            session["goal"] = session["steps"][0].get("goal", "Unknown")
+        if not session["start"]:
+            session["start"] = session["steps"][0].get("timestamp", "")
+        if not session["status"]:
+            session["status"] = "completed" if session["steps"][-1].get("ok", True) else "failed"
+        self.sessions.append(session)
 
     def _apply_filter(self) -> None:
         """Apply current filter to sessions."""

@@ -408,7 +408,9 @@ class AgentPool:
             from core.engine import AgentEngine
             from core.virtual_desktop import VirtualDesktop
         except ImportError as exc:
-            logger.exception("Worker: failed to import engine/virtual_desktop for session %s", session_id)
+            logger.exception(
+                "Worker: failed to import engine/virtual_desktop for session %s", session_id
+            )
             with self._lock:
                 session = self._sessions.get(session_id)
                 if session is not None:
