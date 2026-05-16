@@ -450,8 +450,9 @@ class TestAgentWorkerFullFlow:
             # Callback was attempted
             bad_callback.assert_called_once()
             # Warning about callback exception was logged
-            mock_logger.warning.assert_any_call(
-                "on_session_complete callback raised: %s",
+            mock_logger.error.assert_any_call(
+                "on_session_complete callback raised %s: %s",
+                "RuntimeError",
                 bad_callback.side_effect,
             )
         finally:

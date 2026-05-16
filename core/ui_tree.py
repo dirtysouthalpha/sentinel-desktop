@@ -81,7 +81,7 @@ def list_controls(
     out: list[dict[str, Any]] = []
     try:
         _walk(root, out, depth=0, max_depth=max_depth, max_results=max_results)
-    except (OSError, AttributeError, RuntimeError) as exc:
+    except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.warning("list_controls failed: %s", exc)
     return out
 
@@ -146,7 +146,7 @@ def click_control(
             else:
                 ctrl.Click(simulateMove=False)
         return (cx, cy)
-    except (OSError, AttributeError, RuntimeError) as exc:
+    except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.warning("click_control failed: %s", exc)
         return None
 
@@ -188,7 +188,7 @@ def set_text(
         # SendKeys with curly-brace escaping for safety.
         _auto.SendKeys(text, waitTime=0.02)  # type: ignore[union-attr]
         return True
-    except (OSError, AttributeError, RuntimeError) as exc:
+    except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.warning("set_text failed: %s", exc)
         return False
 
@@ -211,7 +211,7 @@ def _find_window(window_title: str | None) -> Any | None:
                     return w
             return None
         return _auto.GetForegroundControl()
-    except (OSError, AttributeError, RuntimeError) as exc:
+    except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.debug("_find_window failed: %s", exc)
         return None
 
@@ -237,13 +237,13 @@ def _walk(
                 "is_offscreen": bool(getattr(node, "IsOffscreen", False)),
             }
         )
-    except (OSError, AttributeError, RuntimeError) as exc:
+    except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.debug("_walk: failed to read node properties: %s", exc)
         return
     try:
         for child in node.GetChildren():
             _walk(child, out, depth + 1, max_depth, max_results)
-    except (OSError, AttributeError, RuntimeError) as exc:
+    except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.debug("_walk: failed to get children: %s", exc)
 
 

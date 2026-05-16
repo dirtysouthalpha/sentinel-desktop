@@ -42,7 +42,7 @@ def start_process(path: str, args: list[str] | None = None) -> int | None:
                 stderr_output.decode("utf-8", errors="replace")[:256],
             )
         return proc.pid
-    except (OSError, subprocess.SubprocessError, FileNotFoundError):
+    except (OSError, subprocess.SubprocessError, FileNotFoundError, ValueError):
         logger.exception("start_process(%s) failed", path)
         return None
 
@@ -74,6 +74,6 @@ def kill_process(target: int | str | None) -> bool:
     except psutil.NoSuchProcess:
         logger.debug("Process %s no longer exists", target)
         return False
-    except (psutil.AccessDenied, OSError):
+    except (psutil.AccessDenied, psutil.ZombieProcess, OSError):
         logger.exception("kill_process(%s) failed", target)
         return False

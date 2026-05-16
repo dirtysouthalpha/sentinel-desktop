@@ -404,8 +404,19 @@ class AgentPool:
 
     def _agent_worker(self, session_id: str, desktop_name: str) -> None:
         """Worker function executed inside the agent thread."""
-        from core.engine import AgentEngine
-        from core.virtual_desktop import VirtualDesktop
+        try:
+            from core.engine import AgentEngine
+            from core.virtual_desktop import VirtualDesktop
+        except ImportError as exc:
+            logger.exception("Worker: failed to import engine/virtual_desktop for session %s", session_id)
+            with self._lock:
+                session = self._sessions.get(session_id)
+                if session is not None:
+                    session.status = STATUS_FAILED
+                    session.result = {"error": str(exc), "error_type": "ImportError"}
+                    session.end_time = datetime.now(timezone.utc)
+            self._dispatcher_event.set()
+            return
 
         with self._lock:
             session = self._sessions.get(session_id)
@@ -453,8 +464,15 @@ class AgentPool:
                 session.step_count,
             )
 
-        except (RuntimeError, OSError, ValueError, ImportError, TypeError, AttributeError) as exc:
+        except (RuntimeError, OSError, ValueError, ImportError) as exc:
             logger.exception("Session %s failed with exception", session_id)
+            with self._lock:
+                session.status = STATUS_FAILED
+                session.result = {"error": str(exc), "error_type": type(exc).__name__}
+                session.end_time = datetime.now(timezone.utc)
+        except (TypeError, AttributeError) as exc:
+            # These usually indicate programming bugs — log at error level
+            logger.exception("Session %s failed with unexpected error (possible bug)", session_id)
             with self._lock:
                 session.status = STATUS_FAILED
                 session.result = {"error": str(exc), "error_type": type(exc).__name__}
@@ -485,9 +503,10 @@ class AgentPool:
                     with self._lock:
                         snapshot = session.to_dict()
                     self._on_session_complete(snapshot)
-                except Exception as exc:
-                    logger.warning(
-                        "on_session_complete callback raised: %s",
+                except (RuntimeError, OSError, ValueError, TypeError) as exc:
+                    logger.error(
+                        "on_session_complete callback raised %s: %s",
+                        type(exc).__name__,
                         exc,
                     )
 
