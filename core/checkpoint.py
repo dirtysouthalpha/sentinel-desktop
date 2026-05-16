@@ -61,7 +61,8 @@ def _discover_checkpoint_files(directory: str | None = None) -> list[Path]:
     for f in target.glob("*.json"):
         try:
             mtime = f.stat().st_mtime
-        except OSError:
+        except OSError as exc:
+            logger.warning("Cannot stat checkpoint file %s: %s", f, exc)
             continue
         files.append((mtime, f))
     files.sort(key=lambda pair: pair[0], reverse=True)

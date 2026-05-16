@@ -462,5 +462,5 @@ class ForensicLog:
                 }
             with dest.open("w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
-        except (OSError, TypeError) as exc:
-            logger.warning("Forensic auto-save failed: %s", exc)
+        except (OSError, TypeError):
+            logger.exception("Forensic auto-save failed for run %s", self._run.get("run_id", "???")[:8])

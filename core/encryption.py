@@ -351,7 +351,7 @@ class CredentialVault:
                 raise ValueError("Invalid vault structure")
             return data
         except (OSError, json.JSONDecodeError, ValueError):
-            logger.exception("Failed to load vault from %s", self._path)
+            logger.exception("Failed to load vault from %s — vault data may be lost", self._path)
             return {"version": _VAULT_VERSION, "keys": {}}
 
     def _save(self) -> bool:

@@ -229,8 +229,11 @@ class AuthManager:
 
         logger.info("Loaded %d user(s) from %s", len(self._users), self.config_path)
 
-    def _save(self) -> None:
-        """Persist all users to the JSON config file."""
+    def _save(self) -> bool:
+        """Persist all users to the JSON config file.
+
+        Returns ``True`` on success, ``False`` on failure.
+        """
         payload = {
             "users": [u.to_dict() for u in self._users.values()],
         }
@@ -238,8 +241,10 @@ class AuthManager:
             with open(self.config_path, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, ensure_ascii=False)
             logger.debug("Saved %d user(s) to %s", len(self._users), self.config_path)
+            return True
         except OSError as exc:
             logger.error("Failed to write user config: %s", exc)
+            return False
 
     # ------------------------------------------------------------------
     # User CRUD

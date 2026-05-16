@@ -97,7 +97,7 @@ def system_info() -> dict[str, Any]:
     }
 
 
-def _screen_resolution() -> str:
+def _screen_resolution() -> str:  # noqa: F811 — intentional re-export
     try:
         import pyautogui
 

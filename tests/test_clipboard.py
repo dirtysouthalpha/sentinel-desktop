@@ -42,7 +42,7 @@ class TestClipboardRead:
         import core.clipboard as mod
 
         mod._clipboard = MagicMock()
-        mod._clipboard.paste.side_effect = RuntimeError("boom")
+        mod._clipboard.paste.side_effect = mod._PyperclipException("boom")
         assert clipboard_read() == ""
 
 
@@ -70,7 +70,7 @@ class TestClipboardWrite:
         import core.clipboard as mod
 
         mod._clipboard = MagicMock()
-        mod._clipboard.copy.side_effect = RuntimeError("boom")
+        mod._clipboard.copy.side_effect = mod._PyperclipException("boom")
         assert clipboard_write("test") is False
 
     def test_write_empty_string(self):
@@ -171,9 +171,9 @@ class TestClipboardReadEdgeCases:
         mod._clipboard.paste.return_value = multiline
         assert clipboard_read() == multiline
 
-    def test_read_catches_generic_exception(self):
+    def test_read_catches_pyperclip_exception(self):
         import core.clipboard as mod
 
         mod._clipboard = MagicMock()
-        mod._clipboard.paste.side_effect = OSError("clipboard locked")
+        mod._clipboard.paste.side_effect = mod._PyperclipException("clipboard locked")
         assert clipboard_read() == ""
