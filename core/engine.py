@@ -39,6 +39,7 @@ from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
 from core.tool_schemas import TOOLS as ACTION_TOOLS
 
 if TYPE_CHECKING:
+    from core.agent_pool import AgentPool
     from core.audit_export import AuditExporter
     from core.auth import AuthManager
     from core.encryption import CredentialVault
@@ -383,7 +384,7 @@ class AgentEngine:
         return self._audit_exporter
 
     @property
-    def agent_pool(self):
+    def agent_pool(self) -> AgentPool:
         if self._agent_pool is None:
             from core.agent_pool import AgentPool
 

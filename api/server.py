@@ -69,7 +69,7 @@ class ConfigUpdate(BaseModel):
 
 class ScriptRunRequest(BaseModel):
     path: str
-    params: dict | None = None
+    params: dict[str, Any] | None = None
 
 
 class PowerShellRequest(BaseModel):
@@ -83,7 +83,7 @@ class RecorderStopRequest(BaseModel):
 
 class WorkflowRunRequest(BaseModel):
     path: str
-    variables: dict | None = None
+    variables: dict[str, Any] | None = None
 
 
 class ScheduleAddRequest(BaseModel):
@@ -113,7 +113,7 @@ class PluginReloadRequest(BaseModel):
 
 class AgentSubmitRequest(BaseModel):
     goal: str
-    config: dict | None = None
+    config: dict[str, Any] | None = None
     priority: str = "normal"
 
 
@@ -617,7 +617,7 @@ class SentinelServer:
     async def _handle_auth_login(
         self,
         req: AuthLoginRequest,
-        request: Request = None,  # type: ignore[assignment]
+        request: Request | None = None,
         authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Authenticate and get a session token."""
@@ -694,7 +694,7 @@ class SentinelServer:
             return
         asyncio.run_coroutine_threadsafe(self._async_broadcast(event), loop)
 
-    async def _async_broadcast(self, event: dict[str, Any]):
+    async def _async_broadcast(self, event: dict[str, Any]) -> None:
         with self._ws_lock:
             clients = list(self._ws_clients)
         dead = []

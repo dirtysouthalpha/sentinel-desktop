@@ -200,7 +200,7 @@ class ActionExecutor:
         self._log_entry(action_type, params, result)
         return result
 
-    def _log_entry(self, action_type: str, params: dict, result: dict) -> None:
+    def _log_entry(self, action_type: str, params: dict[str, Any], result: dict[str, Any]) -> None:
         entry = {
             "action": action_type,
             "params": _sanitize_params(params),
@@ -1153,7 +1153,7 @@ class ActionExecutor:
 # ---------------------------------------------------------------------------
 
 
-def _dry_run_result(action_type: str, params: dict) -> dict:
+def _dry_run_result(action_type: str, params: dict[str, Any]) -> dict[str, Any]:
     """Return a synthetic success result for a state-changing action in dry-run mode."""
     preview = ", ".join(f"{k}={v!r}" for k, v in list(params.items())[:4])
     if len(preview) > 200:
@@ -1173,7 +1173,7 @@ def _contains_sensitive(text: str) -> bool:
     return False
 
 
-def _sanitize_params(params: dict) -> dict:
+def _sanitize_params(params: dict[str, Any]) -> dict[str, Any]:
     """Remove potentially large data from params for logging."""
     sanitized = {}
     for k, v in params.items():

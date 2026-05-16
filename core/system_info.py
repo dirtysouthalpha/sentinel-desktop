@@ -20,7 +20,7 @@ def brief_system_info() -> str:
         ram_line = (
             f"RAM: {mem.used / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent}%)"
         )
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("psutil call failed in brief_system_info: %s", exc)
         cpu_pct = 0.0
         cpu_count = 0
@@ -45,7 +45,7 @@ def system_info() -> dict[str, Any]:
         mem_total_gb = round(mem.total / (1024**3), 1)
         mem_used_gb = round(mem.used / (1024**3), 1)
         mem_percent = mem.percent
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("psutil memory call failed in system_info: %s", exc)
         mem_total_gb = 0.0
         mem_used_gb = 0.0
@@ -54,7 +54,7 @@ def system_info() -> dict[str, Any]:
     try:
         cpu_pct = psutil.cpu_percent(interval=0.5)
         cpu_count = psutil.cpu_count()
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("psutil cpu call failed in system_info: %s", exc)
         cpu_pct = 0.0
         cpu_count = 0
@@ -72,12 +72,13 @@ def system_info() -> dict[str, Any]:
         root = "/"
     try:
         disk = psutil.disk_usage(root)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("disk_usage(%s) failed: %s", root, exc)
 
         class _ZeroDisk:
-            total = used = 0
-            percent = 0.0
+            total: int = 0
+            used: int = 0
+            percent: float = 0.0
 
         disk = _ZeroDisk()
     return {
@@ -102,6 +103,6 @@ def _screen_resolution() -> str:
 
         w, h = pyautogui.size()
         return f"{w}x{h}"
-    except Exception as exc:
+    except (ImportError, OSError, RuntimeError) as exc:
         logger.debug("Failed to detect screen resolution: %s", exc)
         return "unknown"
