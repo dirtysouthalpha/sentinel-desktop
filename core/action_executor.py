@@ -927,6 +927,7 @@ class ActionExecutor:
                 "output": f"Process {target} {'killed' if killed else 'not found'}",
             }
         except Exception as exc:
+            logger.warning("close_app failed for %s: %s", target, exc)
             return {
                 "success": False,
                 "output": f"close_app error: {exc}",
@@ -969,6 +970,7 @@ class ActionExecutor:
                 "hint": "Try list_windows() to see what's actually open",
             }
         except Exception as exc:
+            logger.warning("focus_window failed for %r: %s", title, exc)
             return {
                 "success": False,
                 "output": f"focus_window error: {exc}",
@@ -979,6 +981,7 @@ class ActionExecutor:
         try:
             ok = wm.close_window(title)
         except Exception as exc:
+            logger.warning("close_window failed for %r: %s", title, exc)
             return {
                 "success": False,
                 "output": f"close_window error: {exc}",
@@ -991,6 +994,7 @@ class ActionExecutor:
         try:
             windows = wm.list_windows()
         except Exception as exc:
+            logger.warning("list_windows failed: %s", exc)
             return {
                 "success": False,
                 "output": f"list_windows error: {exc}",
@@ -1011,6 +1015,7 @@ class ActionExecutor:
                 "error": "file_not_found",
             }
         except Exception as exc:
+            logger.warning("read_file failed for %r: %s", path, exc)
             return {
                 "success": False,
                 "output": f"read_file error: {exc}",
