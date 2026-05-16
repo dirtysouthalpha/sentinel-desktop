@@ -312,7 +312,10 @@ class SentinelServer:
         self, authorization: str | None = Header(default=None)
     ) -> dict[str, str]:
         self._check_auth(authorization)
-        b64 = capture_to_base64()
+        try:
+            b64 = capture_to_base64()
+        except OSError as exc:
+            raise HTTPException(500, f"Screen capture failed: {exc}") from exc
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
     async def _handle_status(
@@ -729,7 +732,9 @@ class SentinelServer:
         except json.JSONDecodeError:
             logger.debug("WebSocket auth message was not valid JSON — allowing through")
         except Exception:
-            logger.debug("Unexpected error during WebSocket auth handshake", exc_info=True)
+            logger.exception("Unexpected error during WebSocket auth handshake")
+            await ws.close()
+            return
 
         with self._ws_lock:
             self._ws_clients.append(ws)

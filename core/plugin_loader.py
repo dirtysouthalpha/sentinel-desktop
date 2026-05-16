@@ -426,6 +426,8 @@ class PluginLoader:
         # Load outside the lock — load_plugin takes the lock itself.
         try:
             info = self.load_plugin(filepath)
+            if info is None:
+                return False
             return info.get("loaded", False)
         except Exception as exc:
             logger.exception("Failed to reload plugin '%s': %s", name, exc)

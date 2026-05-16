@@ -617,7 +617,7 @@ class ActionExecutor:
                 "error": "press_key_failed",
             }
 
-    def _hotkey(self, *, keys: list, **_) -> dict[str, Any]:
+    def _hotkey(self, *, keys: list[str], **_) -> dict[str, Any]:
         try:
             if self.stealth and stealth_input.is_available():
                 if stealth_input.post_hotkey(keys):
@@ -674,7 +674,10 @@ class ActionExecutor:
                 }
             except Exception as exc:
                 logger.debug("Stealth drag failed, falling back: %s", exc)
-        self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
+        try:
+            self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
+        except Exception as exc:
+            return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
         return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
 
     def _scroll(self, *, amount: int, **_) -> dict[str, Any]:
@@ -723,11 +726,14 @@ class ActionExecutor:
     def _wait(self, *, seconds: float = 1.0, **_) -> dict[str, Any]:
         import time as _time
 
-        seconds = max(0.0, float(seconds))
-        # Cap the wait so a runaway LLM can't lock the agent for hours.
-        seconds = min(seconds, 60.0)
-        _time.sleep(seconds)
-        return {"success": True, "output": f"Waited {seconds}s"}
+        try:
+            seconds = max(0.0, float(seconds))
+            # Cap the wait so a runaway LLM can't lock the agent for hours.
+            seconds = min(seconds, 60.0)
+            _time.sleep(seconds)
+            return {"success": True, "output": f"Waited {seconds}s"}
+        except Exception as exc:
+            return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
     def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_) -> dict[str, Any]:
         try:
@@ -848,9 +854,12 @@ class ActionExecutor:
         # Fallback: PowerShell Start-Process
         import subprocess
 
+        from core.powershell import _ps_escape_single_quoted
+
         try:
+            safe_name = _ps_escape_single_quoted(name)
             subprocess.Popen(
-                ["powershell", "-Command", f"Start-Process '{name}'"],
+                ["powershell", "-Command", f"Start-Process '{safe_name}'"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -1039,7 +1048,7 @@ class ActionExecutor:
     def _start_process(self, *, path: str, args: list | None = None, **_) -> dict[str, Any]:
         try:
             pid = pm.start_process(path, args)
-            return {"success": pid is not None, "output": f"pid={pid}"}
+            return {"success": pid > 0, "output": f"pid={pid}"}
         except Exception as exc:
             return {
                 "success": False,

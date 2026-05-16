@@ -450,7 +450,7 @@ def fetch_models(
         )
         return []
     except Exception as exc:
-        logger.warning("fetch_models(%s): %s", provider_key, exc)
+        logger.error("fetch_models(%s): unexpected %s: %s", provider_key, type(exc).__name__, exc)
         return []
 
     # Parse response — tolerate a few shapes.

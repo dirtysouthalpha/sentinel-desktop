@@ -58,18 +58,21 @@ def _parse_cron_field(field: str, value: int, ranges: tuple[int, int]) -> bool:
         part = part.strip()
         if part == "*":
             return True
-        if part.startswith("*/"):
-            step = int(part[2:])
-            if step <= 0:
-                continue
-            return value % step == 0
-        if "-" in part:
-            a, b = part.split("-", 1)
-            if int(a) <= value <= int(b):
-                return True
-        else:
-            if value == int(part):
-                return True
+        try:
+            if part.startswith("*/"):
+                step = int(part[2:])
+                if step <= 0:
+                    continue
+                return value % step == 0
+            if "-" in part:
+                a, b = part.split("-", 1)
+                if int(a) <= value <= int(b):
+                    return True
+            else:
+                if value == int(part):
+                    return True
+        except (ValueError, ZeroDivisionError):
+            continue
     return False
 
 

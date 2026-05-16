@@ -750,7 +750,11 @@ class SentinelApp:
     def _take_screenshot(self) -> None:
         from core.screenshot import capture_to_base64
 
-        b64 = capture_to_base64()
+        try:
+            b64 = capture_to_base64()
+        except OSError as exc:
+            self._add_chat(f"Screenshot failed: {exc}", "error")
+            return
         self._update_screenshot(b64)
         self._add_chat("Screenshot captured.", "system")
 

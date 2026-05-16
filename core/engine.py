@@ -813,12 +813,17 @@ class AgentEngine:
                     # Prune old screenshots before adding a new one so the
                     # conversation doesn't balloon to dozens of images.
                     self._prune_old_screenshots(messages)
-                    screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
-                    self._add_vision_message(
-                        messages,
-                        screenshot_b64,
-                        f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
-                    )
+                    try:
+                        screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+                    except OSError as exc:
+                        logger.debug("Screen capture failed mid-run: %s", exc)
+                        screenshot_b64 = None
+                    if screenshot_b64:
+                        self._add_vision_message(
+                            messages,
+                            screenshot_b64,
+                            f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
+                        )
 
         except Exception as exc:
             logger.exception("Agent run error")

@@ -94,7 +94,7 @@ class WorkflowEngine:
         if not isinstance(text, str):
             return text
 
-        def _replacer(match: re.Match) -> str:
+        def _replacer(match: re.Match[str]) -> str:
             ref = match.group(1).strip()
 
             # Step output reference: step.s1.output.field or step.s1.success
