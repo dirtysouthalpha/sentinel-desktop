@@ -38,6 +38,8 @@ def _install_headless_stubs() -> None:
 
         pyautogui.PAUSE = 0.1
         pyautogui.FAILSAFE = True
+        pyautogui.FAILSAFE_POINTS = [(0, 0)]
+        pyautogui.FailSafeException = type("FailSafeException", (Exception,), {})
         pyautogui.size = _size
         pyautogui.position = _position
         pyautogui.screenshot = _screenshot

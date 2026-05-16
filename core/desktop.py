@@ -10,6 +10,8 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+_FailSafeException = pyautogui.FailSafeException
+
 pyautogui.PAUSE = 0.1
 pyautogui.FAILSAFE = True
 
@@ -54,7 +56,7 @@ class DesktopController:
     def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> None:
         try:
             pyautogui.click(x=x, y=y, button=button, clicks=clicks)
-        except pyautogui.FailSafeException:
+        except _FailSafeException:
             raise
         except Exception as exc:
             logger.error("click(%d, %d) failed: %s", x, y, exc)
@@ -63,7 +65,7 @@ class DesktopController:
     def double_click(self, x: int, y: int) -> None:
         try:
             pyautogui.doubleClick(x=x, y=y)
-        except pyautogui.FailSafeException:
+        except _FailSafeException:
             raise
         except Exception as exc:
             logger.error("double_click(%d, %d) failed: %s", x, y, exc)
@@ -72,7 +74,7 @@ class DesktopController:
     def right_click(self, x: int, y: int) -> None:
         try:
             pyautogui.rightClick(x=x, y=y)
-        except pyautogui.FailSafeException:
+        except _FailSafeException:
             raise
         except Exception as exc:
             logger.error("right_click(%d, %d) failed: %s", x, y, exc)
@@ -81,7 +83,7 @@ class DesktopController:
     def move_to(self, x: int, y: int, duration: float = 0.3) -> None:
         try:
             pyautogui.moveTo(x=x, y=y, duration=duration)
-        except pyautogui.FailSafeException:
+        except _FailSafeException:
             raise
         except Exception as exc:
             logger.error("move_to(%d, %d) failed: %s", x, y, exc)
@@ -99,7 +101,7 @@ class DesktopController:
         try:
             pyautogui.moveTo(from_x, from_y)
             pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)
-        except pyautogui.FailSafeException:
+        except _FailSafeException:
             raise
         except Exception as exc:
             logger.error("drag(%d,%d -> %d,%d) failed: %s", from_x, from_y, to_x, to_y, exc)
@@ -108,7 +110,7 @@ class DesktopController:
     def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> None:
         try:
             pyautogui.scroll(amount, x=x, y=y)
-        except pyautogui.FailSafeException:
+        except _FailSafeException:
             raise
         except Exception as exc:
             logger.error("scroll(%d) failed: %s", amount, exc)
@@ -193,7 +195,7 @@ class DesktopController:
 DesktopEngine = DesktopController
 
 # Module-level convenience functions
-_ctrl = None
+_ctrl: DesktopController | None = None
 
 
 def _get_controller() -> DesktopController:
