@@ -27,6 +27,15 @@ def history_tab(mock_app):
         tab.sessions = []
         tab.selected_index = -1
         tab.filter_var = MagicMock()
+        tab.session_list = MagicMock()
+        tab.session_list.winfo_children.return_value = []
+        tab.search_entry = MagicMock()
+        tab.search_entry.get.return_value = ""
+        tab.goal_label = MagicMock()
+        tab.status_badge = MagicMock()
+        tab.timeline = MagicMock()
+        tab.timeline.winfo_children.return_value = []
+        tab.output_text = MagicMock()
     return tab
 
 
@@ -168,5 +177,6 @@ class TestHistoryTabReplay:
     def test_replay_valid_session(self, history_tab):
         history_tab.selected_index = 0
         history_tab.sessions = [{"goal": "replay me"}]
+        history_tab.app.goal_entry = MagicMock()
         history_tab._replay_session()
         history_tab.app._on_run.assert_called_once()
