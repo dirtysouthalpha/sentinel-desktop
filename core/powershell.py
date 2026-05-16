@@ -283,7 +283,13 @@ class PowerShellRunner:
             )
         params = ""
         if args:
-            parts = [f'-{k} "{v}"' for k, v in args.items()]
+            parts: list[str] = []
+            for k, v in args.items():
+                try:
+                    escaped_val = _ps_escape_single_quoted(str(v))
+                except (TypeError, ValueError):
+                    escaped_val = "''"
+                parts.append(f"-{k} {escaped_val}")
             params = " " + " ".join(parts)
         return self._run(f'& "{script_path}"{params}')
 
@@ -318,8 +324,8 @@ class PowerShellRunner:
                 stderr="run_inline refused: allow_raw=False on this runner.",
                 objects=[],
             )
-        escaped = script_body.replace('"', '\\"')
-        return self._run(f"{{{escaped}}}")
+        escaped = script_body.replace("'", "''")
+        return self._run(f"& {{ {escaped} }}")
 
     # -- built-in helpers ---------------------------------------------------
 

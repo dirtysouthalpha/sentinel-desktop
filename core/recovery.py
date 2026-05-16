@@ -154,7 +154,7 @@ def _recover_window_not_found(
     # Suggest alt-tab as an alternate action
     alt = {
         "action": "hotkey",
-        "keys": "alt+tab",
+        "keys": ["alt", "tab"],
     }
     return RecoverySuggestion(
         strategy="retry_alternate",

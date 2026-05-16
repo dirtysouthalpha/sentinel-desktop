@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 import pyautogui
-import pytest
 
 from core.desktop import DesktopController
 

@@ -169,7 +169,7 @@ class WorkflowEngine:
                         logger.debug("Non-numeric comparison '%s' <= '%s'", left, right)
                         return False
 
-        return bool(expr)
+        return False
 
     def run_workflow(self, path: str, variables: dict[str, Any] | None = None) -> WorkflowResult:
         """Execute a workflow from a JSON file."""

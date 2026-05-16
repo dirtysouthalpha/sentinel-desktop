@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _SENSITIVE_KEYS = re.compile(
-    r"(password|passwd|pwd|token|key|secret|api_key|apikey|access_key|auth)",
+    r"(^|[_\-])(password|passwd|pwd|token|key|secret|apikey|access_key|auth)($|[_\-])"
+    r"|^(password|passwd|pwd|token|key|secret|apikey|access_key|auth)$",
     re.IGNORECASE,
 )
 
@@ -33,7 +34,10 @@ def _mask_value(value: Any) -> Any:
     if isinstance(value, list):
         return [_mask_value(item) for item in value]
     if isinstance(value, str) and _SENSITIVE_KEYS.search(value):
-        return "***"
+        # Only mask if the string looks like an actual credential value,
+        # not a word that merely contains a sensitive substring (e.g. "keyboard").
+        if len(value) < 64 and not value.startswith(("http://", "https://", "/")):
+            return "***"
     return value
 
 

@@ -151,7 +151,11 @@ class CredentialVault:
             if entry is None:
                 return None
 
-            encrypted = base64.b64decode(entry["encrypted"])
+            try:
+                encrypted = base64.b64decode(entry["encrypted"])
+            except (ValueError, TypeError):
+                logger.exception("Corrupt vault entry for key '%s'", key)
+                return None
             plain = self._decrypt(encrypted)
             if plain is None:
                 return None
@@ -164,8 +168,7 @@ class CredentialVault:
             if key not in keys:
                 return False
             del keys[key]
-            self._save()
-            return True
+            return self._save()
 
     def list_keys(self) -> list[str]:
         """Return a sorted list of all key names in the vault."""

@@ -150,7 +150,7 @@ class ActionExecutor:
                 if asyncio.iscoroutinefunction(handler):
                     result = await handler(self, **params)
                 else:
-                    loop = asyncio.get_event_loop()
+                    loop = asyncio.get_running_loop()
                     result = await loop.run_in_executor(None, lambda: handler(self, **params))
             except Exception as exc:
                 logger.exception("Action '%s' failed", action_type)

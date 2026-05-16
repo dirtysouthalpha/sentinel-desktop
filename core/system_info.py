@@ -76,9 +76,9 @@ def system_info() -> dict[str, Any]:
         logger.warning("disk_usage(%s) failed: %s", root, exc)
 
         class _ZeroDisk:
-            total: int = 0
-            used: int = 0
-            percent: float = 0.0
+            total = 0
+            used = 0
+            percent = 0.0
 
         disk = _ZeroDisk()
     return {

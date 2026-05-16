@@ -688,8 +688,7 @@ def _raise_last_error(api_name: str) -> NoReturn:
     """Raise an ``OSError`` with the Win32 last-error text."""
     import ctypes
 
-    error_code = ctypes.GetLastError()
-    # FormatMessageW is the proper way but a simple code is fine for logging.
+    error_code = ctypes.windll.kernel32.GetLastError()  # type: ignore[attr-defined]
     raise OSError(f"{api_name} failed (Win32 error {error_code})")
 
 
