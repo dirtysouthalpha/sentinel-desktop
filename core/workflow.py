@@ -261,14 +261,14 @@ class WorkflowEngine:
                     body = step_map.get(step.body_step)  # type: ignore[arg-type]
                     if body and items:
                         loop_success = True
-                        for item in items:
+                        for idx, item in enumerate(items):
                             self._variables["loop_item"] = item
-                            self._variables["loop_index"] = items.index(item)
+                            self._variables["loop_index"] = idx
                             try:
                                 lr = self._execute_step(body)
-                                self._step_outputs[f"{step.id}_loop_{items.index(item)}"] = lr
+                                self._step_outputs[f"{step.id}_loop_{idx}"] = lr
                             except Exception as exc:
-                                logger.debug("Loop step %s failed: %s", step.id, exc)
+                                logger.warning("Loop step %s failed: %s", step.id, exc)
                                 if body.error_policy == "stop":
                                     loop_success = False
                                     break
@@ -304,7 +304,7 @@ class WorkflowEngine:
                             retried = True
                             break
                         except Exception as exc:
-                            logger.debug(
+                            logger.warning(
                                 "Step retry %d/%d failed: %s", retries, step.max_retries, exc
                             )
                             time.sleep(0.5)
@@ -407,9 +407,10 @@ class WorkflowEngine:
             msg = self.resolve_variables(step.message, self._variables, self._step_outputs)
             nm.notify(title="Workflow", message=msg, level=step.level)
             return {"success": True, "type": "notify"}
-        except ImportError:
+        except Exception:
+            logger.exception("Notify step failed, logging message instead")
             logger.info("Notify step: %s", step.message)
-            return {"success": True, "type": "notify", "note": "notifications module not available"}
+            return {"success": True, "type": "notify", "note": "notification delivery failed"}
 
     @staticmethod
     def _parse_list(value: Any) -> list[Any]:
@@ -433,7 +434,7 @@ class WorkflowEngine:
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open("w", encoding="utf-8") as f:
                 json.dump(workflow_data, f, indent=2, ensure_ascii=False)
-        except OSError:
+        except (OSError, TypeError):
             logger.exception("Failed to save workflow to %s", path)
             raise
 

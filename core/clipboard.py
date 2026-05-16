@@ -28,15 +28,16 @@ def _get_clipboard() -> Any | None:
     return _clipboard
 
 
-def clipboard_read() -> str:
+def clipboard_read() -> str | None:
+    """Read clipboard contents. Returns None if clipboard is unavailable."""
     cb = _get_clipboard()
     if cb is None:
-        return ""
+        return None
     try:
         return cb.paste()
     except Exception as exc:
         logger.warning("clipboard_read failed: %s", exc)
-        return ""
+        return None
 
 
 def clipboard_write(text: str) -> bool:

@@ -34,7 +34,7 @@ class TestPyperclipImportFallback:
             sys.modules["pyperclip"] = None
             mod = importlib.reload(clipboard_mod)
             mod._clipboard = None
-            assert mod.clipboard_read() == ""
+            assert mod.clipboard_read() is None
         finally:
             if saved_pyperclip is not None:
                 sys.modules["pyperclip"] = saved_pyperclip

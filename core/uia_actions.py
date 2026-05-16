@@ -47,7 +47,7 @@ def _probe_uia() -> bool:
 
         _auto = auto
         _UIA_AVAILABLE = True
-    except Exception as exc:
+    except (ImportError, ModuleNotFoundError, OSError) as exc:
         logger.info("UIA tier disabled — uiautomation not available (%s)", exc)
         _UIA_AVAILABLE = False
     return bool(_UIA_AVAILABLE)
@@ -73,7 +73,7 @@ def _probe_postmessage() -> bool:
         _win32api = win32api
         _win32con = win32con
         _POSTMESSAGE_AVAILABLE = True
-    except Exception as exc:
+    except (ImportError, ModuleNotFoundError, OSError) as exc:
         logger.info("PostMessage tier disabled — win32 not available (%s)", exc)
         _POSTMESSAGE_AVAILABLE = False
     return bool(_POSTMESSAGE_AVAILABLE)

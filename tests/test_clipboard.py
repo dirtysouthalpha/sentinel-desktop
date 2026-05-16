@@ -31,19 +31,19 @@ class TestClipboardRead:
         mod._clipboard.paste.return_value = "hello world"
         assert clipboard_read() == "hello world"
 
-    def test_returns_empty_when_no_clipboard(self):
+    def test_returns_none_when_no_clipboard(self):
         import core.clipboard as mod
 
         mod._clipboard = None
         with patch.object(mod, "pyperclip", None):
-            assert clipboard_read() == ""
+            assert clipboard_read() is None
 
-    def test_returns_empty_on_exception(self):
+    def test_returns_none_on_exception(self):
         import core.clipboard as mod
 
         mod._clipboard = MagicMock()
         mod._clipboard.paste.side_effect = mod._PyperclipException("boom")
-        assert clipboard_read() == ""
+        assert clipboard_read() is None
 
 
 # ---------------------------------------------------------------------------
@@ -176,4 +176,4 @@ class TestClipboardReadEdgeCases:
 
         mod._clipboard = MagicMock()
         mod._clipboard.paste.side_effect = mod._PyperclipException("clipboard locked")
-        assert clipboard_read() == ""
+        assert clipboard_read() is None

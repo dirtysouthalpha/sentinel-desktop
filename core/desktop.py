@@ -20,7 +20,7 @@ class DesktopController:
     def __init__(self) -> None:
         try:
             self._screen_size: tuple[int, int] = pyautogui.size()
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             logger.warning("Could not detect screen size, defaulting to 1920x1080")
             self._screen_size = (1920, 1080)
 
@@ -115,7 +115,11 @@ class DesktopController:
             raise
 
     def get_mouse_position(self) -> tuple[int, int]:
-        return pyautogui.position()
+        try:
+            return pyautogui.position()
+        except Exception as exc:
+            logger.warning("get_mouse_position failed: %s", exc)
+            return (0, 0)
 
     def type_text(self, text: str, interval: float = 0.02) -> None:
         try:
@@ -165,9 +169,12 @@ class DesktopController:
     ) -> tuple[int, int] | None:
         start = time.time()
         while time.time() - start < timeout:
-            pos = self.find_on_screen(template_path, confidence)
-            if pos:
-                return pos
+            try:
+                pos = self.find_on_screen(template_path, confidence)
+                if pos:
+                    return pos
+            except Exception as exc:
+                logger.warning("wait_for_image scan failed: %s", exc)
             time.sleep(interval)
         return None
 
@@ -175,10 +182,11 @@ class DesktopController:
         self, template_path: str, confidence: float = 0.8, button: str = "left"
     ) -> bool:
         pos = self.find_on_screen(template_path, confidence)
-        if pos:
-            self.click(pos[0], pos[1], button=button)
-            return True
-        return False
+        if not pos:
+            logger.debug("click_image: template %s not found", template_path)
+            return False
+        self.click(pos[0], pos[1], button=button)
+        return True
 
 
 # Alias for backward compatibility

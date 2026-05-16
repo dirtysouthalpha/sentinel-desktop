@@ -28,15 +28,15 @@ def list_processes(sort_by: str = "cpu", limit: int = 50) -> list[dict[str, Any]
     return procs[:limit]
 
 
-def start_process(path: str, args: list[str] | None = None) -> int:
-    """Start a process. Returns PID or 0 on failure."""
+def start_process(path: str, args: list[str] | None = None) -> int | None:
+    """Start a process. Returns PID or None on failure."""
     try:
         cmd = [path] + (args or [])
-        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         return proc.pid
     except (OSError, subprocess.SubprocessError, FileNotFoundError):
         logger.exception("start_process(%s) failed", path)
-        return 0
+        return None
 
 
 def kill_process(target: int | str | None) -> bool:

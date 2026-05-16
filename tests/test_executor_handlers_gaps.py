@@ -127,7 +127,7 @@ class TestOpenApp:
     def test_start_returns_none(self, fake_executor, monkeypatch):
         from core import process_manager
 
-        monkeypatch.setattr(process_manager, "start_process", lambda p, a=None: 0)
+        monkeypatch.setattr(process_manager, "start_process", lambda p, a=None: None)
         ex = fake_executor()
         out = ex.execute_sync({"action": "open_app", "path": "bad.exe"})
         assert out["success"] is False

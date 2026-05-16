@@ -1078,7 +1078,9 @@ class ActionExecutor:
     ) -> dict[str, Any]:
         try:
             pid = pm.start_process(path, args)
-            return {"success": pid > 0, "output": f"pid={pid}"}
+            if pid is None:
+                return {"success": False, "output": "Failed to start process"}
+            return {"success": True, "output": f"pid={pid}"}
         except Exception as exc:
             return {
                 "success": False,

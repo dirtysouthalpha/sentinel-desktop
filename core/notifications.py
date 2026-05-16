@@ -325,9 +325,8 @@ class NotificationManager:
                 "info",
             )
         except Exception as exc:
+            logger.warning("test_channel(%r) raised: %s", channel, exc)
             ok, detail = False, str(exc)
-
-        self._last_results[channel] = (ok, detail)
         return ok, detail
 
     def configure(self, channel: str, settings: dict[str, Any]) -> None:

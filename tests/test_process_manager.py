@@ -99,16 +99,16 @@ def test_start_process_with_args():
     mock_popen.assert_called_once_with(
         ["cmd.exe", "/c", "dir"],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
     )
 
 
-def test_start_process_failure_returns_zero():
-    """start_process should return 0 on failure."""
+def test_start_process_failure_returns_none():
+    """start_process should return None on failure."""
     with patch("core.process_manager.subprocess.Popen", side_effect=OSError("nope")):
         pid = process_manager.start_process("/nonexistent")
 
-    assert pid == 0
+    assert pid is None
 
 
 def test_kill_process_by_pid():
@@ -196,15 +196,15 @@ def test_list_processes_skips_access_denided():
 
 
 def test_start_process_file_not_found():
-    """start_process with FileNotFoundError should return 0."""
+    """start_process with FileNotFoundError should return None."""
     with patch("core.process_manager.subprocess.Popen", side_effect=FileNotFoundError("not found")):
         pid = process_manager.start_process("/missing/binary")
 
-    assert pid == 0
+    assert pid is None
 
 
 def test_start_process_subprocess_error():
-    """start_process with SubprocessError should return 0."""
+    """start_process with SubprocessError should return None."""
     import subprocess
 
     with patch(
@@ -213,7 +213,7 @@ def test_start_process_subprocess_error():
     ):
         pid = process_manager.start_process("cmd.exe")
 
-    assert pid == 0
+    assert pid is None
 
 
 def test_kill_process_by_name_empty_after_lower():
