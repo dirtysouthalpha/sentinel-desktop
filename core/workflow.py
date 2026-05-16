@@ -351,13 +351,17 @@ class WorkflowEngine:
         for k, v in step.params.items():
             params[k] = self.resolve_variables(str(v), self._variables, self._step_outputs)
 
-        result = self.script_engine.run_script(path, params or None)
-        return {
-            "success": result.success,
-            "steps_completed": result.steps_completed,
-            "steps_total": result.steps_total,
-            "error": result.error,
-        }
+        try:
+            result = self.script_engine.run_script(path, params or None)
+            return {
+                "success": result.success,
+                "steps_completed": result.steps_completed,
+                "steps_total": result.steps_total,
+                "error": result.error,
+            }
+        except Exception as exc:
+            logger.exception("Script execution failed in step %s", step.id)
+            return {"success": False, "error": f"Script execution failed: {exc}"}
 
     def _exec_action(self, step: WorkflowStep) -> dict[str, Any]:
         """Execute a single action via the action executor."""
@@ -369,7 +373,11 @@ class WorkflowEngine:
             if isinstance(v, str):
                 action[k] = self.resolve_variables(v, self._variables, self._step_outputs)
 
-        return self.executor.execute_sync(action)
+        try:
+            return self.executor.execute_sync(action)
+        except Exception as exc:
+            logger.exception("Action execution failed in step %s", step.id)
+            return {"success": False, "error": f"Action execution failed: {exc}"}
 
     def _exec_sub_workflow(self, step: WorkflowStep) -> dict[str, Any]:
         """Run a nested workflow."""
@@ -378,13 +386,17 @@ class WorkflowEngine:
         for k, v in step.params.items():
             params[k] = self.resolve_variables(str(v), self._variables, self._step_outputs)
 
-        sub_result = self.run_workflow(path, params or None)
-        return {
-            "success": sub_result.success,
-            "steps_completed": sub_result.steps_completed,
-            "steps_total": sub_result.steps_total,
-            "error": sub_result.error,
-        }
+        try:
+            sub_result = self.run_workflow(path, params or None)
+            return {
+                "success": sub_result.success,
+                "steps_completed": sub_result.steps_completed,
+                "steps_total": sub_result.steps_total,
+                "error": sub_result.error,
+            }
+        except Exception as exc:
+            logger.exception("Sub-workflow execution failed in step %s", step.id)
+            return {"success": False, "error": f"Sub-workflow failed: {exc}"}
 
     def _exec_notify(self, step: WorkflowStep) -> dict[str, Any]:
         """Send a notification."""

@@ -428,16 +428,20 @@ class TaskScheduler:
             "task_name": task.get("name", ""),
         }
         if self.engine and hasattr(self.engine, "script_engine"):
-            sr = self.engine.script_engine.run_script(task.get("path", ""), task.get("params", {}))
-            r.update(
-                success=sr.success,
-                error=sr.error,
-                output={
-                    "steps_completed": sr.steps_completed,
-                    "steps_total": sr.steps_total,
-                    "duration_ms": sr.duration_ms,
-                },
-            )
+            try:
+                sr = self.engine.script_engine.run_script(task.get("path", ""), task.get("params", {}))
+                r.update(
+                    success=sr.success,
+                    error=sr.error,
+                    output={
+                        "steps_completed": sr.steps_completed,
+                        "steps_total": sr.steps_total,
+                        "duration_ms": sr.duration_ms,
+                    },
+                )
+            except Exception as exc:
+                r["error"] = f"Script execution failed: {exc}"
+                logger.exception("Script execution failed for task %s", task.get("id"))
         return r
 
     def _exec_goal(self, task: dict[str, Any]) -> dict[str, Any]:
@@ -452,8 +456,12 @@ class TaskScheduler:
         if not goal:
             r["error"] = "Task has no goal specified."
         elif self.engine and hasattr(self.engine, "run"):
-            er = self.engine.run(goal)
-            r.update(success=er.get("success", True), output=er, error=er.get("error"))
+            try:
+                er = self.engine.run(goal)
+                r.update(success=er.get("success", True), output=er, error=er.get("error"))
+            except Exception as exc:
+                r["error"] = f"Goal execution failed: {exc}"
+                logger.exception("Goal execution failed for task %s", task.get("id"))
         return r
 
     def _exec_powershell(self, task: dict[str, Any]) -> dict[str, Any]:
@@ -468,18 +476,22 @@ class TaskScheduler:
             ps = self.engine.powershell
             sp = task.get("path")
             cmd = task.get("command", "")
-            if sp:
-                pr = ps.run_script(sp)
-            elif cmd:
-                pr = ps.run_command(cmd)
-            else:
-                r["error"] = "PowerShell task needs 'path' or 'command'."
-                return r
-            r.update(
-                success=pr.success,
-                error=pr.stderr or None,
-                output={"exit_code": pr.exit_code, "stdout": pr.stdout, "objects": pr.objects},
-            )
+            try:
+                if sp:
+                    pr = ps.run_script(sp)
+                elif cmd:
+                    pr = ps.run_command(cmd)
+                else:
+                    r["error"] = "PowerShell task needs 'path' or 'command'."
+                    return r
+                r.update(
+                    success=pr.success,
+                    error=pr.stderr or None,
+                    output={"exit_code": pr.exit_code, "stdout": pr.stdout, "objects": pr.objects},
+                )
+            except Exception as exc:
+                r["error"] = f"PowerShell execution failed: {exc}"
+                logger.exception("PowerShell execution failed for task %s", task.get("id"))
         return r
 
     def _handle_on_complete(self, task: dict[str, Any], result: dict[str, Any]) -> None:
