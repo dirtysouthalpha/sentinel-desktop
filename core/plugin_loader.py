@@ -275,7 +275,7 @@ class PluginLoader:
             try:
                 info = self.load_plugin(filepath)
                 results.append(info)
-            except Exception as exc:
+            except (ImportError, SyntaxError, AttributeError, OSError) as exc:
                 logger.exception("Failed to load plugin %s", filepath)
                 results.append(
                     {
@@ -319,7 +319,7 @@ class PluginLoader:
 
             try:
                 spec.loader.exec_module(module)  # type: ignore[union-attr]
-            except Exception as exc:
+            except (ImportError, SyntaxError, AttributeError, OSError) as exc:
                 logger.debug("Plugin module exec failed for %s: %s", module_name, exc)
                 # Clean up the broken module reference.
                 sys.modules.pop(module_name, None)
@@ -354,7 +354,7 @@ class PluginLoader:
 
             try:
                 module.register(api)
-            except Exception as exc:
+            except (AttributeError, TypeError, ValueError, RuntimeError) as exc:
                 logger.debug("Plugin register() failed for %s: %s", module_name, exc)
                 sys.modules.pop(module_name, None)
                 raise

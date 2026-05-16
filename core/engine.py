@@ -231,7 +231,7 @@ class AgentEngine:
         config: dict | None = None,
         approval_callback: Callable[[dict], bool] | None = None,
         pre_action_callback: Callable[[dict], None] | None = None,
-    ):
+    ) -> None:
         self.config = config or {}
         self.llm = LLMClient()
         # approval_callback(action_dict) -> bool. When set AND

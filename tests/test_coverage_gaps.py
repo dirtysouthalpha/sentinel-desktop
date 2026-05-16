@@ -1,11 +1,10 @@
 """Tests for uncovered functions: read_screen_text_with_confidence, ActionExecutor.log, LLMClient.chat."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 import core.desktop as desktop_mod
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -123,7 +122,11 @@ class TestReadScreenTextWithConfidence:
         from core import ocr
 
         monkeypatch.setattr(ocr, "_have_tesseract", lambda: True)
-        monkeypatch.setattr(ocr, "capture_screen", lambda monitor=None: (_ for _ in ()).throw(RuntimeError("no screen")))
+        monkeypatch.setattr(
+            ocr,
+            "capture_screen",
+            lambda monitor=None: (_ for _ in ()).throw(RuntimeError("no screen")),
+        )
 
         text, conf = ocr.read_screen_text_with_confidence()
         assert text == ""
@@ -135,6 +138,7 @@ class TestReadScreenTextWithConfidence:
         monkeypatch.setattr(ocr, "_have_tesseract", lambda: True)
 
         captured_monitor = {}
+
         def mock_capture(monitor=None):
             captured_monitor["value"] = monitor
             return MagicMock()
@@ -143,7 +147,15 @@ class TestReadScreenTextWithConfidence:
         monkeypatch.setattr(
             ocr,
             "_ocr_image_with_confidence",
-            lambda img, preprocess=True: ("", {"avg_confidence": 0, "word_count": 0, "low_confidence_words": [], "low_confidence_regions": []}),
+            lambda img, preprocess=True: (
+                "",
+                {
+                    "avg_confidence": 0,
+                    "word_count": 0,
+                    "low_confidence_words": [],
+                    "low_confidence_regions": [],
+                },
+            ),
         )
 
         ocr.read_screen_text_with_confidence(monitor=2)
@@ -176,7 +188,9 @@ class TestLLMClientChatOpenAI:
 
         from core.llm_client import LLMClient
 
-        tool_calls = [{"id": "tc1", "type": "function", "function": {"name": "click", "arguments": "{}"}}]
+        tool_calls = [
+            {"id": "tc1", "type": "function", "function": {"name": "click", "arguments": "{}"}}
+        ]
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -225,7 +239,16 @@ class TestLLMClientChatOpenAI:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "choices": [{"message": {"content": [{"type": "text", "text": "Part1"}, {"type": "text", "text": "Part2"}]}}],
+            "choices": [
+                {
+                    "message": {
+                        "content": [
+                            {"type": "text", "text": "Part1"},
+                            {"type": "text", "text": "Part2"},
+                        ]
+                    }
+                }
+            ],
         }
 
         monkeypatch.setattr("requests.post", lambda *a, **kw: mock_response)
@@ -239,6 +262,7 @@ class TestLLMClientChatOpenAI:
         from core.llm_client import LLMClient
 
         captured = {}
+
         def mock_post(url, **kw):
             captured["payload"] = kw.get("json", {})
             mock_response = MagicMock()
@@ -259,9 +283,9 @@ class TestLLMClientChatOpenAI:
 
     def test_chat_uses_custom_url(self, monkeypatch):
         from core.llm_client import LLMClient
-        from core.provider_registry import PROVIDERS
 
         captured = {}
+
         def mock_post(url, **kw):
             captured["url"] = url
             mock_response = MagicMock()

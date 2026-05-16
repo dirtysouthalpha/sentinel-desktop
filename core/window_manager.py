@@ -20,9 +20,16 @@ if platform.system() == "Windows":
         HAS_PGW = True
     except ImportError:
         HAS_PGW = False
+    try:
+        import pywintypes
+
+        _Win32Error = pywintypes.error  # type: ignore[attr-defined]
+    except ImportError:
+        _Win32Error = OSError  # type: ignore[misc,assignment]
 else:
     HAS_WIN32 = False
     HAS_PGW = False
+    _Win32Error = OSError  # type: ignore[misc,assignment]
 
 
 def list_windows() -> list[dict[str, Any]]:
@@ -62,7 +69,7 @@ def list_windows() -> list[dict[str, Any]]:
                             "is_focused": w.isActive,
                         }
                     )
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("list_windows via pygetwindow failed: %s", e)
     else:
         logger.warning("No window management library available")
@@ -99,11 +106,11 @@ def focus_window(title: str) -> bool:
 
                 ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)  # Alt down
                 ctypes.windll.user32.keybd_event(0x12, 0, 0x0002, 0)  # Alt up
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("Alt-tap trick failed: %s", exc)
             win32gui.SetForegroundWindow(hwnd)
             return True
-        except Exception as exc:
+        except _Win32Error as exc:
             logger.debug("focus_window(%s) failed: %s", title, exc)
             return False
     elif HAS_PGW:
@@ -112,7 +119,7 @@ def focus_window(title: str) -> bool:
             if wins:
                 wins[0].activate()
                 return True
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("pgw focus_window(%s) failed: %s", title, exc)
     return False
 
@@ -143,7 +150,7 @@ def get_focused_window_rect() -> tuple[int, int, int, int] | None:
             if w <= 0 or h <= 0:
                 return None
             return (x, y, w, h)
-        except Exception as exc:
+        except _Win32Error as exc:
             logger.debug("get_focused_window_rect failed: %s", exc)
             return None
     if HAS_PGW:
@@ -151,7 +158,7 @@ def get_focused_window_rect() -> tuple[int, int, int, int] | None:
             w = pgw.getActiveWindow()
             if w and w.width > 0 and w.height > 0:
                 return (w.left, w.top, w.width, w.height)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("pgw get_focused_window_rect failed: %s", exc)
     return None
 
@@ -173,7 +180,7 @@ def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
                 focused_title = win32gui.GetWindowText(hwnd) or ""
                 r = win32gui.GetWindowRect(hwnd)
                 focused_rect = (r[0], r[1], r[2] - r[0], r[3] - r[1])
-        except Exception as exc:
+        except _Win32Error as exc:
             logger.debug("get_target_window_rect foreground lookup failed: %s", exc)
     # If the foreground IS another app, use it.
     if focused_rect and not _is_self_window(focused_title):
@@ -191,7 +198,7 @@ def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
                 # Skip tiny utility windows (tray notifications etc.).
                 continue
             candidates.append(w)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.debug("get_target_window_rect candidate scan failed: %s", exc)
 
     # Prefer a candidate that was focused; failing that, the first.
@@ -229,7 +236,7 @@ def get_window_rect(title: str) -> tuple[int, int, int, int] | None:
                                 rect = (w2["x"], w2["y"], w2["width"], w2["height"])
                                 break
                 return rect
-    except Exception as exc:
+    except (_Win32Error, OSError) as exc:
         logger.debug("get_window_rect via list_windows failed: %s", exc)
     return None
 
@@ -257,7 +264,7 @@ def restore_window_hwnd(hwnd: int) -> bool:
         # SW_RESTORE = 9; activates and restores from minimized/maximized.
         win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
         return True
-    except Exception as exc:
+    except _Win32Error as exc:
         logger.debug("restore_window_hwnd(%s) failed: %s", hwnd, exc)
         return False
 
@@ -298,7 +305,7 @@ def close_window(title: str) -> bool:
         try:
             win32gui.EnumWindows(_find, None)
             return found
-        except Exception as exc:
+        except _Win32Error as exc:
             logger.debug("close_window(%s) enum failed: %s", title, exc)
             return False
     elif HAS_PGW:
@@ -307,6 +314,6 @@ def close_window(title: str) -> bool:
             if wins:
                 wins[0].close()
                 return True
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("pgw close_window(%s) failed: %s", title, exc)
     return False
