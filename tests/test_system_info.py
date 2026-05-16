@@ -151,6 +151,188 @@ class TestBriefSystemInfoPsutilFailure:
         assert "CPU: 0.0% used, 0 cores" in result
 
 
+class TestBriefSystemInfoSocketFailure:
+    """Cover lines 30-31: socket.gethostname() OSError in brief_system_info."""
+
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    @patch("core.system_info.socket.gethostname", side_effect=OSError("no network"))
+    def test_hostname_falls_back_to_unknown(self, mock_socket, mock_psutil, mock_screen):
+        mock_mem = MagicMock()
+        mock_mem.used = 4 * 1024**3
+        mock_mem.total = 8 * 1024**3
+        mock_mem.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_mem
+        mock_psutil.cpu_percent.return_value = 10.0
+        mock_psutil.cpu_count.return_value = 4
+
+        result = brief_system_info()
+        assert "Hostname: unknown" in result
+        # Confirm the rest of the output is still populated correctly
+        assert "CPU:" in result
+        assert "RAM:" in result
+
+
+class TestBriefSystemInfoPsutilAndSocketFailure:
+    """Cover both psutil and socket failures in brief_system_info."""
+
+    @patch("core.system_info._screen_resolution", return_value="unknown")
+    @patch("core.system_info.psutil")
+    @patch("core.system_info.socket.gethostname", side_effect=OSError("DNS fail"))
+    def test_psutil_and_socket_both_fail(self, mock_socket, mock_psutil, mock_screen):
+        mock_psutil.virtual_memory.side_effect = RuntimeError("access denied")
+        mock_psutil.cpu_percent.return_value = 0.0
+        mock_psutil.cpu_count.return_value = 0
+
+        result = brief_system_info()
+        assert "RAM: unavailable" in result
+        assert "Hostname: unknown" in result
+        assert "CPU: 0.0% used, 0 cores" in result
+        assert "Screen: unknown" in result
+
+
+class TestSystemInfoMemoryFailure:
+    """Cover lines 48-52: psutil.virtual_memory() failure in system_info."""
+
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    def test_memory_failure_returns_zeroes(self, mock_psutil, mock_screen):
+        mock_psutil.virtual_memory.side_effect = RuntimeError("driver error")
+        mock_psutil.cpu_percent.return_value = 15.0
+        mock_psutil.cpu_count.return_value = 6
+        mock_disk = MagicMock()
+        mock_disk.total = 200 * 1024**3
+        mock_disk.used = 100 * 1024**3
+        mock_disk.percent = 50.0
+        mock_psutil.disk_usage.return_value = mock_disk
+
+        result = system_info()
+        assert result["memory_total_gb"] == 0.0
+        assert result["memory_used_gb"] == 0.0
+        assert result["memory_percent"] == 0.0
+        # Other fields should still be populated
+        assert result["cpu_percent"] == 15.0
+        assert result["cpu_count"] == 6
+        assert result["disk_total_gb"] == 200.0
+
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    def test_memory_oserror_returns_zeroes(self, mock_psutil, mock_screen):
+        mock_psutil.virtual_memory.side_effect = OSError("permission denied")
+        mock_psutil.cpu_percent.return_value = 5.0
+        mock_psutil.cpu_count.return_value = 2
+        mock_disk = MagicMock()
+        mock_disk.total = 100 * 1024**3
+        mock_disk.used = 50 * 1024**3
+        mock_disk.percent = 50.0
+        mock_psutil.disk_usage.return_value = mock_disk
+
+        result = system_info()
+        assert result["memory_total_gb"] == 0.0
+        assert result["memory_used_gb"] == 0.0
+        assert result["memory_percent"] == 0.0
+
+
+class TestSystemInfoCpuFailure:
+    """Cover lines 57-60: psutil cpu_percent/cpu_count failure in system_info."""
+
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    def test_cpu_failure_returns_zeroes(self, mock_psutil, mock_screen):
+        mock_mem = MagicMock()
+        mock_mem.total = 16 * 1024**3
+        mock_mem.used = 8 * 1024**3
+        mock_mem.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_mem
+        mock_psutil.cpu_percent.side_effect = RuntimeError("kernel error")
+        mock_disk = MagicMock()
+        mock_disk.total = 300 * 1024**3
+        mock_disk.used = 150 * 1024**3
+        mock_disk.percent = 50.0
+        mock_psutil.disk_usage.return_value = mock_disk
+
+        result = system_info()
+        assert result["cpu_percent"] == 0.0
+        assert result["cpu_count"] == 0
+        # Memory and disk should still work
+        assert result["memory_total_gb"] == 16.0
+        assert result["disk_total_gb"] == 300.0
+
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    def test_cpu_oserror_returns_zeroes(self, mock_psutil, mock_screen):
+        mock_mem = MagicMock()
+        mock_mem.total = 8 * 1024**3
+        mock_mem.used = 4 * 1024**3
+        mock_mem.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_mem
+        mock_psutil.cpu_percent.side_effect = OSError("syscall failed")
+        mock_disk = MagicMock()
+        mock_disk.total = 100 * 1024**3
+        mock_disk.used = 50 * 1024**3
+        mock_disk.percent = 50.0
+        mock_psutil.disk_usage.return_value = mock_disk
+
+        result = system_info()
+        assert result["cpu_percent"] == 0.0
+        assert result["cpu_count"] == 0
+
+
+class TestSystemInfoSocketFailure:
+    """Cover lines 64-66: socket.gethostname() failure in system_info."""
+
+    @patch("core.system_info._screen_resolution", return_value="1920x1080")
+    @patch("core.system_info.psutil")
+    @patch("core.system_info.socket.gethostname", side_effect=OSError("unreachable"))
+    def test_hostname_falls_back_to_unknown(self, mock_socket, mock_psutil, mock_screen):
+        mock_mem = MagicMock()
+        mock_mem.total = 16 * 1024**3
+        mock_mem.used = 8 * 1024**3
+        mock_mem.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_mem
+        mock_psutil.cpu_percent.return_value = 10.0
+        mock_psutil.cpu_count.return_value = 4
+        mock_disk = MagicMock()
+        mock_disk.total = 200 * 1024**3
+        mock_disk.used = 100 * 1024**3
+        mock_disk.percent = 50.0
+        mock_psutil.disk_usage.return_value = mock_disk
+
+        result = system_info()
+        assert result["hostname"] == "unknown"
+        # Everything else should still be populated
+        assert result["memory_total_gb"] == 16.0
+        assert result["cpu_count"] == 4
+        assert result["disk_total_gb"] == 200.0
+
+
+class TestSystemInfoAllFailures:
+    """Cover combined failure of memory, cpu, socket, and disk in system_info."""
+
+    @patch("core.system_info._screen_resolution", return_value="unknown")
+    @patch("core.system_info.psutil")
+    @patch("core.system_info.socket.gethostname", side_effect=OSError("no network"))
+    def test_everything_fails_gracefully(self, mock_socket, mock_psutil, mock_screen):
+        mock_psutil.virtual_memory.side_effect = RuntimeError("unavailable")
+        mock_psutil.cpu_percent.side_effect = OSError("denied")
+        mock_psutil.disk_usage.side_effect = PermissionError("no access")
+
+        result = system_info()
+        assert result["memory_total_gb"] == 0.0
+        assert result["memory_used_gb"] == 0.0
+        assert result["memory_percent"] == 0.0
+        assert result["cpu_percent"] == 0.0
+        assert result["cpu_count"] == 0
+        assert result["hostname"] == "unknown"
+        assert result["disk_total_gb"] == 0
+        assert result["disk_used_gb"] == 0
+        assert result["disk_percent"] == 0.0
+        assert result["screen_resolution"] == "unknown"
+        # os and arch should still be present (platform calls don't fail)
+        assert "os" in result
+        assert "arch" in result
+
+
 class TestSystemInfoNonWindows:
     @patch("core.system_info.platform.system", return_value="Linux")
     @patch("core.system_info._screen_resolution", return_value="1920x1080")
