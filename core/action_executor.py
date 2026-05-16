@@ -233,6 +233,7 @@ class ActionExecutor:
             # PostMessage failed; fall through to physical click.
             self._desktop.click(sx, sy, button=button, clicks=clicks)
         except Exception as exc:
+            logger.warning("click failed at (%s,%s): %s", sx, sy, exc)
             return {
                 "success": False,
                 "output": f"click error at ({sx},{sy}): {exc}",
@@ -298,6 +299,7 @@ class ActionExecutor:
                 "hint": "Try list_controls() to find the element, or use click(x,y) with coordinates from the screenshot",
             }
         except Exception as exc:
+            logger.warning("click_text failed: %s", exc)
             return {
                 "success": False,
                 "output": f"click_text error: {exc}",
@@ -350,6 +352,7 @@ class ActionExecutor:
                 )
             return result
         except Exception as exc:
+            logger.warning("read_text failed: %s", exc)
             return {
                 "success": False,
                 "output": f"read_text error: {exc}",
@@ -375,6 +378,7 @@ class ActionExecutor:
                 )
             return result
         except Exception as exc:
+            logger.warning("read_window failed for %r: %s", title, exc)
             return {
                 "success": False,
                 "output": f"read_window error: {exc}",
@@ -437,6 +441,7 @@ class ActionExecutor:
                 "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
             }
         except Exception as exc:
+            logger.warning("click_control failed: %s", exc)
             return {
                 "success": False,
                 "output": f"click_control error: {exc}",
@@ -471,6 +476,7 @@ class ActionExecutor:
             ]
             return {"success": True, "output": slim, "count": len(slim)}
         except Exception as exc:
+            logger.warning("list_controls failed: %s", exc)
             return {
                 "success": False,
                 "output": f"list_controls error: {exc}",
@@ -549,6 +555,7 @@ class ActionExecutor:
                 "hint": "Try click_text() on the field label, then type_text()",
             }
         except Exception as exc:
+            logger.warning("set_text failed: %s", exc)
             return {
                 "success": False,
                 "output": f"set_text error: {exc}",
@@ -577,6 +584,7 @@ class ActionExecutor:
                 "output": f"Template {'found and clicked' if found else 'not found'}",
             }
         except Exception as exc:
+            logger.warning("click_image failed for %r: %s", template_path, exc)
             return {
                 "success": False,
                 "output": f"click_image error: {exc}",
@@ -610,6 +618,7 @@ class ActionExecutor:
                     "fallback": "clipboard",
                 }
             except Exception as exc2:
+                logger.warning("clipboard type fallback failed: %s", exc2)
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
     def _press_key(self, *, key: str, **kwargs: Any) -> dict[str, Any]:
@@ -732,6 +741,7 @@ class ActionExecutor:
                 "error": "image_not_found",
             }
         except Exception as exc:
+            logger.warning("find_image failed for %r: %s", template_path, exc)
             return {
                 "success": False,
                 "output": f"find_image error: {exc}",
@@ -748,6 +758,7 @@ class ActionExecutor:
             _time.sleep(seconds)
             return {"success": True, "output": f"Waited {seconds}s"}
         except Exception as exc:
+            logger.warning("wait failed: %s", exc)
             return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
     def _wait_for_image(
@@ -763,6 +774,7 @@ class ActionExecutor:
                 }
             return {"success": False, "output": f"Timed out after {timeout}s", "error": "timeout"}
         except Exception as exc:
+            logger.warning("wait_for_image failed for %r: %s", template_path, exc)
             return {
                 "success": False,
                 "output": f"wait_for_image error: {exc}",
@@ -845,6 +857,7 @@ class ActionExecutor:
                 "elapsed": result.elapsed,
             }
         except Exception as exc:
+            logger.warning("wait_for_text failed for %r: %s", text, exc)
             return {
                 "success": False,
                 "output": f"Wait-for-text fallback: {exc}",
@@ -858,6 +871,7 @@ class ActionExecutor:
                 return {"success": True, "output": f"Started process (pid {pid})"}
             return {"success": False, "output": "Failed to start process"}
         except Exception as exc:
+            logger.warning("open_app failed for %r: %s", path, exc)
             return {
                 "success": False,
                 "output": f"open_app error: {exc}",
