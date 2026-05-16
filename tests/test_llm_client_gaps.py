@@ -140,7 +140,7 @@ class TestRetriesExhaustedConnectionError:
         mock_post.side_effect = requests.exceptions.RequestException("generic")
 
         client = LLMClient()
-        with pytest.raises(LLMError, match="request failed for unknown reasons"):
+        with pytest.raises(LLMError, match="RequestException: generic"):
             client._post_with_retry(
                 "https://api.example.com/v1/chat/completions",
                 {"Content-Type": "application/json"},

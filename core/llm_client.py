@@ -436,6 +436,15 @@ class LLMClient:
                     max_retries + 1,
                     exc,
                 )
+            except requests.exceptions.RequestException as exc:
+                last_exc = exc
+                logger.warning(
+                    "%s: request error (attempt %d/%d): %s",
+                    provider_label,
+                    attempt + 1,
+                    max_retries + 1,
+                    exc,
+                )
             else:
                 if resp.status_code < 400:
                     try:
