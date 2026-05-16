@@ -295,7 +295,15 @@ class SentinelServer:
         else:
             payload = {"action": "note", "text": text}
 
-        return engine.executor.execute_sync(payload)
+        try:
+            return engine.executor.execute_sync(payload)
+        except (ValueError, KeyError) as exc:
+            raise HTTPException(400, f"Invalid action payload: {exc}") from exc
+        except OSError as exc:
+            raise HTTPException(500, f"Action execution failed: {exc}") from exc
+        except Exception as exc:
+            logger.exception("Unexpected error executing command")
+            raise HTTPException(500, f"Internal error: {exc}") from exc
 
     async def _handle_stop(
         self, authorization: str | None = Header(default=None)
@@ -314,7 +322,7 @@ class SentinelServer:
         self._check_auth(authorization)
         try:
             b64 = capture_to_base64()
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Screen capture failed: {exc}") from exc
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
@@ -368,7 +376,10 @@ class SentinelServer:
         dump = getattr(req, "model_dump", None) or req.dict
         for k, v in dump(exclude_none=True).items():
             cfg[k] = v
-        self.config.save(cfg)
+        try:
+            self.config.save(cfg)
+        except OSError as exc:
+            raise HTTPException(500, f"Failed to save config: {exc}") from exc
         return {"status": "saved"}
 
     async def _handle_log(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
@@ -407,7 +418,11 @@ class SentinelServer:
         from core.script_engine import ScriptEngine
 
         engine = ScriptEngine(self.engine.executor)
-        result = engine.run_script(req.path, req.params)
+        try:
+            result = engine.run_script(req.path, req.params)
+        except (OSError, ValueError) as exc:
+            logger.exception("Script execution failed")
+            raise HTTPException(500, f"Script execution failed: {exc}") from exc
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,
@@ -498,7 +513,11 @@ class SentinelServer:
         from core.workflow import WorkflowEngine
 
         wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
-        result = wf.run_workflow(req.path, req.variables)
+        try:
+            result = wf.run_workflow(req.path, req.variables)
+        except (OSError, ValueError) as exc:
+            logger.exception("Workflow execution failed")
+            raise HTTPException(500, f"Workflow execution failed: {exc}") from exc
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,
@@ -655,9 +674,14 @@ class SentinelServer:
         self, req: AuthLogoutRequest, authorization: str | None = Header(default=None)
     ) -> dict[str, str]:
         """Revoke a session token."""
+        self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        self.engine.auth_manager.revoke_session(req.token)
+        try:
+            self.engine.auth_manager.revoke_session(req.token)
+        except (OSError, ValueError) as exc:
+            logger.exception("Logout failed")
+            raise HTTPException(500, f"Logout failed: {exc}") from exc
         return {"status": "logged_out"}
 
     async def _handle_auth_users(
@@ -667,7 +691,11 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        return {"users": self.engine.auth_manager.list_users()}
+        try:
+            return {"users": self.engine.auth_manager.list_users()}
+        except (OSError, ValueError) as exc:
+            logger.exception("Failed to list users")
+            raise HTTPException(500, f"Failed to list users: {exc}") from exc
 
     async def _handle_audit_export(
         self, authorization: str | None = Header(default=None), format: str = "html"
@@ -693,7 +721,11 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        return {"keys": self.engine.vault.list_keys()}
+        try:
+            return {"keys": self.engine.vault.list_keys()}
+        except (OSError, ValueError) as exc:
+            logger.exception("Failed to list vault keys")
+            raise HTTPException(500, f"Failed to list vault keys: {exc}") from exc
 
     # ── WebSocket broadcasting ──────────────────────────────────────
 
