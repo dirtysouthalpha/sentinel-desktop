@@ -15,7 +15,10 @@ import logging
 from collections.abc import Callable
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from gui.app import SentinelApp
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +117,7 @@ class CommandPalette:
 # ── Default command registry ────────────────────────────────────────
 
 
-def create_default_palette(app: Any) -> CommandPalette:
+def create_default_palette(app: SentinelApp) -> CommandPalette:
     """
     Create and register all default commands for the Sentinel Desktop app.
     `app` is the SentinelApp instance (gui/app.py).
