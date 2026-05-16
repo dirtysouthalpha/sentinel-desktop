@@ -548,7 +548,9 @@ class ActionExecutor:
                 "error": "set_text_failed",
             }
 
-    def _click_image(self, *, template_path: str, confidence: float = 0.8, **kwargs: Any) -> dict[str, Any]:
+    def _click_image(
+        self, *, template_path: str, confidence: float = 0.8, **kwargs: Any
+    ) -> dict[str, Any]:
         # Find the template position; click via stealth if enabled so the
         # cursor stays put.
         try:
@@ -707,7 +709,9 @@ class ActionExecutor:
                 "screenshot": b64,
             }
 
-    def _find_image(self, *, template_path: str, confidence: float = 0.8, **kwargs: Any) -> dict[str, Any]:
+    def _find_image(
+        self, *, template_path: str, confidence: float = 0.8, **kwargs: Any
+    ) -> dict[str, Any]:
         try:
             pos = find_template(template_path, confidence)
             if pos:
@@ -740,7 +744,9 @@ class ActionExecutor:
         except Exception as exc:
             return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
-    def _wait_for_image(self, *, template_path: str, timeout: int = 30, **kwargs: Any) -> dict[str, Any]:
+    def _wait_for_image(
+        self, *, template_path: str, timeout: int = 30, **kwargs: Any
+    ) -> dict[str, Any]:
         try:
             pos = wait_for_template(template_path, float(timeout))
             if pos:
@@ -782,7 +788,12 @@ class ActionExecutor:
             return {"success": False, "output": f"Smart wait fallback: {exc}"}
 
     def _wait_for_stable(
-        self, *, timeout: float = 10, stable_time: float = 1.5, region: list | None = None, **kwargs: Any
+        self,
+        *,
+        timeout: float = 10,
+        stable_time: float = 1.5,
+        region: list | None = None,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Wait until the screen stops changing."""
         try:
@@ -879,7 +890,9 @@ class ActionExecutor:
         result["hint"] = "Try open_app() with the full executable path"
         return result
 
-    def _close_app(self, *, name: str | None = None, pid: int | None = None, **kwargs: Any) -> dict[str, Any]:
+    def _close_app(
+        self, *, name: str | None = None, pid: int | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         target = pid or name
         if target is None:
             return {
@@ -1012,48 +1025,54 @@ class ActionExecutor:
     def _clipboard_read(self, **kwargs: Any) -> dict[str, Any]:
         try:
             text = clip.clipboard_read()
-            return {"success": text is not None, "output": text or ""}
         except Exception as exc:
             return {
                 "success": False,
                 "output": f"clipboard_read error: {exc}",
                 "error": "clipboard_failed",
             }
+        else:
+            return {"success": text is not None, "output": text or ""}
 
     def _clipboard_write(self, *, text: str, **kwargs: Any) -> dict[str, Any]:
         try:
             ok = clip.clipboard_write(text)
-            return {"success": ok, "output": f"Clipboard {'updated' if ok else 'failed'}"}
         except Exception as exc:
             return {
                 "success": False,
                 "output": f"clipboard_write error: {exc}",
                 "error": "clipboard_failed",
             }
+        else:
+            return {"success": ok, "output": f"Clipboard {'updated' if ok else 'failed'}"}
 
     def _system_info(self, **kwargs: Any) -> dict[str, Any]:
         try:
             info = sysinfo.system_info()
-            return {"success": True, "output": info}
         except Exception as exc:
             return {
                 "success": False,
                 "output": f"system_info error: {exc}",
                 "error": "system_info_failed",
             }
+        else:
+            return {"success": True, "output": info}
 
     def _list_processes(self, **kwargs: Any) -> dict[str, Any]:
         try:
             procs = pm.list_processes()
-            return {"success": True, "output": procs[:100]}
         except Exception as exc:
             return {
                 "success": False,
                 "output": f"list_processes error: {exc}",
                 "error": "list_processes_failed",
             }
+        else:
+            return {"success": True, "output": procs[:100]}
 
-    def _start_process(self, *, path: str, args: list | None = None, **kwargs: Any) -> dict[str, Any]:
+    def _start_process(
+        self, *, path: str, args: list | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         try:
             pid = pm.start_process(path, args)
             return {"success": pid > 0, "output": f"pid={pid}"}
@@ -1110,7 +1129,9 @@ class ActionExecutor:
                 "error": "powershell_failed",
             }
 
-    def _run_script(self, *, path: str, params: dict | None = None, **kwargs: Any) -> dict[str, Any]:
+    def _run_script(
+        self, *, path: str, params: dict | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         """Replay a recorded script from a JSON file."""
         try:
             from core.script_engine import ScriptEngine
