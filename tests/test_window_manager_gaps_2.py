@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from core.window_manager import (
+    _Win32Error,
     close_window,
     focus_window,
     get_focused_window_rect,
@@ -56,7 +57,7 @@ class TestFocusWindowWin32:
             callback(hwnd, None)
 
         mock_gui.EnumWindows.side_effect = fake_enum
-        mock_gui.SetForegroundWindow.side_effect = RuntimeError("focus fail")
+        mock_gui.SetForegroundWindow.side_effect = _Win32Error(0, "focus fail")
         result = focus_window("Chrome")
         assert result is False
 
@@ -110,7 +111,7 @@ class TestGetFocusedWindowRectWin32:
     @patch("core.window_manager.HAS_WIN32", True)
     @patch("core.window_manager.win32gui")
     def test_win32_exception(self, mock_gui):
-        mock_gui.GetForegroundWindow.side_effect = RuntimeError("fail")
+        mock_gui.GetForegroundWindow.side_effect = _Win32Error(0, "fail")
         result = get_focused_window_rect()
         assert result is None
 
@@ -202,7 +203,7 @@ class TestGetTargetWindowRectWin32:
     @patch("core.window_manager.win32gui")
     @patch("core.window_manager.list_windows", return_value=[])
     def test_win32_exception_returns_none(self, mock_lw, mock_gui):
-        mock_gui.GetForegroundWindow.side_effect = RuntimeError("COM fail")
+        mock_gui.GetForegroundWindow.side_effect = _Win32Error(0, "COM fail")
         result = get_target_window_rect()
         assert result is None
 
@@ -210,7 +211,7 @@ class TestGetTargetWindowRectWin32:
 class TestGetWindowRectEdgeCases:
     """get_window_rect edge cases."""
 
-    @patch("core.window_manager.list_windows", side_effect=RuntimeError("fail"))
+    @patch("core.window_manager.list_windows", side_effect=_Win32Error(0, "fail"))
     def test_exception_returns_none(self, mock_lw):
         result = get_window_rect("Chrome")
         assert result is None
@@ -243,7 +244,7 @@ class TestRestoreWindowHwndExceptions:
     @patch("core.window_manager.win32con")
     def test_show_window_exception(self, mock_con, mock_gui):
         mock_con.SW_RESTORE = 9
-        mock_gui.ShowWindow.side_effect = RuntimeError("COM fail")
+        mock_gui.ShowWindow.side_effect = _Win32Error(0, "COM fail")
         result = restore_window_hwnd(123)
         assert result is False
 
@@ -287,7 +288,7 @@ class TestCloseWindowWin32:
     @patch("core.window_manager.win32gui")
     @patch("core.window_manager.win32con")
     def test_close_enum_exception(self, mock_con, mock_gui):
-        mock_gui.EnumWindows.side_effect = RuntimeError("enum fail")
+        mock_gui.EnumWindows.side_effect = _Win32Error(0, "enum fail")
         result = close_window("Chrome")
         assert result is False
 
