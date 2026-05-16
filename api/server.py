@@ -617,7 +617,7 @@ class SentinelServer:
     async def _handle_auth_login(
         self,
         req: AuthLoginRequest,
-        request: Request | None = None,
+        request: Request = None,  # type: ignore[assignment]
         authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Authenticate and get a session token."""
@@ -723,9 +723,12 @@ class SentinelServer:
                 await ws.send_json({"type": "auth_error", "message": "Invalid token"})
                 await ws.close()
                 return
-        except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
-            # No auth required (token not configured) or timeout — allow through.
-            pass
+        except asyncio.TimeoutError:
+            logger.debug("WebSocket auth timed out — allowing through")
+        except json.JSONDecodeError:
+            logger.debug("WebSocket auth message was not valid JSON — allowing through")
+        except Exception:
+            logger.debug("Unexpected error during WebSocket auth handshake", exc_info=True)
 
         with self._ws_lock:
             self._ws_clients.append(ws)
