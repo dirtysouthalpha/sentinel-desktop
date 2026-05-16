@@ -222,8 +222,7 @@ class ActionExecutor:
         sy = int(y) + self.click_offset[1]
         try:
             # In stealth mode, try the no-cursor-move path first.
-            if self.stealth and stealth_input.is_available():
-                if stealth_input.post_click(sx, sy, button=button):
+            if self.stealth and stealth_input.is_available() and stealth_input.post_click(sx, sy, button=button):
                     desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
                     return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
                 # PostMessage failed; fall through to physical click.
@@ -257,8 +256,7 @@ class ActionExecutor:
                 x, y = pos
                 sx = x + self.click_offset[0]
                 sy = y + self.click_offset[1]
-                if self.stealth and stealth_input.is_available():
-                    if stealth_input.post_click(sx, sy, button=button):
+                if self.stealth and stealth_input.is_available() and stealth_input.post_click(sx, sy, button=button):
                         return {
                             "success": True,
                             "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
@@ -584,8 +582,7 @@ class ActionExecutor:
                 "output": "Blocked: text appears to contain sensitive data",
                 "error": "sensitive_field",
             }
-        if self.stealth and stealth_input.is_available():
-            if stealth_input.post_text(text):
+        if self.stealth and stealth_input.is_available() and stealth_input.post_text(text):
                 return {"success": True, "output": f"Typed {len(text)} chars — stealth"}
         try:
             self._desktop.type_text(text)
@@ -607,8 +604,7 @@ class ActionExecutor:
 
     def _press_key(self, *, key: str, **kwargs: Any) -> dict[str, Any]:
         try:
-            if self.stealth and stealth_input.is_available():
-                if stealth_input.post_named_key(key):
+            if self.stealth and stealth_input.is_available() and stealth_input.post_named_key(key):
                     return {"success": True, "output": f"Pressed {key} — stealth"}
             self._desktop.press_key(key)
         except Exception as exc:
@@ -623,8 +619,7 @@ class ActionExecutor:
 
     def _hotkey(self, *, keys: list[str], **kwargs: Any) -> dict[str, Any]:
         try:
-            if self.stealth and stealth_input.is_available():
-                if stealth_input.post_hotkey(keys):
+            if self.stealth and stealth_input.is_available() and stealth_input.post_hotkey(keys):
                     return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
             self._desktop.hotkey(*keys)
         except Exception as exc:
@@ -1213,10 +1208,7 @@ def _contains_sensitive(text: str) -> bool:
     """Check if text looks like it contains sensitive data.
     Used to prevent accidental typing of secrets."""
     lower = text.lower()
-    for keyword in SENSITIVE_FIELDS:
-        if keyword in lower:
-            return True
-    return False
+    return any(keyword in lower for keyword in SENSITIVE_FIELDS)
 
 
 def _sanitize_params(params: dict[str, Any]) -> dict[str, Any]:
