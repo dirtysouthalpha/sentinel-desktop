@@ -1,8 +1,7 @@
 """Tests for gui/tabs/scripts_tab.py — logic methods with mocked CTk."""
 
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import customtkinter as ctk
 import pytest
@@ -35,7 +34,9 @@ class TestScriptsTabRefresh:
         script_dir = tmp_path / "scripts" / "it_support"
         script_dir.mkdir(parents=True)
         (script_dir / "test_script.json").write_text(
-            json.dumps({"name": "Test Script", "description": "A test", "steps": [{"action": "click"}]})
+            json.dumps(
+                {"name": "Test Script", "description": "A test", "steps": [{"action": "click"}]}
+            )
         )
         scripts_tab.refresh_scripts()
         assert len(scripts_tab._scripts) == 1
@@ -105,7 +106,12 @@ class TestScriptsTabFilter:
 class TestScriptsTabSelect:
     def test_select_script_found(self, scripts_tab):
         scripts_tab._scripts = [
-            {"_path": "/a/b.json", "name": "Test", "description": "Desc", "steps": [{"action": "x"}]},
+            {
+                "_path": "/a/b.json",
+                "name": "Test",
+                "description": "Desc",
+                "steps": [{"action": "x"}],
+            },
         ]
         scripts_tab._name_label = MagicMock()
         scripts_tab._desc_label = MagicMock()

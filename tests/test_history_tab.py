@@ -1,7 +1,7 @@
 """Tests for gui/tabs/history_tab.py — logic methods with mocked CTk."""
 
-import json
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import customtkinter as ctk
@@ -167,6 +167,3 @@ class TestHistoryTabReplay:
         history_tab.sessions = [{"goal": "replay me"}]
         history_tab._replay_session()
         history_tab.app._on_run.assert_called_once()
-
-
-from pathlib import Path
