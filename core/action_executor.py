@@ -222,10 +222,14 @@ class ActionExecutor:
         sy = int(y) + self.click_offset[1]
         try:
             # In stealth mode, try the no-cursor-move path first.
-            if self.stealth and stealth_input.is_available() and stealth_input.post_click(sx, sy, button=button):
-                    desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
-                    return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
-                # PostMessage failed; fall through to physical click.
+            if (
+                self.stealth
+                and stealth_input.is_available()
+                and stealth_input.post_click(sx, sy, button=button)
+            ):
+                desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
+                return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
+            # PostMessage failed; fall through to physical click.
             self._desktop.click(sx, sy, button=button, clicks=clicks)
         except Exception as exc:
             return {
@@ -256,12 +260,16 @@ class ActionExecutor:
                 x, y = pos
                 sx = x + self.click_offset[0]
                 sy = y + self.click_offset[1]
-                if self.stealth and stealth_input.is_available() and stealth_input.post_click(sx, sy, button=button):
-                        return {
-                            "success": True,
-                            "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
-                            "position": [sx, sy],
-                        }
+                if (
+                    self.stealth
+                    and stealth_input.is_available()
+                    and stealth_input.post_click(sx, sy, button=button)
+                ):
+                    return {
+                        "success": True,
+                        "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
+                        "position": [sx, sy],
+                    }
                 self._desktop.click(sx, sy, button=button)
                 return {
                     "success": True,
@@ -583,7 +591,7 @@ class ActionExecutor:
                 "error": "sensitive_field",
             }
         if self.stealth and stealth_input.is_available() and stealth_input.post_text(text):
-                return {"success": True, "output": f"Typed {len(text)} chars — stealth"}
+            return {"success": True, "output": f"Typed {len(text)} chars — stealth"}
         try:
             self._desktop.type_text(text)
             return {"success": True, "output": f"Typed {len(text)} characters"}
@@ -605,7 +613,7 @@ class ActionExecutor:
     def _press_key(self, *, key: str, **kwargs: Any) -> dict[str, Any]:
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_named_key(key):
-                    return {"success": True, "output": f"Pressed {key} — stealth"}
+                return {"success": True, "output": f"Pressed {key} — stealth"}
             self._desktop.press_key(key)
         except Exception as exc:
             logger.debug("press_key failed for %r: %s", key, exc)
@@ -620,7 +628,7 @@ class ActionExecutor:
     def _hotkey(self, *, keys: list[str], **kwargs: Any) -> dict[str, Any]:
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_hotkey(keys):
-                    return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
+                return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
             self._desktop.hotkey(*keys)
         except Exception as exc:
             logger.debug("hotkey failed for %s: %s", keys, exc)

@@ -8,6 +8,7 @@ handling, admin elevation support, and built-in diagnostic helpers.
 Gracefully degrades on non-Windows platforms.
 """
 
+import contextlib
 import json
 import logging
 import os
@@ -227,10 +228,8 @@ class PowerShellRunner:
                             stdout = fh.read()
                     except OSError as exc:
                         logger.warning("Failed to read elevated output from %s: %s", tmp_out, exc)
-                    try:
+                    with contextlib.suppress(OSError):
                         Path(tmp_out).unlink()
-                    except OSError:
-                        pass
 
             objects = self._parse_json_output(stdout)
             return PSResult(

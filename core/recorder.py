@@ -219,7 +219,7 @@ class ActionRecorder:
 
         # --- Build Script object (outside lock) ----------------------------
         parameters = self._detect_parameters(steps)
-        description = self.generate_description(steps) if not goal else goal
+        description = goal if goal else self.generate_description(steps)
 
         return Script(
             name=self._generate_name(goal),

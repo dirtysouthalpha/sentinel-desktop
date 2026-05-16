@@ -454,10 +454,7 @@ def fetch_models(
         return []
 
     # Parse response — tolerate a few shapes.
-    if isinstance(data, list):
-        models_list = data
-    else:
-        models_list = data.get("data", data.get("models", []))
+    models_list = data if isinstance(data, list) else data.get("data", data.get("models", []))
     if not isinstance(models_list, list):
         # Some providers wrap the list differently.
         if isinstance(data, list):
