@@ -355,7 +355,7 @@ class AgentEngine:
                 loaded = self._plugin_loader.load_all()
                 for p in loaded:
                     logger.info("Plugin loaded: %s v%s", p.get("name"), p.get("version"))
-            except Exception as exc:
+            except (ImportError, OSError, ValueError, RuntimeError, SyntaxError) as exc:
                 logger.warning("Plugin loading failed: %s", exc)
         return self._plugin_loader
 
@@ -671,6 +671,8 @@ class AgentEngine:
                 result = None
                 try:
                     result = self.executor.execute_sync(action)
+                except (KeyboardInterrupt, SystemExit, MemoryError):
+                    raise
                 except Exception as exc:
                     logger.exception("Action '%s' threw an exception", action_name)
                     action_error = exc
@@ -826,6 +828,8 @@ class AgentEngine:
                             f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
                         )
 
+        except (KeyboardInterrupt, SystemExit):
+            raise
         except Exception as exc:
             logger.exception("Agent run error")
             self.notes.append(f"Fatal error: {exc}")

@@ -414,7 +414,7 @@ class TaskScheduler:
             elif task_type == "powershell":
                 return self._exec_powershell(task)
             base["error"] = f"Unknown task type: {task_type!r}"
-        except (RuntimeError, OSError, ValueError, KeyError) as exc:
+        except (RuntimeError, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
             base["error"] = f"{type(exc).__name__}: {exc}"
             logger.exception("Task %s raised an exception.", task.get("id"))
         return base
@@ -552,7 +552,11 @@ class TaskScheduler:
                 if tid in self._tasks:
                     self._tasks[tid]["last_run"] = now_iso
                     cron_expr = self._tasks[tid].get("cron_expr", "")
-                    self._tasks[tid]["next_run"] = _next_run_after(cron_expr, now).isoformat()
+                    try:
+                        self._tasks[tid]["next_run"] = _next_run_after(cron_expr, now).isoformat()
+                    except ValueError as exc:
+                        logger.warning("Failed to compute next_run for task %s: %s", tid, exc)
+                        self._tasks[tid]["next_run"] = None
 
             self._handle_on_complete(task, result)
 
