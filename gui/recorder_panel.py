@@ -296,7 +296,9 @@ class RecorderPanel(ctk.CTkFrame):
                 )
                 self.after(
                     0,
-                    lambda exc=exc: messagebox.showerror("Playback Error", f"Script execution failed:\n{exc}"),
+                    lambda exc=exc: messagebox.showerror(
+                        "Playback Error", f"Script execution failed:\n{exc}"
+                    ),
                 )
                 return
             self.after(0, lambda: self._on_play_done(res))
@@ -328,7 +330,7 @@ class RecorderPanel(ctk.CTkFrame):
             return
         try:
             scripts = ActionRecorder.list_scripts(_ensure_scripts_dir())
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError):
             logger.exception("Failed to list scripts")
             scripts = []
 
