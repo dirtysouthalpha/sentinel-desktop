@@ -288,7 +288,7 @@ class ActionExecutor:
                         "fallback": "uia",
                     }
             except Exception as exc:
-                logger.debug("click_text UIA fallback failed: %s", exc)
+                logger.warning("click_text UIA fallback failed for %r: %s", text, exc)
 
             return {
                 "success": False,
@@ -426,7 +426,7 @@ class ActionExecutor:
                             "fallback": "ocr",
                         }
                 except Exception as exc:
-                    logger.debug("click_control OCR fallback failed: %s", exc)
+                    logger.warning("click_control OCR fallback failed for %r: %s", name, exc)
 
             return {
                 "success": False,
@@ -539,7 +539,7 @@ class ActionExecutor:
                         "fallback": "click_and_type",
                     }
             except Exception as exc:
-                logger.debug("set_text click+type fallback failed: %s", exc)
+                logger.warning("set_text click+type fallback failed for %r: %s", name, exc)
 
             return {
                 "success": False,
