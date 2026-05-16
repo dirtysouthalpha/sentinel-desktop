@@ -219,7 +219,7 @@ class SystemTrayIcon:
 
         try:
             icon.stop()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("Error stopping tray icon: %s", exc)
 
         if self._thread is not None and self._thread.is_alive():
