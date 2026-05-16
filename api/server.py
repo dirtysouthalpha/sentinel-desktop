@@ -396,14 +396,12 @@ class SentinelServer:
         """List all available scripts in the scripts/ directory."""
         self._check_auth(authorization)
         try:
-            import os
-
             from core.recorder import ActionRecorder
 
             scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
             scripts = ActionRecorder.list_scripts(scripts_dir)
         except (OSError, ValueError, ImportError) as exc:
-            logger.exception("Failed to list scripts")
+            logger.warning("Failed to list scripts: %s", exc)
             return {"scripts": [], "error": str(exc)}
         else:
             return {"scripts": scripts}
@@ -458,7 +456,10 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        self.engine.recorder.start_recording("")
+        try:
+            self.engine.recorder.start_recording("")
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise HTTPException(500, f"Failed to start recording: {exc}") from exc
         return {"status": "recording"}
 
     async def _handle_recorder_stop(
@@ -468,14 +469,15 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        script = self.engine.recorder.stop_recording()
+        try:
+            script = self.engine.recorder.stop_recording()
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise HTTPException(500, f"Failed to stop recording: {exc}") from exc
         name = req.name
         desc = req.description
         script.name = name
         script.description = desc or script.description
         try:
-            import os
-
             scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
             os.makedirs(scripts_dir, exist_ok=True)
             path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
@@ -493,14 +495,12 @@ class SentinelServer:
         """List available workflows."""
         self._check_auth(authorization)
         try:
-            import os
-
             from core.workflow import WorkflowEngine
 
             wf_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workflows")
             return {"workflows": WorkflowEngine.list_workflows(wf_dir)}
         except (OSError, ValueError, ImportError) as exc:
-            logger.exception("Failed to list workflows")
+            logger.warning("Failed to list workflows: %s", exc)
             return {"workflows": [], "error": str(exc)}
 
     async def _handle_workflow_run(
@@ -542,7 +542,10 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        task_id = self.engine.scheduler.add_task(req.model_dump())
+        try:
+            task_id = self.engine.scheduler.add_task(req.model_dump())
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise HTTPException(400, f"Failed to add scheduled task: {exc}") from exc
         return {"status": "added", "task_id": task_id}
 
     async def _handle_schedule_remove(
@@ -552,7 +555,10 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        removed = self.engine.scheduler.remove_task(req.task_id)
+        try:
+            removed = self.engine.scheduler.remove_task(req.task_id)
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise HTTPException(500, f"Failed to remove task: {exc}") from exc
         return {"status": "removed" if removed else "not_found"}
 
     async def _handle_schedule_run(
@@ -562,7 +568,10 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        return self.engine.scheduler.run_task_now(req.task_id)
+        try:
+            return self.engine.scheduler.run_task_now(req.task_id)
+        except (OSError, ValueError, RuntimeError, KeyError) as exc:
+            raise HTTPException(500, f"Failed to run task: {exc}") from exc
 
     async def _handle_notify(
         self, req: NotifyRequest, authorization: str | None = Header(default=None)
@@ -571,11 +580,14 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        success = self.engine.notifications.notify(
-            title=req.title,
-            message=req.message,
-            level=req.level,
-        )
+        try:
+            success = self.engine.notifications.notify(
+                title=req.title,
+                message=req.message,
+                level=req.level,
+            )
+        except (OSError, RuntimeError) as exc:
+            raise HTTPException(500, f"Notification failed: {exc}") from exc
         return {"success": success}
 
     async def _handle_plugins_list(
@@ -595,7 +607,10 @@ class SentinelServer:
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         name = req.name
-        success = self.engine.plugin_loader.reload_plugin(name)
+        try:
+            success = self.engine.plugin_loader.reload_plugin(name)
+        except (OSError, ValueError, RuntimeError, ImportError) as exc:
+            raise HTTPException(500, f"Failed to reload plugin: {exc}") from exc
         return {"success": success, "name": name}
 
     # ── v3.0 Phase 3+4 endpoints ──────────────────────────────────────
@@ -616,11 +631,14 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        session_id = self.engine.agent_pool.submit(
-            goal=req.goal,
-            config=req.config,
-            priority=req.priority,
-        )
+        try:
+            session_id = self.engine.agent_pool.submit(
+                goal=req.goal,
+                config=req.config,
+                priority=req.priority,
+            )
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(400, f"Failed to submit agent: {exc}") from exc
         return {"session_id": session_id, "status": "queued"}
 
     async def _handle_agents_cancel(
@@ -630,7 +648,10 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        success = self.engine.agent_pool.cancel(req.session_id)
+        try:
+            success = self.engine.agent_pool.cancel(req.session_id)
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(500, f"Failed to cancel agent: {exc}") from exc
         return {"success": success}
 
     async def _handle_agent_status(
@@ -640,9 +661,10 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        status = self.engine.agent_pool.get_status(session_id)
-        if not status:
-            raise HTTPException(404, "Session not found")
+        try:
+            status = self.engine.agent_pool.get_status(session_id)
+        except KeyError as exc:
+            raise HTTPException(404, "Session not found") from exc
         return status
 
     async def _handle_auth_login(
@@ -664,10 +686,16 @@ class SentinelServer:
             raise HTTPException(429, "Too many login attempts — try again later")
         attempts.append(now)
 
-        user = self.engine.auth_manager.authenticate(req.username, req.password)
+        try:
+            user = self.engine.auth_manager.authenticate(req.username, req.password)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(500, f"Authentication error: {exc}") from exc
         if not user:
             raise HTTPException(401, "Invalid credentials")
-        token = self.engine.auth_manager.create_session(user)
+        try:
+            token = self.engine.auth_manager.create_session(user)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(500, f"Session creation failed: {exc}") from exc
         return {"token": token, "role": user.role.value, "username": user.username}
 
     async def _handle_auth_logout(

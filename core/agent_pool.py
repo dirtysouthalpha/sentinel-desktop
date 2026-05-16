@@ -445,7 +445,7 @@ class AgentPool:
                 session.status = STATUS_COMPLETED
                 session.result = result
                 session.end_time = datetime.now(timezone.utc)
-                session.step_count = result.get("steps", 0)
+                session.step_count = result.get("steps", 0) if isinstance(result, dict) else 0
 
             logger.info(
                 "Session %s completed (%d steps)",
@@ -453,7 +453,7 @@ class AgentPool:
                 session.step_count,
             )
 
-        except (RuntimeError, OSError, ValueError, ImportError) as exc:
+        except (RuntimeError, OSError, ValueError, ImportError, TypeError, AttributeError) as exc:
             logger.exception("Session %s failed with exception", session_id)
             with self._lock:
                 session.status = STATUS_FAILED
@@ -485,7 +485,7 @@ class AgentPool:
                     with self._lock:
                         snapshot = session.to_dict()
                     self._on_session_complete(snapshot)
-                except (RuntimeError, OSError, ValueError) as exc:
+                except Exception as exc:
                     logger.warning(
                         "on_session_complete callback raised: %s",
                         exc,

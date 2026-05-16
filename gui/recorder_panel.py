@@ -142,7 +142,13 @@ class RecorderPanel(ctk.CTkFrame):
         if not recorder or not recorder.is_recording:
             return
         self._stop_pulse()
-        script = recorder.stop_recording()
+        try:
+            script = recorder.stop_recording()
+        except (OSError, RuntimeError) as exc:
+            logger.exception("Failed to stop recording")
+            self._set_ready()
+            messagebox.showerror("Recorder Error", f"Failed to stop recording:\n{exc}")
+            return
         if not script.steps:
             self._set_ready()
             messagebox.showinfo("Recorder", "No actions were recorded.")
@@ -280,7 +286,19 @@ class RecorderPanel(ctk.CTkFrame):
         )
 
         def _worker() -> None:
-            res = engine.run_script(path, params)
+            try:
+                res = engine.run_script(path, params)
+            except (OSError, RuntimeError, ValueError) as exc:
+                logger.exception("Script execution failed in worker")
+                self.after(
+                    0,
+                    lambda: self._set_ready(),
+                )
+                self.after(
+                    0,
+                    lambda exc=exc: messagebox.showerror("Playback Error", f"Script execution failed:\n{exc}"),
+                )
+                return
             self.after(0, lambda: self._on_play_done(res))
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -302,9 +320,17 @@ class RecorderPanel(ctk.CTkFrame):
     # ── Script Library ─────────────────────────────────────────────────
 
     def _on_library(self) -> None:
-        from core.recorder import ActionRecorder
-
-        scripts = ActionRecorder.list_scripts(_ensure_scripts_dir())
+        try:
+            from core.recorder import ActionRecorder
+        except ImportError as exc:
+            logger.error("Recorder module unavailable: %s", exc)
+            messagebox.showerror("Library Error", f"Recorder module unavailable:\n{exc}")
+            return
+        try:
+            scripts = ActionRecorder.list_scripts(_ensure_scripts_dir())
+        except (OSError, ValueError) as exc:
+            logger.exception("Failed to list scripts")
+            scripts = []
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("📋 Script Library")

@@ -165,10 +165,10 @@ def _compute_change_score(
 def _save_snapshot(img: Image.Image, prefix: str = "smart_wait") -> str:
     """Save *img* to a temp file and return the path."""
     tmp_dir = Path(tempfile.gettempdir())
-    tmp_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{prefix}_{uuid.uuid4().hex[:8]}.png"
     path = tmp_dir / filename
     try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
         img.save(str(path), format="PNG")
         logger.debug("Snapshot saved: %s", path)
     except (OSError, RuntimeError) as exc:
