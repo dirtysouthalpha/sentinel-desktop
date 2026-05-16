@@ -7,6 +7,7 @@ import pytest
 
 from core.desktop import DesktopController
 
+# Use the stubbed FailSafeException from conftest
 FailSafeException = pyautogui.FailSafeException
 
 
