@@ -473,7 +473,7 @@ class AgentEngine:
         # Initial screenshot + goal
         try:
             screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
-        except OSError as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             logger.warning("Initial screen capture failed: %s", exc)
             screenshot_b64 = ""
         self._add_vision_message(
@@ -816,7 +816,7 @@ class AgentEngine:
                     self._prune_old_screenshots(messages)
                     try:
                         screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
-                    except OSError as exc:
+                    except (OSError, ValueError, RuntimeError) as exc:
                         logger.debug("Screen capture failed mid-run: %s", exc)
                         screenshot_b64 = None
                     if screenshot_b64:

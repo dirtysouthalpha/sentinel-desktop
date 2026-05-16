@@ -102,13 +102,16 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
     try:
         entries: list[dict[str, Any]] = []
         for entry in os.scandir(safe):
-            entries.append(
-                {
-                    "name": entry.name,
-                    "is_dir": entry.is_dir(),
-                    "size": entry.stat().st_size if entry.is_file() else 0,
-                }
-            )
+            try:
+                entries.append(
+                    {
+                        "name": entry.name,
+                        "is_dir": entry.is_dir(),
+                        "size": entry.stat().st_size if entry.is_file() else 0,
+                    }
+                )
+            except OSError:
+                continue
         return sorted(entries, key=lambda e: (not e["is_dir"], e["name"].lower()))
     except OSError:
         logger.exception("list_directory(%s) failed", path)

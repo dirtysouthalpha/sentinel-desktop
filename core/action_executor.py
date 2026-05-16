@@ -712,6 +712,7 @@ class ActionExecutor:
         try:
             b64 = capture_to_base64(monitor=self.monitor)
         except Exception as exc:
+            logger.warning("Screenshot failed: %s", exc)
             return {
                 "success": False,
                 "output": f"Screenshot failed: {exc}",
@@ -1026,6 +1027,7 @@ class ActionExecutor:
         try:
             ok = file_ops.write_file(path, content)
         except Exception as exc:
+            logger.warning("write_file failed: %s", exc)
             return {
                 "success": False,
                 "output": f"write_file error: {exc}",
@@ -1041,6 +1043,7 @@ class ActionExecutor:
                 return {"success": True, "output": entries}
             return {"success": False, "output": "Directory not found", "error": "dir_not_found"}
         except Exception as exc:
+            logger.warning("list_directory failed: %s", exc)
             return {
                 "success": False,
                 "output": f"list_directory error: {exc}",
@@ -1075,6 +1078,7 @@ class ActionExecutor:
         try:
             info = sysinfo.system_info()
         except Exception as exc:
+            logger.warning("system_info failed: %s", exc)
             return {
                 "success": False,
                 "output": f"system_info error: {exc}",
@@ -1087,6 +1091,7 @@ class ActionExecutor:
         try:
             procs = pm.list_processes()
         except Exception as exc:
+            logger.warning("list_processes failed: %s", exc)
             return {
                 "success": False,
                 "output": f"list_processes error: {exc}",
@@ -1104,6 +1109,7 @@ class ActionExecutor:
                 return {"success": False, "output": "Failed to start process"}
             return {"success": True, "output": f"pid={pid}"}
         except Exception as exc:
+            logger.warning("start_process failed: %s", exc)
             return {
                 "success": False,
                 "output": f"start_process error: {exc}",
@@ -1121,6 +1127,7 @@ class ActionExecutor:
                 "output": f"Process {target} {'killed' if killed else 'not found'}",
             }
         except Exception as exc:
+            logger.warning("kill_process failed: %s", exc)
             return {
                 "success": False,
                 "output": f"kill_process error: {exc}",
@@ -1150,6 +1157,7 @@ class ActionExecutor:
                 "objects": result.objects[:50] if result.objects else [],
             }
         except Exception as exc:
+            logger.warning("PowerShell command failed: %s", exc)
             return {
                 "success": False,
                 "output": f"PowerShell error: {exc}",
@@ -1173,6 +1181,7 @@ class ActionExecutor:
                 "error": result.error,
             }
         except Exception as exc:
+            logger.warning("Script execution failed: %s", exc)
             return {"success": False, "output": f"Script error: {exc}", "error": "script_failed"}
 
     # Dispatch table
