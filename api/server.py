@@ -391,10 +391,11 @@ class SentinelServer:
 
             scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
             scripts = ActionRecorder.list_scripts(scripts_dir)
-            return {"scripts": scripts}
-        except Exception as exc:
-            logger.error("Failed to list scripts: %s", exc)
+        except (OSError, ValueError, ImportError) as exc:
+            logger.exception("Failed to list scripts")
             return {"scripts": [], "error": str(exc)}
+        else:
+            return {"scripts": scripts}
 
     async def _handle_script_run(
         self, req: ScriptRunRequest, authorization: str | None = Header(default=None)
@@ -431,8 +432,8 @@ class SentinelServer:
                 "exit_code": ps_result.exit_code,
                 "objects": ps_result.objects[:100],
             }
-        except Exception as exc:
-            logger.error("PowerShell execution failed: %s", exc)
+        except (OSError, ValueError, RuntimeError) as exc:
+            logger.exception("PowerShell execution failed")
             return {"success": False, "error": str(exc)}
 
     async def _handle_recorder_start(
@@ -466,7 +467,7 @@ class SentinelServer:
             script.save(path)
             return {"status": "saved", "path": path, "steps": len(script.steps)}
         except OSError as exc:
-            logger.error("Failed to save recorded script: %s", exc)
+            logger.exception("Failed to save recorded script")
             raise HTTPException(500, f"Failed to save script: {exc}") from exc
 
     # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
@@ -483,7 +484,8 @@ class SentinelServer:
 
             wf_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workflows")
             return {"workflows": WorkflowEngine.list_workflows(wf_dir)}
-        except Exception as exc:
+        except (OSError, ValueError, ImportError) as exc:
+            logger.exception("Failed to list workflows")
             return {"workflows": [], "error": str(exc)}
 
     async def _handle_workflow_run(
@@ -680,8 +682,8 @@ class SentinelServer:
                 log, metadata={"goal": "audit"}, format=format
             )
             return {"path": path, "format": format}
-        except Exception as exc:
-            logger.error("Audit export failed: %s", exc)
+        except (OSError, ValueError, RuntimeError) as exc:
+            logger.exception("Audit export failed")
             raise HTTPException(500, f"Audit export failed: {exc}") from exc
 
     async def _handle_vault_keys(
@@ -745,7 +747,7 @@ class SentinelServer:
             logger.warning("WebSocket auth message was not valid JSON — closing connection")
             await ws.close()
             return
-        except Exception:
+        except (ConnectionError, RuntimeError):
             logger.exception("Unexpected error during WebSocket auth handshake")
             await ws.close()
             return
