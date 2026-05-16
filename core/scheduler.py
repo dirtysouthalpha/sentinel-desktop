@@ -429,7 +429,9 @@ class TaskScheduler:
         }
         if self.engine and hasattr(self.engine, "script_engine"):
             try:
-                sr = self.engine.script_engine.run_script(task.get("path", ""), task.get("params", {}))
+                sr = self.engine.script_engine.run_script(
+                    task.get("path", ""), task.get("params", {})
+                )
                 r.update(
                     success=sr.success,
                     error=sr.error,
