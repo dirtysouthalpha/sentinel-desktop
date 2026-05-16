@@ -156,7 +156,7 @@ def preprocess_for_ocr(img: Image.Image) -> Image.Image:
         img = img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=140, threshold=2))
         # Light contrast boost — too aggressive blows out hairline strokes.
         return ImageEnhance.Contrast(img).enhance(1.25)
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         logger.debug("preprocess_for_ocr failed (falling back to raw): %s", exc)
         return img
 
@@ -182,7 +182,7 @@ def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
         _store_cache(cache_key, result, {})
 
         return result
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("Tesseract failed: %s", exc)
         return ""
 
@@ -256,7 +256,7 @@ def _ocr_image_with_confidence(
         _store_cache(cache_key, text, conf_data)
 
         return (text, conf_data)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("Tesseract (with confidence) failed: %s", exc)
         return ("", empty_conf)
 
@@ -317,7 +317,7 @@ def read_screen_text(monitor: int | None = None, preprocess: bool = PREPROCESS_D
     try:
         img = capture_screen(monitor=monitor)
         return _ocr_image(img, preprocess=preprocess)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("read_screen_text failed: %s", exc)
         return ""
 
@@ -339,7 +339,7 @@ def read_screen_text_with_confidence(
     try:
         img = capture_screen(monitor=monitor)
         return _ocr_image_with_confidence(img, preprocess=preprocess)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("read_screen_text_with_confidence failed: %s", exc)
         return (
             "",
@@ -369,7 +369,7 @@ def read_focused_window_text_with_title() -> tuple[str, str]:
             return (read_screen_text(), "<full screen fallback>")
         img, title = pair
         return (_ocr_image(img), title)
-    except Exception as exc:
+    except OSError as exc:
         logger.debug("read_focused_window_text_with_title failed: %s", exc)
         return ("", "")
 
@@ -383,7 +383,7 @@ def read_window_text(title: str) -> str:
         if img is None:
             return ""
         return _ocr_image(img)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.debug("read_window_text(%s) failed: %s", title, exc)
         return ""
 
@@ -419,7 +419,7 @@ def find_text(
             img,
             output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
         )
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("OCR find_text failed: %s", exc)
         return None
 

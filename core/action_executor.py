@@ -630,7 +630,7 @@ class ActionExecutor:
             if self.stealth and stealth_input.is_available() and stealth_input.post_hotkey(keys):
                 return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
             self._desktop.hotkey(*keys)
-        except Exception as exc:
+        except (KeyError, TypeError) as exc:
             logger.debug("hotkey failed for %s: %s", keys, exc)
             return {"success": False, "output": f"Hotkey failed: {exc}", "error": "hotkey_failed"}
         else:
@@ -887,7 +887,7 @@ class ActionExecutor:
                 "output": f"Launched {name!r} via PowerShell Start-Process",
                 "fallback": "powershell",
             }
-        except Exception as exc:
+        except (OSError, subprocess.SubprocessError) as exc:
             logger.debug("smart_open PowerShell fallback failed: %s", exc)
 
         result["hint"] = "Try open_app() with the full executable path"

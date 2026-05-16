@@ -62,7 +62,7 @@ def resolve_monitor(monitor: int | str | None) -> int | None:
                 ):
                     return i
         return 1
-    except Exception as exc:
+    except (mss.ScreenShotError, OSError) as exc:
         logger.debug("resolve_monitor(auto) failed: %s", exc)
         return 1
 
