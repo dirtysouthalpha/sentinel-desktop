@@ -68,7 +68,7 @@ class ActionExecutor:
         approval_callback: Callable | None = None,
         dry_run: bool = False,
         pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
-        click_offset: tuple = (0, 0),
+        click_offset: tuple[int, int] = (0, 0),
         monitor: int | None = None,
         stealth: bool = False,
     ) -> None:
@@ -216,6 +216,7 @@ class ActionExecutor:
     def _click(
         self, *, x: int, y: int, button: str = "left", clicks: int = 1, **kwargs: Any
     ) -> dict[str, Any]:
+        """Click at (x,y), trying stealth PostMessage first then physical fallback."""
         # Translate from captured-image coords to absolute screen coords for
         # multi-monitor virtual-desktop capture.
         sx = int(x) + self.click_offset[0]
@@ -583,6 +584,7 @@ class ActionExecutor:
             }
 
     def _type_text(self, *, text: str, **kwargs: Any) -> dict[str, Any]:
+        """Type text with stealth PostMessage → pyautogui → clipboard fallback."""
         # Sensitive field check
         if _contains_sensitive(text):
             return {
@@ -647,6 +649,7 @@ class ActionExecutor:
         button: str = "left",
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """Drag from source to dest with interpolated stealth PostMessage or physical fallback."""
         sx = int(from_x) + self.click_offset[0]
         sy = int(from_y) + self.click_offset[1]
         tx = int(to_x) + self.click_offset[0]

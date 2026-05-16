@@ -375,9 +375,9 @@ class WorkflowEngine:
 
         try:
             return self.executor.execute_sync(action)
-        except Exception as exc:
+        except Exception:
             logger.exception("Action execution failed in step %s", step.id)
-            return {"success": False, "error": f"Action execution failed: {exc}"}
+            raise
 
     def _exec_sub_workflow(self, step: WorkflowStep) -> dict[str, Any]:
         """Run a nested workflow."""

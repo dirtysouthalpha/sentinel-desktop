@@ -94,7 +94,7 @@ class TestExecNotifyImportError:
             with patch("builtins.__import__", side_effect=ImportError("no module")):
                 result = engine._exec_notify(step)
         assert result["success"] is True
-        assert "not available" in result["note"]
+        assert "notification delivery failed" in result["note"]
 
 
 class TestLoopItemFailureStops:

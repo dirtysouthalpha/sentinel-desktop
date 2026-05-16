@@ -177,6 +177,7 @@ class PowerShellRunner:
                 return data
             return [{"value": data}]
         except json.JSONDecodeError:
+            logger.debug("Non-JSON PowerShell stdout, returning empty objects list")
             return []
 
     def _run(self, command: str) -> PSResult:
