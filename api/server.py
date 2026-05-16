@@ -648,7 +648,7 @@ class SentinelServer:
     async def _handle_auth_login(
         self,
         req: AuthLoginRequest,
-        request: Request = None,  # type: ignore[assignment]
+        request: Request | None = None,
         authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Authenticate and get a session token."""
