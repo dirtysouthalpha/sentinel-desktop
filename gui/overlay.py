@@ -236,5 +236,5 @@ def _make_clickthrough(window: Any) -> None:
         ex_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
         ex_style |= WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE
         user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style)
-    except Exception as exc:
-        logger.debug("clickthrough setup failed: %s", exc)
+    except (OSError, AttributeError) as exc:
+        logger.warning("clickthrough setup failed: %s", exc)

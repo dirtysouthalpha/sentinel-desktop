@@ -172,8 +172,8 @@ class CursorOverlay:
                 GWL_EXSTYLE,
                 ex | WS_EX_TRANSPARENT | WS_EX_LAYERED,
             )
-        except Exception as exc:
-            logger.debug("Click-through setup failed (non-Windows?): %s", exc)
+        except (OSError, AttributeError) as exc:
+            logger.warning("Click-through setup failed (non-Windows?): %s", exc)
 
     def _process_queue(self) -> None:
         """Process queued actions, animating each one."""
