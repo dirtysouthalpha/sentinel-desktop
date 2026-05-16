@@ -249,7 +249,7 @@ class SystemTrayIcon:
             # Refresh the visible icon on platforms that support it.
             if hasattr(self._icon, "update_menu"):
                 self._icon.update_menu()
-        except Exception as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             logger.debug("Failed to update tray status icon: %s", exc)
 
     def show_notification(self, title: str, msg: str) -> None:
@@ -259,7 +259,7 @@ class SystemTrayIcon:
 
         try:
             self._icon.notify(msg, title=title)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("Tray notification failed: %s", exc)
 
     @property

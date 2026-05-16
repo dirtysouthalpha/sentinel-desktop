@@ -325,7 +325,7 @@ class SettingsTab:
                 self.app.engine.plugin_loader.load_all()
             self._refresh_plugin_list()
             logger.info("Plugins reloaded")
-        except Exception:
+        except (ImportError, OSError, AttributeError, RuntimeError):
             logger.exception("Plugin reload failed")
 
     # ── Buttons ─────────────────────────────────────────────────────
