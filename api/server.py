@@ -665,19 +665,21 @@ class SentinelServer:
             status = self.engine.agent_pool.get_status(session_id)
         except KeyError as exc:
             raise HTTPException(404, "Session not found") from exc
+        if status is None:
+            raise HTTPException(404, "Session not found")
         return status
 
     async def _handle_auth_login(
         self,
         req: AuthLoginRequest,
-        request: Request | None = None,
+        request: Request,
         authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Authenticate and get a session token."""
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         # Rate-limit login attempts per client IP.
-        client_id = self._get_client_ip(request) if request else "unknown"
+        client_id = self._get_client_ip(request)
         now = time.monotonic()
         attempts = self._login_attempts[client_id]
         # Prune expired attempts.
@@ -837,8 +839,6 @@ class SentinelServer:
         Checks X-Forwarded-For and X-Real-IP headers first (for proxied
         setups), then falls back to ``request.client.host``.
         """
-        if request is None:
-            return "unknown"
         # Check X-Forwarded-For (may contain multiple IPs; first is the client)
         xff = request.headers.get("x-forwarded-for", "")
         if xff:

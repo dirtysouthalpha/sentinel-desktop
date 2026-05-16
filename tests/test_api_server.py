@@ -7,6 +7,21 @@ import pytest
 import api.server as mod
 from config import Config
 
+
+class _FakeRequest:
+    """Minimal fake starlette.Request for direct handler calls."""
+
+    class _client:
+        host = "127.0.0.1"
+
+    @property
+    def headers(self):
+        return {}
+
+    @property
+    def client(self):
+        return self._client
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -650,7 +665,7 @@ class TestHandleAuthLogin:
         server.engine.auth_manager.authenticate = lambda u, p: FakeUser()
         server.engine.auth_manager.create_session = lambda u: "tok123"
         req = mod.AuthLoginRequest(username="admin", password="pass")
-        result = _run(server._handle_auth_login(req, authorization=None))
+        result = _run(server._handle_auth_login(req, _FakeRequest(), authorization=None))
         assert result["token"] == "tok123"
         assert result["role"] == "admin"
 
@@ -661,7 +676,7 @@ class TestHandleAuthLogin:
         server.engine.auth_manager.authenticate = lambda u, p: None
         req = mod.AuthLoginRequest(username="admin", password="wrong")
         with pytest.raises(HTTPException) as exc_info:
-            _run(server._handle_auth_login(req, authorization=None))
+            _run(server._handle_auth_login(req, _FakeRequest(), authorization=None))
         assert exc_info.value.status_code == 401
 
     def test_login_rate_limited(self):
@@ -669,11 +684,11 @@ class TestHandleAuthLogin:
 
         server = self._make_login_server()
         server.engine.auth_manager.authenticate = lambda u, p: None
-        # Pre-populate rate limiter for "unknown" client (request=None → "unknown")
-        server._login_attempts["unknown"] = [time.monotonic()] * server._login_limit
+        # Pre-populate rate limiter for "127.0.0.1" client
+        server._login_attempts["127.0.0.1"] = [time.monotonic()] * server._login_limit
         req = mod.AuthLoginRequest(username="admin", password="wrong")
         with pytest.raises(HTTPException) as exc_info:
-            _run(server._handle_auth_login(req, authorization=None))
+            _run(server._handle_auth_login(req, _FakeRequest(), authorization=None))
         assert exc_info.value.status_code == 429
 
 
