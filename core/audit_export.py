@@ -26,7 +26,7 @@ _SENSITIVE_KEY_NAMES = re.compile(
 )
 
 _SENSITIVE_VALUES = re.compile(
-    r"^(password|passwd|pwd|token|key|secret|api_key|apikey|access_key|auth)$",
+    r"(password|passwd|pwd|token|secret|api_key|apikey|access_key)",
     re.IGNORECASE,
 )
 
