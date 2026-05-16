@@ -65,7 +65,7 @@ class ActionExecutor:
 
     def __init__(
         self,
-        approval_callback: Callable | None = None,
+        approval_callback: Callable[..., Any] | None = None,
         dry_run: bool = False,
         pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
         click_offset: tuple[int, int] = (0, 0),
@@ -1189,7 +1189,7 @@ class ActionExecutor:
             return {"success": False, "output": f"Script error: {exc}", "error": "script_failed"}
 
     # Dispatch table
-    _dispatch_table: dict[str, Callable] = {
+    _dispatch_table: dict[str, Callable[..., dict[str, Any]]] = {
         "click": _click,
         "double_click": _click,
         "right_click": _click,

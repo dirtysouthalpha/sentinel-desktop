@@ -74,7 +74,7 @@ class SentinelTray:
         self._on_hide = on_hide
         self._on_stop_agent = on_stop_agent
         self._on_quit = on_quit
-        self._icon = None
+        self._icon: Any = None
         self._thread: threading.Thread | None = None
 
     def run(self) -> bool:

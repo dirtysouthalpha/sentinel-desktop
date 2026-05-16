@@ -43,14 +43,14 @@ class CursorOverlay:
     def __init__(self, accent_color: str = "#00F0FF") -> None:
         self._accent = accent_color
         self._thread: threading.Thread | None = None
-        self._running = False
+        self._running: bool = False
         self._queue: list[dict[str, Any]] = []
         self._queue_lock = threading.Lock()
-        self._root = None
-        self._canvas = None
-        self._ring_id = None
-        self._inner_id = None
-        self._label_id = None
+        self._root: tk.Tk | None = None
+        self._canvas: tk.Canvas | None = None
+        self._ring_id: int | None = None
+        self._inner_id: int | None = None
+        self._label_id: int | None = None
         self._current_x = -100
         self._current_y = -100
 

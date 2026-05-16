@@ -255,8 +255,8 @@ class AgentEngine:
         self.max_steps = self.config.get("max_steps", 100)
         self.image_history = int(self.config.get("image_history", DEFAULT_IMAGE_HISTORY))
         self.notes: list[str] = []
-        self.forensic_log: list[dict] = []
-        self.on_step_callback: Callable | None = None
+        self.forensic_log: list[dict[str, Any]] = []
+        self.on_step_callback: Callable[..., None] | None = None
         self.finish_summary: str = ""
 
         # ── Core subsystems (always needed) ──────────────────────────

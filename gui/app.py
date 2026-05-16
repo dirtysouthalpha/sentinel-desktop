@@ -48,14 +48,14 @@ class SentinelApp:
         self.root.minsize(900, 600)
 
         # State
-        self.engine = None
-        self.engine_thread = None
+        self.engine: Any = None
+        self.engine_thread: threading.Thread | None = None
         self._approval_event = threading.Event()
 
         # Widget refs for live theme switching
-        self._stop_btn = None
-        self._run_btn = None
-        self._chip_btns = []
+        self._stop_btn: Any = None
+        self._run_btn: Any = None
+        self._chip_btns: list[Any] = []
         self._autonomous_chip = None
         self._stealth_chip = None
 
