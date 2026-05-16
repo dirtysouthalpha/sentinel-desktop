@@ -228,9 +228,9 @@ class AgentEngine:
 
     def __init__(
         self,
-        config: dict | None = None,
-        approval_callback: Callable[[dict], bool] | None = None,
-        pre_action_callback: Callable[[dict], None] | None = None,
+        config: dict[str, Any] | None = None,
+        approval_callback: Callable[[dict[str, Any]], bool] | None = None,
+        pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.config = config or {}
         self.llm = LLMClient()

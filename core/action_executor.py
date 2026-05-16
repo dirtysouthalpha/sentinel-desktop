@@ -783,7 +783,7 @@ class ActionExecutor:
             }
 
     def _smart_wait(
-        self, *, timeout: float = 10, region: list | None = None, **kwargs: Any
+        self, *, timeout: float = 10, region: list[int] | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         """Wait until the screen changes (visual diff)."""
         try:
@@ -801,6 +801,7 @@ class ActionExecutor:
                 "frames_checked": result.frames_checked,
             }
         except Exception as exc:
+            logger.warning("smart_wait fallback: %s", exc)
             import time as _t
 
             _t.sleep(min(float(timeout), 5.0))
@@ -811,7 +812,7 @@ class ActionExecutor:
         *,
         timeout: float = 10,
         stable_time: float = 1.5,
-        region: list | None = None,
+        region: list[int] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Wait until the screen stops changing."""
@@ -831,6 +832,7 @@ class ActionExecutor:
                 "elapsed": result.elapsed,
             }
         except Exception as exc:
+            logger.warning("wait_for_stable fallback: %s", exc)
             import time as _t
 
             _t.sleep(3.0)
@@ -841,7 +843,7 @@ class ActionExecutor:
             }
 
     def _wait_for_text(
-        self, *, text: str, timeout: float = 10, region: list | None = None, **kwargs: Any
+        self, *, text: str, timeout: float = 10, region: list[int] | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         """Wait until specific text appears on screen via OCR."""
         try:
@@ -865,7 +867,9 @@ class ActionExecutor:
                 "error": "wait_for_text_failed",
             }
 
-    def _open_app(self, *, path: str, args: list | None = None, **kwargs: Any) -> dict[str, Any]:
+    def _open_app(
+        self, *, path: str, args: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         try:
             pid = pm.start_process(path, args)
             if pid:
@@ -1101,7 +1105,7 @@ class ActionExecutor:
             return {"success": True, "output": procs[:100]}
 
     def _start_process(
-        self, *, path: str, args: list | None = None, **kwargs: Any
+        self, *, path: str, args: list[str] | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         try:
             pid = pm.start_process(path, args)
@@ -1165,7 +1169,7 @@ class ActionExecutor:
             }
 
     def _run_script(
-        self, *, path: str, params: dict | None = None, **kwargs: Any
+        self, *, path: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         """Replay a recorded script from a JSON file."""
         try:
