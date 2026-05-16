@@ -42,7 +42,7 @@ try:
     import pystray  # type: ignore[import-untyped]
 
     _HAS_PYSTRAY = True
-except ImportError:
+except Exception:
     _HAS_PYSTRAY = False
     logger.debug("pystray not available — system tray disabled")
 

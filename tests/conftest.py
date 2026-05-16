@@ -59,5 +59,9 @@ def _install_headless_stubs() -> None:
     if "mouseinfo" not in sys.modules:
         sys.modules["mouseinfo"] = types.ModuleType("mouseinfo")
 
+    # pystray tries to connect to X display on import — stub it on headless CI
+    if "pystray" not in sys.modules:
+        sys.modules["pystray"] = types.ModuleType("pystray")
+
 
 _install_headless_stubs()
