@@ -432,6 +432,7 @@ class SentinelServer:
                 "objects": ps_result.objects[:100],
             }
         except Exception as exc:
+            logger.error("PowerShell execution failed: %s", exc)
             return {"success": False, "error": str(exc)}
 
     async def _handle_recorder_start(
@@ -673,11 +674,15 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        log = self.engine.forensic_log if hasattr(self.engine, "forensic_log") else []
-        path = self.engine.audit_exporter.generate_report(
-            log, metadata={"goal": "audit"}, format=format
-        )
-        return {"path": path, "format": format}
+        try:
+            log = self.engine.forensic_log if hasattr(self.engine, "forensic_log") else []
+            path = self.engine.audit_exporter.generate_report(
+                log, metadata={"goal": "audit"}, format=format
+            )
+            return {"path": path, "format": format}
+        except Exception as exc:
+            logger.error("Audit export failed: %s", exc)
+            raise HTTPException(500, f"Audit export failed: {exc}") from exc
 
     async def _handle_vault_keys(
         self, authorization: str | None = Header(default=None)
