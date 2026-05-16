@@ -110,7 +110,9 @@ class AuditExporter:
             Path(self.output_dir).mkdir(parents=True, exist_ok=True)
             self._dir_ready = True
         except OSError:
-            logger.exception("Failed to create output dir %s — all exports will fail", self.output_dir)
+            logger.exception(
+                "Failed to create output dir %s — all exports will fail", self.output_dir
+            )
 
     # ------------------------------------------------------------------
     # Public API
@@ -150,7 +152,9 @@ class AuditExporter:
             _msg = f"Unsupported format '{format}'. Choose from: {', '.join(dispatch)}"
             raise ValueError(_msg)
         if not self._dir_ready:
-            raise OSError(f"Output directory {self.output_dir!r} is not available — check permissions")
+            raise OSError(
+                f"Output directory {self.output_dir!r} is not available — check permissions"
+            )
         return handler(log, metadata)
 
     # ------------------------------------------------------------------
