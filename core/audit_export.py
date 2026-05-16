@@ -20,9 +20,13 @@ logger = logging.getLogger(__name__)
 # Sensitive-field masking
 # ---------------------------------------------------------------------------
 
-_SENSITIVE_KEYS = re.compile(
-    r"(^|[_\-])(password|passwd|pwd|token|key|secret|apikey|access_key|auth)($|[_\-])"
-    r"|^(password|passwd|pwd|token|key|secret|apikey|access_key|auth)$",
+_SENSITIVE_KEY_NAMES = re.compile(
+    r"(password|passwd|pwd|token|key|secret|api_key|apikey|access_key|auth)",
+    re.IGNORECASE,
+)
+
+_SENSITIVE_VALUES = re.compile(
+    r"^(password|passwd|pwd|token|key|secret|api_key|apikey|access_key|auth)$",
     re.IGNORECASE,
 )
 
@@ -30,14 +34,13 @@ _SENSITIVE_KEYS = re.compile(
 def _mask_value(value: Any) -> Any:
     """Recursively mask sensitive values inside nested dicts/lists."""
     if isinstance(value, dict):
-        return {k: "***" if _SENSITIVE_KEYS.search(k) else _mask_value(v) for k, v in value.items()}
+        return {
+            k: "***" if _SENSITIVE_KEY_NAMES.search(k) else _mask_value(v) for k, v in value.items()
+        }
     if isinstance(value, list):
         return [_mask_value(item) for item in value]
-    if isinstance(value, str) and _SENSITIVE_KEYS.search(value):
-        # Only mask if the string looks like an actual credential value,
-        # not a word that merely contains a sensitive substring (e.g. "keyboard").
-        if len(value) < 64 and not value.startswith(("http://", "https://", "/")):
-            return "***"
+    if isinstance(value, str) and _SENSITIVE_VALUES.search(value):
+        return "***"
     return value
 
 
