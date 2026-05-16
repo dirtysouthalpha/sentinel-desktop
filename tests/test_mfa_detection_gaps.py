@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import sys
+
+import pytest
 from unittest.mock import MagicMock, patch
 
 from PIL import Image
@@ -81,6 +84,7 @@ class TestGetWindowTitles:
         with patch("core.mfa_detection._IS_WINDOWS", False):
             assert _get_window_titles() == []
 
+    @pytest.mark.skipif(not sys.platform.startswith("win"), reason="requires win32gui")
     def test_win32gui_exception_falls_back_to_wm(self):
         import win32gui
 
@@ -94,6 +98,7 @@ class TestGetWindowTitles:
                     titles = _get_window_titles()
         assert "Chrome" in titles
 
+    @pytest.mark.skipif(not sys.platform.startswith("win"), reason="requires win32gui")
     def test_win32gui_and_wm_both_fail(self):
         import win32gui
 

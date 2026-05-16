@@ -1,5 +1,14 @@
 """Gap tests for window_manager.py — win32 focus, rect, target, close paths."""
 
+import sys
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("win"),
+    reason="Win32 ctypes tests",
+)
+
 from unittest.mock import MagicMock, patch
 
 from core.window_manager import (

@@ -1,5 +1,14 @@
 """Gap tests for stealth_input.py — direct function coverage for post_click, post_text, post_key, post_named_key, post_hotkey, _get_focus_hwnd."""
 
+import sys
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("win"),
+    reason="Win32 ctypes tests",
+)
+
 from unittest.mock import patch
 
 from core import stealth_input
