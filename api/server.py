@@ -254,7 +254,7 @@ class SentinelServer:
         # Bridge engine step events to all connected WebSocket clients.
         self.engine.on_step_callback = self._broadcast_step
 
-        def _run():
+        def _run() -> None:
             try:
                 result = self.engine.run(req.goal)
                 logger.info("Agent finished: %d steps", result.get("steps", 0))
@@ -617,8 +617,8 @@ class SentinelServer:
     async def _handle_auth_login(
         self,
         req: AuthLoginRequest,
+        request: Request = None,  # type: ignore[assignment]
         authorization: str | None = Header(default=None),
-        request: Request | None = None,
     ) -> dict[str, str]:
         """Authenticate and get a session token."""
         if not self.engine:

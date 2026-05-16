@@ -71,7 +71,7 @@ class ActionExecutor:
         click_offset: tuple = (0, 0),
         monitor: int | None = None,
         stealth: bool = False,
-    ):
+    ) -> None:
         """
         Args:
             approval_callback: Async callable(action_dict) → bool.

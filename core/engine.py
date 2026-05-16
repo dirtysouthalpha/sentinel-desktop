@@ -10,6 +10,8 @@ Supports both sync and async usage:
   - async: await engine.run_goal(goal) — for future async callers
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -17,7 +19,7 @@ import re
 import time
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core import failsafe
 from core import system_info as sysinfo
@@ -35,6 +37,18 @@ from core.screenshot import capture_to_base64, get_capture_offset
 from core.smart_wait import SmartWait
 from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
 from core.tool_schemas import TOOLS as ACTION_TOOLS
+
+if TYPE_CHECKING:
+    from core.audit_export import AuditExporter
+    from core.auth import AuthManager
+    from core.encryption import CredentialVault
+    from core.notifications import NotificationManager
+    from core.plugin_loader import PluginLoader
+    from core.powershell import PowerShellRunner
+    from core.recorder import ActionRecorder
+    from core.scheduler import TaskScheduler
+    from core.script_engine import ScriptEngine
+    from core.workflow import WorkflowEngine
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +290,7 @@ class AgentEngine:
     # ── Lazy subsystem accessors ─────────────────────────────────────
 
     @property
-    def recorder(self):
+    def recorder(self) -> ActionRecorder:
         if self._recorder is None:
             from core.recorder import ActionRecorder
 
@@ -284,7 +298,7 @@ class AgentEngine:
         return self._recorder
 
     @property
-    def script_engine(self):
+    def script_engine(self) -> ScriptEngine:
         if self._script_engine is None:
             from core.script_engine import ScriptEngine
 
@@ -292,7 +306,7 @@ class AgentEngine:
         return self._script_engine
 
     @property
-    def powershell(self):
+    def powershell(self) -> PowerShellRunner:
         if self._powershell is None:
             from core.powershell import PowerShellRunner
 
@@ -300,7 +314,7 @@ class AgentEngine:
         return self._powershell
 
     @property
-    def workflow_engine(self):
+    def workflow_engine(self) -> WorkflowEngine:
         if self._workflow_engine is None:
             from core.workflow import WorkflowEngine
 
@@ -308,7 +322,7 @@ class AgentEngine:
         return self._workflow_engine
 
     @property
-    def scheduler(self):
+    def scheduler(self) -> TaskScheduler:
         if self._scheduler is None:
             from core.scheduler import TaskScheduler
 
@@ -316,7 +330,7 @@ class AgentEngine:
         return self._scheduler
 
     @property
-    def notifications(self):
+    def notifications(self) -> NotificationManager:
         if self._notifications is None:
             from core.notifications import NotificationManager
 
@@ -329,7 +343,7 @@ class AgentEngine:
         return self._notifications
 
     @property
-    def plugin_loader(self):
+    def plugin_loader(self) -> PluginLoader:
         if self._plugin_loader is None:
             from core.plugin_loader import PluginLoader
 
@@ -345,7 +359,7 @@ class AgentEngine:
         return self._plugin_loader
 
     @property
-    def auth_manager(self):
+    def auth_manager(self) -> AuthManager:
         if self._auth_manager is None:
             from core.auth import AuthManager
 
@@ -353,7 +367,7 @@ class AgentEngine:
         return self._auth_manager
 
     @property
-    def vault(self):
+    def vault(self) -> CredentialVault:
         if self._vault is None:
             from core.encryption import CredentialVault
 
@@ -361,7 +375,7 @@ class AgentEngine:
         return self._vault
 
     @property
-    def audit_exporter(self):
+    def audit_exporter(self) -> AuditExporter:
         if self._audit_exporter is None:
             from core.audit_export import AuditExporter
 
@@ -989,7 +1003,7 @@ class AgentEngine:
         report["text"] = "\n".join(lines)
         return report
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the agent loop."""
         self.running = False
         logger.info("Agent stop requested")
@@ -1054,7 +1068,9 @@ class AgentEngine:
             logger.debug("Failed to build app profile context: %s", exc)
             return ""
 
-    def _add_vision_message(self, messages: list, screenshot_b64: str, text: str):
+    def _add_vision_message(
+        self, messages: list[dict[str, Any]], screenshot_b64: str, text: str
+    ) -> None:
         """Add a vision message (screenshot + text) to the conversation.
 
         capture_to_base64() encodes PNG by default; the media type below must
@@ -1099,7 +1115,7 @@ class AgentEngine:
                 }
             )
 
-    def _prune_old_screenshots(self, messages: list) -> None:
+    def _prune_old_screenshots(self, messages: list[dict[str, Any]]) -> None:
         """Drop the image bytes from older screenshot messages, but PRESERVE
         any text in those messages (which often includes the original goal!).
 
@@ -1133,7 +1149,7 @@ class AgentEngine:
             new_content = f"{preserved_text}\n{stub}" if preserved_text else stub
             messages[idx] = {"role": "user", "content": new_content}
 
-    def _parse_action(self, response: str) -> dict | None:
+    def _parse_action(self, response: str) -> dict[str, Any] | None:
         """Extract an action dict from an LLM response.
 
         Handles three shapes:
@@ -1175,7 +1191,7 @@ class AgentEngine:
         return None
 
     @staticmethod
-    def _action_from_tool_call(tool_calls) -> dict | None:
+    def _action_from_tool_call(tool_calls: list[Any]) -> dict[str, Any] | None:
         """Convert the first tool_call into an action dict for the executor.
 
         Defensive: tool_calls coming from real providers occasionally arrive
@@ -1208,7 +1224,7 @@ class AgentEngine:
             args = {k: v for k, v in args.items() if k != "action"}
         return {"action": str(name), **(args if isinstance(args, dict) else {})}
 
-    def _log_step(self, action: dict, result: dict):
+    def _log_step(self, action: dict[str, Any], result: dict[str, Any]) -> None:
         self.forensic_log.append(
             {
                 "step": self.step,
@@ -1219,7 +1235,7 @@ class AgentEngine:
             }
         )
 
-    def _log_step_result(self, step: int, result: dict):
+    def _log_step_result(self, step: int, result: dict[str, Any]) -> None:
         for entry in reversed(self.forensic_log):
             if entry.get("step") == step:
                 entry["result"] = result
@@ -1234,7 +1250,7 @@ class AgentEngine:
 # ---------------------------------------------------------------------------
 
 
-def _find_balanced_json_with_key(text: str, key: str) -> dict | None:
+def _find_balanced_json_with_key(text: str, key: str) -> dict[str, Any] | None:
     """Scan *text* for a balanced ``{...}`` JSON object that contains *key*.
 
     Handles strings and escape characters so nested braces don't break the
@@ -1276,7 +1292,7 @@ def _find_balanced_json_with_key(text: str, key: str) -> dict | None:
     return None
 
 
-def _clean_messages_for_api(messages: list) -> list:
+def _clean_messages_for_api(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return a copy of *messages* with internal ``_sentinel_*`` keys stripped.
 
     The engine attaches private markers like ``_sentinel_has_image`` so it can
