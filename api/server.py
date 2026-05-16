@@ -25,6 +25,7 @@ import threading
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -160,7 +161,7 @@ class SentinelServer:
         self._login_window = 300.0  # 5 minutes
 
         @asynccontextmanager
-        async def lifespan(app: FastAPI):
+        async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             self._loop = asyncio.get_running_loop()
             yield
 
@@ -710,7 +711,7 @@ class SentinelServer:
                     if ws in self._ws_clients:
                         self._ws_clients.remove(ws)
 
-    async def _handle_ws(self, ws: WebSocket):
+    async def _handle_ws(self, ws: WebSocket) -> None:
         await ws.accept()
         # Require authentication via first message: {"type": "auth", "token": "..."}
         try:
