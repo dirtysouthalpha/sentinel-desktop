@@ -628,7 +628,7 @@ class AgentEngine:
 
                         screen = capture_screen()
                         mfa_result = self.mfa_detector.check_screen(screen)
-                    except Exception as exc:
+                    except (OSError, RuntimeError) as exc:
                         logger.warning("MFA screen check failed: %s", exc)
                 if mfa_result.detected:
                     self._mfa_paused = True
@@ -789,7 +789,7 @@ class AgentEngine:
                             status="running",
                             messages=messages,
                         )
-                    except Exception as exc:
+                    except (OSError, ValueError) as exc:
                         logger.warning("Checkpoint save failed: %s", exc)
 
                 # Note actions are no-ops at the executor level; record once
@@ -806,7 +806,7 @@ class AgentEngine:
                             result=log_result,
                             screenshot=screenshot_b64,
                         )
-                    except Exception as exc:
+                    except (RuntimeError, TypeError) as exc:
                         logger.warning("Step callback failed: %s", exc)
 
                 # Take new screenshot for next iteration
@@ -845,7 +845,7 @@ class AgentEngine:
             from core.sound import play_sound
 
             play_sound("complete" if self.finish_summary else "error")
-        except Exception as exc:
+        except (ImportError, OSError) as exc:
             logger.debug("Sound notification failed: %s", exc)
 
         return {
@@ -904,7 +904,7 @@ class AgentEngine:
                 logger.error("LLM error (non-retriable): %s", exc)
                 self.notes.append(f"LLM error at step {self.step}: {exc}")
                 return None
-            except Exception as exc:
+            except (ConnectionError, TimeoutError, OSError) as exc:
                 # Network / transient errors -- retry
                 logger.warning(
                     "LLM call attempt %d failed: %s: %s",
