@@ -346,8 +346,8 @@ class RecoveryEngine:
                     suggestion.confidence,
                 )
                 return suggestion
-            except Exception as exc:
-                logger.warning("Recovery handler for %s failed: %s", pattern, exc)
+            except Exception:
+                logger.exception("Recovery handler for %s failed", pattern)
 
         # Default: generic retry suggestion
         action_name = action.get("action", "unknown")

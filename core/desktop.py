@@ -18,34 +18,74 @@ class DesktopController:
     """Controls mouse, keyboard, and screen capture."""
 
     def __init__(self) -> None:
-        self._screen_size: tuple[int, int] = pyautogui.size()
+        try:
+            self._screen_size: tuple[int, int] = pyautogui.size()
+        except Exception:
+            logger.warning("Could not detect screen size, defaulting to 1920x1080")
+            self._screen_size = (1920, 1080)
 
     def screenshot(self) -> Image.Image:
-        return pyautogui.screenshot()
+        try:
+            return pyautogui.screenshot()
+        except Exception as exc:
+            logger.error("screenshot failed: %s", exc)
+            raise
 
     def screenshot_base64(self, format: str = "PNG") -> str:
-        img = self.screenshot()
-        buf = io.BytesIO()
-        img.save(buf, format=format)
-        return base64.b64encode(buf.getvalue()).decode("utf-8")
+        try:
+            img = self.screenshot()
+            buf = io.BytesIO()
+            img.save(buf, format=format)
+            return base64.b64encode(buf.getvalue()).decode("utf-8")
+        except Exception as exc:
+            logger.error("screenshot_base64 failed: %s", exc)
+            raise
 
     def screenshot_region(self, x: int, y: int, w: int, h: int) -> Image.Image:
-        return pyautogui.screenshot(region=(x, y, w, h))
+        try:
+            return pyautogui.screenshot(region=(x, y, w, h))
+        except Exception as exc:
+            logger.error("screenshot_region(%d,%d,%d,%d) failed: %s", x, y, w, h, exc)
+            raise
 
     def get_screen_size(self) -> tuple[int, int]:
         return self._screen_size
 
     def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> None:
-        pyautogui.click(x=x, y=y, button=button, clicks=clicks)
+        try:
+            pyautogui.click(x=x, y=y, button=button, clicks=clicks)
+        except pyautogui.FailSafeException:
+            raise
+        except Exception as exc:
+            logger.error("click(%d, %d) failed: %s", x, y, exc)
+            raise
 
     def double_click(self, x: int, y: int) -> None:
-        pyautogui.doubleClick(x=x, y=y)
+        try:
+            pyautogui.doubleClick(x=x, y=y)
+        except pyautogui.FailSafeException:
+            raise
+        except Exception as exc:
+            logger.error("double_click(%d, %d) failed: %s", x, y, exc)
+            raise
 
     def right_click(self, x: int, y: int) -> None:
-        pyautogui.rightClick(x=x, y=y)
+        try:
+            pyautogui.rightClick(x=x, y=y)
+        except pyautogui.FailSafeException:
+            raise
+        except Exception as exc:
+            logger.error("right_click(%d, %d) failed: %s", x, y, exc)
+            raise
 
     def move_to(self, x: int, y: int, duration: float = 0.3) -> None:
-        pyautogui.moveTo(x=x, y=y, duration=duration)
+        try:
+            pyautogui.moveTo(x=x, y=y, duration=duration)
+        except pyautogui.FailSafeException:
+            raise
+        except Exception as exc:
+            logger.error("move_to(%d, %d) failed: %s", x, y, exc)
+            raise
 
     def drag(
         self,
@@ -56,40 +96,68 @@ class DesktopController:
         duration: float = 0.5,
         button: str = "left",
     ) -> None:
-        pyautogui.moveTo(from_x, from_y)
-        pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)
+        try:
+            pyautogui.moveTo(from_x, from_y)
+            pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)
+        except pyautogui.FailSafeException:
+            raise
+        except Exception as exc:
+            logger.error("drag(%d,%d -> %d,%d) failed: %s", from_x, from_y, to_x, to_y, exc)
+            raise
 
     def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> None:
-        pyautogui.scroll(amount, x=x, y=y)
+        try:
+            pyautogui.scroll(amount, x=x, y=y)
+        except pyautogui.FailSafeException:
+            raise
+        except Exception as exc:
+            logger.error("scroll(%d) failed: %s", amount, exc)
+            raise
 
     def get_mouse_position(self) -> tuple[int, int]:
         return pyautogui.position()
 
     def type_text(self, text: str, interval: float = 0.02) -> None:
-        # pyautogui.write() handles arbitrary text via clipboard fallback.
-        # pyautogui.typewrite() only works with single key names like 'enter'.
-        pyautogui.write(text, interval=interval)
+        try:
+            pyautogui.write(text, interval=interval)
+        except Exception as exc:
+            logger.error("type_text(%r…) failed: %s", text[:40], exc)
+            raise
 
     def press_key(self, key: str) -> None:
-        pyautogui.press(key)
+        try:
+            pyautogui.press(key)
+        except Exception as exc:
+            logger.error("press_key(%r) failed: %s", key, exc)
+            raise
 
     def hotkey(self, *keys: str) -> None:
-        pyautogui.hotkey(*keys)
+        try:
+            pyautogui.hotkey(*keys)
+        except Exception as exc:
+            logger.error("hotkey(%s) failed: %s", "+".join(keys), exc)
+            raise
 
     def find_on_screen(self, template_path: str, confidence: float = 0.8) -> tuple[int, int] | None:
         try:
             import cv2
             import numpy as np
-
+        except ImportError as exc:
+            logger.error("find_on_screen requires opencv-python: %s", exc)
+            return None
+        try:
             template = cv2.imread(template_path, 0)
+            if template is None:
+                logger.error("find_on_screen: could not read template %s", template_path)
+                return None
             screen = cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2GRAY)
             result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
             _, max_val, _, max_loc = cv2.minMaxLoc(result)
             if max_val >= confidence:
                 h, w = template.shape
                 return (max_loc[0] + w // 2, max_loc[1] + h // 2)
-        except Exception as e:
-            logger.error("find_on_screen failed: %s", e)
+        except Exception as exc:
+            logger.error("find_on_screen failed: %s", exc)
         return None
 
     def wait_for_image(

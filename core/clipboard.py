@@ -34,7 +34,7 @@ def clipboard_read() -> str:
         return ""
     try:
         return cb.paste()
-    except _PyperclipException as exc:
+    except Exception as exc:
         logger.warning("clipboard_read failed: %s", exc)
         return ""
 
@@ -46,6 +46,6 @@ def clipboard_write(text: str) -> bool:
     try:
         cb.copy(text)
         return True
-    except _PyperclipException as exc:
+    except Exception as exc:
         logger.warning("clipboard_write failed: %s", exc)
         return False
