@@ -769,7 +769,6 @@ class TestWin32ListWindows:
         # set their values after GetWindowRect is "called".
         captured_rects = []
 
-
         def fake_byref(obj):
             """Return the object itself instead of a byref wrapper."""
             captured_rects.append(obj)

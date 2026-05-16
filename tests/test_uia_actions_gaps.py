@@ -513,8 +513,6 @@ class TestSelectMenuItemGaps:
         # Make pyautogui.press raise
         import pyautogui
 
-
-
         def _raise_press(key):
             raise ImportError("no pyautogui")
 
