@@ -285,7 +285,7 @@ class SettingsTab:
                 plugins = self.app.engine.plugin_loader.list_plugins()
             else:
                 plugins = []
-        except Exception as exc:
+        except (OSError, RuntimeError, AttributeError) as exc:
             logger.debug("Failed to list plugins: %s", exc)
             plugins = []
 

@@ -350,7 +350,7 @@ def find_template(
             center_y = max_loc[1] + h // 2
             return (center_x, center_y)
         return None
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         logger.error("Template matching failed: %s", exc)
         return None
 

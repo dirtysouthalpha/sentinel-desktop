@@ -441,7 +441,7 @@ def _start_recording(app: Any) -> None:
             app.engine.recorder.start_recording("")
             if hasattr(app, "recorder_panel"):
                 app.recorder_panel._on_record_click()
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.error("start_recording failed: %s", exc)
 
 
@@ -451,7 +451,7 @@ def _stop_recording(app: Any) -> None:
             app.engine.recorder.stop_recording()
             if hasattr(app, "recorder_panel"):
                 app.recorder_panel._on_stop_click()
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.error("stop_recording failed: %s", exc)
 
 
@@ -459,7 +459,7 @@ def _run_script_dialog(app: Any) -> None:
     try:
         if hasattr(app, "recorder_panel"):
             app.recorder_panel._on_play_click()
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.error("run_script_dialog failed: %s", exc)
 
 
@@ -467,7 +467,7 @@ def _show_script_library(app: Any) -> None:
     try:
         if hasattr(app, "recorder_panel"):
             app.recorder_panel._on_library_click()
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.error("show_script_library failed: %s", exc)
 
 
@@ -478,7 +478,7 @@ def _run_powershell_dialog(app: Any) -> None:
     if cmd and hasattr(app, "engine") and app.engine:
         try:
             result = app.engine.powershell.run_command(cmd)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             result = None
             err_msg = str(exc)
             if hasattr(app, "chat_display"):
@@ -519,7 +519,7 @@ def _run_it_script(app: Any, script_name: str) -> None:
 
             engine = ScriptEngine(app.engine.executor)
             result = engine.run_script(str(path))
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError, ImportError) as exc:
             err_msg = str(exc)
             if hasattr(app, "notes_label"):
                 app.root.after(

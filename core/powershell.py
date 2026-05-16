@@ -259,7 +259,7 @@ class PowerShellRunner:
                 stderr=f"PowerShell executable not found: {self._ps_exe}",
                 objects=[],
             )
-        except Exception as exc:
+        except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
             logger.exception("Unexpected error running PowerShell")
             return PSResult(
                 success=False,

@@ -99,7 +99,7 @@ def _crop_to_region(region: tuple[int, int, int, int] | None) -> Image.Image | N
             x, y, w, h = region
             return capture_region(x, y, w, h)
         return capture_screen()
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("Screenshot capture failed: %s", exc)
         return None
 
@@ -171,7 +171,7 @@ def _save_snapshot(img: Image.Image, prefix: str = "smart_wait") -> str:
     try:
         img.save(str(path), format="PNG")
         logger.debug("Snapshot saved: %s", path)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.warning("Failed to save snapshot: %s", exc)
         return ""
     return str(path)
@@ -469,13 +469,13 @@ class SmartWait:
             frames += 1
             try:
                 pos = find_template(template_path, confidence)
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 logger.warning("Template matching failed: %s", exc)
                 pos = None
             if pos is not None:
                 try:
                     current = capture_screen()
-                except Exception as exc:
+                except (OSError, RuntimeError) as exc:
                     logger.warning("Capture for match snapshot failed: %s", exc)
                     current = None
                 snap_path = _save_snapshot(current, prefix="match") if current is not None else None
@@ -573,14 +573,14 @@ class SmartWait:
                     ocr_text = _ocr_image(img).lower()
                 else:
                     ocr_text = read_screen_text().lower()
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.debug("OCR capture failed: %s", exc)
                 ocr_text = ""
 
             if needle in ocr_text:
                 try:
                     snap = self._capture(region)
-                except Exception as exc:
+                except (OSError, RuntimeError) as exc:
                     logger.debug("Post-match snapshot capture failed: %s", exc)
                     snap = None
                 snap_path = _save_snapshot(snap, prefix="text") if snap is not None else None
@@ -654,7 +654,7 @@ class SmartWait:
                 # some backends don't support truly 1×1 captures well.
                 sample = capture_region(x, y, 2, 2)
                 pixel = sample.getpixel((0, 0))[:3]
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.debug("Pixel capture failed at (%d, %d): %s", x, y, exc)
                 time.sleep(0.1)
                 continue
@@ -665,7 +665,7 @@ class SmartWait:
                 # Save a slightly larger snapshot for context.
                 try:
                     snap = capture_region(max(0, x - 50), max(0, y - 50), 100, 100)
-                except Exception as exc:
+                except (OSError, RuntimeError) as exc:
                     logger.debug("Color match snapshot capture failed: %s", exc)
                     snap = None
                 snap_path = _save_snapshot(snap, prefix="color") if snap is not None else None

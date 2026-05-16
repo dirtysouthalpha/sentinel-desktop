@@ -414,7 +414,7 @@ class TaskScheduler:
             elif task_type == "powershell":
                 return self._exec_powershell(task)
             base["error"] = f"Unknown task type: {task_type!r}"
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError, KeyError) as exc:
             base["error"] = f"{type(exc).__name__}: {exc}"
             logger.exception("Task %s raised an exception.", task.get("id"))
         return base
@@ -441,7 +441,7 @@ class TaskScheduler:
                         "duration_ms": sr.duration_ms,
                     },
                 )
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError, KeyError) as exc:
                 r["error"] = f"Script execution failed: {exc}"
                 logger.exception("Script execution failed for task %s", task.get("id"))
         return r
@@ -461,7 +461,7 @@ class TaskScheduler:
             try:
                 er = self.engine.run(goal)
                 r.update(success=er.get("success", True), output=er, error=er.get("error"))
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError, KeyError) as exc:
                 r["error"] = f"Goal execution failed: {exc}"
                 logger.exception("Goal execution failed for task %s", task.get("id"))
         return r
@@ -491,7 +491,7 @@ class TaskScheduler:
                     error=pr.stderr or None,
                     output={"exit_code": pr.exit_code, "stdout": pr.stdout, "objects": pr.objects},
                 )
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError) as exc:
                 r["error"] = f"PowerShell execution failed: {exc}"
                 logger.exception("PowerShell execution failed for task %s", task.get("id"))
         return r
@@ -518,7 +518,7 @@ class TaskScheduler:
         while not self._stop_event.is_set():
             try:
                 self._tick()
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError) as exc:
                 logger.exception("Unexpected error in scheduler tick: %s", exc)
             self._stop_event.wait(CHECK_INTERVAL)
         logger.debug("Scheduler loop exited.")
@@ -559,7 +559,7 @@ class TaskScheduler:
             if self._on_task_complete is not None:
                 try:
                     self._on_task_complete(result)
-                except Exception as exc:
+                except (RuntimeError, OSError, ValueError) as exc:
                     logger.exception("on_task_complete callback raised: %s", exc)
 
         if tasks_to_run:

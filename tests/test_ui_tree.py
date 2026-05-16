@@ -168,8 +168,8 @@ class TestClickControl:
 
     def test_falls_back_to_physical_click(self):
         ctrl = _make_node()
-        ctrl.GetInvokePattern.side_effect = Exception("no pattern")
-        ctrl.GetSelectionItemPattern.side_effect = Exception("no pattern")
+        ctrl.GetInvokePattern.side_effect = AttributeError("no pattern")
+        ctrl.GetSelectionItemPattern.side_effect = AttributeError("no pattern")
         with (
             patch.object(ui_tree, "_have_uia", return_value=True),
             patch.object(ui_tree, "_find_control", return_value=ctrl),
@@ -232,7 +232,7 @@ class TestSetText:
 
     def test_falls_back_to_sendkeys(self):
         ctrl = _make_node()
-        ctrl.GetValuePattern.side_effect = Exception("no pattern")
+        ctrl.GetValuePattern.side_effect = AttributeError("no pattern")
         mock_auto = MagicMock()
         with (
             patch.object(ui_tree, "_have_uia", return_value=True),

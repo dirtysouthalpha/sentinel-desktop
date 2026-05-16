@@ -549,9 +549,9 @@ class SentinelApp:
                                 "Sentinel Desktop",
                                 f"Finished in {steps} steps. " + (summary[:120] if summary else ""),
                             )
-                        except Exception as exc:
+                        except (OSError, RuntimeError) as exc:
                             logger.debug("Tray notification failed: %s", exc)
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 # Show the exception type + message, and dump the full traceback
                 # to a debug log so the user can paste it for diagnosis.
                 import traceback
@@ -574,7 +574,7 @@ class SentinelApp:
                         f"   Full traceback saved to: {log_path}",
                         "system",
                     )
-                except Exception as exc2:
+                except (OSError, RuntimeError) as exc2:
                     logger.debug("Failed to write error log: %s", exc2)
                 logger.exception("Agent run crashed")
             finally:
@@ -794,7 +794,7 @@ class SentinelApp:
                 f"   Type 'resume' or press Ctrl+Shift+R to continue.",
                 "system",
             )
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.debug("Checkpoint check failed: %s", exc)
 
     def _do_resume_checkpoint(self) -> None:
@@ -814,7 +814,7 @@ class SentinelApp:
             self._add_chat(f"Resuming: {goal[:100]}...", "system")
             # Restore messages if available
             self._run_goal(goal)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             self._add_chat(f"Resume failed: {exc}", "error")
 
     # ── Action History ────────────────────────────────────────────────────
@@ -1142,7 +1142,7 @@ class SettingsWindow:
                     f"{' (primary)' if m.get('is_primary') else ''}"
                 )
                 monitor_choices.append(label)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("Monitor enumeration failed, using defaults: %s", exc)
             monitor_choices.extend(
                 [

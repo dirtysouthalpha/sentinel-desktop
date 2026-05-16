@@ -453,7 +453,7 @@ class AgentPool:
                 session.step_count,
             )
 
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError, ImportError) as exc:
             logger.exception("Session %s failed with exception", session_id)
             with self._lock:
                 session.status = STATUS_FAILED
@@ -471,7 +471,7 @@ class AgentPool:
                         session_id,
                         desktop_name,
                     )
-                except Exception as exc:
+                except (OSError, RuntimeError, AttributeError) as exc:
                     logger.warning(
                         "Session %s: error cleaning up desktop '%s': %s",
                         session_id,
@@ -485,7 +485,7 @@ class AgentPool:
                     with self._lock:
                         snapshot = session.to_dict()
                     self._on_session_complete(snapshot)
-                except Exception as exc:
+                except (RuntimeError, OSError, ValueError) as exc:
                     logger.warning(
                         "on_session_complete callback raised: %s",
                         exc,

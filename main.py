@@ -154,7 +154,7 @@ def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False) -> None:
     try:
         engine = AgentEngine(cfg)
         result = engine.run(goal)
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         logger.exception("Engine execution failed: %s", exc)
         sys.exit(1)
 

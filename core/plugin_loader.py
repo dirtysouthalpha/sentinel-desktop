@@ -429,7 +429,7 @@ class PluginLoader:
             if info is None:
                 return False
             return info.get("loaded", False)
-        except Exception as exc:
+        except (ImportError, SyntaxError, AttributeError, OSError, RuntimeError) as exc:
             logger.exception("Failed to reload plugin '%s': %s", name, exc)
             return False
 

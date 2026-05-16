@@ -83,7 +83,7 @@ class WorkflowEngine:
         if cb:
             try:
                 cb(*args, **kwargs)
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError) as exc:
                 logger.warning("Callback %s error: %s", event, exc)
 
     @staticmethod
@@ -267,7 +267,7 @@ class WorkflowEngine:
                             try:
                                 lr = self._execute_step(body)
                                 self._step_outputs[f"{step.id}_loop_{idx}"] = lr
-                            except Exception as exc:
+                            except (RuntimeError, OSError, ValueError) as exc:
                                 logger.warning("Loop step %s failed: %s", step.id, exc)
                                 if body.error_policy == "stop":
                                     loop_success = False
@@ -279,7 +279,7 @@ class WorkflowEngine:
 
                 current = next_id
 
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError, KeyError) as exc:
                 logger.exception("Step [%s] failed", step.id)
                 result.step_results.append({"success": False, "error": str(exc)})
 
@@ -303,7 +303,7 @@ class WorkflowEngine:
                             result.step_results[-1] = sr
                             retried = True
                             break
-                        except Exception as exc:
+                        except (RuntimeError, OSError, ValueError, KeyError) as exc:
                             logger.warning(
                                 "Step retry %d/%d failed: %s", retries, step.max_retries, exc
                             )
@@ -359,7 +359,7 @@ class WorkflowEngine:
                 "steps_total": result.steps_total,
                 "error": result.error,
             }
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             logger.exception("Script execution failed in step %s", step.id)
             return {"success": False, "error": f"Script execution failed: {exc}"}
 

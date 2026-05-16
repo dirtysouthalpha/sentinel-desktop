@@ -41,7 +41,7 @@ def _have_uia() -> bool:
 
         _auto = auto
         _UIA_OK = True
-    except Exception as exc:
+    except (ImportError, ModuleNotFoundError, OSError) as exc:
         logger.info(
             "UIAutomation disabled — install 'uiautomation' to enable "
             "click_control / list_controls / set_text (%s)",
@@ -124,7 +124,7 @@ def click_control(
             if pattern is not None:
                 pattern.Invoke()
                 invoked = True
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("InvokePattern failed: %s", exc)
 
         if not invoked:
@@ -134,7 +134,7 @@ def click_control(
                 if sel is not None:
                     sel.Select()
                     invoked = True
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("SelectionItemPattern failed: %s", exc)
 
         if not invoked:
@@ -182,7 +182,7 @@ def set_text(
             pattern = ctrl.GetValuePattern()
             pattern.SetValue(text)
             return True
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("ValuePattern failed, falling back to SendKeys: %s", exc)
         ctrl.SetFocus()
         # SendKeys with curly-brace escaping for safety.
@@ -237,13 +237,13 @@ def _walk(
                 "is_offscreen": bool(getattr(node, "IsOffscreen", False)),
             }
         )
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("_walk: failed to read node properties: %s", exc)
         return
     try:
         for child in node.GetChildren():
             _walk(child, out, depth + 1, max_depth, max_results)
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("_walk: failed to get children: %s", exc)
 
 
@@ -299,7 +299,7 @@ def _find_control(
         visited += 1
         try:
             score = _matches(node)
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Scoring failed for node: %s", exc)
             score = -1
         if score > best_score:
@@ -309,7 +309,7 @@ def _find_control(
             try:
                 for child in node.GetChildren():
                     queue.append((child, depth + 1))
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("_find_best_match: failed to get children: %s", exc)
                 continue
     return best

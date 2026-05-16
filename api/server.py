@@ -268,7 +268,7 @@ class SentinelServer:
                         },
                     }
                 )
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 logger.exception("Agent run crashed")
                 self._broadcast_event({"type": "error", "message": str(exc)})
 
@@ -301,7 +301,7 @@ class SentinelServer:
             raise HTTPException(400, f"Invalid action payload: {exc}") from exc
         except OSError as exc:
             raise HTTPException(500, f"Action execution failed: {exc}") from exc
-        except Exception as exc:
+        except RuntimeError as exc:
             logger.exception("Unexpected error executing command")
             raise HTTPException(500, f"Internal error: {exc}") from exc
 
@@ -749,7 +749,7 @@ class SentinelServer:
         for ws in clients:
             try:
                 await ws.send_json(event)
-            except Exception as exc:
+            except (OSError, RuntimeError, ConnectionError) as exc:
                 logger.warning("WebSocket send failed, marking dead: %s", exc)
                 dead.append(ws)
         if dead:

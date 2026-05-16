@@ -103,6 +103,6 @@ def _screen_resolution() -> str:  # noqa: F811 — intentional re-export
 
         w, h = pyautogui.size()
         return f"{w}x{h}"
-    except Exception as exc:
+    except (ImportError, OSError, RuntimeError) as exc:
         logger.debug("Failed to detect screen resolution: %s", exc)
         return "unknown"

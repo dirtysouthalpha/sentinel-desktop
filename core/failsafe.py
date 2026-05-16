@@ -48,7 +48,7 @@ class FailsafeListener:
             return True
         try:
             import keyboard  # type: ignore
-        except Exception as exc:
+        except (ImportError, ModuleNotFoundError, OSError) as exc:
             logger.info(
                 "Esc-x3 failsafe disabled (the 'keyboard' package is unavailable: %s)",
                 exc,
@@ -61,7 +61,7 @@ class FailsafeListener:
             self._started = True
             logger.info("Esc x3 failsafe armed (press Esc three times to stop)")
             return True
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.warning("Could not install Esc failsafe hook: %s", exc)
             return False
 
@@ -72,7 +72,7 @@ class FailsafeListener:
         try:
             if self._hotkey_handle is not None:
                 self._kb.unhook(self._hotkey_handle)
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Failsafe unhook failed: %s", exc)
         finally:
             self._stopped = True
@@ -93,7 +93,7 @@ class FailsafeListener:
         logger.warning("PANIC: Esc x3 detected — stopping agent")
         try:
             self._on_panic()
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             logger.error("on_panic callback raised: %s", exc)
 
 

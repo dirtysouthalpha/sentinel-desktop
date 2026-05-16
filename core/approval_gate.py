@@ -111,7 +111,7 @@ class ApprovalGate:
         if self._callback:
             try:
                 self._callback(request)
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError) as exc:
                 logger.warning("Approval callback error: %s — auto-approving", exc)
                 self._current_request = None
                 return ApprovalDecision.APPROVE, action

@@ -110,7 +110,7 @@ class SentinelTray:
         def _runner() -> None:
             try:
                 self._icon.run()
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning("pystray run failed: %s", exc)
 
         self._thread = threading.Thread(target=_runner, daemon=True)
@@ -123,13 +123,13 @@ class SentinelTray:
             return
         try:
             self._icon.notify(message, title=title)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("tray notify failed: %s", exc)
 
     def stop(self) -> None:
         if self._icon is not None:
             try:
                 self._icon.stop()
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.debug("Tray stop failed: %s", exc)
             self._icon = None

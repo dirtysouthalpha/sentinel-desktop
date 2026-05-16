@@ -420,7 +420,7 @@ class ScriptsTab:
                     out = r.get("output", r.get("error", ""))
                     lines.append(f"   Step {idx + 1}: {'✓' if ok else '✗'} {out}")
                 self._append_output("\n".join(lines))
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 self._append_output(f"\n❌ Exception: {exc}")
             finally:
                 self.app.root.after(
@@ -451,7 +451,7 @@ class ScriptsTab:
                 self.app.recorder_panel.start_recording()
             else:
                 self._append_output("⏺ Recording started — use the main chat to drive actions.")
-        except Exception as exc:
+        except (OSError, RuntimeError, AttributeError) as exc:
             self._append_output(f"⚠ Could not start recorder: {exc}")
 
     # ── Output helper ──────────────────────────────────────────────────

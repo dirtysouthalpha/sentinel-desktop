@@ -79,7 +79,7 @@ def post_click(x: int, y: int, button: str = "left", clicks: int = 1, delay: flo
             win32api.PostMessage(hwnd, up, 0, lparam)
             time.sleep(delay)
         return True
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("post_click failed at (%s,%s): %s", x, y, exc)
         return False
 
@@ -110,7 +110,7 @@ def post_text(text: str, hwnd: int | None = None, delay: float = 0.005) -> bool:
             if delay:
                 time.sleep(delay)
         return True
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("post_text failed: %s", exc)
         return False
 
@@ -128,7 +128,7 @@ def post_key(vk_code: int, hwnd: int | None = None) -> bool:
         time.sleep(0.01)
         win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
         return True
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("post_key failed: %s", exc)
         return False
 
@@ -232,7 +232,7 @@ def post_hotkey(keys: list[str], hwnd: int | None = None) -> bool:
         for vk in reversed(mod_codes):
             win32api.PostMessage(target, win32con.WM_KEYUP, vk, 0)
         return True
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("post_hotkey failed: %s", exc)
         return False
 
@@ -252,7 +252,7 @@ def _get_focus_hwnd(parent: int) -> int | None:
         info.cbSize = ctypes.sizeof(info)
         if ctypes.windll.user32.GetGUIThreadInfo(thread_id, ctypes.byref(info)):
             return int(info.hwndFocus) or None
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("get_focused_control failed: %s", exc)
         return None
     return None

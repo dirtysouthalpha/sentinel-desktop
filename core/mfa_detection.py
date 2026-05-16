@@ -118,7 +118,7 @@ def _have_tesseract() -> bool:
         pytesseract.get_tesseract_version()
         _pytesseract = pytesseract
         _TESSERACT_OK = True
-    except Exception as exc:
+    except (ImportError, ModuleNotFoundError, OSError) as exc:
         logger.debug("MFA OCR tier disabled — pytesseract unavailable (%s)", exc)
         _TESSERACT_OK = False
     return _TESSERACT_OK
@@ -138,7 +138,7 @@ def _have_uia() -> bool:
 
         _auto = auto
         _UIA_AVAILABLE = True
-    except Exception as exc:
+    except (ImportError, ModuleNotFoundError, OSError) as exc:
         logger.debug("MFA UIA tier disabled — uiautomation unavailable (%s)", exc)
         _UIA_AVAILABLE = False
     return _UIA_AVAILABLE
@@ -215,7 +215,7 @@ def _get_window_titles() -> list[str]:
                     titles.append(title)
 
         win32gui.EnumWindows(_enum, None)
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.warning("win32gui EnumWindows failed, falling back: %s", exc)
         # Fall back to our own window_manager if win32gui is unavailable.
         try:
@@ -225,7 +225,7 @@ def _get_window_titles() -> list[str]:
                 t = w.get("title", "")
                 if t:
                     titles.append(t)
-        except Exception as exc:
+        except (ImportError, OSError, AttributeError, RuntimeError) as exc:
             logger.warning("window title enumeration failed: %s", exc)
     return titles
 
@@ -280,7 +280,7 @@ def _ocr_check(screenshot: Image.Image) -> DetectionResult | None:
 
         processed = preprocess_for_ocr(screenshot)
         text = _pytesseract.image_to_string(processed)  # type: ignore[union-attr]
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         logger.debug("MFA OCR scan failed: %s", exc)
         return None
 
@@ -353,7 +353,7 @@ def _uia_check() -> DetectionResult | None:
         for win in root.GetChildren():
             try:
                 title = win.Name or ""
-            except Exception as exc:
+            except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("Failed to read window name: %s", exc)
                 title = ""
 
@@ -372,7 +372,7 @@ def _uia_check() -> DetectionResult | None:
             for ctrl in win.GetChildren():
                 try:
                     ctrl_type = ctrl.ControlTypeName
-                except Exception as exc:
+                except (OSError, AttributeError, RuntimeError) as exc:
                     logger.debug("Failed to read control type: %s", exc)
                     continue
 
@@ -381,7 +381,7 @@ def _uia_check() -> DetectionResult | None:
                     try:
                         if getattr(ctrl, "IsPassword", False):
                             found_password = True
-                    except Exception as exc:
+                    except (OSError, AttributeError, RuntimeError) as exc:
                         logger.debug("IsPassword check failed: %s", exc)
 
                 # Text elements matching auth patterns
@@ -395,7 +395,7 @@ def _uia_check() -> DetectionResult | None:
                                     found_auth_text = True
                                     prompt_text_parts.append(text[:120])
                                     break
-                    except Exception as exc:
+                    except (OSError, AttributeError, RuntimeError) as exc:
                         logger.debug("Text pattern matching failed: %s", exc)
 
             if found_password or found_auth_text:
@@ -411,7 +411,7 @@ def _uia_check() -> DetectionResult | None:
                     action=_classify_action(det_type, confidence),
                 )
 
-    except Exception as exc:
+    except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("MFA UIA scan failed: %s", exc)
 
     return None
@@ -591,7 +591,7 @@ class MFADetector:
         while not self._monitor_stop.is_set():
             try:
                 result = self._poll_once(capture_screen)
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 logger.debug("MFA monitor poll error: %s", exc)
                 result = _empty_result()
 
@@ -617,7 +617,7 @@ class MFADetector:
                     if self._callback is not None:
                         try:
                             self._callback(result.type, result.prompt_text)
-                        except Exception as exc:
+                        except (RuntimeError, OSError, ValueError) as exc:
                             logger.warning("MFA callback error: %s", exc)
 
                     was_detected = True
@@ -659,7 +659,7 @@ class MFADetector:
         # Tier 2: OCR
         try:
             screenshot = capture_fn()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("MFA monitor screenshot failed: %s", exc)
             screenshot = None
 

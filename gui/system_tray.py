@@ -182,7 +182,7 @@ class SystemTrayIcon:
 
         try:
             icon_image = _create_icon_image(self._current_status)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("Failed to create tray icon image: %s", exc)
             return False
 
@@ -199,7 +199,7 @@ class SystemTrayIcon:
             try:
                 self._running.set()
                 self._icon.run()  # type: ignore[union-attr]
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning("pystray event loop exited with error: %s", exc)
             finally:
                 self._running.clear()

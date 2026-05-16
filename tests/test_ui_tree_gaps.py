@@ -112,7 +112,7 @@ class TestSetTextFailure:
 
     def test_attribute_error_returns_false(self):
         ctrl = _make_node()
-        ctrl.GetValuePattern.side_effect = Exception("no pattern")
+        ctrl.GetValuePattern.side_effect = AttributeError("no pattern")
         ctrl.SetFocus.side_effect = AttributeError("no focus")
         with (
             patch.object(ui_tree, "_have_uia", return_value=True),
@@ -123,7 +123,7 @@ class TestSetTextFailure:
 
     def test_os_error_returns_false(self):
         ctrl = _make_node()
-        ctrl.GetValuePattern.side_effect = Exception("no pattern")
+        ctrl.GetValuePattern.side_effect = AttributeError("no pattern")
         ctrl.SetFocus.side_effect = OSError("COM fail")
         with (
             patch.object(ui_tree, "_have_uia", return_value=True),
