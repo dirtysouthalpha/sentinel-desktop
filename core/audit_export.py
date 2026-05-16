@@ -265,7 +265,10 @@ class AuditExporter:
         lines.append("  Step Timeline")
         lines.append("-" * 72)
         col_widths = (6, 22, 18, 30)
-        header_fmt = f"  {{:<{col_widths[0]}}} {{:<{col_widths[1]}}} {{:<{col_widths[2]}}} {{:<{col_widths[3]}}}"
+        header_fmt = (
+            f"  {{:<{col_widths[0]}}} {{:<{col_widths[1]}}} "
+            f"{{:<{col_widths[2]}}} {{:<{col_widths[3]}}}"
+        )
         lines.append(header_fmt.format("Step", "Timestamp", "Action", "Result"))
         lines.append("  " + "-" * (sum(col_widths) - 1))
 
@@ -376,10 +379,10 @@ class AuditExporter:
             "  }\n"
             "  h1, h2, h3 { color: var(--accent); font-weight: 600; }\n"
             "  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }\n"
-            "  h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }\n"
+            "  h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }\n"  # noqa: E501
             "  .timestamp { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.5rem; }\n"
             "  table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }\n"
-            "  th, td { text-align: left; padding: 0.55rem 0.75rem; border: 1px solid var(--border); }\n"
+            "  th, td { text-align: left; padding: 0.55rem 0.75rem; border: 1px solid var(--border); }\n"  # noqa: E501
             "  th { background: var(--surface); color: var(--accent); }\n"
             "  tr:nth-child(even) td { background: rgba(22,27,34,0.6); }\n"
             "  tr:nth-child(odd)  td { background: var(--bg); }\n"
@@ -406,8 +409,8 @@ class AuditExporter:
             "    border-radius: 6px;\n"
             "    padding: 0.75rem 1rem;\n"
             "  }\n"
-            "  .meta-card .label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }\n"
-            "  .meta-card .value { color: var(--text); font-size: 0.95rem; margin-top: 0.15rem; word-break: break-word; }\n"
+            "  .meta-card .label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }\n"  # noqa: E501
+            "  .meta-card .value { color: var(--text); font-size: 0.95rem; margin-top: 0.15rem; word-break: break-word; }\n"  # noqa: E501
             "  .summary-grid {\n"
             "    display: grid;\n"
             "    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));\n"
@@ -422,9 +425,9 @@ class AuditExporter:
             "    text-align: center;\n"
             "  }\n"
             "  .summary-card .num { font-size: 1.6rem; font-weight: 700; color: var(--accent); }\n"
-            "  .summary-card .lbl { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.2rem; }\n"
-            "  .result-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n"
-            "  .params-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; color: var(--text-dim); }\n"
+            "  .summary-card .lbl { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.2rem; }\n"  # noqa: E501
+            "  .result-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n"  # noqa: E501
+            "  .params-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; color: var(--text-dim); }\n"  # noqa: E501
             "  .action-list { list-style: none; padding: 0; }\n"
             "  .action-list li { padding: 0.2rem 0; }\n"
             "  .action-list li::before { content: '▸ '; color: var(--accent); }\n"

@@ -238,7 +238,12 @@ class ActionExecutor:
                 and stealth_input.is_available()
                 and stealth_input.post_click(sx, sy, button=button)
             ):
-                desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
+                if clicks == 2:
+                    desc = "Double-clicked"
+                elif button == "right":
+                    desc = "Right-clicked"
+                else:
+                    desc = "Clicked"
                 return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
             # PostMessage failed; fall through to physical click.
             self._desktop.click(sx, sy, button=button, clicks=clicks)
@@ -306,7 +311,10 @@ class ActionExecutor:
                 "success": False,
                 "output": f"Text {text!r} not found via OCR or UIAutomation",
                 "error": "text_not_found",
-                "hint": "Try list_controls() to find the element, or use click(x,y) with coordinates from the screenshot",
+                "hint": (
+                    "Try list_controls() to find the element, "
+                    "or use click(x,y) with coordinates from the screenshot"
+                ),
             }
         except Exception as exc:
             logger.warning("click_text failed: %s", exc)
@@ -448,7 +456,10 @@ class ActionExecutor:
                 "output": f"No control matched (name={name!r}, automation_id={automation_id!r}, "
                 f"control_type={control_type!r})",
                 "error": "control_not_found",
-                "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
+                "hint": (
+                    "Try list_controls() to see available controls, "
+                    "or click(x,y) with screenshot coordinates"
+                ),
             }
         except Exception as exc:
             logger.warning("click_control failed: %s", exc)
@@ -802,11 +813,15 @@ class ActionExecutor:
             sw = SmartWait()
             region_tuple = tuple(region) if region else None
             result = sw.wait_for_change(timeout=float(timeout), region=region_tuple)
+            if result.success:
+                output = (
+                    f"Screen changed after {result.elapsed:.1f}s ({result.frames_checked} frames)"
+                )
+            else:
+                output = f"No change after {result.elapsed:.1f}s"
             return {
                 "success": result.success,
-                "output": f"Screen changed after {result.elapsed:.1f}s ({result.frames_checked} frames)"
-                if result.success
-                else f"No change after {result.elapsed:.1f}s",
+                "output": output,
                 "elapsed": result.elapsed,
                 "frames_checked": result.frames_checked,
             }
@@ -877,9 +892,7 @@ class ActionExecutor:
                 "error": "wait_for_text_failed",
             }
 
-    def _open_app(
-        self, *, path: str, args: list[str] | None = None, **kwargs: Any
-    ) -> ActionResult:
+    def _open_app(self, *, path: str, args: list[str] | None = None, **kwargs: Any) -> ActionResult:
         try:
             pid = pm.start_process(path, args)
             if pid:
@@ -1199,7 +1212,7 @@ class ActionExecutor:
             return {"success": False, "output": f"Script error: {exc}", "error": "script_failed"}
 
     # Dispatch table
-    _dispatch_table: dict[str, Callable[..., dict[str, Any]]] = {
+    _dispatch_table: dict[str, Callable[..., ActionResult]] = {
         "click": _click,
         "double_click": _click,
         "right_click": _click,

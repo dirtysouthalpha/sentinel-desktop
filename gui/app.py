@@ -1138,7 +1138,7 @@ class SettingsWindow:
                 if m.get("is_virtual"):
                     continue
                 label = (
-                    f"{m['index']} — {m['width']}×{m['height']}"
+                    f"{m['index']} — {m['width']}x{m['height']}"
                     f"{' (primary)' if m.get('is_primary') else ''}"
                 )
                 monitor_choices.append(label)

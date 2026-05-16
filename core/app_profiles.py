@@ -233,8 +233,13 @@ PROFILES: dict[str, AppProfile] = {
             "Model is .cmo3 project, runtime export creates .moc3 + textures + .model3.json",
         ],
         strategies={
-            "export_runtime": "Physical click File → wait → click Export for Runtime → wait → click Export for Runtime in submenu → wait for dialog → click OK",
-            "rig_parameter": "Click parameter in list → click Add Parameter → drag mesh points on canvas",
+            "export_runtime": (
+                "Physical click File → wait → click Export for Runtime → wait → "
+                "click Export for Runtime in submenu → wait for dialog → click OK"
+            ),
+            "rig_parameter": (
+                "Click parameter in list → click Add Parameter → drag mesh points on canvas"
+            ),
         },
     ),
     "file_explorer": AppProfile(

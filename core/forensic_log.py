@@ -331,7 +331,8 @@ class ForensicLog:
             f"  Provider: {provider} / {model}",
             f"  Started:  {start}",
             f"  Ended:    {end}",
-            f"  Steps:    {total}  (actions={action_count}  errors={error_count}  overrides={override_count})",
+            f"  Steps:    {total}  (actions={action_count}  "
+            f"errors={error_count}  overrides={override_count})",
         ]
         if summary:
             lines.append(f"  Summary:  {summary}")

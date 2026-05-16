@@ -185,7 +185,9 @@ TOOLS: list[dict[str, Any]] = [
                     "scope": {"type": "string", "enum": ["focused", "all"], "default": "focused"},
                     "window": {
                         "type": "string",
-                        "description": "Partial window title to target instead of the focused window.",
+                        "description": (
+                            "Partial window title to target instead of the focused window."
+                        ),
                     },
                 },
             },
@@ -195,7 +197,9 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_window",
-            "description": "OCR a specific window by partial title match. Returns the text content.",
+            "description": (
+                "OCR a specific window by partial title match. Returns the text content."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -243,7 +247,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "open_app",
-            "description": "Start a raw program by absolute path. Prefer smart_open() unless you really need a specific exe.",
+            "description": (
+                "Start a raw program by absolute path. "
+                "Prefer smart_open() unless you really need a specific exe."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {

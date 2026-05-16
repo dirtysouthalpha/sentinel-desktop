@@ -64,7 +64,10 @@ class PSResult:
 
     def __str__(self) -> str:
         status = "OK" if self.success else "FAIL"
-        return f"PSResult({status}, code={self.exit_code}, stdout={len(self.stdout)}c, objects={len(self.objects)})"
+        return (
+            f"PSResult({status}, code={self.exit_code}, "
+            f"stdout={len(self.stdout)}c, objects={len(self.objects)})"
+        )
 
 
 # ---------------------------------------------------------------------------

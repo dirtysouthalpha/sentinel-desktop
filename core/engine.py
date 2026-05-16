@@ -109,13 +109,16 @@ and take actions to accomplish the user's goal.
 ### Mouse by content (not coords)
 {"action": "click_text", "text": "Save"}
 {"action": "click_text", "text": "File", "button": "right"}
-{"action": "click_control", "name": "OK"} or {"action": "click_control", "automation_id": "btnOK", "control_type": "ButtonControl"}
-{"action": "list_controls"} — returns accessible controls in the foreground window. Use when you can't find the right coordinates.
+{"action": "click_control", "name": "OK"} or {"action": "click_control", \
+"automation_id": "btnOK", "control_type": "ButtonControl"}
+{"action": "list_controls"} — returns accessible controls in the \
+foreground window. Use when you can't find the right coordinates.
 
 ### Keyboard
 {"action": "type_text", "text": "Hello World"}
 {"action": "press_key", "key": "enter"}
-Keys: enter, tab, escape, space, backspace, up, down, left, right, home, end, pageup, pagedown, delete, insert, f1-f12
+Keys: enter, tab, escape, space, backspace, up, down, left, right, \
+home, end, pageup, pagedown, delete, insert, f1-f12
 {"action": "hotkey", "keys": ["ctrl", "c"]}
 {"action": "hotkey", "keys": ["alt", "f4"]}
 
@@ -129,20 +132,24 @@ Use set_text instead of click+type when you know the field name. More reliable t
 {"action": "read_text", "scope": "all"} — OCR the entire screen
 {"action": "read_text", "window": "Notepad"} — OCR a specific window by title
 {"action": "read_window", "title": "Calculator"} — OCR a specific window
-IMPORTANT: You are a vision model. READ THE SCREENSHOT DIRECTLY. Use read_text only as a supplement when the screenshot is unclear. If OCR returns low_confidence, ignore it and trust your eyes.
+IMPORTANT: You are a vision model. READ THE SCREENSHOT DIRECTLY. \
+Use read_text only as a supplement when the screenshot is unclear. \
+If OCR returns low_confidence, ignore it and trust your eyes.
 
 ### Image matching
 {"action": "find_image", "template_path": "C:/path/to/button.png", "confidence": 0.8}
 
 ### Waiting (prefer over fixed wait)
 {"action": "smart_wait", "timeout": 10} — wait until the screen changes
-{"action": "wait_for_stable", "timeout": 10, "stable_time": 1.5} — wait until the screen stops changing (use after opening apps, clicking links, loading pages)
+{"action": "wait_for_stable", "timeout": 10, "stable_time": 1.5} — \
+wait until the screen stops changing (use after opening apps, clicking links, loading pages)
 {"action": "wait_for_text", "text": "Loading complete", "timeout": 10}
 {"action": "wait_for_image", "template_path": "C:/path/to/icon.png", "timeout": 10}
 {"action": "wait", "seconds": 2} — fixed wait, LAST RESORT
 
 ### Apps and windows
-{"action": "smart_open", "name": "chrome"} — focus if open, else launch. Supports: outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc.
+{"action": "smart_open", "name": "chrome"} — focus if open, else launch. \
+Supports: outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc.
 {"action": "open_app", "path": "C:/Program Files/App/app.exe", "args": ""}
 {"action": "focus_window", "title": "Chrome"}
 {"action": "close_window", "title": "Notepad"}
@@ -556,7 +563,9 @@ class AgentEngine:
                     messages.append(
                         {
                             "role": "user",
-                            "content": "Please respond with a valid JSON action. Only JSON, no other text.",
+                            "content": (
+                                "Please respond with a valid JSON action. Only JSON, no other text."
+                            ),
                         }
                     )
                     if self._consecutive_failures >= 5:
@@ -585,8 +594,8 @@ class AgentEngine:
                 action, _schema_errors = validate_action(action)
                 if _schema_errors:
                     err_msg = (
-                        f"Step {self.step}: action {action.get('action')!r} failed schema validation: "
-                        f"{'; '.join(_schema_errors)}"
+                        f"Step {self.step}: action {action.get('action')!r} "
+                        f"failed schema validation: {'; '.join(_schema_errors)}"
                     )
                     logger.warning(err_msg)
                     self.notes.append(err_msg)
@@ -614,7 +623,9 @@ class AgentEngine:
                         messages.append(
                             {
                                 "role": "user",
-                                "content": "The user skipped that action. Try a different approach.",
+                                "content": (
+                                    "The user skipped that action. Try a different approach."
+                                ),
                             }
                         )
                         continue
@@ -647,7 +658,10 @@ class AgentEngine:
                                 action={"action": "mfa_pause"},
                                 result={
                                     "ok": False,
-                                    "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}",
+                                    "msg": (
+                                        f"🔐 {mfa_result.type.upper()} detected: "
+                                        f"{mfa_result.prompt_text}"
+                                    ),
                                 },
                             )
                         except (RuntimeError, TypeError) as exc:
@@ -726,7 +740,8 @@ class AgentEngine:
                     # Check failure thresholds
                     if self._consecutive_failures >= 8:
                         error_summary = (
-                            f"Run terminated after {self._consecutive_failures} consecutive failures. "
+                            f"Run terminated after "
+                            f"{self._consecutive_failures} consecutive failures. "
                             f"Last error: {error_msg[:200]}"
                         )
                         self.notes.append(error_summary)
@@ -749,7 +764,8 @@ class AgentEngine:
                                     "[SYSTEM RECOVERY] You have had multiple consecutive failures. "
                                     "Please completely change your approach. Consider: "
                                     "1) Taking a fresh screenshot to reassess, "
-                                    "2) Using a different action type (e.g., list_controls, read_text), "
+                                    "2) Using a different action type "
+                                    "(e.g., list_controls, read_text), "
                                     "3) Trying keyboard navigation instead of mouse clicks, "
                                     "4) Finishing with a note if the goal is partially achieved."
                                 ),
@@ -924,7 +940,8 @@ class AgentEngine:
                         exc,
                     )
                     self.notes.append(
-                        f"LLM error at step {self.step} (after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
+                        f"LLM error at step {self.step} "
+                        f"(after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
                     )
                     return None
         return None  # unreachable, but satisfies type checker
@@ -1008,9 +1025,8 @@ class AgentEngine:
         if errors:
             lines.append("Errors:")
             for e in errors[:5]:
-                lines.append(
-                    f"  Step {e.get('step')}: {e.get('action')} — {e.get('result', {}).get('msg', '')[:150]}"
-                )
+                msg = e.get("result", {}).get("msg", "")[:150]
+                lines.append(f"  Step {e.get('step')}: {e.get('action')} — {msg}")
         report["text"] = "\n".join(lines)
         return report
 
