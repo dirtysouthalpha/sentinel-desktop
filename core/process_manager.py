@@ -33,6 +33,14 @@ def start_process(path: str, args: list[str] | None = None) -> int | None:
     try:
         cmd = [path] + (args or [])
         proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        stderr_output = proc.stderr.read() if proc.stderr else b""
+        if proc.poll() is not None and proc.returncode != 0 and stderr_output:
+            logger.warning(
+                "start_process(%s) exited immediately (rc=%d): %s",
+                path,
+                proc.returncode,
+                stderr_output.decode("utf-8", errors="replace")[:256],
+            )
         return proc.pid
     except (OSError, subprocess.SubprocessError, FileNotFoundError):
         logger.exception("start_process(%s) failed", path)

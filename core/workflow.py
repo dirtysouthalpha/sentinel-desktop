@@ -334,8 +334,9 @@ class WorkflowEngine:
         elif step.type == StepType.SUB_WORKFLOW:
             return self._exec_sub_workflow(step)
         elif step.type == StepType.DELAY:
-            time.sleep(step.delay_seconds)
-            return {"success": True, "type": "delay", "seconds": step.delay_seconds}
+            seconds = max(0.0, min(step.delay_seconds, 3600.0))
+            time.sleep(seconds)
+            return {"success": True, "type": "delay", "seconds": seconds}
         elif step.type == StepType.NOTIFY:
             return self._exec_notify(step)
         else:

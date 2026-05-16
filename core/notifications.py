@@ -142,6 +142,8 @@ def _send_http(
         except (URLError, OSError) as exc:
             last_error = str(exc)
 
+        logger.debug("HTTP attempt %d/%d failed: %s", attempt, retries, last_error)
+
         # Simple linear back-off before retrying.
         if attempt < retries:
             time.sleep(0.5 * attempt)
