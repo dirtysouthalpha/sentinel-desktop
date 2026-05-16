@@ -29,7 +29,7 @@ class DesktopController:
     def screenshot(self) -> Image.Image:
         try:
             return pyautogui.screenshot()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("screenshot failed: %s", exc)
             raise
 
@@ -39,14 +39,14 @@ class DesktopController:
             buf = io.BytesIO()
             img.save(buf, format=format)
             return base64.b64encode(buf.getvalue()).decode("utf-8")
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.error("screenshot_base64 failed: %s", exc)
             raise
 
     def screenshot_region(self, x: int, y: int, w: int, h: int) -> Image.Image:
         try:
             return pyautogui.screenshot(region=(x, y, w, h))
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.error("screenshot_region(%d,%d,%d,%d) failed: %s", x, y, w, h, exc)
             raise
 
@@ -58,7 +58,7 @@ class DesktopController:
             pyautogui.click(x=x, y=y, button=button, clicks=clicks)
         except _FailSafeException:
             raise
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("click(%d, %d) failed: %s", x, y, exc)
             raise
 
@@ -67,7 +67,7 @@ class DesktopController:
             pyautogui.doubleClick(x=x, y=y)
         except _FailSafeException:
             raise
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("double_click(%d, %d) failed: %s", x, y, exc)
             raise
 
@@ -76,7 +76,7 @@ class DesktopController:
             pyautogui.rightClick(x=x, y=y)
         except _FailSafeException:
             raise
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("right_click(%d, %d) failed: %s", x, y, exc)
             raise
 
@@ -85,7 +85,7 @@ class DesktopController:
             pyautogui.moveTo(x=x, y=y, duration=duration)
         except _FailSafeException:
             raise
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("move_to(%d, %d) failed: %s", x, y, exc)
             raise
 
@@ -103,7 +103,7 @@ class DesktopController:
             pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)
         except _FailSafeException:
             raise
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("drag(%d,%d -> %d,%d) failed: %s", from_x, from_y, to_x, to_y, exc)
             raise
 
@@ -112,35 +112,35 @@ class DesktopController:
             pyautogui.scroll(amount, x=x, y=y)
         except _FailSafeException:
             raise
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("scroll(%d) failed: %s", amount, exc)
             raise
 
     def get_mouse_position(self) -> tuple[int, int]:
         try:
             return pyautogui.position()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("get_mouse_position failed: %s", exc)
             return (0, 0)
 
     def type_text(self, text: str, interval: float = 0.02) -> None:
         try:
             pyautogui.write(text, interval=interval)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("type_text(%r…) failed: %s", text[:40], exc)
             raise
 
     def press_key(self, key: str) -> None:
         try:
             pyautogui.press(key)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("press_key(%r) failed: %s", key, exc)
             raise
 
     def hotkey(self, *keys: str) -> None:
         try:
             pyautogui.hotkey(*keys)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("hotkey(%s) failed: %s", "+".join(keys), exc)
             raise
 
@@ -162,7 +162,7 @@ class DesktopController:
             if max_val >= confidence:
                 h, w = template.shape
                 return (max_loc[0] + w // 2, max_loc[1] + h // 2)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.error("find_on_screen failed: %s", exc)
         return None
 
@@ -175,7 +175,7 @@ class DesktopController:
                 pos = self.find_on_screen(template_path, confidence)
                 if pos:
                     return pos
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 logger.warning("wait_for_image scan failed: %s", exc)
             time.sleep(interval)
         return None

@@ -137,7 +137,7 @@ def _get_current_desktop_name() -> str:
 
         name = buf.value
         return name or "Default"
-    except Exception as exc:
+    except (OSError, AttributeError) as exc:
         logger.debug("_get_current_desktop_name failed: %s", exc)
         return "Default"
 
@@ -163,7 +163,7 @@ class _Win32VirtualDesktop:
         try:
             user32 = _get_user32()
             self._default_handle = user32.GetThreadDesktop(_get_kernel32().GetCurrentThreadId())
-        except Exception as exc:
+        except (OSError, AttributeError) as exc:
             logger.debug("Could not snapshot default desktop handle: %s", exc)
 
     # -- creation / cleanup --------------------------------------------------
@@ -203,7 +203,7 @@ class _Win32VirtualDesktop:
             logger.info("Created virtual desktop %r (handle=%s)", self._name, handle)
             return True
 
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning(
                 "Virtual desktop creation failed (%s); falling back to current desktop",
                 exc,
@@ -220,7 +220,7 @@ class _Win32VirtualDesktop:
             if self._handle:
                 try:
                     _get_user32().CloseDesktop(self._handle)
-                except Exception as exc:
+                except OSError as exc:
                     logger.debug("CloseDesktop failed: %s", exc)
                 self._handle = None
             logger.info("Virtual desktop %r closed", self._name)
@@ -250,7 +250,7 @@ class _Win32VirtualDesktop:
                     logger.debug("SwitchDesktop returned False (non-fatal)")
                 self._is_active = True
                 return True
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning("switch_to failed: %s", exc)
                 return False
 
@@ -286,7 +286,7 @@ class _Win32VirtualDesktop:
                 user32.CloseDesktop(default_handle)
                 self._is_active = False
                 return True
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning("switch_back failed: %s", exc)
                 return False
 
@@ -441,7 +441,7 @@ class _Win32VirtualDesktop:
                 import pyautogui
 
                 return pyautogui.screenshot()
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning("screenshot capture failed: %s", exc)
                 return None
             finally:
@@ -466,7 +466,7 @@ class _Win32VirtualDesktop:
                 from core import window_manager as wm
 
                 return wm.list_windows()
-            except Exception as exc:
+            except (ImportError, OSError) as exc:
                 logger.debug("window_manager fallback failed: %s", exc)
                 return windows
 
@@ -538,7 +538,7 @@ class _Win32VirtualDesktop:
             finally:
                 self._lock.release()
 
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("list_windows on virtual desktop failed: %s", exc)
 
         return windows
@@ -554,7 +554,7 @@ class _Win32VirtualDesktop:
             user32.SwitchDesktop(self._handle)
             self._is_active = True
             return True
-        except Exception as exc:
+        except OSError as exc:
             logger.debug("_switch_to_locked failed: %s", exc)
             return False
 
@@ -575,7 +575,7 @@ class _Win32VirtualDesktop:
             user32.CloseDesktop(default_handle)
             self._is_active = False
             return True
-        except Exception as exc:
+        except OSError as exc:
             logger.debug("_switch_back_locked failed: %s", exc)
             return False
 
@@ -650,7 +650,7 @@ class _StubVirtualDesktop:
             import pyautogui
 
             return pyautogui.screenshot()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("screenshot (fallback) failed: %s", exc)
             return None
 
@@ -660,7 +660,7 @@ class _StubVirtualDesktop:
             from core import window_manager as wm
 
             return wm.list_windows()
-        except Exception as exc:
+        except (ImportError, OSError) as exc:
             logger.debug("list_windows fallback failed: %s", exc)
             return []
 
@@ -731,7 +731,7 @@ class VirtualDesktop:
         if _IS_WINDOWS:
             try:
                 self._impl = _Win32VirtualDesktop(name)
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning(
                     "Failed to initialise Win32 virtual desktop: %s — falling back to stub",
                     exc,
