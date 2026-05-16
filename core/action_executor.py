@@ -683,18 +683,18 @@ class ActionExecutor:
                     "success": True,
                     "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y}) — stealth",
                 }
-            except Exception as exc:
+            except (OSError, RuntimeError, AttributeError) as exc:
                 logger.debug("Stealth drag failed, falling back: %s", exc)
         try:
             self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
         return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
 
     def _scroll(self, *, amount: int, **kwargs: Any) -> dict[str, Any]:
         try:
             self._desktop.scroll(amount)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             return {"success": False, "output": f"Scroll failed: {exc}", "error": "scroll_failed"}
         else:
             return {"success": True, "output": f"Scrolled {amount}"}
@@ -1031,7 +1031,7 @@ class ActionExecutor:
     def _clipboard_read(self, **kwargs: Any) -> dict[str, Any]:
         try:
             text = clip.clipboard_read()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             return {
                 "success": False,
                 "output": f"clipboard_read error: {exc}",
@@ -1043,7 +1043,7 @@ class ActionExecutor:
     def _clipboard_write(self, *, text: str, **kwargs: Any) -> dict[str, Any]:
         try:
             ok = clip.clipboard_write(text)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             return {
                 "success": False,
                 "output": f"clipboard_write error: {exc}",

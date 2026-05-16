@@ -54,7 +54,10 @@ def list_windows() -> list[dict[str, Any]]:
                         }
                     )
 
-        win32gui.EnumWindows(_enum, None)
+        try:
+            win32gui.EnumWindows(_enum, None)
+        except _Win32Error as exc:
+            logger.error("list_windows EnumWindows failed: %s", exc)
     elif HAS_PGW:
         try:
             for w in pgw.getAllWindows():
@@ -111,7 +114,7 @@ def focus_window(title: str) -> bool:
             win32gui.SetForegroundWindow(hwnd)
             return True
         except _Win32Error as exc:
-            logger.debug("focus_window(%s) failed: %s", title, exc)
+            logger.warning("focus_window(%s) failed: %s", title, exc)
             return False
     elif HAS_PGW:
         try:
@@ -275,11 +278,14 @@ def restore_window(title: str) -> bool:
     if not title:
         return False
     needle = title.lower()
-    for w in list_windows():
-        if needle in (w.get("title") or "").lower():
-            hwnd = w.get("hwnd")
-            if hwnd is not None:
-                return restore_window_hwnd(hwnd)
+    try:
+        for w in list_windows():
+            if needle in (w.get("title") or "").lower():
+                hwnd = w.get("hwnd")
+                if hwnd is not None:
+                    return restore_window_hwnd(hwnd)
+    except (OSError, _Win32Error) as exc:
+        logger.warning("restore_window(%s) enumeration failed: %s", title, exc)
     return False
 
 
@@ -306,7 +312,7 @@ def close_window(title: str) -> bool:
             win32gui.EnumWindows(_find, None)
             return found
         except _Win32Error as exc:
-            logger.debug("close_window(%s) enum failed: %s", title, exc)
+            logger.warning("close_window(%s) enum failed: %s", title, exc)
             return False
     elif HAS_PGW:
         try:

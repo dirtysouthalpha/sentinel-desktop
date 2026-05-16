@@ -375,7 +375,7 @@ class WorkflowEngine:
 
         try:
             return self.executor.execute_sync(action)
-        except Exception:
+        except (RuntimeError, OSError, ValueError, KeyError):
             logger.exception("Action execution failed in step %s", step.id)
             raise
 
@@ -394,7 +394,7 @@ class WorkflowEngine:
                 "steps_total": sub_result.steps_total,
                 "error": sub_result.error,
             }
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             logger.exception("Sub-workflow execution failed in step %s", step.id)
             return {"success": False, "error": f"Sub-workflow failed: {exc}"}
 
@@ -407,7 +407,7 @@ class WorkflowEngine:
             msg = self.resolve_variables(step.message, self._variables, self._step_outputs)
             nm.notify(title="Workflow", message=msg, level=step.level)
             return {"success": True, "type": "notify"}
-        except Exception:
+        except (ImportError, OSError, RuntimeError):
             logger.exception("Notify step failed, logging message instead")
             logger.info("Notify step: %s", step.message)
             return {"success": True, "type": "notify", "note": "notification delivery failed"}

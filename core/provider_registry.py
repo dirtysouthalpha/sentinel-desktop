@@ -449,7 +449,7 @@ def fetch_models(
             exc,
         )
         return []
-    except Exception as exc:
+    except (ValueError, KeyError, TypeError) as exc:
         logger.error("fetch_models(%s): unexpected %s: %s", provider_key, type(exc).__name__, exc)
         return []
 

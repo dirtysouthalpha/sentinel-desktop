@@ -64,7 +64,7 @@ def resolve_monitor(monitor: int | str | None) -> int | None:
                 ):
                     return i
         return 1
-    except Exception as exc:
+    except (_ScreenShotError, OSError, RuntimeError, ImportError) as exc:
         logger.debug("resolve_monitor(auto) failed: %s", exc)
         return 1
 
@@ -88,7 +88,7 @@ def get_capture_offset(monitor: int | str | None = None) -> tuple[int, int]:
             if 0 <= resolved < len(mons):
                 m = mons[resolved]
                 return (int(m.get("left", 0)), int(m.get("top", 0)))
-    except Exception as exc:
+    except (_ScreenShotError, OSError) as exc:
         logger.debug("get_capture_offset failed: %s", exc)
     return (0, 0)
 
@@ -118,8 +118,8 @@ def list_monitors() -> list[dict[str, int | bool]]:
                     }
                 )
             return out
-        except Exception as exc:
-            logger.debug("mss.monitors failed, falling back: %s", exc)
+        except (_ScreenShotError, OSError) as exc:
+            logger.warning("mss.monitors failed, falling back: %s", exc)
 
     try:
         w, h = pyautogui.size()
@@ -167,11 +167,11 @@ def capture_screen(monitor: int | str | None = None) -> Image.Image:
                     monitor,
                     len(mons),
                 )
-        except Exception as exc:
+        except (_ScreenShotError, OSError) as exc:
             logger.warning("mss capture failed, falling back: %s", exc)
     try:
         return pyautogui.screenshot()
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.error("pyautogui screenshot failed: %s", exc)
         raise OSError(f"All screen capture methods failed: {exc}") from exc
 
@@ -261,11 +261,11 @@ def capture_region(x: int, y: int, w: int, h: int) -> Image.Image:
             with mss.mss() as sct:
                 raw = sct.grab({"left": x, "top": y, "width": w, "height": h})
                 return Image.frombytes("RGB", raw.size, raw.rgb)
-        except Exception as exc:
-            logger.debug("mss region capture failed, falling back: %s", exc)
+        except (_ScreenShotError, OSError) as exc:
+            logger.warning("mss region capture failed, falling back: %s", exc)
     try:
         return pyautogui.screenshot(region=(x, y, w, h))
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.error("pyautogui region capture failed: %s", exc)
         raise OSError(f"Region capture failed for ({x},{y},{w},{h}): {exc}") from exc
 

@@ -346,7 +346,7 @@ class RecoveryEngine:
                     suggestion.confidence,
                 )
                 return suggestion
-            except Exception:
+            except (ValueError, KeyError, RuntimeError, OSError):
                 logger.exception("Recovery handler for %s failed", pattern)
 
         # Default: generic retry suggestion
