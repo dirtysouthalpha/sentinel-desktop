@@ -596,7 +596,7 @@ class ActionExecutor:
             self._desktop.type_text(text)
             return {"success": True, "output": f"Typed {len(text)} characters"}
         except Exception as exc:
-            logger.debug("pyautogui type_text failed, trying clipboard: %s", exc)
+            logger.warning("pyautogui type_text failed, trying clipboard: %s", exc)
             try:
                 import pyperclip
 
@@ -616,7 +616,7 @@ class ActionExecutor:
                 return {"success": True, "output": f"Pressed {key} — stealth"}
             self._desktop.press_key(key)
         except Exception as exc:
-            logger.debug("press_key failed for %r: %s", key, exc)
+            logger.warning("press_key failed for %r: %s", key, exc)
             return {
                 "success": False,
                 "output": f"Press key failed: {exc}",
