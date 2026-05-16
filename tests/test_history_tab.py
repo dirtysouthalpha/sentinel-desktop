@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import customtkinter as ctk
 import pytest
 
 
@@ -22,8 +21,12 @@ def mock_app():
 def history_tab(mock_app):
     from gui.tabs.history_tab import HistoryTab
 
-    parent = ctk.CTkFrame()
-    tab = HistoryTab(parent, mock_app)
+    with patch("gui.tabs.history_tab.ctk"):
+        tab = HistoryTab.__new__(HistoryTab)
+        tab.app = mock_app
+        tab.sessions = []
+        tab.selected_index = -1
+        tab.filter_var = MagicMock()
     return tab
 
 
