@@ -8,7 +8,7 @@ the appropriate desktop, file, window, or process functions.
 import asyncio
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypedDict
 
 from core import clipboard as clip
 from core import desktop as desktop_mod
@@ -19,6 +19,16 @@ from core import window_manager as wm
 from core.screenshot import capture_to_base64, find_template, wait_for_template
 
 logger = logging.getLogger(__name__)
+
+
+class ActionResult(TypedDict, total=False):
+    """Structured result returned by every action handler."""
+
+    success: bool
+    output: str
+    error: str
+    dry_run: bool
+
 
 # Sensitive field keywords — skip typing into these
 SENSITIVE_FIELDS = [
@@ -100,7 +110,7 @@ class ActionExecutor:
     def log(self) -> list[dict[str, Any]]:
         return list(self._log)
 
-    async def execute(self, action: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, action: dict[str, Any]) -> ActionResult:
         """Execute a single action.
 
         .. deprecated:: 3.1.0
@@ -165,7 +175,7 @@ class ActionExecutor:
         self._log_entry(action_type, params, result)
         return result
 
-    def execute_sync(self, action: dict[str, Any]) -> dict[str, Any]:
+    def execute_sync(self, action: dict[str, Any]) -> ActionResult:
         """Synchronous wrapper — executes action directly (no event loop needed)."""
         action_type = action.get("action", "").lower()
         params = {k: v for k, v in action.items() if k != "action"}
@@ -200,7 +210,7 @@ class ActionExecutor:
         self._log_entry(action_type, params, result)
         return result
 
-    def _log_entry(self, action_type: str, params: dict[str, Any], result: dict[str, Any]) -> None:
+    def _log_entry(self, action_type: str, params: dict[str, Any], result: ActionResult) -> None:
         entry = {
             "action": action_type,
             "params": _sanitize_params(params),
@@ -215,7 +225,7 @@ class ActionExecutor:
     # -------------------------------------------------------------------
     def _click(
         self, *, x: int, y: int, button: str = "left", clicks: int = 1, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Click at (x,y), trying stealth PostMessage first then physical fallback."""
         # Translate from captured-image coords to absolute screen coords for
         # multi-monitor virtual-desktop capture.
@@ -251,7 +261,7 @@ class ActionExecutor:
 
     def _click_text(
         self, *, text: str, button: str = "left", fuzzy: bool = True, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """OCR-backed click: locate visible text and click its centre.
 
         Self-healing: if OCR fails, tries UIAutomation click by name.
@@ -308,7 +318,7 @@ class ActionExecutor:
 
     def _read_text(
         self, *, scope: str = "focused", window: str | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """OCR text from the screen.
 
         Args:
@@ -359,7 +369,7 @@ class ActionExecutor:
                 "error": "read_text_failed",
             }
 
-    def _read_window(self, *, title: str, **kwargs: Any) -> dict[str, Any]:
+    def _read_window(self, *, title: str, **kwargs: Any) -> ActionResult:
         """OCR a specific window by partial title match — convenience for the LLM."""
         try:
             text = ocr.read_window_text(title)
@@ -396,7 +406,7 @@ class ActionExecutor:
         window_title: str | None = None,
         button: str = "left",
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Click a native Windows control by its accessibility name/id/type.
 
         Self-healing: if UIAutomation fails, tries OCR text click.
@@ -450,7 +460,7 @@ class ActionExecutor:
 
     def _list_controls(
         self, *, window_title: str | None = None, max_results: int = 60, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """List accessible controls in a window for the LLM to choose from."""
         try:
             controls = ui_tree.list_controls(window_title=window_title, max_results=max_results)
@@ -491,7 +501,7 @@ class ActionExecutor:
         automation_id: str | None = None,
         window_title: str | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Set the value of a named edit/textbox control deterministically.
 
         Self-healing: if UIAutomation set_text fails, tries click+Ctrl+A+type.
@@ -564,7 +574,7 @@ class ActionExecutor:
 
     def _click_image(
         self, *, template_path: str, confidence: float = 0.8, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         # Find the template position; click via stealth if enabled so the
         # cursor stays put.
         try:
@@ -591,7 +601,7 @@ class ActionExecutor:
                 "error": "click_image_failed",
             }
 
-    def _type_text(self, *, text: str, **kwargs: Any) -> dict[str, Any]:
+    def _type_text(self, *, text: str, **kwargs: Any) -> ActionResult:
         """Type text with stealth PostMessage → pyautogui → clipboard fallback."""
         # Sensitive field check
         if _contains_sensitive(text):
@@ -621,7 +631,7 @@ class ActionExecutor:
                 logger.warning("clipboard type fallback failed: %s", exc2)
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
-    def _press_key(self, *, key: str, **kwargs: Any) -> dict[str, Any]:
+    def _press_key(self, *, key: str, **kwargs: Any) -> ActionResult:
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_named_key(key):
                 return {"success": True, "output": f"Pressed {key} — stealth"}
@@ -636,7 +646,7 @@ class ActionExecutor:
         else:
             return {"success": True, "output": f"Pressed {key}"}
 
-    def _hotkey(self, *, keys: list[str], **kwargs: Any) -> dict[str, Any]:
+    def _hotkey(self, *, keys: list[str], **kwargs: Any) -> ActionResult:
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_hotkey(keys):
                 return {"success": True, "output": f"Hotkey: {'+'.join(keys)} — stealth"}
@@ -657,7 +667,7 @@ class ActionExecutor:
         duration: float = 0.5,
         button: str = "left",
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Drag from source to dest with interpolated stealth PostMessage or physical fallback."""
         sx = int(from_x) + self.click_offset[0]
         sy = int(from_y) + self.click_offset[1]
@@ -700,7 +710,7 @@ class ActionExecutor:
             return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
         return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
 
-    def _scroll(self, *, amount: int, **kwargs: Any) -> dict[str, Any]:
+    def _scroll(self, *, amount: int, **kwargs: Any) -> ActionResult:
         try:
             self._desktop.scroll(amount)
         except (OSError, RuntimeError) as exc:
@@ -708,7 +718,7 @@ class ActionExecutor:
         else:
             return {"success": True, "output": f"Scrolled {amount}"}
 
-    def _screenshot(self, **kwargs: Any) -> dict[str, Any]:
+    def _screenshot(self, **kwargs: Any) -> ActionResult:
         try:
             b64 = capture_to_base64(monitor=self.monitor)
         except Exception as exc:
@@ -727,7 +737,7 @@ class ActionExecutor:
 
     def _find_image(
         self, *, template_path: str, confidence: float = 0.8, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         try:
             pos = find_template(template_path, confidence)
             if pos:
@@ -749,7 +759,7 @@ class ActionExecutor:
                 "error": "find_image_failed",
             }
 
-    def _wait(self, *, seconds: float = 1.0, **kwargs: Any) -> dict[str, Any]:
+    def _wait(self, *, seconds: float = 1.0, **kwargs: Any) -> ActionResult:
         import time as _time
 
         try:
@@ -764,7 +774,7 @@ class ActionExecutor:
 
     def _wait_for_image(
         self, *, template_path: str, timeout: int = 30, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         try:
             pos = wait_for_template(template_path, float(timeout))
             if pos:
@@ -784,7 +794,7 @@ class ActionExecutor:
 
     def _smart_wait(
         self, *, timeout: float = 10, region: list[int] | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Wait until the screen changes (visual diff)."""
         try:
             from core.smart_wait import SmartWait
@@ -814,7 +824,7 @@ class ActionExecutor:
         stable_time: float = 1.5,
         region: list[int] | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Wait until the screen stops changing."""
         try:
             from core.smart_wait import SmartWait
@@ -844,7 +854,7 @@ class ActionExecutor:
 
     def _wait_for_text(
         self, *, text: str, timeout: float = 10, region: list[int] | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Wait until specific text appears on screen via OCR."""
         try:
             from core.smart_wait import SmartWait
@@ -869,7 +879,7 @@ class ActionExecutor:
 
     def _open_app(
         self, *, path: str, args: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         try:
             pid = pm.start_process(path, args)
             if pid:
@@ -883,7 +893,7 @@ class ActionExecutor:
                 "error": "open_app_failed",
             }
 
-    def _smart_open(self, *, name: str, **kwargs: Any) -> dict[str, Any]:
+    def _smart_open(self, *, name: str, **kwargs: Any) -> ActionResult:
         """Focus an existing window if the app is already running, else launch.
 
         Self-healing: if normal launch fails, tries PowerShell Start-Process.
@@ -917,7 +927,7 @@ class ActionExecutor:
 
     def _close_app(
         self, *, name: str | None = None, pid: int | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         target = pid or name
         if target is None:
             return {
@@ -939,7 +949,7 @@ class ActionExecutor:
                 "error": "close_app_failed",
             }
 
-    def _focus_window(self, *, title: str, **kwargs: Any) -> dict[str, Any]:
+    def _focus_window(self, *, title: str, **kwargs: Any) -> ActionResult:
         """Focus a window by partial title match.
 
         Self-healing: if exact focus fails, scans visible windows for
@@ -982,7 +992,7 @@ class ActionExecutor:
                 "error": "focus_window_failed",
             }
 
-    def _close_window(self, *, title: str, **kwargs: Any) -> dict[str, Any]:
+    def _close_window(self, *, title: str, **kwargs: Any) -> ActionResult:
         try:
             ok = wm.close_window(title)
         except Exception as exc:
@@ -995,7 +1005,7 @@ class ActionExecutor:
         else:
             return {"success": ok, "output": f"Window '{title}' {'closed' if ok else 'not found'}"}
 
-    def _list_windows(self, **kwargs: Any) -> dict[str, Any]:
+    def _list_windows(self, **kwargs: Any) -> ActionResult:
         try:
             windows = wm.list_windows()
         except Exception as exc:
@@ -1008,7 +1018,7 @@ class ActionExecutor:
         else:
             return {"success": True, "output": windows}
 
-    def _read_file(self, *, path: str, **kwargs: Any) -> dict[str, Any]:
+    def _read_file(self, *, path: str, **kwargs: Any) -> ActionResult:
         try:
             content = file_ops.read_file(path)
             if content is not None:
@@ -1027,7 +1037,7 @@ class ActionExecutor:
                 "error": "read_file_failed",
             }
 
-    def _write_file(self, *, path: str, content: str, **kwargs: Any) -> dict[str, Any]:
+    def _write_file(self, *, path: str, content: str, **kwargs: Any) -> ActionResult:
         try:
             ok = file_ops.write_file(path, content)
         except Exception as exc:
@@ -1040,7 +1050,7 @@ class ActionExecutor:
         else:
             return {"success": ok, "output": f"File {'written' if ok else 'write failed'}"}
 
-    def _list_directory(self, *, path: str = ".", **kwargs: Any) -> dict[str, Any]:
+    def _list_directory(self, *, path: str = ".", **kwargs: Any) -> ActionResult:
         try:
             entries = file_ops.list_directory(path)
             if entries is not None:
@@ -1054,7 +1064,7 @@ class ActionExecutor:
                 "error": "list_directory_failed",
             }
 
-    def _clipboard_read(self, **kwargs: Any) -> dict[str, Any]:
+    def _clipboard_read(self, **kwargs: Any) -> ActionResult:
         try:
             text = clip.clipboard_read()
         except (OSError, RuntimeError) as exc:
@@ -1066,7 +1076,7 @@ class ActionExecutor:
         else:
             return {"success": text is not None, "output": text or ""}
 
-    def _clipboard_write(self, *, text: str, **kwargs: Any) -> dict[str, Any]:
+    def _clipboard_write(self, *, text: str, **kwargs: Any) -> ActionResult:
         try:
             ok = clip.clipboard_write(text)
         except (OSError, RuntimeError) as exc:
@@ -1078,7 +1088,7 @@ class ActionExecutor:
         else:
             return {"success": ok, "output": f"Clipboard {'updated' if ok else 'failed'}"}
 
-    def _system_info(self, **kwargs: Any) -> dict[str, Any]:
+    def _system_info(self, **kwargs: Any) -> ActionResult:
         try:
             info = sysinfo.system_info()
         except Exception as exc:
@@ -1091,7 +1101,7 @@ class ActionExecutor:
         else:
             return {"success": True, "output": info}
 
-    def _list_processes(self, **kwargs: Any) -> dict[str, Any]:
+    def _list_processes(self, **kwargs: Any) -> ActionResult:
         try:
             procs = pm.list_processes()
         except Exception as exc:
@@ -1106,7 +1116,7 @@ class ActionExecutor:
 
     def _start_process(
         self, *, path: str, args: list[str] | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         try:
             pid = pm.start_process(path, args)
             if pid is None:
@@ -1122,7 +1132,7 @@ class ActionExecutor:
 
     def _kill_process(
         self, *, pid: int | None = None, name: str | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         target = pid or name
         try:
             killed = pm.kill_process(target)
@@ -1138,16 +1148,16 @@ class ActionExecutor:
                 "error": "kill_process_failed",
             }
 
-    def _note(self, *, text: str, **kwargs: Any) -> dict[str, Any]:
+    def _note(self, *, text: str, **kwargs: Any) -> ActionResult:
         """Agent makes a note to itself — no-op for execution, logged."""
         logger.info("Agent note: %s", text)
         return {"success": True, "output": text}
 
-    def _finish(self, *, summary: str = "", **kwargs: Any) -> dict[str, Any]:
+    def _finish(self, *, summary: str = "", **kwargs: Any) -> ActionResult:
         """Signal that the agent is done."""
         return {"success": True, "output": summary, "done": True}
 
-    def _powershell(self, *, command: str, **kwargs: Any) -> dict[str, Any]:
+    def _powershell(self, *, command: str, **kwargs: Any) -> ActionResult:
         """Run a PowerShell command and return output."""
         try:
             from core.powershell import get_default_runner
@@ -1170,7 +1180,7 @@ class ActionExecutor:
 
     def _run_script(
         self, *, path: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> ActionResult:
         """Replay a recorded script from a JSON file."""
         try:
             from core.script_engine import ScriptEngine
@@ -1239,7 +1249,7 @@ class ActionExecutor:
 # ---------------------------------------------------------------------------
 
 
-def _dry_run_result(action_type: str, params: dict[str, Any]) -> dict[str, Any]:
+def _dry_run_result(action_type: str, params: dict[str, Any]) -> ActionResult:
     """Return a synthetic success result for a state-changing action in dry-run mode."""
     preview = ", ".join(f"{k}={v!r}" for k, v in list(params.items())[:4])
     if len(preview) > 200:

@@ -343,19 +343,31 @@ class SentinelServer:
         self, authorization: str | None = Header(default=None)
     ) -> dict[str, Any]:
         self._check_auth(authorization)
-        return {"windows": wm.list_windows()}
+        try:
+            windows = wm.list_windows()
+        except (OSError, RuntimeError) as exc:
+            raise HTTPException(500, f"Failed to list windows: {exc}") from exc
+        return {"windows": windows}
 
     async def _handle_processes(
         self, authorization: str | None = Header(default=None)
     ) -> dict[str, Any]:
         self._check_auth(authorization)
-        return {"processes": pm.list_processes(limit=100)}
+        try:
+            processes = pm.list_processes(limit=100)
+        except (OSError, RuntimeError) as exc:
+            raise HTTPException(500, f"Failed to list processes: {exc}") from exc
+        return {"processes": processes}
 
     async def _handle_system(
         self, authorization: str | None = Header(default=None)
     ) -> dict[str, Any]:
         self._check_auth(authorization)
-        return {"system": sysinfo.system_info()}
+        try:
+            info = sysinfo.system_info()
+        except (OSError, RuntimeError) as exc:
+            raise HTTPException(500, f"Failed to get system info: {exc}") from exc
+        return {"system": info}
 
     async def _handle_get_config(
         self, authorization: str | None = Header(default=None)
@@ -597,7 +609,11 @@ class SentinelServer:
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
-        return {"plugins": self.engine.plugin_loader.list_plugins()}
+        try:
+            plugins = self.engine.plugin_loader.list_plugins()
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise HTTPException(500, f"Failed to list plugins: {exc}") from exc
+        return {"plugins": plugins}
 
     async def _handle_plugins_reload(
         self, req: PluginReloadRequest, authorization: str | None = Header(default=None)
