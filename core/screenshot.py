@@ -86,7 +86,7 @@ def get_capture_offset(monitor: int | str | None = None) -> tuple[int, int]:
             if 0 <= resolved < len(mons):
                 m = mons[resolved]
                 return (int(m.get("left", 0)), int(m.get("top", 0)))
-    except Exception as exc:
+    except (mss.ScreenShotError, OSError) as exc:
         logger.debug("get_capture_offset failed: %s", exc)
     return (0, 0)
 
@@ -165,7 +165,7 @@ def capture_screen(monitor: int | str | None = None) -> Image.Image:
                     monitor,
                     len(mons),
                 )
-        except Exception as exc:
+        except (mss.ScreenShotError, OSError) as exc:
             logger.warning("mss capture failed, falling back: %s", exc)
     try:
         return pyautogui.screenshot()
