@@ -650,7 +650,7 @@ class AgentEngine:
                                     "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}",
                                 },
                             )
-                        except Exception as exc:
+                        except (RuntimeError, TypeError) as exc:
                             logger.debug("MFA step callback failed: %s", exc)
                     # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
                     for _ in range(150):
@@ -1020,7 +1020,7 @@ class AgentEngine:
     def _build_env_context(self) -> str:
         try:
             info = sysinfo.brief_system_info()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("brief_system_info failed: %s", exc)
             info = ""
         active_win = ""
@@ -1030,7 +1030,7 @@ class AgentEngine:
                 if w.get("is_focused"):
                     active_win = f"\nActive Window: {w['title']}"
                     break
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("Failed to detect active window: %s", exc)
         tenant = ""
         if self.config.get("tenant_name"):
