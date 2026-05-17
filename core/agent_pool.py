@@ -536,6 +536,38 @@ class AgentPool:
         with self._lock:
             return len(self._queue)
 
+    def clear_completed(self, keep_last: int = 0) -> int:
+        """Remove terminal-state sessions from memory.
+
+        Parameters
+        ----------
+        keep_last:
+            Keep at least this many of the most recent completed/failed/
+            cancelled sessions.  Default ``0`` removes all of them.
+
+        Returns
+        -------
+        int
+            Number of sessions removed.
+        """
+        removed = 0
+        with self._lock:
+            terminal_ids = [
+                sid
+                for sid, s in self._sessions.items()
+                if s.status in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED)
+            ]
+            if keep_last > 0:
+                # Keep the newest *keep_last* by ID sort (creation order).
+                terminal_ids.sort()
+                terminal_ids = terminal_ids[:-keep_last] if len(terminal_ids) > keep_last else []
+            for sid in terminal_ids:
+                del self._sessions[sid]
+                removed += 1
+        if removed:
+            logger.info("AgentPool: cleared %d completed session(s)", removed)
+        return removed
+
     def __repr__(self) -> str:
         return (
             f"AgentPool(max_agents={self._max_agents}, "

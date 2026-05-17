@@ -139,7 +139,7 @@ class AuditExporter:
             Audit entries with keys: step, timestamp, action, params, result, duration.
         metadata : dict
             Session info with keys: goal, start_time, end_time, total_steps, status.
-        format : str
+        fmt : str
             One of ``html``, ``text``, ``csv``, ``json``.
 
         Returns
@@ -154,7 +154,7 @@ class AuditExporter:
             "csv": self.export_csv,
             "json": self.export_json,
         }
-        handler = dispatch.get(format.lower())
+        handler = dispatch.get(fmt.lower())
         if handler is None:
             _msg = f"Unsupported format '{format}'. Choose from: {', '.join(dispatch)}"
             raise ValueError(_msg)
