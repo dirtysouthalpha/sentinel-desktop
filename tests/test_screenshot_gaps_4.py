@@ -1,6 +1,9 @@
 """Gap tests for screenshot.py — resolve_monitor auto fallback, capture_focused_window target path, image_to_base64 encoding failure."""
 
+import sys
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from PIL import Image
 
@@ -14,8 +17,9 @@ from core.screenshot import (
 class TestResolveMonitorAutoFallback:
     """resolve_monitor('auto') falls back to 1 when no monitor contains center."""
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific mss library test")
     @patch("core.screenshot._HAS_MSS", True)
-    @patch("core.screenshot.mss")
+    @patch("core.screenshot.mss", create=True)
     def test_auto_no_monitor_contains_center_returns_1(self, mock_mss):
         mock_sct = MagicMock()
         mock_sct.monitors = [

@@ -1,6 +1,9 @@
 """Gap tests for stealth_input.py — _get_focus_hwnd ctypes paths, _GUI_THREAD_INFO else branch."""
 
+import sys
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core import stealth_input
 
@@ -8,6 +11,7 @@ from core import stealth_input
 class TestGetFocusHwndCtypesPaths:
     """_get_focus_hwnd with ctypes — success and failure paths (lines 251-258)."""
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific ctypes.windll test")
     @patch.object(stealth_input, "_HAS_WIN32", True)
     def test_ctypes_success_returns_focus(self):
         """When GetGUIThreadInfo succeeds and hwndFocus is nonzero, returns it."""
@@ -32,6 +36,7 @@ class TestGetFocusHwndCtypesPaths:
                             stealth_input._GUI_THREAD_INFO = original
         assert result == 999
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific ctypes.windll test")
     @patch.object(stealth_input, "_HAS_WIN32", True)
     def test_ctypes_returns_zero_focus_returns_none(self):
         """When hwndFocus is 0, returns None (line 254 — int(0) or None)."""
@@ -52,6 +57,7 @@ class TestGetFocusHwndCtypesPaths:
                             stealth_input._GUI_THREAD_INFO = original
         assert result is None
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific ctypes.windll test")
     @patch.object(stealth_input, "_HAS_WIN32", True)
     def test_ctypes_get_gui_thread_info_fails_returns_none(self):
         """When GetGUIThreadInfo returns False, falls through to return None (line 258)."""
