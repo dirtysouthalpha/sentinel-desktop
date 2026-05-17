@@ -1,5 +1,7 @@
 """Gap tests for window_manager.py — list_windows EnumWindows error, focus Alt-tap error, restore_window enum error, close_window found guard."""
 
+import platform
+import pytest
 from unittest.mock import MagicMock, patch
 
 from core.window_manager import (
@@ -14,6 +16,7 @@ from core.window_manager import (
 class TestListWindowsEnumWindowsError:
     """list_windows EnumWindows exception path (line 59-60)."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="win32gui only available on Windows")
     @patch("core.window_manager.HAS_WIN32", True)
     @patch("core.window_manager.win32gui")
     def test_enum_windows_error_returns_empty(self, mock_gui):
@@ -25,6 +28,7 @@ class TestListWindowsEnumWindowsError:
 class TestFocusWindowAltTapError:
     """focus_window Alt-tap trick error path (lines 112-113)."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="win32gui/win32con only available on Windows")
     @patch("core.window_manager.HAS_WIN32", True)
     @patch("core.window_manager.win32gui")
     @patch("core.window_manager.win32con")
@@ -62,6 +66,7 @@ class TestRestoreWindowEnumError:
 class TestCloseWindowFoundGuard:
     """close_window early-return guard when already found (line 305)."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="win32gui/win32con only available on Windows")
     @patch("core.window_manager.HAS_WIN32", True)
     @patch("core.window_manager.win32gui")
     @patch("core.window_manager.win32con")

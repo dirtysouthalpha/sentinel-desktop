@@ -271,9 +271,7 @@ class TestHandleStop:
         # _handle_stop is async, but its logic is sync — just call it
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            server._handle_stop(authorization=None)
-        )
+        result = asyncio.run(server._handle_stop(authorization=None))
         assert result["status"] == "not_running"
 
 
@@ -283,9 +281,7 @@ class TestHandleStatus:
         server.engine = None
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            server._handle_status(authorization=None)
-        )
+        result = asyncio.run(server._handle_status(authorization=None))
         assert result["running"] is False
 
     def test_with_engine(self):
@@ -295,9 +291,7 @@ class TestHandleStatus:
         server.engine.step = 5
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            server._handle_status(authorization=None)
-        )
+        result = asyncio.run(server._handle_status(authorization=None))
         assert result["running"] is True
         assert result["step"] == 5
 
@@ -308,7 +302,7 @@ class TestHandleLog:
         server.engine = None
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(server._handle_log(authorization=None))
+        result = asyncio.run(server._handle_log(authorization=None))
         assert result["log"] == []
 
     def test_with_engine(self):
@@ -317,7 +311,7 @@ class TestHandleLog:
         server.engine.forensic_log = [{"step": 1}]
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(server._handle_log(authorization=None))
+        result = asyncio.run(server._handle_log(authorization=None))
         assert len(result["log"]) == 1
 
 
@@ -328,7 +322,7 @@ class TestHandleGetConfig:
 
         # Monkeypatch config.load to return a dict with api_key
         server.config.load = lambda: {"api_key": "supersecret", "model": "gpt-4o"}
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_get_config(authorization=None)
         )
         assert result["api_key"] == "***"
@@ -349,7 +343,7 @@ class TestHandleCommand:
 
         monkeypatch.setattr(mod, "AgentEngine", FakeAE)
         req = mod.CommandRequest(command='{"action": "click", "x": 10, "y": 20}')
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_command(req, authorization=None)
         )
         assert result["success"] is True
@@ -370,7 +364,7 @@ class TestHandleCommand:
         monkeypatch.setattr(mod, "AgentEngine", FakeAE)
         server = _make_server()
         req = mod.CommandRequest(command="hello world")
-        asyncio.get_event_loop().run_until_complete(server._handle_command(req, authorization=None))
+        asyncio.run(server._handle_command(req, authorization=None))
         assert captured["action"] == "note"
         assert captured["text"] == "hello world"
 
@@ -388,7 +382,7 @@ class TestHandleCommand:
         monkeypatch.setattr(mod, "AgentEngine", FakeAE)
         req = mod.CommandRequest(command='{"bad json')
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.get_event_loop().run_until_complete(
+            asyncio.run(
                 server._handle_command(req, authorization=None)
             )
         assert exc_info.value.status_code == 400
@@ -407,7 +401,7 @@ class TestHandleCommand:
         monkeypatch.setattr(mod, "AgentEngine", FakeAE)
         req = mod.CommandRequest(command='{"x": 1}')
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.get_event_loop().run_until_complete(
+            asyncio.run(
                 server._handle_command(req, authorization=None)
             )
         assert exc_info.value.status_code == 400
@@ -422,7 +416,7 @@ class TestHandlePutConfig:
         saved = {}
         server.config.save = lambda cfg: saved.update(cfg)
         req = mod.ConfigUpdate(model="claude-3.5-sonnet")
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_put_config(req, authorization=None)
         )
         assert result["status"] == "saved"
@@ -435,7 +429,7 @@ class TestScheduleHandlers:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_schedule_list(authorization=None)
         )
         assert result["tasks"] == []
@@ -446,7 +440,7 @@ class TestScheduleHandlers:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.ScheduleAddRequest(name="test", goal="do thing")
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_schedule_add(req, authorization=None)
         )
         assert result["task_id"] == "t1"
@@ -457,7 +451,7 @@ class TestScheduleHandlers:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.ScheduleRemoveRequest(task_id="t1")
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_schedule_remove(req, authorization=None)
         )
         assert result["status"] == "removed"
@@ -470,7 +464,7 @@ class TestHandleNotify:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.NotifyRequest(message="test")
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_notify(req, authorization=None)
         )
         assert result["success"] is True
@@ -482,7 +476,7 @@ class TestHandleAgents:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_agents_list(authorization=None)
         )
         assert result["sessions"] == []
@@ -493,7 +487,7 @@ class TestHandleAgents:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.AgentSubmitRequest(goal="test")
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_agents_submit(req, authorization=None)
         )
         assert result["session_id"] == "s1"
@@ -505,7 +499,7 @@ class TestHandleAuthUsers:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_auth_users(authorization=None)
         )
         assert result["users"] == []
@@ -517,7 +511,7 @@ class TestHandlePluginsList:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_plugins_list(authorization=None)
         )
         assert result["plugins"] == []
@@ -529,7 +523,7 @@ class TestHandleVaultKeys:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_vault_keys(authorization=None)
         )
         assert result["keys"] == []
@@ -541,7 +535,7 @@ class TestHandleAuditExport:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             server._handle_audit_export(authorization=None)
         )
         assert "path" in result
@@ -556,7 +550,7 @@ def _run(coro):
     """Run an async coroutine synchronously for testing."""
     import asyncio
 
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 class TestHandleGoal:

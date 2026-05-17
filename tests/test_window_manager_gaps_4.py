@@ -8,7 +8,9 @@ These lines execute at import time inside conditional/try-except blocks:
 """
 
 import importlib
+import platform
 import sys
+import pytest
 from unittest.mock import MagicMock, patch
 
 import core.window_manager as wm_original
@@ -17,6 +19,7 @@ import core.window_manager as wm_original
 class TestWin32ImportFailsOnWindows:
     """Cover lines 15-16: HAS_WIN32 = False when win32gui import fails."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Test simulates Windows-specific import failures")
     def test_has_win32_false_when_win32_import_fails(self):
         """On Windows, if win32con/win32gui raise ImportError, HAS_WIN32 = False."""
         # Capture the real module before we manipulate sys.modules
@@ -60,14 +63,29 @@ class TestWin32ImportFailsOnWindows:
                 sys.modules["pywintypes"] = real_pywintypes
             else:
                 sys.modules.pop("pywintypes", None)
-            # Restore the module to its original state
-            with patch("platform.system", return_value="Windows"):
-                importlib.reload(wm_original)
+            # On Linux, pygetwindow raises NotImplementedError on import, so mock it
+            # to avoid ImportError when reloading with platform.system == "Windows"
+            if platform.system() != "Windows":
+                real_pgw_final = sys.modules.get("pygetwindow")
+                try:
+                    sys.modules["pygetwindow"] = MagicMock()
+                    with patch("platform.system", return_value="Windows"):
+                        importlib.reload(wm_original)
+                finally:
+                    if real_pgw_final is not None:
+                        sys.modules["pygetwindow"] = real_pgw_final
+                    else:
+                        sys.modules.pop("pygetwindow", None)
+            else:
+                # Restore the module to its original state
+                with patch("platform.system", return_value="Windows"):
+                    importlib.reload(wm_original)
 
 
 class TestPgwImportFailsOnWindows:
     """Cover lines 21-22: HAS_PGW = False when pygetwindow import fails."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Test simulates Windows-specific import failures")
     def test_has_pgw_false_when_pgw_import_fails(self):
         """On Windows, if pygetwindow raises ImportError, HAS_PGW = False."""
         real_win32gui = sys.modules.get("win32gui")
@@ -115,6 +133,7 @@ class TestPgwImportFailsOnWindows:
 class TestPywintypesImportFailsOnWindows:
     """Cover lines 27-28: _Win32Error = OSError when pywintypes import fails."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Test simulates Windows-specific import failures")
     def test_win32_error_is_oserror_when_pywintypes_fails(self):
         """On Windows, if pywintypes raises ImportError, _Win32Error = OSError."""
         real_win32gui = sys.modules.get("win32gui")
@@ -197,5 +216,19 @@ class TestNonWindowsPlatform:
                 sys.modules["pywintypes"] = real_pywintypes
             else:
                 sys.modules.pop("pywintypes", None)
-            with patch("platform.system", return_value="Windows"):
-                importlib.reload(wm_original)
+            # On Linux, pygetwindow raises NotImplementedError on import, so mock it
+            # to avoid ImportError when reloading with platform.system == "Windows"
+            if platform.system() != "Windows":
+                real_pgw_final = sys.modules.get("pygetwindow")
+                try:
+                    sys.modules["pygetwindow"] = MagicMock()
+                    with patch("platform.system", return_value="Windows"):
+                        importlib.reload(wm_original)
+                finally:
+                    if real_pgw_final is not None:
+                        sys.modules["pygetwindow"] = real_pgw_final
+                    else:
+                        sys.modules.pop("pygetwindow", None)
+            else:
+                with patch("platform.system", return_value="Windows"):
+                    importlib.reload(wm_original)

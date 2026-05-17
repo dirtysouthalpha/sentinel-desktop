@@ -237,7 +237,7 @@ class SentinelServer:
         # v3.1 — System Dashboard, Workflow Builder
         from core.dashboard import router as dashboard_router
         app.include_router(dashboard_router)
-        from core.workflow_builder import workflow_store, TEMPLATES, WorkflowStatus
+        from core.workflow_builder import TEMPLATES, workflow_store
         self._workflow_store = workflow_store
         self._workflow_templates = TEMPLATES
         app.get("/workflows/builder/list")(self._handle_workflow_builder_list)
