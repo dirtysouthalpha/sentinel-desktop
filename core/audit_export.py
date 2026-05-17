@@ -129,7 +129,7 @@ class AuditExporter:
         self,
         log: list[dict[str, Any]],
         metadata: dict[str, Any],
-        format: str = "html",
+        fmt: str = "html",
     ) -> str:
         """Dispatch to the appropriate exporter and return the file path.
 
@@ -156,7 +156,7 @@ class AuditExporter:
         }
         handler = dispatch.get(fmt.lower())
         if handler is None:
-            _msg = f"Unsupported format '{format}'. Choose from: {', '.join(dispatch)}"
+            _msg = f"Unsupported format '{fmt}'. Choose from: {', '.join(dispatch)}"
             raise ValueError(_msg)
         if not self._dir_ready:
             raise OSError(
