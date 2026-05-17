@@ -259,7 +259,7 @@ class TestRecoveryHandlers:
         handler = _RECOVERY_HANDLERS["window_not_found"]
         result = handler({}, "window not found", {})
         assert result.strategy == "retry_alternate"
-        assert result.alternate_action == {"action": "hotkey", "keys": "alt+tab"}
+        assert result.alternate_action == {"action": "hotkey", "keys": ["alt", "tab"]}
 
     def test_timeout_with_duration(self) -> None:
         handler = _RECOVERY_HANDLERS["timeout"]
@@ -477,7 +477,7 @@ class TestAnalyzeFailure:
         assert result.pattern == "window_not_found"
         assert result.alternate_action is not None
         assert result.alternate_action["action"] == "hotkey"
-        assert "alt" in result.alternate_action["keys"].lower()
+        assert "alt" in result.alternate_action["keys"]
 
     # --- timeout ---
 
