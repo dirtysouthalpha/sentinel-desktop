@@ -75,9 +75,7 @@ class TestApprovalCallbackRejection:
             return False
 
         ex = fake_executor(approval_callback=reject)
-        result = asyncio.get_event_loop().run_until_complete(
-            ex.execute({"action": "click", "x": 10, "y": 20})
-        )
+        result = asyncio.run(ex.execute({"action": "click", "x": 10, "y": 20}))
         assert result["success"] is False
         assert result["error"] == "rejected"
         assert "rejected" in result["output"].lower()
@@ -87,7 +85,7 @@ class TestApprovalCallbackRejection:
             return False
 
         ex = fake_executor(approval_callback=reject)
-        asyncio.get_event_loop().run_until_complete(ex.execute({"action": "click", "x": 1, "y": 2}))
+        asyncio.run(ex.execute({"action": "click", "x": 1, "y": 2}))
         assert len(ex.log) == 1
         assert ex.log[0]["success"] is False
 
@@ -105,9 +103,7 @@ class TestPreActionCallbackFailureAsync:
             raise RuntimeError("overlay crashed")
 
         ex = fake_executor(pre_action_callback=boom)
-        result = asyncio.get_event_loop().run_until_complete(
-            ex.execute({"action": "click", "x": 5, "y": 5})
-        )
+        result = asyncio.run(ex.execute({"action": "click", "x": 5, "y": 5}))
         assert result["success"] is True
 
 
@@ -126,9 +122,7 @@ class TestHandlerExceptionAsync:
         ex._dispatch_table["note"] = lambda self, **kw: (_ for _ in ()).throw(
             RuntimeError("handler exploded")
         )
-        result = asyncio.get_event_loop().run_until_complete(
-            ex.execute({"action": "note", "text": "boom"})
-        )
+        result = asyncio.run(ex.execute({"action": "note", "text": "boom"}))
         assert result["success"] is False
         assert "RuntimeError" in result["error"]
 

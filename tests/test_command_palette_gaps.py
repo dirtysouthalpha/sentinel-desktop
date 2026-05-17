@@ -1,7 +1,17 @@
 """Gap tests for command_palette.py — helper functions with error handling."""
 
+import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
+
+# Mock tkinter before importing command_palette to avoid ModuleNotFoundError on Linux
+mock_askstring = MagicMock()
+mock_simpledialog = MagicMock()
+mock_simpledialog.askstring = mock_askstring
+mock_tkinter = MagicMock()
+mock_tkinter.simpledialog = mock_simpledialog
+sys.modules["tkinter"] = mock_tkinter
+sys.modules["tkinter.simpledialog"] = mock_simpledialog
 
 from core.command_palette import (
     _run_it_script,
@@ -98,36 +108,40 @@ class TestShowScriptLibrary:
 class TestRunPowershellDialog:
     """Cover lines 475-503: PowerShell command dialog and result/error display."""
 
+    def setup_method(self):
+        """Reset mock before each test."""
+        mock_askstring.reset_mock()
+
     def test_no_cmd_returned_does_nothing(self):
         """If askstring returns None, function returns without touching engine."""
         app = MagicMock()
         app.engine = MagicMock()
-        with patch("tkinter.simpledialog.askstring", return_value=None):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = None
+        _run_powershell_dialog(app)
         app.engine.powershell.run_command.assert_not_called()
 
     def test_empty_cmd_returned_does_nothing(self):
         """If askstring returns empty string, function returns early."""
         app = MagicMock()
         app.engine = MagicMock()
-        with patch("tkinter.simpledialog.askstring", return_value=""):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = ""
+        _run_powershell_dialog(app)
         app.engine.powershell.run_command.assert_not_called()
 
     def test_no_engine_does_nothing(self):
         """If app has no engine attribute, function returns after askstring."""
         app = MagicMock(spec=["root"])
         app.root = MagicMock()
-        with patch("tkinter.simpledialog.askstring", return_value="Get-Process"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "Get-Process"
+        _run_powershell_dialog(app)
         # No crash — engine attribute missing so inner block is skipped
 
     def test_engine_is_none_does_nothing(self):
         """If app.engine is None, function returns after askstring."""
         app = MagicMock()
         app.engine = None
-        with patch("tkinter.simpledialog.askstring", return_value="Get-Process"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "Get-Process"
+        _run_powershell_dialog(app)
         # No crash
 
     def test_successful_command_displays_result(self):
@@ -139,8 +153,8 @@ class TestRunPowershellDialog:
         result_mock.stderr = ""
         app.engine.powershell.run_command.return_value = result_mock
 
-        with patch("tkinter.simpledialog.askstring", return_value="Get-Process"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "Get-Process"
+        _run_powershell_dialog(app)
 
         # root.after should be called twice: configure + insert
         assert app.root.after.call_count == 2
@@ -157,8 +171,8 @@ class TestRunPowershellDialog:
         result_mock.stderr = "warning output"
         app.engine.powershell.run_command.return_value = result_mock
 
-        with patch("tkinter.simpledialog.askstring", return_value="Get-Process"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "Get-Process"
+        _run_powershell_dialog(app)
 
         assert app.root.after.call_count == 2
 
@@ -168,8 +182,8 @@ class TestRunPowershellDialog:
         app.engine = MagicMock()
         app.engine.powershell.run_command.side_effect = OSError("access denied")
 
-        with patch("tkinter.simpledialog.askstring", return_value="Get-Process"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "Get-Process"
+        _run_powershell_dialog(app)
 
         # Error path also calls root.after twice (configure + insert)
         assert app.root.after.call_count == 2
@@ -180,8 +194,8 @@ class TestRunPowershellDialog:
         app.engine = MagicMock()
         app.engine.powershell.run_command.side_effect = RuntimeError("timeout")
 
-        with patch("tkinter.simpledialog.askstring", return_value="Write-Host hi"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "Write-Host hi"
+        _run_powershell_dialog(app)
 
         assert app.root.after.call_count == 2
 
@@ -191,8 +205,8 @@ class TestRunPowershellDialog:
         app.engine = MagicMock()
         app.engine.powershell.run_command.side_effect = ValueError("bad input")
 
-        with patch("tkinter.simpledialog.askstring", return_value="test"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "test"
+        _run_powershell_dialog(app)
 
         assert app.root.after.call_count == 2
 
@@ -204,8 +218,8 @@ class TestRunPowershellDialog:
         app.engine.powershell.run_command.side_effect = OSError("fail")
         app._t = MagicMock(return_value="#e6edf3")
 
-        with patch("tkinter.simpledialog.askstring", return_value="cmd"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "cmd"
+        _run_powershell_dialog(app)
         # Should not crash even without chat_display
 
     def test_success_no_chat_display_no_crash(self):
@@ -218,8 +232,8 @@ class TestRunPowershellDialog:
         result_mock.stderr = ""
         app.engine.powershell.run_command.return_value = result_mock
 
-        with patch("tkinter.simpledialog.askstring", return_value="cmd"):
-            _run_powershell_dialog(app)
+        mock_askstring.return_value = "cmd"
+        _run_powershell_dialog(app)
         # Should not crash even without chat_display
 
 

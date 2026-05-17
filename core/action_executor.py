@@ -670,8 +670,11 @@ class ActionExecutor:
                 }
             except Exception as exc:
                 logger.debug("Stealth drag failed, falling back: %s", exc)
-        self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
-        return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
+        try:
+            self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
+            return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
+        except Exception as exc:
+            return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
 
     def _scroll(self, *, amount: int, **_) -> dict:
         try:
@@ -722,8 +725,11 @@ class ActionExecutor:
         seconds = max(0.0, float(seconds))
         # Cap the wait so a runaway LLM can't lock the agent for hours.
         seconds = min(seconds, 60.0)
-        _time.sleep(seconds)
-        return {"success": True, "output": f"Waited {seconds}s"}
+        try:
+            _time.sleep(seconds)
+            return {"success": True, "output": f"Waited {seconds}s"}
+        except Exception as exc:
+            return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
     def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_) -> dict:
         try:
