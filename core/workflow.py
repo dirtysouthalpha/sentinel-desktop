@@ -76,6 +76,7 @@ class WorkflowEngine:
         self._callbacks: dict[str, Callable[..., Any]] = {}
 
     def set_callback(self, event: str, fn: Callable[..., Any]) -> None:
+        """Register a callback function for a named workflow event."""
         self._callbacks[event] = fn
 
     def _fire(self, event: str, *args: Any, **kwargs: Any) -> None:

@@ -27,6 +27,7 @@ class DesktopController:
             self._screen_size = (1920, 1080)
 
     def screenshot(self) -> Image.Image:
+        """Take a full-screen screenshot."""
         try:
             return pyautogui.screenshot()
         except (OSError, RuntimeError) as exc:
@@ -34,6 +35,7 @@ class DesktopController:
             return Image.new("RGB", self._screen_size)
 
     def screenshot_base64(self, format: str = "PNG") -> str:
+        """Return a base64-encoded screenshot string."""
         try:
             img = self.screenshot()
             buf = io.BytesIO()
@@ -44,6 +46,7 @@ class DesktopController:
             return ""
 
     def screenshot_region(self, x: int, y: int, w: int, h: int) -> Image.Image:
+        """Capture a screenshot of the specified region."""
         try:
             return pyautogui.screenshot(region=(x, y, w, h))
         except (OSError, RuntimeError) as exc:
@@ -51,27 +54,32 @@ class DesktopController:
             return Image.new("RGB", (w, h))
 
     def get_screen_size(self) -> tuple[int, int]:
+        """Return the detected screen resolution as (width, height)."""
         return self._screen_size
 
     def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> None:
+        """Click at the specified screen coordinates."""
         try:
             pyautogui.click(x=x, y=y, button=button, clicks=clicks)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("click failed: %s", exc)
 
     def double_click(self, x: int, y: int) -> None:
+        """Double-click at the specified screen coordinates."""
         try:
             pyautogui.doubleClick(x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("double_click failed: %s", exc)
 
     def right_click(self, x: int, y: int) -> None:
+        """Right-click at the specified screen coordinates."""
         try:
             pyautogui.rightClick(x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("right_click failed: %s", exc)
 
     def move_to(self, x: int, y: int, duration: float = 0.3) -> None:
+        """Move the mouse cursor to the specified coordinates."""
         try:
             pyautogui.moveTo(x=x, y=y, duration=duration)
         except (_FailSafeException, OSError, RuntimeError) as exc:
@@ -86,6 +94,7 @@ class DesktopController:
         duration: float = 0.5,
         button: str = "left",
     ) -> None:
+        """Drag from one point to another."""
         try:
             pyautogui.moveTo(from_x, from_y)
             pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)

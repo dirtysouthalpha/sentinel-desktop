@@ -102,9 +102,11 @@ class Config:
     # -- dict-like access ----------------------------------------------------
 
     def get(self, key: str, default: Any = None) -> Any:
+        """Get a config value by key, returning *default* if not set."""
         return self._data.get(key, default)
 
     def set(self, key: str, value: Any) -> None:
+        """Set a config value by key."""
         self._data[key] = value
 
     def __getitem__(self, key: str) -> Any:
@@ -117,6 +119,7 @@ class Config:
         return key in self._data
 
     def as_dict(self) -> dict[str, Any]:
+        """Return a shallow copy of the config as a plain dict."""
         return {**self._data}
 
     # -- persistence ---------------------------------------------------------
@@ -146,30 +149,37 @@ class Config:
             logger.exception("Failed to save config")
 
     def reset(self) -> None:
+        """Reset all config values to their defaults."""
         self._data = {**DEFAULTS}
 
     # -- convenience properties ---------------------------------------------
 
     @property
     def provider(self) -> str:
+        """Return the configured LLM provider name."""
         return self._data.get("provider", "openai")
 
     @property
     def api_key(self) -> str:
+        """Return the configured API key."""
         return self._data.get("api_key", "")
 
     @property
     def model(self) -> str:
+        """Return the configured model name."""
         return self._data.get("model", "")
 
     @property
     def max_steps(self) -> int:
+        """Return the configured maximum number of agent steps."""
         return self._data.get("max_steps", 100)
 
     @property
     def approval_mode(self) -> bool:
+        """Return whether approval mode is enabled."""
         return self._data.get("approval_mode", True)
 
     @approval_mode.setter
     def approval_mode(self, value: bool) -> None:
+        """Enable or disable approval mode."""
         self._data["approval_mode"] = value

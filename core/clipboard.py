@@ -41,6 +41,7 @@ def clipboard_read() -> str | None:
 
 
 def clipboard_write(text: str) -> bool:
+    """Write text to the system clipboard. Returns True on success."""
     cb = _get_clipboard()
     if cb is None:
         return False

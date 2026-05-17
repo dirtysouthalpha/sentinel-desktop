@@ -37,6 +37,7 @@ if PROJECT_ROOT not in sys.path:
 
 
 def parse_args() -> Namespace:
+    """Parse command-line arguments for the Sentinel Desktop CLI."""
     from core import __version__
 
     parser = argparse.ArgumentParser(
@@ -168,6 +169,7 @@ def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False) -> None:
 
 
 def main() -> None:
+    """Main entry point — parse args and dispatch to API or CLI mode."""
     args = parse_args()
 
     if args.debug:

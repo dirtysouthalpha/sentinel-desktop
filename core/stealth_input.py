@@ -167,6 +167,7 @@ VK_NAMES = {
 
 
 def post_named_key(name: str, hwnd: int | None = None) -> bool:
+    """Post a keystroke by friendly name (e.g. 'enter', 'ctrl')."""
     vk = VK_NAMES.get((name or "").lower())
     if vk is None:
         # Single-character fallback.

@@ -613,12 +613,15 @@ class _StubVirtualDesktop:
         )
 
     def create(self) -> bool:
+        """Create a new virtual desktop (stub — always returns False)."""
         return False
 
     def switch_to(self) -> bool:
+        """Switch to this virtual desktop (stub — always returns False)."""
         return False
 
     def switch_back(self) -> bool:
+        """Switch back to the original desktop (stub — always returns False)."""
         return False
 
     def launch_app(self, path: str, args: str | None = None) -> dict[str, Any]:
@@ -665,6 +668,7 @@ class _StubVirtualDesktop:
             return []
 
     def close(self) -> None:
+        """Close this virtual desktop (stub — no-op)."""
         pass
 
     def __enter__(self) -> _StubVirtualDesktop:

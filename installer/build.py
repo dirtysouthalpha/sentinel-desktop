@@ -247,6 +247,7 @@ def build_all() -> bool:
 
 
 def main() -> None:
+    """Parse build-system CLI arguments and run requested build steps."""
     parser = argparse.ArgumentParser(description="Sentinel Desktop Build System")
     parser.add_argument("--exe", action="store_true", help="Build standalone EXE")
     parser.add_argument("--installer", action="store_true", help="Generate Inno Setup .iss")

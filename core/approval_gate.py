@@ -52,6 +52,7 @@ class ApprovalRequest:
 
     @property
     def resolved(self) -> bool:
+        """Return True if the user has responded to this request."""
         return self._event.is_set()
 
 
@@ -152,10 +153,13 @@ class ApprovalGate:
 
     @property
     def pending_request(self) -> ApprovalRequest | None:
+        """Return the currently pending approval request, if any."""
         return self._current_request
 
     def get_stats(self) -> dict[str, int]:
+        """Return a copy of the approval statistics counters."""
         return dict(self._stats)
 
     def reset_stats(self) -> None:
+        """Reset all approval statistics counters to zero."""
         self._stats = {"approved": 0, "skipped": 0, "modified": 0, "aborted": 0}

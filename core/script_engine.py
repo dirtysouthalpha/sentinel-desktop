@@ -44,6 +44,7 @@ class _StepPreview:
     wait_after_ms: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a plain dict representation of this step."""
         return {
             "step_number": self.step_number,
             "action": self.action,

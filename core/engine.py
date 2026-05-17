@@ -299,6 +299,7 @@ class AgentEngine:
 
     @property
     def recorder(self) -> ActionRecorder:
+        """Lazily create and return the ActionRecorder instance."""
         if self._recorder is None:
             from core.recorder import ActionRecorder
 
@@ -307,6 +308,7 @@ class AgentEngine:
 
     @property
     def script_engine(self) -> ScriptEngine:
+        """Lazily create and return the ScriptEngine instance."""
         if self._script_engine is None:
             from core.script_engine import ScriptEngine
 
@@ -315,6 +317,7 @@ class AgentEngine:
 
     @property
     def powershell(self) -> PowerShellRunner:
+        """Lazily create and return the PowerShellRunner instance."""
         if self._powershell is None:
             from core.powershell import PowerShellRunner
 
@@ -323,6 +326,7 @@ class AgentEngine:
 
     @property
     def workflow_engine(self) -> WorkflowEngine:
+        """Lazily create and return the WorkflowEngine instance."""
         if self._workflow_engine is None:
             from core.workflow import WorkflowEngine
 
@@ -331,6 +335,7 @@ class AgentEngine:
 
     @property
     def scheduler(self) -> TaskScheduler:
+        """Lazily create and return the TaskScheduler instance."""
         if self._scheduler is None:
             from core.scheduler import TaskScheduler
 
@@ -339,6 +344,7 @@ class AgentEngine:
 
     @property
     def notifications(self) -> NotificationManager:
+        """Lazily create and return the NotificationManager instance."""
         if self._notifications is None:
             from core.notifications import NotificationManager
 
@@ -352,6 +358,7 @@ class AgentEngine:
 
     @property
     def plugin_loader(self) -> PluginLoader:
+        """Lazily create and return the PluginLoader instance."""
         if self._plugin_loader is None:
             from core.plugin_loader import PluginLoader
 
@@ -368,6 +375,7 @@ class AgentEngine:
 
     @property
     def auth_manager(self) -> AuthManager:
+        """Lazily create and return the AuthManager instance."""
         if self._auth_manager is None:
             from core.auth import AuthManager
 
@@ -376,6 +384,7 @@ class AgentEngine:
 
     @property
     def vault(self) -> CredentialVault:
+        """Lazily create and return the CredentialVault instance."""
         if self._vault is None:
             from core.encryption import CredentialVault
 
@@ -384,6 +393,7 @@ class AgentEngine:
 
     @property
     def audit_exporter(self) -> AuditExporter:
+        """Lazily create and return the AuditExporter instance."""
         if self._audit_exporter is None:
             from core.audit_export import AuditExporter
 
@@ -392,6 +402,7 @@ class AgentEngine:
 
     @property
     def agent_pool(self) -> AgentPool:
+        """Lazily create and return the AgentPool instance."""
         if self._agent_pool is None:
             from core.agent_pool import AgentPool
 
@@ -1269,6 +1280,7 @@ class AgentEngine:
                 break
 
     def export_log(self) -> str:
+        """Return the forensic log as a formatted JSON string."""
         return json.dumps(self.forensic_log, indent=2, ensure_ascii=False)
 
 

@@ -65,6 +65,7 @@ class Script:
         }
 
     def to_json(self, indent: int = 2) -> str:
+        """Serialize the script to a JSON string."""
         return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
 
     # -- persistence -------------------------------------------------------
