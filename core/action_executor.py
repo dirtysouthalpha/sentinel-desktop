@@ -248,7 +248,7 @@ class ActionExecutor:
                 return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
             # PostMessage failed; fall through to physical click.
             self._desktop.click(sx, sy, button=button, clicks=clicks)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("click failed at (%s,%s): %s", sx, sy, exc)
             return {
                 "success": False,
@@ -305,7 +305,7 @@ class ActionExecutor:
                         "position": list(ui_pos),
                         "fallback": "uia",
                     }
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning("click_text UIA fallback failed for %r: %s", text, exc)
 
             return {
@@ -317,7 +317,7 @@ class ActionExecutor:
                     "or use click(x,y) with coordinates from the screenshot"
                 ),
             }
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("click_text failed: %s", exc)
             return {
                 "success": False,
@@ -370,7 +370,7 @@ class ActionExecutor:
                     "coordinates rather than OCR text."
                 )
             return result
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("read_text failed: %s", exc)
             return {
                 "success": False,
@@ -396,7 +396,7 @@ class ActionExecutor:
                     "directly and act on coordinates instead of relying on this text."
                 )
             return result
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("read_window failed for %r: %s", title, exc)
             return {
                 "success": False,
@@ -449,7 +449,7 @@ class ActionExecutor:
                             "position": [sx, sy],
                             "fallback": "ocr",
                         }
-                except Exception as exc:
+                except (OSError, RuntimeError, ValueError) as exc:
                     logger.warning("click_control OCR fallback failed for %r: %s", name, exc)
 
             return {
@@ -462,7 +462,7 @@ class ActionExecutor:
                     "or click(x,y) with screenshot coordinates"
                 ),
             }
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("click_control failed: %s", exc)
             return {
                 "success": False,
@@ -497,7 +497,7 @@ class ActionExecutor:
                 if not c.get("is_offscreen") and c.get("is_enabled", True)
             ]
             return {"success": True, "output": slim, "count": len(slim)}
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("list_controls failed: %s", exc)
             return {
                 "success": False,
@@ -567,7 +567,7 @@ class ActionExecutor:
                         "output": f"Set text via click+type on control at ({sx},{sy})",
                         "fallback": "click_and_type",
                     }
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 logger.warning("set_text click+type fallback failed for %r: %s", name, exc)
 
             return {
@@ -576,7 +576,7 @@ class ActionExecutor:
                 "error": "control_not_found",
                 "hint": "Try click_text() on the field label, then type_text()",
             }
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("set_text failed: %s", exc)
             return {
                 "success": False,
@@ -605,7 +605,7 @@ class ActionExecutor:
                 "success": found,
                 "output": f"Template {'found and clicked' if found else 'not found'}",
             }
-        except Exception as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             logger.warning("click_image failed for %r: %s", template_path, exc)
             return {
                 "success": False,
@@ -627,7 +627,7 @@ class ActionExecutor:
         try:
             self._desktop.type_text(text)
             return {"success": True, "output": f"Typed {len(text)} characters"}
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("pyautogui type_text failed, trying clipboard: %s", exc)
             try:
                 import pyperclip
@@ -639,7 +639,7 @@ class ActionExecutor:
                     "output": f"Typed {len(text)} chars via clipboard",
                     "fallback": "clipboard",
                 }
-            except Exception as exc2:
+            except (OSError, RuntimeError) as exc2:
                 logger.warning("clipboard type fallback failed: %s", exc2)
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
@@ -648,7 +648,7 @@ class ActionExecutor:
             if self.stealth and stealth_input.is_available() and stealth_input.post_named_key(key):
                 return {"success": True, "output": f"Pressed {key} — stealth"}
             self._desktop.press_key(key)
-        except Exception as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             logger.warning("press_key failed for %r: %s", key, exc)
             return {
                 "success": False,
@@ -733,7 +733,7 @@ class ActionExecutor:
     def _screenshot(self, **kwargs: Any) -> ActionResult:
         try:
             b64 = capture_to_base64(monitor=self.monitor)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("Screenshot failed: %s", exc)
             return {
                 "success": False,
@@ -763,7 +763,7 @@ class ActionExecutor:
                 "output": "Image not found on screen",
                 "error": "image_not_found",
             }
-        except Exception as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             logger.warning("find_image failed for %r: %s", template_path, exc)
             return {
                 "success": False,
@@ -780,7 +780,7 @@ class ActionExecutor:
             seconds = min(seconds, 60.0)
             _time.sleep(seconds)
             return {"success": True, "output": f"Waited {seconds}s"}
-        except Exception as exc:
+        except (ValueError, RuntimeError) as exc:
             logger.warning("wait failed: %s", exc)
             return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
@@ -796,7 +796,7 @@ class ActionExecutor:
                     "position": list(pos),
                 }
             return {"success": False, "output": f"Timed out after {timeout}s", "error": "timeout"}
-        except Exception as exc:
+        except (OSError, RuntimeError, TimeoutError) as exc:
             logger.warning("wait_for_image failed for %r: %s", template_path, exc)
             return {
                 "success": False,
@@ -826,7 +826,7 @@ class ActionExecutor:
                 "elapsed": result.elapsed,
                 "frames_checked": result.frames_checked,
             }
-        except Exception as exc:
+        except (ImportError, OSError, RuntimeError) as exc:
             logger.warning("smart_wait fallback: %s", exc)
             import time as _t
 
@@ -857,7 +857,7 @@ class ActionExecutor:
                 else f"Still changing after {result.elapsed:.1f}s",
                 "elapsed": result.elapsed,
             }
-        except Exception as exc:
+        except (ImportError, OSError, RuntimeError) as exc:
             logger.warning("wait_for_stable fallback: %s", exc)
             import time as _t
 
@@ -885,7 +885,7 @@ class ActionExecutor:
                 else f"Text '{text}' not found after {result.elapsed:.1f}s",
                 "elapsed": result.elapsed,
             }
-        except Exception as exc:
+        except (ImportError, OSError, RuntimeError) as exc:
             logger.warning("wait_for_text failed for %r: %s", text, exc)
             return {
                 "success": False,
@@ -899,7 +899,7 @@ class ActionExecutor:
             if pid:
                 return {"success": True, "output": f"Started process (pid {pid})"}
             return {"success": False, "output": "Failed to start process"}
-        except Exception as exc:
+        except (FileNotFoundError, OSError) as exc:
             logger.warning("open_app failed for %r: %s", path, exc)
             return {
                 "success": False,
@@ -955,7 +955,7 @@ class ActionExecutor:
                 "success": killed,
                 "output": f"Process {target} {'killed' if killed else 'not found'}",
             }
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("close_app failed for %s: %s", target, exc)
             return {
                 "success": False,
@@ -998,7 +998,7 @@ class ActionExecutor:
                 "error": "window_not_found",
                 "hint": "Try list_windows() to see what's actually open",
             }
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("focus_window failed for %r: %s", title, exc)
             return {
                 "success": False,
@@ -1009,7 +1009,7 @@ class ActionExecutor:
     def _close_window(self, *, title: str, **kwargs: Any) -> ActionResult:
         try:
             ok = wm.close_window(title)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("close_window failed for %r: %s", title, exc)
             return {
                 "success": False,
@@ -1022,7 +1022,7 @@ class ActionExecutor:
     def _list_windows(self, **kwargs: Any) -> ActionResult:
         try:
             windows = wm.list_windows()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("list_windows failed: %s", exc)
             return {
                 "success": False,
@@ -1043,7 +1043,7 @@ class ActionExecutor:
                 "output": "File not found or unreadable",
                 "error": "file_not_found",
             }
-        except Exception as exc:
+        except (OSError, UnicodeDecodeError, PermissionError) as exc:
             logger.warning("read_file failed for %r: %s", path, exc)
             return {
                 "success": False,
@@ -1054,7 +1054,7 @@ class ActionExecutor:
     def _write_file(self, *, path: str, content: str, **kwargs: Any) -> ActionResult:
         try:
             ok = file_ops.write_file(path, content)
-        except Exception as exc:
+        except (OSError, PermissionError) as exc:
             logger.warning("write_file failed: %s", exc)
             return {
                 "success": False,
@@ -1070,7 +1070,7 @@ class ActionExecutor:
             if entries is not None:
                 return {"success": True, "output": entries}
             return {"success": False, "output": "Directory not found", "error": "dir_not_found"}
-        except Exception as exc:
+        except (OSError, PermissionError, NotADirectoryError) as exc:
             logger.warning("list_directory failed: %s", exc)
             return {
                 "success": False,
@@ -1105,7 +1105,7 @@ class ActionExecutor:
     def _system_info(self, **kwargs: Any) -> ActionResult:
         try:
             info = sysinfo.system_info()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("system_info failed: %s", exc)
             return {
                 "success": False,
@@ -1118,7 +1118,7 @@ class ActionExecutor:
     def _list_processes(self, **kwargs: Any) -> ActionResult:
         try:
             procs = pm.list_processes()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("list_processes failed: %s", exc)
             return {
                 "success": False,
@@ -1136,7 +1136,7 @@ class ActionExecutor:
             if pid is None:
                 return {"success": False, "output": "Failed to start process"}
             return {"success": True, "output": f"pid={pid}"}
-        except Exception as exc:
+        except (FileNotFoundError, OSError, PermissionError) as exc:
             logger.warning("start_process failed: %s", exc)
             return {
                 "success": False,
@@ -1154,7 +1154,7 @@ class ActionExecutor:
                 "success": killed,
                 "output": f"Process {target} {'killed' if killed else 'not found'}",
             }
-        except Exception as exc:
+        except (OSError, PermissionError, RuntimeError) as exc:
             logger.warning("kill_process failed: %s", exc)
             return {
                 "success": False,
@@ -1184,7 +1184,7 @@ class ActionExecutor:
                 "exit_code": result.exit_code,
                 "objects": result.objects[:50] if result.objects else [],
             }
-        except Exception as exc:
+        except (FileNotFoundError, OSError, RuntimeError) as exc:
             logger.warning("PowerShell command failed: %s", exc)
             return {
                 "success": False,
@@ -1208,7 +1208,7 @@ class ActionExecutor:
                 "steps_total": result.steps_total,
                 "error": result.error,
             }
-        except Exception as exc:
+        except (FileNotFoundError, OSError, RuntimeError) as exc:
             logger.warning("Script execution failed: %s", exc)
             return {"success": False, "output": f"Script error: {exc}", "error": "script_failed"}
 
