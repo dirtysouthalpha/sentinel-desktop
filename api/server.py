@@ -234,6 +234,19 @@ class SentinelServer:
         app.get("/auth/users")(self._handle_auth_users)
         app.get("/audit/export")(self._handle_audit_export)
         app.get("/vault/keys")(self._handle_vault_keys)
+        # v3.1 — System Dashboard, Workflow Builder
+        from core.dashboard import router as dashboard_router
+        app.include_router(dashboard_router)
+        from core.workflow_builder import workflow_store, TEMPLATES, WorkflowStatus
+        self._workflow_store = workflow_store
+        self._workflow_templates = TEMPLATES
+        app.get("/workflows/builder/list")(self._handle_workflow_builder_list)
+        app.post("/workflows/builder/create")(self._handle_workflow_builder_create)
+        app.get("/workflows/builder/templates")(self._handle_workflow_templates)
+        app.post("/workflows/builder/{wf_id}/add-step")(self._handle_workflow_add_step)
+        app.post("/workflows/builder/{wf_id}/remove-step")(self._handle_workflow_remove_step)
+        app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
+        app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
         app.websocket("/ws")(self._handle_ws)
 
         return app
@@ -869,3 +882,80 @@ class SentinelServer:
         if request.client and request.client.host:
             return request.client.host
         return "unknown"
+
+    # ── Workflow Builder (v3.1) ───────────────────────────────────────────
+
+    async def _handle_workflow_builder_list(
+        self, authorization: str | None = Header(default=None)
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        workflows = self._workflow_store.list_all()
+        return {"workflows": [wf.to_dict() for wf in workflows]}
+
+    async def _handle_workflow_builder_create(
+        self,
+        name: str = "",
+        description: str = "",
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        wf = self._workflow_store.create(
+            name=name or "New Workflow",
+            description=description,
+        )
+        return wf.to_dict()
+
+    async def _handle_workflow_templates(
+        self, authorization: str | None = Header(default=None)
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        return {"templates": self._workflow_templates}
+
+    async def _handle_workflow_add_step(
+        self,
+        wf_id: str,
+        action: str = "",
+        name: str = "",
+        params: dict | None = None,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        wf = self._workflow_store.get(wf_id)
+        if not wf:
+            raise HTTPException(404, "Workflow not found")
+        step = wf.add_step(action=action, name=name, params=params or {})
+        return {"step": step.to_dict(), "workflow": wf.to_dict()}
+
+    async def _handle_workflow_remove_step(
+        self,
+        wf_id: str,
+        step_id: str = "",
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        wf = self._workflow_store.get(wf_id)
+        if not wf:
+            raise HTTPException(404, "Workflow not found")
+        removed = wf.remove_step(step_id)
+        return {"removed": removed, "workflow": wf.to_dict()}
+
+    async def _handle_workflow_builder_delete(
+        self,
+        wf_id: str,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        deleted = self._workflow_store.delete(wf_id)
+        return {"deleted": deleted}
+
+    async def _handle_workflow_duplicate(
+        self,
+        wf_id: str,
+        new_name: str | None = None,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        dup = self._workflow_store.duplicate(wf_id, new_name)
+        if not dup:
+            raise HTTPException(404, "Workflow not found")
+        return dup.to_dict()
