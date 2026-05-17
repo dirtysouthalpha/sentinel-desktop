@@ -36,6 +36,7 @@ except ImportError:
 
 
 def is_available() -> bool:
+    """Return True if the pystray library is installed and tray is usable."""
     return _HAS_TRAY
 
 
@@ -127,6 +128,7 @@ class SentinelTray:
             logger.debug("tray notify failed: %s", exc)
 
     def stop(self) -> None:
+        """Stop the tray icon and release resources."""
         if self._icon is not None:
             try:
                 self._icon.stop()

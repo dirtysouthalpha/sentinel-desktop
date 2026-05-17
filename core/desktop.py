@@ -102,12 +102,14 @@ class DesktopController:
             logger.warning("drag failed: %s", exc)
 
     def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> None:
+        """Scroll the mouse wheel by *amount* clicks at the given coordinates."""
         try:
             pyautogui.scroll(amount, x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("scroll failed: %s", exc)
 
     def get_mouse_position(self) -> tuple[int, int]:
+        """Return the current mouse cursor position as (x, y)."""
         try:
             return pyautogui.position()
         except (OSError, RuntimeError) as exc:
@@ -115,24 +117,28 @@ class DesktopController:
             return (0, 0)
 
     def type_text(self, text: str, interval: float = 0.02) -> None:
+        """Type the given text string using simulated keystrokes."""
         try:
             pyautogui.write(text, interval=interval)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("type_text failed: %s", exc)
 
     def press_key(self, key: str) -> None:
+        """Press and release a single key by name (e.g. 'enter', 'escape')."""
         try:
             pyautogui.press(key)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("press_key failed: %s", exc)
 
     def hotkey(self, *keys: str) -> None:
+        """Press multiple keys simultaneously as a keyboard shortcut."""
         try:
             pyautogui.hotkey(*keys)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("hotkey failed: %s", exc)
 
     def find_on_screen(self, template_path: str, confidence: float = 0.8) -> tuple[int, int] | None:
+        """Locate a template image on screen and return its centre (x, y), or None."""
         try:
             import cv2
             import numpy as np
@@ -157,6 +163,7 @@ class DesktopController:
     def wait_for_image(
         self, template_path: str, timeout: float = 30, confidence: float = 0.8, interval: float = 1
     ) -> tuple[int, int] | None:
+        """Poll the screen until *template_path* appears or *timeout* expires."""
         start = time.time()
         while time.time() - start < timeout:
             try:
@@ -171,6 +178,7 @@ class DesktopController:
     def click_image(
         self, template_path: str, confidence: float = 0.8, button: str = "left"
     ) -> bool:
+        """Find a template on screen and click it; return True if found and clicked."""
         pos = self.find_on_screen(template_path, confidence)
         if not pos:
             logger.debug("click_image: template %s not found", template_path)
@@ -194,28 +202,35 @@ def _get_controller() -> DesktopController:
 
 
 def screenshot() -> Image.Image:
+    """Take a full-screen screenshot via the default controller."""
     return _get_controller().screenshot()
 
 
 def screenshot_base64() -> str:
+    """Return a base64-encoded PNG screenshot via the default controller."""
     return _get_controller().screenshot_base64()
 
 
 def click(x: int, y: int, button: str = "left", clicks: int = 1) -> None:
+    """Click at screen coordinates using the default controller."""
     _get_controller().click(x, y, button=button, clicks=clicks)
 
 
 def type_text(text: str, interval: float = 0.02) -> None:
+    """Type text using the default controller."""
     _get_controller().type_text(text, interval=interval)
 
 
 def press_key(key: str) -> None:
+    """Press and release a key using the default controller."""
     _get_controller().press_key(key)
 
 
 def hotkey(*keys: str) -> None:
+    """Press a keyboard shortcut using the default controller."""
     _get_controller().hotkey(*keys)
 
 
 def scroll(amount: int, x: int | None = None, y: int | None = None) -> None:
+    """Scroll the mouse wheel using the default controller."""
     _get_controller().scroll(amount, x=x, y=y)

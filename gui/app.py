@@ -947,6 +947,7 @@ class SentinelApp:
             self.root.destroy()
 
     def run(self) -> None:
+        """Start the main application event loop."""
         self._add_chat(
             "Sentinel Desktop v3.0 ready. Describe a goal and press Enter.\n"
             "Ctrl+K for command palette. ⚙ for settings.",

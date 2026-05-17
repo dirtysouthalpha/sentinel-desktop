@@ -148,6 +148,7 @@ class _Indicator:
         _make_clickthrough(self.win)
 
     def destroy(self) -> None:
+        """Destroy the overlay indicator window."""
         try:
             self.win.destroy()
         except (RuntimeError, tk.TclError) as exc:

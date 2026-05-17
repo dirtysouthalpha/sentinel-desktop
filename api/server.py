@@ -155,6 +155,7 @@ class SentinelServer:
             raise HTTPException(401, "Missing or invalid Authorization header")
 
     def create_app(self) -> FastAPI:
+        """Build and return the configured FastAPI application instance."""
         # Rate-limiting state for login attempts: IP → [timestamp, ...]
         self._login_attempts: dict[str, list[float]] = defaultdict(list)
         self._login_limit = 5  # max attempts per window
@@ -162,6 +163,7 @@ class SentinelServer:
 
         @asynccontextmanager
         async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+            """Manage the FastAPI application lifespan (startup / shutdown)."""
             self._loop = asyncio.get_running_loop()
             yield
 
