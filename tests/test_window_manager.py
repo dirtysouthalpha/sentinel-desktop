@@ -1,5 +1,14 @@
 """Tests for core/window_manager.py — window listing, focusing, and management."""
 
+import sys
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("win"),
+    reason="Requires Win32/pygetwindow (Windows-only)",
+)
+
 from unittest.mock import MagicMock, patch
 
 from core.window_manager import (

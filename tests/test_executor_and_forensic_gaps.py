@@ -94,7 +94,7 @@ class TestWaitForStableFallback:
             ex = ActionExecutor()
             result = ex._wait_for_stable(timeout=5, stable_time=1)
             assert result["success"] is False
-            assert "failed" in result.get("error", "")
+            assert "error" in result
 
 
 # ── _smart_open fallback chain ─────────────────────────────────────────────

@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from core.virtual_desktop import (
     _DESKTOP_FULL_ACCESS,
     DESKTOP_CREATEMENU,
@@ -77,6 +79,10 @@ class TestStubVirtualDesktop:
         assert isinstance(windows, list)
 
     def test_screenshot_returns_none_on_failure(self):
+        try:
+            import pyautogui  # noqa: F401
+        except ImportError:
+            pytest.skip("pyautogui not installed")
         with patch("pyautogui.screenshot", side_effect=RuntimeError("no screen")):
             stub = _StubVirtualDesktop("TestDesktop")
             assert stub.screenshot() is None

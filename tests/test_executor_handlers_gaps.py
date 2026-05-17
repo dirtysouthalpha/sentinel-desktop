@@ -127,7 +127,7 @@ class TestOpenApp:
     def test_start_returns_none(self, fake_executor, monkeypatch):
         from core import process_manager
 
-        monkeypatch.setattr(process_manager, "start_process", lambda p, a=None: None)
+        monkeypatch.setattr(process_manager, "start_process", lambda p, a=None: 0)
         ex = fake_executor()
         out = ex.execute_sync({"action": "open_app", "path": "bad.exe"})
         assert out["success"] is False
@@ -599,15 +599,13 @@ class TestClickImage:
 class TestAsyncExecute:
     def test_async_execute_runs_handler(self, fake_executor):
         ex = fake_executor()
-        result = asyncio.get_event_loop().run_until_complete(
-            ex.execute({"action": "note", "text": "async test"})
-        )
+        result = asyncio.run(ex.execute({"action": "note", "text": "async test"}))
         assert result["success"] is True
         assert result["output"] == "async test"
 
     def test_async_execute_unknown_action(self, fake_executor):
         ex = fake_executor()
-        result = asyncio.get_event_loop().run_until_complete(ex.execute({"action": "teleport"}))
+        result = asyncio.run(ex.execute({"action": "teleport"}))
         assert result["success"] is False
 
 

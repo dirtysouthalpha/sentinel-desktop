@@ -1,5 +1,14 @@
 """Gap tests for screenshot.py — capture_screen, capture_region, get_capture_offset, find_template."""
 
+import sys
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("win"),
+    reason="Requires mss library (no display on Linux/WSL)",
+)
+
 from unittest.mock import MagicMock, patch
 
 from PIL import Image

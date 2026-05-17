@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import core.desktop as desktop_module
 from core.desktop import DesktopController
 
@@ -21,7 +23,10 @@ class TestFindOnScreenSuccess:
 
     @patch("core.desktop.pyautogui.screenshot")
     def test_find_match_returns_center(self, mock_ss: MagicMock) -> None:
-        import numpy as np
+        try:
+            import numpy as np
+        except ImportError:
+            pytest.skip("numpy not installed")
 
         mock_img = MagicMock()
         mock_ss.return_value = mock_img

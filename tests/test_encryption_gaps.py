@@ -2,8 +2,11 @@
 
 import base64
 import json
+import platform
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.encryption import CredentialVault
 
@@ -99,6 +102,7 @@ class TestSaveOSError:
 class TestDpapiEncryptFailure:
     """CryptProtectData failure path on Windows."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="DPAPI only on Windows")
     @patch("core.encryption._CryptProtectData", return_value=0)
     def test_crypt_protect_failure(self, mock_crypt: MagicMock) -> None:
         result = CredentialVault._encrypt(b"test")
@@ -108,6 +112,7 @@ class TestDpapiEncryptFailure:
 class TestDpapiDecryptFailure:
     """CryptUnprotectData failure path on Windows."""
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="DPAPI only on Windows")
     @patch("core.encryption._CryptUnprotectData", return_value=0)
     def test_crypt_unprotect_failure(self, mock_crypt: MagicMock) -> None:
         result = CredentialVault._decrypt(b"test")

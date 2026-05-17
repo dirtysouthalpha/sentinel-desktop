@@ -1,6 +1,7 @@
 """Gap tests for screenshot.py — resolve_monitor, get_capture_offset, capture_to_base64, image encoding."""
 
 import base64
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -31,6 +32,7 @@ class TestResolveMonitor:
 
     @patch("core.screenshot._HAS_MSS", True)
     @patch("core.screenshot.mss")
+    @pytest.mark.skipif(not sys.platform.startswith("win"), reason="Requires mss")
     @patch("core.window_manager.get_focused_window_rect", return_value=(500, 300, 800, 600))
     def test_auto_finds_monitor_with_mss(self, mock_rect, mock_mss):
         mock_sct = MagicMock()
@@ -80,6 +82,7 @@ class TestListMonitorsFallback:
 
     @patch("core.screenshot._HAS_MSS", True)
     @patch("core.screenshot.mss")
+    @pytest.mark.skipif(not sys.platform.startswith("win"), reason="Requires mss")
     def test_mss_lists_monitors(self, mock_mss):
         mock_sct = MagicMock()
         mock_sct.monitors = [
@@ -95,6 +98,7 @@ class TestListMonitorsFallback:
 
     @patch("core.screenshot._HAS_MSS", True)
     @patch("core.screenshot.mss")
+    @pytest.mark.skipif(not sys.platform.startswith("win"), reason="Requires mss")
     def test_mss_exception_falls_back(self, mock_mss):
         mock_mss.mss.side_effect = RuntimeError("fail")
         with patch("core.screenshot.pyautogui") as mock_pag:

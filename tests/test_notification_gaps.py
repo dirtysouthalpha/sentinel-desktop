@@ -1,5 +1,6 @@
 """Tests for notifications.py — covering uncovered paths and edge cases."""
 
+import platform
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -113,6 +114,7 @@ class TestSendToast:
         ok, detail = nm._send_toast("T", "M", "info")
         assert ok is False
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="ctypes.windll only on Windows")
     @patch("core.notifications._is_windows", return_value=True)
     @patch("core.notifications.threading.Thread")
     def test_toast_ctypes_fallback(self, mock_thread: MagicMock, mock_win: MagicMock) -> None:

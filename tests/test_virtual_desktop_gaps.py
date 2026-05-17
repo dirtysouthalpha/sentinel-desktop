@@ -25,10 +25,16 @@ Targets uncovered lines:
 from __future__ import annotations
 
 import signal
+import sys
 import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("win"),
+    reason="ctypes.GetLastError is Windows-only",
+)
 
 from core.virtual_desktop import (
     VirtualDesktop,
