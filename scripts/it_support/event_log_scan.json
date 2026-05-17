@@ -1,0 +1,184 @@
+{
+  "name": "Event Log Scanner",
+  "description": "Scans Windows Event Logs for errors, warnings, and critical events within a configurable time window. Uses PowerShell to query multiple log sources and outputs a formatted summary.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-17T00:00:00",
+  "version": "3.0",
+  "tags": ["event_log", "errors", "warnings", "diagnostics", "powershell", "audit"],
+  "category": "diagnostics",
+  "icon": "📋",
+  "parameters": [
+    {
+      "name": "hours_back",
+      "type": "integer",
+      "label": "Hours to Scan",
+      "description": "Number of hours back from now to scan for events",
+      "default": 1,
+      "required": true
+    },
+    {
+      "name": "log_name",
+      "type": "string",
+      "label": "Event Log Name",
+      "description": "The Windows event log to scan (e.g., System, Application, Security). Use '*' for all logs.",
+      "default": "System",
+      "required": true
+    },
+    {
+      "name": "min_level",
+      "type": "string",
+      "label": "Minimum Event Level",
+      "description": "Minimum severity level to include: Error, Warning, or Informational",
+      "default": "Error",
+      "required": false
+    },
+    {
+      "name": "export_csv",
+      "type": "boolean",
+      "label": "Export to CSV",
+      "description": "Whether to export the scan results to a CSV file on the desktop",
+      "default": false,
+      "required": false
+    }
+  ],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": { "command": "powershell", "args": "-NoExit -ExecutionPolicy Bypass" },
+      "description": "Open PowerShell for event log scanning",
+      "wait_after_ms": 2500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "Write-Host '===== Sentinel Desktop — Event Log Scanner =====' -ForegroundColor Cyan" },
+      "description": "Display scan banner",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute banner display",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "$startTime = (Get-Date).AddHours(-{{hours_back}}); Write-Host \"[INFO] Scanning '{{log_name}}' log for events from $startTime to now\" -ForegroundColor Yellow" },
+      "description": "Calculate the time window and display scan parameters",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute time window display",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "$events = Get-WinEvent -FilterHashtable @{ LogName='{{log_name}}'; StartTime=$startTime; Level=1,2,3 } -MaxEvents 500 -ErrorAction SilentlyContinue | Select-Object TimeCreated, Id, LevelDisplayName, ProviderName, Message | Sort-Object TimeCreated -Descending" },
+      "description": "Query the event log for errors (1), warnings (2), and critical events (3)",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute event log query",
+      "wait_after_ms": 8000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "$errorCount = ($events | Where-Object { $_.LevelDisplayName -eq 'Error' }).Count; $warnCount = ($events | Where-Object { $_.LevelDisplayName -eq 'Warning' }).Count; $criticalCount = ($events | Where-Object { $_.LevelDisplayName -eq 'Critical' }).Count" },
+      "description": "Count events by severity level",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute event counting",
+      "wait_after_ms": 2000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "Write-Host \"[SUMMARY] Critical: $criticalCount | Errors: $errorCount | Warnings: $warnCount | Total scanned: $($events.Count)\" -ForegroundColor $(if ($errorCount -gt 0) { 'Red' } else { 'Green' })" },
+      "description": "Display a summary count of all event severities found",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute summary display",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "Write-Host \"[DETAILS] Top 20 most recent events:\" -ForegroundColor Yellow" },
+      "description": "Section header — event details",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute section header",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "$events | Select-Object -First 20 | Format-Table TimeCreated, Id, LevelDisplayName, ProviderName, @{L='Message';E={$_.Message.Substring(0, [Math]::Min($_.Message.Length, 80))}} -AutoSize -Wrap" },
+      "description": "Display the 20 most recent events in a formatted table with truncated messages",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute event detail display",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "Write-Host \"[FREQUENCY] Top event sources by count:\" -ForegroundColor Yellow" },
+      "description": "Section header — event source frequency",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute section header",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "$events | Group-Object ProviderName | Sort-Object Count -Descending | Select-Object -First 10 | Format-Table Count, Name -AutoSize" },
+      "description": "Group events by provider/source and show top 10 most frequent",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute frequency analysis",
+      "wait_after_ms": 2000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "$desktopPath = [Environment]::GetFolderPath('Desktop'); $csvPath = Join-Path $desktopPath \"event_log_scan_{{log_name}}_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv\"; $events | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8; Write-Host \"[EXPORT] Results saved to: $csvPath\" -ForegroundColor Green" },
+      "description": "Export scan results to a timestamped CSV file on the desktop",
+      "wait_after_ms": 500
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute CSV export",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "type_text",
+      "params": { "text": "Write-Host '===== Event Log Scan Complete =====' -ForegroundColor Cyan" },
+      "description": "Display completion banner",
+      "wait_after_ms": 300
+    },
+    {
+      "action": "press_key",
+      "params": { "key": "Enter" },
+      "description": "Execute completion banner",
+      "wait_after_ms": 500
+    }
+  ]
+}

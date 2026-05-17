@@ -130,6 +130,7 @@ class AuditExporter:
         log: list[dict[str, Any]],
         metadata: dict[str, Any],
         fmt: str = "html",
+        format: str | None = None,
     ) -> str:
         """Dispatch to the appropriate exporter and return the file path.
 
@@ -147,6 +148,9 @@ class AuditExporter:
         str
             Absolute path to the generated report file.
         """
+        # Support both `fmt` and `format` keyword args for backwards compat
+        if format is not None:
+            fmt = format
         dispatch = {
             "html": self.export_html,
             "text": self.export_text,

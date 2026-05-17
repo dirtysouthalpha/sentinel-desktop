@@ -164,6 +164,15 @@ def _verify_password(password: str, stored_hash: str, legacy_salt: str = "") -> 
     return secrets.compare_digest(legacy, stored_hash)
 
 
+def is_default_password(password: str) -> bool:
+    """Return ``True`` if *password* matches ``DEFAULT_ADMIN_PASSWORD``.
+
+    This is a fast constant-time check that callers can use to determine
+    whether a user still needs to rotate the bootstrap password.
+    """
+    return secrets.compare_digest(password, DEFAULT_ADMIN_PASSWORD)
+
+
 # ---------------------------------------------------------------------------
 # AuthManager
 # ---------------------------------------------------------------------------
@@ -352,6 +361,10 @@ class AuthManager:
 
         Returns the ``User`` on success or ``None`` on failure.
         Updates ``last_login`` on success.
+
+        If the user authenticates with ``DEFAULT_ADMIN_PASSWORD``, a warning
+        is logged and the caller should check
+        ``AuthManager.requires_password_rotation`` to enforce rotation.
         """
         user = self._users.get(username)
         if user is None:
@@ -369,6 +382,14 @@ class AuthManager:
             user.salt = ""
             logger.info("Upgraded user '%s' hash from legacy SHA-256 to bcrypt", username)
 
+        # Warn if the user is still using the bootstrap default password.
+        if is_default_password(password):
+            logger.warning(
+                "User '%s' authenticated with the default admin password — "
+                "password rotation is required before normal operation",
+                username,
+            )
+
         user.last_login = time.time()
         self._save()
         logger.info("User '%s' authenticated successfully", username)
@@ -383,6 +404,25 @@ class AuthManager:
         if username is None:
             return None
         return self._users.get(username)
+
+    def requires_password_rotation(self, username: str) -> bool:
+        """Return ``True`` if *username*'s current password matches
+        ``DEFAULT_ADMIN_PASSWORD``.
+
+        This can be used by the API server to refuse startup or force a
+        password change redirect before allowing normal operation.
+        """
+        user = self._users.get(username)
+        if user is None:
+            return False
+        return _verify_password(DEFAULT_ADMIN_PASSWORD, user.password_hash, user.salt)
+
+    def get_users_requiring_rotation(self) -> list[User]:
+        """Return all users whose password still matches ``DEFAULT_ADMIN_PASSWORD``."""
+        return [
+            u for u in self._users.values()
+            if _verify_password(DEFAULT_ADMIN_PASSWORD, u.password_hash, u.salt)
+        ]
 
     # ------------------------------------------------------------------
     # Authorisation / Permission Checks
