@@ -586,4 +586,4 @@ def export_audit(
     Returns the path to the generated report file.
     """
     exporter = AuditExporter(output_dir=output_dir)
-    return exporter.generate_report(log, metadata, format=fmt)
+    return exporter.generate_report(log, metadata, fmt=fmt)

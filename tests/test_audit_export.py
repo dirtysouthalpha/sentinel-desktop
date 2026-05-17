@@ -184,7 +184,7 @@ def sample_metadata():
 class TestGenerateReport:
     def test_unsupported_format_raises(self, exporter, sample_log, sample_metadata):
         with pytest.raises(ValueError, match="Unsupported format"):
-            exporter.generate_report(sample_log, sample_metadata, format="xml")
+            exporter.generate_report(sample_log, sample_metadata, fmt="xml")
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +194,7 @@ class TestGenerateReport:
 
 class TestExportJSON:
     def test_creates_valid_json(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="json")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="json")
         assert Path(path).is_file()
         with Path(path).open() as f:
             data = json.load(f)
@@ -203,7 +203,7 @@ class TestExportJSON:
         assert "summary" in data
 
     def test_masks_sensitive_params(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="json")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="json")
         with Path(path).open() as f:
             data = json.load(f)
         # Step 2 has password param — should be masked
@@ -218,7 +218,7 @@ class TestExportJSON:
 
 class TestExportCSV:
     def test_creates_csv_file(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="csv")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="csv")
         assert Path(path).is_file()
         with Path(path).open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
@@ -227,7 +227,7 @@ class TestExportCSV:
         assert rows[0]["action"] == "click"
 
     def test_csv_has_header(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="csv")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="csv")
         with Path(path).open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
             header = next(reader)
@@ -242,7 +242,7 @@ class TestExportCSV:
 
 class TestExportText:
     def test_creates_text_file(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="text")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="text")
         assert Path(path).is_file()
         with Path(path).open() as f:
             content = f.read()
@@ -250,14 +250,14 @@ class TestExportText:
         assert "Summary Statistics" in content
 
     def test_text_contains_metadata(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="text")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="text")
         with Path(path).open() as f:
             content = f.read()
         assert "Test goal" in content
         assert "completed" in content
 
     def test_txt_alias(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="txt")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="txt")
         assert Path(path).is_file()
 
 
@@ -268,7 +268,7 @@ class TestExportText:
 
 class TestExportHTML:
     def test_creates_html_file(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="html")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="html")
         assert Path(path).is_file()
         with Path(path).open() as f:
             content = f.read()
@@ -286,7 +286,7 @@ class TestExportHTML:
                 "duration": 0,
             }
         ]
-        path = exporter.generate_report(log, sample_metadata, format="html")
+        path = exporter.generate_report(log, sample_metadata, fmt="html")
         with Path(path).open() as f:
             content = f.read()
         assert "<script>" not in content.replace("<!DOCTYPE html>", "").replace(
@@ -295,7 +295,7 @@ class TestExportHTML:
         assert "&lt;script&gt;" in content
 
     def test_html_contains_summary(self, exporter, sample_log, sample_metadata):
-        path = exporter.generate_report(sample_log, sample_metadata, format="html")
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="html")
         with Path(path).open() as f:
             content = f.read()
         assert "Summary Statistics" in content
