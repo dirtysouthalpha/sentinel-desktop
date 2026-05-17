@@ -98,7 +98,7 @@ class ActionExecutor:
 
     @property
     def log(self) -> list[dict[str, Any]]:
-        return self._log
+        return list(self._log)
 
     async def execute(self, action: dict[str, Any]) -> dict[str, Any]:
         """Execute a single action.

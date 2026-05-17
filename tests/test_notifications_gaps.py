@@ -1,6 +1,9 @@
 """Gap tests for notifications.py — lines 269-271, 453-460, 463-464, 471."""
 
+import sys
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.notifications import NotificationManager
 
@@ -69,6 +72,7 @@ class TestToastWin10toastSuccess:
 class TestToastWin10toastExceptionFallback:
     """Lines 463-464: win10toast raises non-ImportError — falls through."""
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific ctypes.windll test")
     @patch("core.notifications._is_windows", return_value=True)
     @patch("core.notifications.threading.Thread")
     def test_win10toast_exception_falls_to_ctypes(
@@ -102,6 +106,7 @@ class TestToastWin10toastExceptionFallback:
 class TestToastCtypesMessageBoxW:
     """Line 471: ctypes.windll.user32.MessageBoxW called inside thread."""
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific ctypes.windll test")
     @patch("core.notifications._is_windows", return_value=True)
     @patch("core.notifications.threading.Thread")
     def test_messageboxw_called_with_correct_args(

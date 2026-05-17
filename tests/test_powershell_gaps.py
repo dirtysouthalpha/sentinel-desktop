@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -279,6 +280,7 @@ class TestRunInlineAllowRaw:
 class TestRunInlineEscapes:
     """run_inline escapes double quotes."""
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific PowerShell escaping test")
     @patch("core.powershell._is_windows", return_value=True)
     @patch("core.powershell.subprocess.run")
     def test_inline_escapes_quotes(self, mock_run, mock_iw):
