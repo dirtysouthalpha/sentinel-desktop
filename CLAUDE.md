@@ -1,33 +1,45 @@
-# Sentinel Desktop — Autonomous Grinding Instructions
+# Sentinel Desktop — AI-Powered Windows Desktop Automation
 
-## Project
-AI-powered Windows desktop automation agent. Python, tkinter GUI, OpenAI-compatible LLM provider support, OCR, UIAutomation, 37+ action types.
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician.
 
 ## What To Do (Priority Order)
-1. **Run tests first** — `python -m pytest tests/ -q` — see what's failing and fix those first
-2. **Fix all 15 failing tests** — see test_action_parsing.py, test_autonomous_and_offset.py, test_config.py, test_engine_unconfigured.py, test_message_pruning.py
-3. **Run ruff** — `ruff check . && ruff format .` — fix any lint/format issues
-4. **Look for gaps** — read the ROADMAP-v3.md, find features that are partially implemented, complete them
-5. **Improve test coverage** — write tests for uncovered modules (especially new ones like recorder.py, script_engine.py, workflow.py, scheduler.py)
-6. **Check for TODO/FIXME comments** — fix any you find
-7. **Commit and push after each unit of work** — `git add -A && git commit -m "description" && git push origin main`
-8. **Repeat** — keep going until there's genuinely nothing left to improve
-
-## Code Standards
-- Python 3.10+, type hints on all public functions
-- Ruff for linting and formatting
-- pytest for testing
-- All modules in core/ for logic, gui/ for UI, api/ for web server
-- Provider-agnostic LLM client (supports 25+ providers)
+1. Run `python -m pytest tests/ -q` — fix ALL failing tests first.
+2. Run `ruff check core/ gui/ api/` — fix ALL lint errors.
+3. Finish in-progress features:
+   - `api/server.py` — workflow builder API endpoints need handler bodies completed (_handle_workflow_add_step, _handle_workflow_remove_step, etc.)
+   - `core/dashboard.py` — system dashboard with CPU/memory/disk/GPU metrics. Verify all endpoints work.
+   - `core/workflow_builder.py` — workflow CRUD, templates, step management. Verify roundtrip.
+   - `scripts/it_support/` — IT support script templates (account unlock, event log scan, network diagnostics, password reset). Verify they load and execute.
+4. Improve test coverage — add tests for untested modules in core/ and gui/.
+5. Fix any bugs, improve error handling, reduce complexity.
+6. After each logical unit of work: commit with a descriptive message and push.
 
 ## Commands
-- `python -m pytest tests/ -q` — run all tests
-- `ruff check .` — lint
-- `ruff format .` — format
-- `git push origin main` — push to GitHub
+- Test: `python -m pytest tests/ -q`
+- Lint: `ruff check core/ gui/ api/`
+- Run GUI: `python main.py`
+- Run API: `python main.py --api --port 8091`
+
+## Architecture
+- **core/** — Core engine (43 modules): agent loop, LLM client, screenshot, OCR, UIAutomation, actions, scheduler, workflows
+- **gui/** — Cyberpunk HUD GUI with tkinter (13 modules): app, cursor overlay, themes, tabs, system tray
+- **api/** — FastAPI headless server (35+ endpoints)
+- **plugins/** — Plugin system
+- **scripts/** — Pre-built IT support scripts (JSON templates)
+- **tests/** — pytest suite (~40+ test files)
+- Multi-provider LLM support (20+ providers including OpenAI, Anthropic, Google, xAI, Z.ai GLM-5)
+
+## Code Standards
+- Python 3.10+ with type hints on all public functions
+- Google-style docstrings
+- 4-space indentation
+- ruff for linting
+- pytest for testing
 
 ## Critical Rules
-- NEVER break existing passing tests
-- NEVER add __pycache__, .pyc, or venv files to git
-- ALWAYS commit and push after completing a unit of work
-- If you run out of max-turns, the next session will pick up where you left off — just continue improving
+- NEVER break existing tests. If a test fails after your change, fix it.
+- NEVER add pip dependencies without a compelling reason.
+- Commit early, commit often. Small focused commits > big messy ones.
+- Push after every commit so progress isn't lost.
+- If you hit a wall, skip and move to the next task.
+- Safety is paramount — this tool controls the desktop. Always maintain the approval gate and failsafe (Esc-x3 panic stop).
