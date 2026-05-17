@@ -1,8 +1,7 @@
 """Tests for core/smart_wait.py -- additional edge cases for visual diff, stability, and wait_for_change."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from PIL import Image
 
 from core.smart_wait import (
@@ -12,7 +11,6 @@ from core.smart_wait import (
     _downsample,
     _save_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # Visual diff edge cases
@@ -208,7 +206,7 @@ class TestCancelEdgeCases:
         sw.cancel()
         with patch("core.smart_wait._crop_to_region") as mock_capture:
             mock_capture.return_value = Image.new("RGB", (50, 50))
-            result = sw.wait_for_change(timeout=5, interval=0.01)
+            sw.wait_for_change(timeout=5, interval=0.01)
             # The wait_for_change resets cancel first, so this actually
             # tests that reset works. Let's verify the event state.
             assert not sw._cancelled()  # _reset_cancel was called

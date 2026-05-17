@@ -17,6 +17,7 @@ from core.recovery import (
 # RecoverySuggestion dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestRecoverySuggestion:
     """Test the RecoverySuggestion dataclass."""
 
@@ -68,9 +69,11 @@ class TestRecoverySuggestion:
         assert s.confidence == 0.0
         assert s.pattern == ""
 
+
 # ---------------------------------------------------------------------------
 # Pattern matching
 # ---------------------------------------------------------------------------
+
 
 class TestPatternMatching:
     """Test _match_pattern against each registered failure pattern."""
@@ -157,36 +160,39 @@ class TestPatternMatching:
         assert _match_pattern("TIMEOUT") == "timeout"
         assert _match_pattern("Element NOT FOUND") == "element_not_found"
 
-    @pytest.mark.parametrize("msg,expected", [
-        ("element not found on page", "element_not_found"),
-        ("Text not found: 'Submit'", "element_not_found"),
-        ("Could not find the button", "element_not_found"),
-        ("Element not located", "element_not_found"),
-        ("Permission denied: /root/file", "permission_denied"),
-        ("Access is denied for this operation", "permission_denied"),
-        ("Access denied to registry key", "permission_denied"),
-        ("Unauthorized access attempt", "permission_denied"),
-        ("Window not found: Chrome", "window_not_found"),
-        ("No window matching 'Firefox'", "window_not_found"),
-        ("No window matching 'Notepad'", "window_not_found"),
-        ("Timeout waiting for page load", "timeout"),
-        ("Operation timed out after 30s", "timeout"),
-        ("Deadline exceeded for action", "timeout"),
-        ("OCR low confidence score: 0.2", "ocr_low_confidence"),
-        ("low_confidence in OCR results", "ocr_low_confidence"),
-        ("OCR failed to produce readable text", "ocr_low_confidence"),
-        ("Garbled OCR output detected", "ocr_low_confidence"),
-        ("App not found: Spotify", "app_not_found"),
-        ("Application not found in registry", "app_not_found"),
-        ("Could not launch Photoshop", "app_not_found"),
-        ("Not installed: VLC media player", "app_not_found"),
-        ("Click failed at coordinates (500, 300)", "click_failed"),
-        ("Click error: no element at position", "click_failed"),
-        ("Coordinate out of range: x=9999", "click_failed"),
-        ("Type failed: keyboard input error", "input_failed"),
-        ("Keyboard error: key not recognized", "input_failed"),
-        ("send_keys failed after 3 retries", "input_failed"),
-    ])
+    @pytest.mark.parametrize(
+        "msg,expected",
+        [
+            ("element not found on page", "element_not_found"),
+            ("Text not found: 'Submit'", "element_not_found"),
+            ("Could not find the button", "element_not_found"),
+            ("Element not located", "element_not_found"),
+            ("Permission denied: /root/file", "permission_denied"),
+            ("Access is denied for this operation", "permission_denied"),
+            ("Access denied to registry key", "permission_denied"),
+            ("Unauthorized access attempt", "permission_denied"),
+            ("Window not found: Chrome", "window_not_found"),
+            ("No window matching 'Firefox'", "window_not_found"),
+            ("No window matching 'Notepad'", "window_not_found"),
+            ("Timeout waiting for page load", "timeout"),
+            ("Operation timed out after 30s", "timeout"),
+            ("Deadline exceeded for action", "timeout"),
+            ("OCR low confidence score: 0.2", "ocr_low_confidence"),
+            ("low_confidence in OCR results", "ocr_low_confidence"),
+            ("OCR failed to produce readable text", "ocr_low_confidence"),
+            ("Garbled OCR output detected", "ocr_low_confidence"),
+            ("App not found: Spotify", "app_not_found"),
+            ("Application not found in registry", "app_not_found"),
+            ("Could not launch Photoshop", "app_not_found"),
+            ("Not installed: VLC media player", "app_not_found"),
+            ("Click failed at coordinates (500, 300)", "click_failed"),
+            ("Click error: no element at position", "click_failed"),
+            ("Coordinate out of range: x=9999", "click_failed"),
+            ("Type failed: keyboard input error", "input_failed"),
+            ("Keyboard error: key not recognized", "input_failed"),
+            ("send_keys failed after 3 retries", "input_failed"),
+        ],
+    )
     def test_known_patterns(self, msg, expected):
         assert _match_pattern(msg) == expected
 
@@ -428,6 +434,7 @@ class TestEnginePatternIntegration:
 # RecoveryEngine.analyze_failure (remote tests)
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeFailure:
     """Test RecoveryEngine.analyze_failure for each failure pattern."""
 
@@ -441,7 +448,10 @@ class TestAnalyzeFailure:
         assert result.pattern == "element_not_found"
         assert result.strategy == "retry_alternate"
         assert result.confidence > 0
-        assert "screenshot" in result.recovery_prompt.lower() or "list_controls" in result.recovery_prompt.lower()
+        assert (
+            "screenshot" in result.recovery_prompt.lower()
+            or "list_controls" in result.recovery_prompt.lower()
+        )
 
     def test_element_not_found_click_text(self):
         action = {"action": "click_text", "text": "Submit"}
@@ -560,6 +570,7 @@ class TestAnalyzeFailure:
 # ---------------------------------------------------------------------------
 # RecoveryEngine.should_auto_apply (remote tests)
 # ---------------------------------------------------------------------------
+
 
 class TestShouldAutoApply:
     """Test RecoveryEngine.should_auto_apply threshold logic."""

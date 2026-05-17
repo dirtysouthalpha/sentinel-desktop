@@ -11,7 +11,6 @@ from core.popup_handler import (
     PopupPattern,
 )
 
-
 # ---------------------------------------------------------------------------
 # PopupPattern tests
 # ---------------------------------------------------------------------------
@@ -259,7 +258,7 @@ class TestPopupHandlerDetect:
         assert result.popup_type == "privacy_consent"
 
     def test_low_confidence_below_threshold(self):
-        handler = PopupHandler()
+        PopupHandler()
         # Create a handler with a single low-confidence pattern
         low_pattern = PopupPattern(
             name="weak_match",
@@ -595,6 +594,7 @@ class TestSendKey:
     def test_send_escape(self, mock_pyautogui):
         # Mock pyautogui in sys.modules for the import inside _send_key
         import sys
+
         mock_pyautogui.press = MagicMock()
         sys.modules["pyautogui"] = mock_pyautogui
 
@@ -626,6 +626,7 @@ class TestClickButton:
         handler = PopupHandler()
         with patch("core.ocr.find_text", return_value=(100, 200)):
             import sys
+
             mock_pg = MagicMock()
             sys.modules["pyautogui"] = mock_pg
             result = handler._click_button("OK")
@@ -659,7 +660,7 @@ class TestPopupHandlerReset:
 class TestBuiltinPatterns:
     def test_all_patterns_have_required_fields(self):
         for pat in BUILTIN_PATTERNS:
-            assert pat.name, f"Pattern missing name"
+            assert pat.name, "Pattern missing name"
             assert pat.dismiss_action, f"Pattern {pat.name} missing dismiss_action"
             assert pat.dismiss_type in ("button", "key"), (
                 f"Pattern {pat.name} has invalid dismiss_type: {pat.dismiss_type}"

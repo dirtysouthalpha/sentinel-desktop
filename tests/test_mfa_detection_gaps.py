@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import sys
-
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PIL import Image
 
 from core.mfa_detection import (

@@ -30,8 +30,7 @@ import logging
 import platform
 import re
 import time
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from PIL import Image
 
@@ -75,12 +74,8 @@ class PopupPattern:
 
     def __post_init__(self) -> None:
         # Compile regex patterns eagerly for reuse
-        self._title_pat = (
-            re.compile(self.title_regex, re.IGNORECASE) if self.title_regex else None
-        )
-        self._body_pat = (
-            re.compile(self.body_regex, re.IGNORECASE) if self.body_regex else None
-        )
+        self._title_pat = re.compile(self.title_regex, re.IGNORECASE) if self.title_regex else None
+        self._body_pat = re.compile(self.body_regex, re.IGNORECASE) if self.body_regex else None
 
     def match(self, title_text: str, body_text: str) -> float:
         """Return a confidence score (0-1) if this pattern matches, else 0.
@@ -88,9 +83,7 @@ class PopupPattern:
         Both title and body regexes must match (if defined). The confidence
         is boosted when *both* title and body match vs. only one.
         """
-        title_match = (
-            self._title_pat.search(title_text) if self._title_pat else True
-        )
+        title_match = self._title_pat.search(title_text) if self._title_pat else True
         body_match = self._body_pat.search(body_text) if self._body_pat else True
 
         if not title_match or not body_match:
@@ -582,7 +575,9 @@ class PopupHandler:
 
         # Step 3: OCR the screenshot
         ocr_output = _ocr_text(screenshot)
-        lines = [line.strip() for line in ocr_output.splitlines() if line.strip()] if ocr_output else []
+        lines = (
+            [line.strip() for line in ocr_output.splitlines() if line.strip()] if ocr_output else []
+        )
 
         # If we have a window title, use it; otherwise first OCR line
         if not title_text and lines:
@@ -721,8 +716,8 @@ class PopupHandler:
         # Strategy 3: Win32 FindWindowEx / EnumChildWindows button search
         if _IS_WINDOWS:
             try:
-                import win32gui  # type: ignore
                 import win32con  # type: ignore
+                import win32gui  # type: ignore
 
                 hwnd = win32gui.GetForegroundWindow()
                 if hwnd:

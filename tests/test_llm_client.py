@@ -1,16 +1,26 @@
 """Tests for core/llm_client.py -- LLM API calls, retry, and response parsing."""
 
 import json
-import pytest
-from unittest.mock import patch, MagicMock
 
 # Mock Windows-only modules before import
 import sys
-for mod in ["pyautogui", "uiautomation", "win32api", "win32con", "win32gui", "win32process", "pytesseract"]:
+from unittest.mock import MagicMock
+
+import pytest
+
+for mod in [
+    "pyautogui",
+    "uiautomation",
+    "win32api",
+    "win32con",
+    "win32gui",
+    "win32process",
+    "pytesseract",
+]:
     if mod not in sys.modules:
         sys.modules[mod] = MagicMock()
 
-from core.llm_client import LLMClient, LLMError, RETRY_STATUSES
+from core.llm_client import RETRY_STATUSES, LLMClient
 
 
 class TestLLMClientInit:
@@ -41,10 +51,13 @@ class TestBuildMessages:
 
     def test_vision_message_format(self):
         messages = [
-            {"role": "user", "content": [
-                {"type": "text", "text": "What do you see?"},
-                {"type": "image_url", "image_url": {"url": "data:image/png;base64,ABC123"}},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "What do you see?"},
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,ABC123"}},
+                ],
+            },
         ]
         assert messages[0]["content"][1]["type"] == "image_url"
         assert "base64" in messages[0]["content"][1]["image_url"]["url"]
@@ -62,16 +75,20 @@ class TestResponseParsing:
 
     def test_parse_openai_tool_call(self):
         response = {
-            "choices": [{
-                "message": {
-                    "tool_calls": [{
-                        "function": {
-                            "name": "click",
-                            "arguments": json.dumps({"x": 100, "y": 200}),
-                        }
-                    }]
+            "choices": [
+                {
+                    "message": {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "click",
+                                    "arguments": json.dumps({"x": 100, "y": 200}),
+                                }
+                            }
+                        ]
+                    }
                 }
-            }]
+            ]
         }
         tc = response["choices"][0]["message"]["tool_calls"][0]
         assert tc["function"]["name"] == "click"
@@ -154,20 +171,24 @@ class TestFriendlyErrors:
 
     def test_401_message(self):
         from core.llm_client import _friendly_http_error
+
         msg = _friendly_http_error(401, "")
         assert "API key" in msg
 
     def test_404_message(self):
         from core.llm_client import _friendly_http_error
+
         msg = _friendly_http_error(404, "")
         assert "not found" in msg.lower() or "model" in msg.lower()
 
     def test_429_message(self):
         from core.llm_client import _friendly_http_error
+
         msg = _friendly_http_error(429, "slow down")
         assert "rate" in msg.lower() or "limit" in msg.lower()
 
     def test_500_message(self):
         from core.llm_client import _friendly_http_error
+
         msg = _friendly_http_error(500, "internal error")
         assert "500" in msg or "Provider error" in msg

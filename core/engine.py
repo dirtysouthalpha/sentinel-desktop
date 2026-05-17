@@ -33,7 +33,7 @@ from core.forensic_log import ForensicLog
 from core.llm_client import LLMClient, LLMError
 from core.mfa_detection import MFADetector
 from core.popup_handler import PopupHandler
-from core.recovery import RecoveryEngine, RecoverySuggestion
+from core.recovery import RecoveryEngine
 from core.screenshot import capture_to_base64, get_capture_offset
 from core.smart_wait import SmartWait
 from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
