@@ -37,6 +37,25 @@
 - **API: `/command`** returns 400 with a clear message for malformed JSON instead of a 500 stack trace.
 - **API: `/config`** masks `api_key` in responses so the key isn't echoed back over the wire.
 
+### Workflow & dashboard
+- **Workflow builder** — CRUD API endpoints for building multi-step automation workflows, with templates and step management (`core/workflow_builder.py`).
+- **System dashboard** — real-time CPU, memory, disk, and GPU metrics via `core/dashboard.py` with REST endpoints.
+
+### Actions
+- **`mouse_move` + `retry_last_action`** — new actions for explicit cursor positioning and replaying the last failed action.
+- **Dedicated `double_click` / `right_click`** — no longer require `button=` parameter in `click`.
+- **Popup handler** — automatic dialog detection and dismissal via `core/popup_handler.py` (57 tests).
+
+### Testing & CI
+- **CI coverage reporting** — pytest now runs with `--cov=sentinel_desktop --cov-report=term-missing --cov-report=xml` across all Python versions.
+- **Test suite expansion** — 83 new tests for recovery engine and LLM client coverage; popup handler tests; all platform-specific tests properly skipped on non-Windows.
+- **Test fixes** — resolved async/tkinter mock issues, recovery test assertion formats, and bare-except clauses.
+
+### Docs & style
+- **Docstrings added** to 69 public functions across core and gui modules.
+- **Ruff formatting** applied consistently across 11+ files.
+- **Error handling** narrowed from bare `except` to specific exception types in `action_executor` and other core modules.
+
 ### Repo hygiene
 - Added `LICENSE` (MIT).
 - Added `.gitignore` that excludes `config.json` (contains API keys), caches, build artifacts, exported forensic logs.
