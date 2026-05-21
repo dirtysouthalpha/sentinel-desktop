@@ -348,8 +348,10 @@ class TestWaitForStable:
     def test_cancel_during_wait(self, mock_capture, sw):
         img = _solid_image()
         mock_capture.return_value = img
+        # Use a generous stable_time so the cancel timer reliably fires
+        # before the stability threshold is met (avoids race condition).
         threading.Timer(0.05, sw.cancel).start()
-        result = sw.wait_for_stable(timeout=2, stable_time=0.1, interval=0.05)
+        result = sw.wait_for_stable(timeout=2, stable_time=1.0, interval=0.05)
         assert result.success is False
 
     @patch.object(SmartWait, "_capture")
