@@ -178,6 +178,26 @@ class LLMClient:
             provider_label=provider,
         )
 
+        return self._parse_openai_response(data, provider)
+
+    @staticmethod
+    def _parse_openai_response(data: Any, provider: str) -> str:
+        """Parse an OpenAI-shaped chat completion response into text or tool calls.
+
+        Handles error envelopes, missing ``choices``, tool-call payloads,
+        and content blocks (plain text or list-of-blocks).
+
+        Args:
+            data:       Raw JSON-decoded response body.
+            provider:   Provider label for error messages.
+
+        Returns:
+            Assistant text content, or a JSON-encoded
+            ``{"tool_calls": [...]}`` payload.
+
+        Raises:
+            LLMError: On malformed or error responses.
+        """
         # Defensively unwrap the OpenAI-shaped response. Some providers (e.g.
         # Z.ai's coding plan) occasionally return error envelopes without a
         # "choices" key — we surface a clear LLMError instead of letting a
