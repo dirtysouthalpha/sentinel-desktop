@@ -157,3 +157,181 @@ class TestSecurity:
     def test_directory_traversal_sanitized(self, cm):
         result = cm.load("../../etc/passwd")
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: stale, corrupt, malformed
+# ---------------------------------------------------------------------------
+
+
+class TestStaleCheckpoints:
+    """load_latest skips checkpoints older than 1 hour."""
+
+    def test_stale_checkpoint_skipped_by_load_latest(self, cm):
+        from datetime import datetime, timedelta, timezone
+
+        cp_id = _save_checkpoint(cm, goal="Old checkpoint")
+        # Backdate the timestamp to 2 hours ago
+        path = Path(cm._dir) / f"{cp_id}.json"
+        data = json.loads(path.read_text())
+        data["timestamp"] = (
+            datetime.now(timezone.utc) - timedelta(hours=2)
+        ).isoformat()
+        path.write_text(json.dumps(data))
+        # load_latest should skip stale, return None
+        assert cm.load_latest() is None
+
+    def test_stale_checkpoint_still_loadable_by_id(self, cm):
+        from datetime import datetime, timedelta, timezone
+
+        cp_id = _save_checkpoint(cm, goal="Old but explicit")
+        path = Path(cm._dir) / f"{cp_id}.json"
+        data = json.loads(path.read_text())
+        data["timestamp"] = (
+            datetime.now(timezone.utc) - timedelta(hours=2)
+        ).isoformat()
+        path.write_text(json.dumps(data))
+        # Direct load should still work
+        record = cm.load(cp_id)
+        assert record is not None
+        assert record["goal"] == "Old but explicit"
+
+    def test_nonstale_checkpoint_preferred_over_stale(self, cm):
+        from datetime import datetime, timedelta, timezone
+
+        import time
+
+        # Create stale
+        stale_id = _save_checkpoint(cm, goal="Stale")
+        path = Path(cm._dir) / f"{stale_id}.json"
+        data = json.loads(path.read_text())
+        data["timestamp"] = (
+            datetime.now(timezone.utc) - timedelta(hours=2)
+        ).isoformat()
+        path.write_text(json.dumps(data))
+        # Create fresh
+        time.sleep(0.05)
+        _save_checkpoint(cm, goal="Fresh")
+        latest = cm.load_latest()
+        assert latest is not None
+        assert latest["goal"] == "Fresh"
+
+
+class TestCorruptFiles:
+    """Corrupt or malformed JSON files are gracefully skipped."""
+
+    def test_corrupt_json_skipped_by_load_latest(self, cm):
+        # Write garbage to a .json file
+        bad = Path(cm._dir) / "corrupt-checkpoint.json"
+        bad.write_text("NOT VALID JSON {{{")
+        assert cm.load_latest() is None
+
+    def test_corrupt_json_skipped_by_list_checkpoints(self, cm):
+        bad = Path(cm._dir) / "corrupt-list.json"
+        bad.write_text("{broken")
+        assert cm.list_checkpoints() == []
+
+    def test_corrupt_json_skipped_by_load(self, cm):
+        bad = Path(cm._dir) / "corrupt-load.json"
+        bad.write_text("}{not json")
+        result = cm.load("corrupt-load")
+        assert result is None
+
+    def test_malformed_list_instead_of_dict(self, cm):
+        bad = Path(cm._dir) / "malformed-list.json"
+        bad.write_text(json.dumps([]))
+        assert cm.load_latest() is None
+        assert cm.list_checkpoints() == []
+
+    def test_malformed_missing_id(self, cm):
+        bad = Path(cm._dir) / "malformed-no-id.json"
+        bad.write_text(json.dumps({"goal": "no id field"}))
+        assert cm.load_latest() is None
+        assert cm.list_checkpoints() == []
+
+
+class TestSaveEdgeCases:
+    """Edge cases in save behavior."""
+
+    def test_goal_preview_truncated_to_200(self, cm):
+        long_goal = "A" * 300
+        cp_id = _save_checkpoint(cm, goal=long_goal)
+        path = Path(cm._dir) / f"{cp_id}.json"
+        data = json.loads(path.read_text())
+        assert len(data["goal_preview"]) == 200
+        assert data["goal"] == long_goal
+
+    def test_save_returns_none_on_write_failure(self, tmp_path):
+        import os
+
+        ro_dir = tmp_path / "readonly"
+        ro_dir.mkdir()
+        cm = CheckpointManager(checkpoint_dir=str(ro_dir))
+        # Make directory read-only after init
+        os.chmod(ro_dir, 0o444)
+        try:
+            result = _save_checkpoint(cm)
+            assert result is None
+        finally:
+            os.chmod(ro_dir, 0o755)
+
+    def test_empty_goal_handled(self, cm):
+        cp_id = cm.save(
+            goal="",
+            step_num=1,
+            agent_memory=[],
+            last_screenshot_path=None,
+            config={"provider": "test"},
+            status="running",
+            messages=[],
+        )
+        path = Path(cm._dir) / f"{cp_id}.json"
+        data = json.loads(path.read_text())
+        assert data["goal"] == ""
+        assert data["goal_preview"] == ""
+
+    def test_should_auto_save_edge_cases(self):
+        assert CheckpointManager.should_auto_save(-1) is False
+        assert CheckpointManager.should_auto_save(-5) is False
+        assert CheckpointManager.should_auto_save(1) is False
+        assert CheckpointManager.should_auto_save(4) is False
+        assert CheckpointManager.should_auto_save(5) is True
+        assert CheckpointManager.should_auto_save(6) is False
+        assert CheckpointManager.should_auto_save(10) is True
+        assert CheckpointManager.should_auto_save(15) is True
+        assert CheckpointManager.should_auto_save(100) is True
+
+
+class TestThreadSafety:
+    """Concurrent operations don't corrupt data."""
+
+    def test_concurrent_saves(self, cm):
+        import threading
+
+        errors = []
+        ids = []
+
+        def worker(idx):
+            try:
+                cp_id = _save_checkpoint(cm, goal=f"Thread {idx}")
+                if cp_id is None:
+                    errors.append(f"thread {idx} got None")
+                else:
+                    ids.append(cp_id)
+            except Exception as exc:
+                errors.append(str(exc))
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == [], f"Errors during concurrent saves: {errors}"
+        assert len(ids) == 10
+        # Verify all files are valid JSON
+        for cp_id in ids:
+            path = Path(cm._dir) / f"{cp_id}.json"
+            assert path.is_file()
+            data = json.loads(path.read_text())
+            assert "id" in data
