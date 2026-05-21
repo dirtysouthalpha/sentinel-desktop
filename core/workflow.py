@@ -176,23 +176,75 @@ class WorkflowEngine:
         """Execute a workflow from a JSON file."""
         start_time = time.time()
 
-        if not Path(path).exists():
-            return WorkflowResult(success=False, error=f"Workflow not found: {path}")
-
-        try:
-            with Path(path).open(encoding="utf-8") as f:
-                wf_data = json.load(f)
-        except (json.JSONDecodeError, OSError) as exc:
-            return WorkflowResult(success=False, error=f"Failed to load workflow: {exc}")
+        # Load and validate workflow file
+        wf_data = self._load_workflow_file(path)
+        if isinstance(wf_data, WorkflowResult):
+            return wf_data
 
         steps_data = wf_data.get("steps", [])
         if not steps_data:
             return WorkflowResult(success=False, error="No steps in workflow")
 
-        # Merge variables
+        # Initialize execution context
         self._variables = {**wf_data.get("variables", {}), **(variables or {})}
         self._step_outputs = {}
+        steps = self._build_steps(steps_data)
+        result = WorkflowResult(steps_total=len(steps))
 
+        # Execute step chain
+        step_map = {s.id: s for s in steps}
+        current = steps[0].id if steps else None
+        visited: set[str] = set()
+
+        while current and current in step_map:
+            if current in visited and step_map[current].type != StepType.LOOP:
+                logger.warning("Cycle detected at step %s, stopping", current)
+                break
+            visited.add(current)
+
+            step = step_map[current]
+            self._fire("on_step_start", step.id)
+            logger.info("Workflow step [%s] type=%s", step.id, step.type)
+
+            try:
+                step_result = self._execute_step(step)
+                result.steps_completed += 1
+                result.step_results.append(step_result)
+                self._step_outputs[step.id] = step_result
+                self._fire("on_step_complete", step.id, step_result)
+
+                current = self._resolve_next_step(step, step_map)
+
+            except (RuntimeError, OSError, ValueError, KeyError) as exc:
+                logger.exception("Step [%s] failed", step.id)
+                current = self._handle_step_error(step, exc, result)
+                if current is None:
+                    break
+
+        result.outputs = dict(self._step_outputs)
+        result.success = not result.error
+        result.elapsed_seconds = time.time() - start_time
+
+        self._fire("on_workflow_complete", result)
+        return result
+
+    def _load_workflow_file(self, path: str) -> dict[str, Any] | WorkflowResult:
+        """Load and parse a workflow JSON file.
+
+        Returns the parsed dict on success, or a WorkflowResult on failure.
+        """
+        if not Path(path).exists():
+            return WorkflowResult(success=False, error=f"Workflow not found: {path}")
+
+        try:
+            with Path(path).open(encoding="utf-8") as f:
+                return json.load(f)  # type: ignore[no-any-return]
+        except (json.JSONDecodeError, OSError) as exc:
+            return WorkflowResult(success=False, error=f"Failed to load workflow: {exc}")
+
+    @staticmethod
+    def _build_steps(steps_data: list[dict[str, Any]]) -> list[WorkflowStep]:
+        """Convert raw step dicts into WorkflowStep objects."""
         steps: list[WorkflowStep] = []
         for s in steps_data:
             steps.append(
@@ -215,112 +267,99 @@ class WorkflowEngine:
                     next_step=s.get("next_step"),
                 )
             )
+        return steps
 
-        result = WorkflowResult(
-            steps_total=len(steps),
-        )
+    def _resolve_next_step(
+        self,
+        step: WorkflowStep,
+        step_map: dict[str, WorkflowStep],
+    ) -> str | None:
+        """Determine the next step ID after a successful step execution.
 
-        # Execute steps in order, following condition branches
-        step_map = {s.id: s for s in steps}
-        current = steps[0].id if steps else None
-        visited = set()
+        For conditions, evaluates the check expression and follows true_next/false_next.
+        For loops, iterates over the resolved list and executes the body step.
+        Returns the next step ID, or the step's default next_step otherwise.
+        """
+        next_id = step.next_step
 
-        while current and current in step_map:
-            if current in visited and step_map[current].type != StepType.LOOP:
-                logger.warning("Cycle detected at step %s, stopping", current)
-                break
-            visited.add(current)
+        if step.type == StepType.CONDITION:
+            expr = self.resolve_variables(
+                step.check or "", self._variables, self._step_outputs
+            )
+            cond_result = self.evaluate_condition(expr)
+            next_id = step.true_next if cond_result else step.false_next
+            logger.info("Condition [%s] = %s → next=%s", expr, cond_result, next_id)
 
-            step = step_map[current]
-            self._fire("on_step_start", step.id)
-            logger.info("Workflow step [%s] type=%s", step.id, step.type)
-
-            try:
-                step_result = self._execute_step(step)
-                result.steps_completed += 1
-                result.step_results.append(step_result)
-                self._step_outputs[step.id] = step_result
-
-                self._fire("on_step_complete", step.id, step_result)
-
-                # Determine next step
-                next_id = step.next_step
-
-                if step.type == StepType.CONDITION:
-                    expr = self.resolve_variables(
-                        step.check or "", self._variables, self._step_outputs
-                    )
-                    cond_result = self.evaluate_condition(expr)
-                    next_id = step.true_next if cond_result else step.false_next
-                    logger.info("Condition [%s] = %s → next=%s", expr, cond_result, next_id)
-
-                elif step.type == StepType.LOOP:
-                    over_ref = self.resolve_variables(
-                        step.over or "", self._variables, self._step_outputs
-                    )
-                    items = self._parse_list(over_ref)
-                    body = step_map.get(step.body_step)  # type: ignore[arg-type]
-                    if body and items:
-                        loop_success = True
-                        for idx, item in enumerate(items):
-                            self._variables["loop_item"] = item
-                            self._variables["loop_index"] = idx
-                            try:
-                                lr = self._execute_step(body)
-                                self._step_outputs[f"{step.id}_loop_{idx}"] = lr
-                            except (RuntimeError, OSError, ValueError) as exc:
-                                logger.warning("Loop step %s failed: %s", step.id, exc)
-                                if body.error_policy == "stop":
-                                    loop_success = False
-                                    break
-                        self._step_outputs[step.id] = {
-                            "success": loop_success,
-                            "items_processed": len(items),
-                        }
-
-                current = next_id
-
-            except (RuntimeError, OSError, ValueError, KeyError) as exc:
-                logger.exception("Step [%s] failed", step.id)
-                result.step_results.append({"success": False, "error": str(exc)})
-
-                if step.error_policy == "stop":
-                    result.error = f"Step {step.id} failed: {exc}"
-                    break
-                elif step.error_policy == "skip":
-                    current = step.next_step
-                    continue
-                elif step.error_policy == "retry":
-                    retries = 0
-                    retried = False
-                    while retries < step.max_retries:
-                        retries += 1
-                        logger.info(
-                            "Retrying step [%s] attempt %d/%d", step.id, retries, step.max_retries
-                        )
-                        try:
-                            sr = self._execute_step(step)
-                            self._step_outputs[step.id] = sr
-                            result.step_results[-1] = sr
-                            retried = True
+        elif step.type == StepType.LOOP:
+            over_ref = self.resolve_variables(
+                step.over or "", self._variables, self._step_outputs
+            )
+            items = self._parse_list(over_ref)
+            body = step_map.get(step.body_step)  # type: ignore[arg-type]
+            if body and items:
+                loop_success = True
+                for idx, item in enumerate(items):
+                    self._variables["loop_item"] = item
+                    self._variables["loop_index"] = idx
+                    try:
+                        lr = self._execute_step(body)
+                        self._step_outputs[f"{step.id}_loop_{idx}"] = lr
+                    except (RuntimeError, OSError, ValueError) as exc:
+                        logger.warning("Loop step %s failed: %s", step.id, exc)
+                        if body.error_policy == "stop":
+                            loop_success = False
                             break
-                        except (RuntimeError, OSError, ValueError, KeyError) as exc:
-                            logger.warning(
-                                "Step retry %d/%d failed: %s", retries, step.max_retries, exc
-                            )
-                            time.sleep(0.5)
-                    if not retried:
-                        result.error = f"Step {step.id} failed after {step.max_retries} retries"
-                        break
-                    current = step.next_step
-                    continue
+                self._step_outputs[step.id] = {
+                    "success": loop_success,
+                    "items_processed": len(items),
+                }
 
-        result.outputs = dict(self._step_outputs)
-        result.success = not result.error
-        result.elapsed_seconds = time.time() - start_time
+        return next_id
 
-        self._fire("on_workflow_complete", result)
-        return result
+    def _handle_step_error(
+        self,
+        step: WorkflowStep,
+        exc: Exception,
+        result: WorkflowResult,
+    ) -> str | None:
+        """Handle a step execution error based on the step's error policy.
+
+        Returns the next step ID to continue with, or None to stop the workflow.
+        """
+        result.step_results.append({"success": False, "error": str(exc)})
+
+        if step.error_policy == "stop":
+            result.error = f"Step {step.id} failed: {exc}"
+            return None
+
+        elif step.error_policy == "skip":
+            return step.next_step
+
+        elif step.error_policy == "retry":
+            retries = 0
+            retried = False
+            while retries < step.max_retries:
+                retries += 1
+                logger.info(
+                    "Retrying step [%s] attempt %d/%d", step.id, retries, step.max_retries
+                )
+                try:
+                    sr = self._execute_step(step)
+                    self._step_outputs[step.id] = sr
+                    result.step_results[-1] = sr
+                    retried = True
+                    break
+                except (RuntimeError, OSError, ValueError, KeyError) as retry_exc:
+                    logger.warning(
+                        "Step retry %d/%d failed: %s", retries, step.max_retries, retry_exc
+                    )
+                    time.sleep(0.5)
+            if not retried:
+                result.error = f"Step {step.id} failed after {step.max_retries} retries"
+                return None
+            return step.next_step
+
+        return None
 
     def _execute_step(self, step: WorkflowStep) -> dict[str, Any]:
         """Execute a single workflow step."""
