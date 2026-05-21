@@ -383,6 +383,7 @@ class HistoryTab(ctk.CTkFrame):
             Path.home() / "Desktop" / f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         )
         try:
+            export_path.parent.mkdir(parents=True, exist_ok=True)
             with export_path.open("w", encoding="utf-8") as f:
                 f.write("Sentinel Desktop — Session Log\n")
                 f.write(f"{'=' * 50}\n")
