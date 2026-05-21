@@ -236,6 +236,29 @@ Return ONLY a JSON object. No markdown fences. No commentary.
 class AgentEngine:
     """The main agent loop that drives desktop automation via LLM."""
 
+    # ── Tunable thresholds (class-level constants) ────────────────────
+    # Stop the run after this many consecutive failures (LLM, parse, or
+    # action-execution errors).
+    MAX_CONSECUTIVE_FAILURES: int = 8
+
+    # Once this many consecutive failures accumulate, inject a recovery
+    # prompt into the conversation to steer the LLM toward a different
+    # strategy before we hit the hard limit.
+    RECOVERY_PROMPT_THRESHOLD: int = 5
+
+    # Default maximum number of agent steps per run.
+    DEFAULT_MAX_STEPS: int = 100
+
+    # MFA/UAC pause: poll every N seconds, up to N iterations (5 min).
+    MFA_POLL_INTERVAL_SECONDS: int = 2
+    MFA_POLL_ITERATIONS: int = 150
+
+    # Seconds to pause after auto-dismissing a popup dialog.
+    POPUP_DISMISS_DELAY: float = 0.5
+
+    # Default LLM sampling temperature for agent steps.
+    LLM_TEMPERATURE: float = 0.1
+
     def __init__(
         self,
         config: dict[str, Any] | None = None,
@@ -262,7 +285,7 @@ class AgentEngine:
         # Public state (accessed by GUI and API)
         self.running = False
         self.step = 0
-        self.max_steps = self.config.get("max_steps", 100)
+        self.max_steps = self.config.get("max_steps", self.DEFAULT_MAX_STEPS)
         self.image_history = int(self.config.get("image_history", DEFAULT_IMAGE_HISTORY))
         self.notes: list[str] = []
         self.forensic_log: list[dict[str, Any]] = []
@@ -543,7 +566,7 @@ class AgentEngine:
                     logger.warning(
                         "LLM call failed (consecutive_failures=%d)", self._consecutive_failures
                     )
-                    if self._consecutive_failures >= 8:
+                    if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
                         self.notes.append(
                             f"Terminating: {self._consecutive_failures} consecutive failures"
                         )
@@ -555,7 +578,7 @@ class AgentEngine:
                             },
                         )
                         break
-                    if self._consecutive_failures >= 5:
+                    if self._consecutive_failures >= self.RECOVERY_PROMPT_THRESHOLD:
                         # Inject a recovery prompt asking for a different strategy
                         messages.append(
                             {
@@ -587,18 +610,18 @@ class AgentEngine:
                             ),
                         }
                     )
-                    if self._consecutive_failures >= 5:
+                    if self._consecutive_failures >= self.RECOVERY_PROMPT_THRESHOLD:
                         messages.append(
                             {
                                 "role": "user",
                                 "content": (
                                     "[SYSTEM] Multiple parse failures. Please return a simple "
-                                    'action like {"action": "finish", "summary": "..."} '
+                                    '{"action": "finish", "summary": "..."} '
                                     'or {"action": "note", "text": "..."}.'
                                 ),
                             }
                         )
-                    if self._consecutive_failures >= 8:
+                    if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
                         self.notes.append(
                             f"Terminating: {self._consecutive_failures} consecutive failures"
                         )
@@ -686,8 +709,8 @@ class AgentEngine:
                         except (RuntimeError, TypeError) as exc:
                             logger.debug("MFA step callback failed: %s", exc)
                     # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
-                    for _ in range(150):
-                        time.sleep(2)
+                    for _ in range(self.MFA_POLL_ITERATIONS):
+                        time.sleep(self.MFA_POLL_INTERVAL_SECONDS)
                         if not self.running:
                             break
                         recheck = self.mfa_detector.check_window_titles()
@@ -721,7 +744,7 @@ class AgentEngine:
                                 _popup_result.dismiss_action,
                             )
                             # Small pause for the dismiss to take effect
-                            time.sleep(0.5)
+                            time.sleep(self.POPUP_DISMISS_DELAY)
                 except Exception as exc:
                     logger.debug("Popup handler check failed: %s", exc)
 
@@ -786,7 +809,7 @@ class AgentEngine:
                     )
 
                     # Check failure thresholds
-                    if self._consecutive_failures >= 8:
+                    if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
                         error_summary = (
                             f"Run terminated after "
                             f"{self._consecutive_failures} consecutive failures. "
@@ -803,7 +826,7 @@ class AgentEngine:
                         )
                         break
 
-                    if self._consecutive_failures >= 5:
+                    if self._consecutive_failures >= self.RECOVERY_PROMPT_THRESHOLD:
                         # Inject a strong recovery prompt
                         messages.append(
                             {
@@ -965,7 +988,7 @@ class AgentEngine:
                     model=model,
                     messages=_clean_messages_for_api(messages),
                     tools=tools,
-                    temperature=0.1,
+                    temperature=self.LLM_TEMPERATURE,
                     custom_url=self.config.get("custom_base_url") or None,
                     max_retries=0,  # disable client-level retry; we handle it here
                     retry_base_delay=0,
