@@ -99,3 +99,102 @@ def test_stealth_press_named_key(fake_executor, monkeypatch):
     out = ex.execute_sync({"action": "press_key", "key": "enter"})
     assert "stealth" in out["output"]
     assert all(c[0] != "press_key" for c in ex._desktop.calls)
+
+
+# ---- Stealth input: non-Windows / no-win32 fallback ----
+
+def test_is_available_false_without_win32():
+    """On Linux/non-Windows, is_available returns False."""
+    assert stealth_input.is_available() is False
+
+
+def test_post_click_returns_false_without_win32():
+    assert stealth_input.post_click(100, 200) is False
+
+
+def test_post_text_returns_false_without_win32():
+    assert stealth_input.post_text("hello") is False
+
+
+def test_post_key_returns_false_without_win32():
+    assert stealth_input.post_key(0x0D) is False
+
+
+def test_post_hotkey_returns_false_without_win32():
+    assert stealth_input.post_hotkey(["ctrl", "c"]) is False
+
+
+def test_post_named_key_returns_false_without_win32():
+    assert stealth_input.post_named_key("enter") is False
+
+
+def test_post_text_empty_string_returns_false(monkeypatch):
+    """Even if win32 were available, empty string returns False."""
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", True)
+    assert stealth_input.post_text("") is False
+
+
+def test_post_hotkey_empty_list_returns_false(monkeypatch):
+    """Empty key list returns False even with win32."""
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", True)
+    assert stealth_input.post_hotkey([]) is False
+
+
+def test_post_named_key_unknown_key_returns_false(monkeypatch):
+    """Unknown key name with len > 1 returns False."""
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", True)
+    assert stealth_input.post_named_key("unknown_key") is False
+
+
+def test_post_named_key_single_char_falls_back_to_post_text(monkeypatch):
+    """Single-character key name falls through to post_text path."""
+    # On Linux, win32gui is not imported so we can't fully test the path,
+    # but we can verify that a single char doesn't hit VK_NAMES lookup
+    from core.stealth_input import VK_NAMES
+    assert "a" not in VK_NAMES  # single chars aren't in the lookup table
+    # post_named_key("a") will try post_text, which returns False on Linux
+    result = stealth_input.post_named_key("a")
+    assert result is False
+
+
+# ---- VK_NAMES mapping completeness ----
+
+def test_vk_names_has_common_keys():
+    from core.stealth_input import VK_NAMES
+    for key in ["enter", "tab", "escape", "space", "backspace", "delete",
+                "up", "down", "left", "right", "home", "end",
+                "f1", "f12"]:
+        assert key in VK_NAMES, f"missing VK_NAMES entry for {key}"
+
+
+def test_vk_names_values_are_ints():
+    from core.stealth_input import VK_NAMES
+    for name, vk in stealth_input.VK_NAMES.items():
+        assert isinstance(vk, int), f"VK_NAMES[{name!r}] = {vk!r} not int"
+
+
+def test_mod_vk_has_standard_modifiers():
+    from core.stealth_input import _MOD_VK
+    for mod in ["ctrl", "shift", "alt", "win"]:
+        assert mod in _MOD_VK, f"missing modifier: {mod}"
+
+
+# ---- Stealth hotkey through executor ----
+
+def test_stealth_hotkey_uses_post_hotkey(fake_executor, monkeypatch):
+    monkeypatch.setattr(stealth_input, "is_available", lambda: True)
+    calls = []
+    monkeypatch.setattr(stealth_input, "post_hotkey", lambda keys, **kw: (calls.append(keys) or True))
+    ex = fake_executor(stealth=True)
+    out = ex.execute_sync({"action": "hotkey", "keys": ["ctrl", "c"]})
+    assert calls == [["ctrl", "c"]]
+    assert "stealth" in out["output"]
+
+
+def test_stealth_hotkey_fallback_when_fails(fake_executor, monkeypatch):
+    monkeypatch.setattr(stealth_input, "is_available", lambda: True)
+    monkeypatch.setattr(stealth_input, "post_hotkey", lambda keys, **kw: False)
+    ex = fake_executor(stealth=True)
+    out = ex.execute_sync({"action": "hotkey", "keys": ["ctrl", "c"]})
+    assert out["success"] is True
+    assert any(c[0] == "hotkey" for c in ex._desktop.calls)
