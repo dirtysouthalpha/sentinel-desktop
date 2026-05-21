@@ -78,6 +78,8 @@ APPROVAL_REQUIRED_ACTIONS = {
     "kill_process",
     "close_window",
     "write_file",
+    "powershell",
+    "run_script",
 }
 
 # ---------------------------------------------------------------------------
@@ -844,12 +846,15 @@ class AgentEngine:
                 # Checkpoint every 5 steps
                 if self.checkpoint.should_auto_save(self.step):
                     try:
+                        safe_config = {
+                            k: v for k, v in self.config.items() if k != "api_key"
+                        }
                         self.checkpoint.save(
                             goal=goal,
                             step_num=self.step,
                             agent_memory=self.notes,
                             last_screenshot_path=None,
-                            config=self.config,
+                            config=safe_config,
                             status="running",
                             messages=messages,
                         )
