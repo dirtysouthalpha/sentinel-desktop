@@ -117,14 +117,8 @@ class CommandPalette:
 # ── Default command registry ────────────────────────────────────────
 
 
-def create_default_palette(app: SentinelApp) -> CommandPalette:
-    """
-    Create and register all default commands for the Sentinel Desktop app.
-    `app` is the SentinelApp instance (gui/app.py).
-    """
-    p = CommandPalette()
-
-    # Chat
+def _register_chat_commands(p: CommandPalette, app: SentinelApp) -> None:
+    """Register chat-related commands (new, clear, export)."""
     p.register(
         "New Chat",
         "Ctrl+N",
@@ -141,7 +135,9 @@ def create_default_palette(app: SentinelApp) -> CommandPalette:
         keywords=["export", "save", "download"],
     )
 
-    # Run control
+
+def _register_agent_commands(p: CommandPalette, app: SentinelApp) -> None:
+    """Register agent control commands (run, stop, emergency, approval, stealth, resume)."""
     p.register(
         "Run Agent",
         "Ctrl+Enter",
@@ -185,7 +181,9 @@ def create_default_palette(app: SentinelApp) -> CommandPalette:
         keywords=["resume", "checkpoint", "continue", "restore"],
     )
 
-    # Desktop control
+
+def _register_desktop_commands(p: CommandPalette, app: SentinelApp) -> None:
+    """Register desktop control commands (screenshot, virtual desktop, window list)."""
     p.register(
         "Take Screenshot",
         "Ctrl+Shift+X",
@@ -208,7 +206,9 @@ def create_default_palette(app: SentinelApp) -> CommandPalette:
         keywords=["windows", "list", "apps"],
     )
 
-    # Logs
+
+def _register_log_commands(p: CommandPalette, app: SentinelApp) -> None:
+    """Register forensic log export commands (JSON, CSV)."""
     p.register(
         "Export Forensic Log (JSON)",
         "",
@@ -224,7 +224,9 @@ def create_default_palette(app: SentinelApp) -> CommandPalette:
         keywords=["log", "forensic", "csv", "export", "audit"],
     )
 
-    # Settings
+
+def _register_settings_commands(p: CommandPalette, app: SentinelApp) -> None:
+    """Register settings commands (open settings, detect models)."""
     p.register(
         "Open Settings",
         "Ctrl+,",
@@ -240,103 +242,37 @@ def create_default_palette(app: SentinelApp) -> CommandPalette:
         keywords=["detect", "models", "provider", "api"],
     )
 
-    # Themes — register one command per theme
-    p.register(
-        "Theme: Midnight",
-        "",
-        "Theme",
-        lambda: app.set_theme("midnight"),
-        keywords=["midnight", "dark", "blue", "theme"],
-    )
-    p.register(
-        "Theme: Dark", "", "Theme", lambda: app.set_theme("dark"), keywords=["dark", "theme"]
-    )
-    p.register(
-        "Theme: Matrix",
-        "",
-        "Theme",
-        lambda: app.set_theme("matrix"),
-        keywords=["matrix", "green", "hacker", "theme"],
-    )
-    p.register(
-        "Theme: Tron",
-        "",
-        "Theme",
-        lambda: app.set_theme("tron"),
-        keywords=["tron", "cyan", "blue", "sci-fi", "theme"],
-    )
-    p.register(
-        "Theme: Cyberpunk",
-        "",
-        "Theme",
-        lambda: app.set_theme("cyberpunk"),
-        keywords=["cyberpunk", "pink", "neon", "theme"],
-    )
-    p.register(
-        "Theme: Neon",
-        "",
-        "Theme",
-        lambda: app.set_theme("neon"),
-        keywords=["neon", "purple", "theme"],
-    )
-    p.register(
-        "Theme: Terminal",
-        "",
-        "Theme",
-        lambda: app.set_theme("terminal"),
-        keywords=["terminal", "green", "monochrome", "theme"],
-    )
-    p.register(
-        "Theme: Blood",
-        "",
-        "Theme",
-        lambda: app.set_theme("blood"),
-        keywords=["blood", "red", "dark", "theme"],
-    )
-    p.register(
-        "Theme: Ocean",
-        "",
-        "Theme",
-        lambda: app.set_theme("ocean"),
-        keywords=["ocean", "sea", "blue", "theme"],
-    )
-    p.register(
-        "Theme: Light",
-        "",
-        "Theme",
-        lambda: app.set_theme("light"),
-        keywords=["light", "bright", "white", "theme"],
-    )
-    p.register(
-        "Theme: Sunset",
-        "",
-        "Theme",
-        lambda: app.set_theme("sunset"),
-        keywords=["sunset", "orange", "warm", "theme"],
-    )
-    p.register(
-        "Theme: Paper",
-        "",
-        "Theme",
-        lambda: app.set_theme("paper"),
-        keywords=["paper", "parchment", "warm", "light", "theme"],
-    )
-    p.register(
-        "Theme: Forest",
-        "",
-        "Theme",
-        lambda: app.set_theme("forest"),
-        keywords=["forest", "green", "nature", "theme"],
-    )
-    p.register(
-        "Theme: Mono",
-        "",
-        "Theme",
-        lambda: app.set_theme("mono"),
-        keywords=["mono", "grayscale", "minimal", "theme"],
-    )
 
-    # ── v3.0: Script Recorder / Playback ──────────────────────────────
+def _register_theme_commands(p: CommandPalette, app: SentinelApp) -> None:
+    """Register theme-switching commands — one command per available theme."""
+    themes = [
+        ("Midnight", ["midnight", "dark", "blue", "theme"]),
+        ("Dark", ["dark", "theme"]),
+        ("Matrix", ["matrix", "green", "hacker", "theme"]),
+        ("Tron", ["tron", "cyan", "blue", "sci-fi", "theme"]),
+        ("Cyberpunk", ["cyberpunk", "pink", "neon", "theme"]),
+        ("Neon", ["neon", "purple", "theme"]),
+        ("Terminal", ["terminal", "green", "monochrome", "theme"]),
+        ("Blood", ["blood", "red", "dark", "theme"]),
+        ("Ocean", ["ocean", "sea", "blue", "theme"]),
+        ("Light", ["light", "bright", "white", "theme"]),
+        ("Sunset", ["sunset", "orange", "warm", "theme"]),
+        ("Paper", ["paper", "parchment", "warm", "light", "theme"]),
+        ("Forest", ["forest", "green", "nature", "theme"]),
+        ("Mono", ["mono", "grayscale", "minimal", "theme"]),
+    ]
+    for name, kws in themes:
+        p.register(
+            f"Theme: {name}",
+            "",
+            "Theme",
+            lambda n=name.lower(): app.set_theme(n),
+            keywords=kws,
+        )
+
+
+def _register_recorder_commands(p: CommandPalette, app: SentinelApp) -> None:
+    """Register script recorder/playback commands (record, stop, run, library, powershell)."""
     p.register(
         "⏺ Start Recording",
         "Ctrl+Shift+R",
@@ -372,63 +308,44 @@ def create_default_palette(app: SentinelApp) -> CommandPalette:
         lambda: _run_powershell_dialog(app),
         keywords=["powershell", "ps", "command", "shell"],
     )
-    p.register(
-        "🔧 IT: Disk Cleanup",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "disk_cleanup"),
-        keywords=["disk", "cleanup", "clean", "maintenance"],
-    )
-    p.register(
-        "🔧 IT: Network Diagnostics",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "network_diag"),
-        keywords=["network", "ping", "dns", "diag", "tracert"],
-    )
-    p.register(
-        "🔧 IT: Service Restart...",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "service_restart"),
-        keywords=["service", "restart", "windows"],
-    )
-    p.register(
-        "🔧 IT: Event Log Errors",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "event_log_errors"),
-        keywords=["event", "log", "error", "viewer"],
-    )
-    p.register(
-        "🔧 IT: Temp File Cleanup",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "temp_file_cleanup"),
-        keywords=["temp", "cleanup", "files", "junk"],
-    )
-    p.register(
-        "🔧 IT: Software Inventory",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "software_inventory"),
-        keywords=["software", "inventory", "installed", "list"],
-    )
-    p.register(
-        "🔧 IT: System Info Export",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "system_info_export"),
-        keywords=["system", "info", "export", "msinfo"],
-    )
-    p.register(
-        "🔧 IT: Create Restore Point...",
-        "",
-        "Quick Actions",
-        lambda: _run_it_script(app, "restore_point_create"),
-        keywords=["restore", "point", "backup", "system"],
-    )
 
+
+def _register_it_quick_actions(p: CommandPalette, app: SentinelApp) -> None:
+    """Register IT support quick-action commands (disk cleanup, network diag, etc.)."""
+    scripts = [
+        ("🔧 IT: Disk Cleanup", "disk_cleanup", ["disk", "cleanup", "clean", "maintenance"]),
+        ("🔧 IT: Network Diagnostics", "network_diag", ["network", "ping", "dns", "diag", "tracert"]),
+        ("🔧 IT: Service Restart...", "service_restart", ["service", "restart", "windows"]),
+        ("🔧 IT: Event Log Errors", "event_log_errors", ["event", "log", "error", "viewer"]),
+        ("🔧 IT: Temp File Cleanup", "temp_file_cleanup", ["temp", "cleanup", "files", "junk"]),
+        ("🔧 IT: Software Inventory", "software_inventory", ["software", "inventory", "installed", "list"]),
+        ("🔧 IT: System Info Export", "system_info_export", ["system", "info", "export", "msinfo"]),
+        ("🔧 IT: Create Restore Point...", "restore_point_create", ["restore", "point", "backup", "system"]),
+    ]
+    for label, script_name, kws in scripts:
+        p.register(
+            label,
+            "",
+            "Quick Actions",
+            lambda s=script_name: _run_it_script(app, s),
+            keywords=kws,
+        )
+
+
+def create_default_palette(app: SentinelApp) -> CommandPalette:
+    """
+    Create and register all default commands for the Sentinel Desktop app.
+    `app` is the SentinelApp instance (gui/app.py).
+    """
+    p = CommandPalette()
+    _register_chat_commands(p, app)
+    _register_agent_commands(p, app)
+    _register_desktop_commands(p, app)
+    _register_log_commands(p, app)
+    _register_settings_commands(p, app)
+    _register_theme_commands(p, app)
+    _register_recorder_commands(p, app)
+    _register_it_quick_actions(p, app)
     return p
 
 
