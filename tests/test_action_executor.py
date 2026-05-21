@@ -106,3 +106,226 @@ def test_dispatch_has_new_uia_and_ocr_handlers(fake_executor):
     ex = fake_executor()
     for name in ("click_text", "read_text", "click_control", "set_text", "list_controls"):
         assert name in ex._dispatch_table, f"missing handler: {name}"
+
+
+# ---- _contains_sensitive edge cases ----
+
+def test_sensitive_password_keyword(fake_executor):
+    ex = fake_executor()
+    out = ex.execute_sync({"action": "type_text", "text": "enter password here"})
+    assert out["success"] is False
+    assert out["error"] == "sensitive_field"
+
+
+def test_sensitive_api_key_keyword(fake_executor):
+    ex = fake_executor()
+    out = ex.execute_sync({"action": "type_text", "text": "my api_key = 12345"})
+    assert out["success"] is False
+    assert out["error"] == "sensitive_field"
+
+
+def test_sensitive_ssn_keyword(fake_executor):
+    ex = fake_executor()
+    out = ex.execute_sync({"action": "type_text", "text": "social_security number"})
+    assert out["success"] is False
+    assert out["error"] == "sensitive_field"
+
+
+def test_sensitive_case_insensitive(fake_executor):
+    ex = fake_executor()
+    out = ex.execute_sync({"action": "type_text", "text": "SECRET value"})
+    assert out["success"] is False
+    assert out["error"] == "sensitive_field"
+
+
+def test_not_sensitive_normal_text(fake_executor):
+    ex = fake_executor()
+    out = ex.execute_sync({"action": "type_text", "text": "Hello World"})
+    assert out["success"] is True
+
+
+def test_not_sensitive_similar_words(fake_executor):
+    """Words containing 'pass' but not exact keyword should pass."""
+    ex = fake_executor()
+    out = ex.execute_sync({"action": "type_text", "text": "passenger bypass"})
+    assert out["success"] is True
+
+
+def test_contains_sensitive_token_keyword():
+    from core.action_executor import _contains_sensitive
+    assert _contains_sensitive("bearer token for auth") is True
+    assert _contains_sensitive("hello world") is False
+    assert _contains_sensitive("credit_card=4111") is True
+    assert _contains_sensitive("PIN code") is True
+    assert _contains_sensitive("passwd reset") is True
+
+
+def test_contains_sensitive_empty_string():
+    from core.action_executor import _contains_sensitive
+    assert _contains_sensitive("") is False
+
+
+# ---- _sanitize_params edge cases ----
+
+def test_sanitize_truncates_long_strings():
+    from core.action_executor import _sanitize_params
+    params = {"text": "x" * 500}
+    result = _sanitize_params(params)
+    assert len(result["text"]) == 203  # 200 + "..."
+    assert result["text"].endswith("...")
+
+
+def test_sanitize_preserves_short_strings():
+    from core.action_executor import _sanitize_params
+    params = {"key": "short", "num": 42}
+    result = _sanitize_params(params)
+    assert result == {"key": "short", "num": 42}
+
+
+def test_sanitize_large_list():
+    from core.action_executor import _sanitize_params
+    params = {"items": list(range(1000))}
+    result = _sanitize_params(params)
+    assert isinstance(result["items"], str)
+    assert "list" in result["items"].lower()
+
+
+def test_sanitize_large_dict():
+    from core.action_executor import _sanitize_params
+    params = {"data": {f"k{i}": f"v{i}" for i in range(200)}}
+    result = _sanitize_params(params)
+    assert isinstance(result["data"], str)
+    assert "dict" in result["data"].lower()
+
+
+# ---- _dry_run_result helper ----
+
+def test_dry_run_result_format():
+    from core.action_executor import _dry_run_result
+    result = _dry_run_result("click", {"x": 1, "y": 2})
+    assert result["success"] is True
+    assert result["dry_run"] is True
+    assert "click" in result["output"]
+    assert "DRY-RUN" in result["output"]
+
+
+def test_dry_run_result_truncates_long_params():
+    from core.action_executor import _dry_run_result
+    params = {"data": "x" * 500}
+    result = _dry_run_result("type_text", params)
+    assert result["success"] is True
+    # The output message should not be excessively long
+    assert len(result["output"]) < 400
+
+
+# ---- Action log tracking ----
+
+def test_action_log_tracks_executions(fake_executor):
+    ex = fake_executor()
+    ex.execute_sync({"action": "click", "x": 1, "y": 2})
+    ex.execute_sync({"action": "press_key", "key": "enter"})
+    log = ex.log
+    assert len(log) == 2
+    assert log[0]["action"] == "click"
+    assert log[1]["action"] == "press_key"
+
+
+def test_action_log_is_a_copy(fake_executor):
+    ex = fake_executor()
+    ex.execute_sync({"action": "click", "x": 1, "y": 2})
+    log_copy = ex.log
+    log_copy.append({"action": "tampered"})
+    assert len(ex.log) == 1  # internal log unchanged
+
+
+# ---- Dry-run for all state-changing actions ----
+
+@pytest.mark.parametrize("action", [
+    {"action": "click", "x": 1, "y": 2},
+    {"action": "type_text", "text": "hi"},
+    {"action": "press_key", "key": "enter"},
+    {"action": "hotkey", "keys": ["ctrl", "c"]},
+    {"action": "scroll", "amount": 3},
+    {"action": "drag", "from_x": 0, "from_y": 0, "to_x": 100, "to_y": 100},
+])
+def test_dry_run_blocks_state_changing_actions(fake_executor, action):
+    ex = fake_executor(dry_run=True)
+    out = ex.execute_sync(action)
+    assert out["success"] is True
+    assert out.get("dry_run") is True
+    assert ex._desktop.calls == []
+
+
+# ---- Read-only actions still run in dry-run ----
+
+def test_dry_run_screenshot_still_runs(fake_executor, monkeypatch):
+    from core import screenshot as ss
+    monkeypatch.setattr(ss, "capture_to_base64", lambda **kw: "fake_base64")
+    ex = fake_executor(dry_run=True)
+    out = ex.execute_sync({"action": "screenshot"})
+    assert out["success"] is True
+    assert not out.get("dry_run")
+
+
+def test_dry_run_read_file_still_runs(fake_executor, tmp_path):
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("hello from test")
+    ex = fake_executor(dry_run=True)
+    out = ex.execute_sync({"action": "read_file", "path": str(test_file)})
+    assert out["success"] is True
+    assert "hello from test" in out["output"]
+
+
+def test_dry_run_system_info_still_runs(fake_executor, monkeypatch):
+    from core import system_info as si
+    monkeypatch.setattr(si, "system_info", lambda: {"os": "test"})
+    ex = fake_executor(dry_run=True)
+    out = ex.execute_sync({"action": "system_info"})
+    assert out["success"] is True
+    assert not out.get("dry_run")
+
+
+# ---- Exception handling in handlers ----
+
+def test_handler_exception_returns_error(fake_executor, monkeypatch):
+    """If a handler throws internally and catches, returns error dict."""
+    ex = fake_executor()
+    # The hotkey handler catches exceptions and returns hotkey_failed
+    def boom_hotkey(*keys):
+        raise RuntimeError("keyboard exploded")
+    ex._desktop.hotkey = boom_hotkey
+    out = ex.execute_sync({"action": "hotkey", "keys": ["ctrl", "c"]})
+    assert out["success"] is False
+    assert out["error"] == "hotkey_failed"
+
+
+# ---- Empty/missing action key ----
+
+def test_empty_action_string(fake_executor):
+    ex = fake_executor()
+    out = ex.execute_sync({"action": ""})
+    assert out["success"] is False
+    assert "unknown" in out.get("error", "").lower()
+
+
+def test_missing_action_key(fake_executor):
+    ex = fake_executor()
+    out = ex.execute_sync({"x": 1, "y": 2})
+    assert out["success"] is False
+
+
+# ---- Multiple sequential actions maintain log ----
+
+def test_sequential_actions_log_in_order(fake_executor):
+    ex = fake_executor()
+    actions = [
+        {"action": "click", "x": i, "y": i}
+        for i in range(5)
+    ]
+    for a in actions:
+        ex.execute_sync(a)
+    log = ex.log
+    assert len(log) == 5
+    for i, entry in enumerate(log):
+        assert entry["action"] == "click"
+        assert entry["success"] is True
