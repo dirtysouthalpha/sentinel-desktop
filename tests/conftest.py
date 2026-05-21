@@ -178,6 +178,9 @@ def _install_headless_stubs() -> None:
         ):
             setattr(_ctk, _name, type(_name, (_CTkBase,), {}))
 
+        # CTkFont is a plain callable (not a widget), just accept any kwargs
+        _ctk.CTkFont = lambda *a, **kw: None
+
         _ctk.StringVar = type("StringVar", (), {"__init__": lambda s, *a, **kw: None, "get": lambda s: "", "set": lambda s, v: None, "trace_add": lambda s, *a, **kw: None})
         _ctk.IntVar = type("IntVar", (), {"__init__": lambda s, *a, **kw: None, "get": lambda s: 0, "set": lambda s, v: None, "trace_add": lambda s, *a, **kw: None})
         _ctk.DoubleVar = type("DoubleVar", (), {"__init__": lambda s, *a, **kw: None, "get": lambda s: 0.0, "set": lambda s, v: None, "trace_add": lambda s, *a, **kw: None})
