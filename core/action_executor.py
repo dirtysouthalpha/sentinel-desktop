@@ -207,6 +207,7 @@ class ActionExecutor:
         return result
 
     def _log_entry(self, action_type: str, params: dict, result: dict) -> None:
+        """Append an action log entry with sanitized params and truncated output preview."""
         entry = {
             "action": action_type,
             "params": _sanitize_params(params),
@@ -222,6 +223,7 @@ class ActionExecutor:
     def _click(
         self, *, x: int, y: int, button: str = "left", clicks: int = 1, **_
     ) -> dict[str, Any]:
+        """Click at screen coordinates with optional stealth mode via PostMessage."""
         # Translate from captured-image coords to absolute screen coords for
         # multi-monitor virtual-desktop capture.
         sx = int(x) + self.click_offset[0]
@@ -550,6 +552,7 @@ class ActionExecutor:
             }
 
     def _click_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
+        """Find a template image on screen and click it, using stealth if available."""
         # Find the template position; click via stealth if enabled so the
         # cursor stays put.
         try:
@@ -576,6 +579,7 @@ class ActionExecutor:
             }
 
     def _type_text(self, *, text: str, **_) -> dict:
+        """Type text via keyboard input, falling back to clipboard paste if needed."""
         # Sensitive field check
         if _contains_sensitive(text):
             return {
@@ -605,6 +609,7 @@ class ActionExecutor:
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
     def _press_key(self, *, key: str, **_) -> dict:
+        """Press a single named key (e.g. 'enter', 'tab', 'escape')."""
         try:
             if self.stealth and stealth_input.is_available():
                 if stealth_input.post_named_key(key):
@@ -620,6 +625,7 @@ class ActionExecutor:
             }
 
     def _hotkey(self, *, keys: list, **_) -> dict:
+        """Press a keyboard shortcut combination (e.g. ['ctrl', 'c'])."""
         try:
             if self.stealth and stealth_input.is_available():
                 if stealth_input.post_hotkey(keys):
@@ -641,6 +647,7 @@ class ActionExecutor:
         button: str = "left",
         **_,
     ) -> dict:
+        """Drag from one screen position to another with stealth PostMessage support."""
         sx = int(from_x) + self.click_offset[0]
         sy = int(from_y) + self.click_offset[1]
         tx = int(to_x) + self.click_offset[0]
@@ -683,6 +690,7 @@ class ActionExecutor:
             return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
 
     def _scroll(self, *, amount: int, **_) -> dict:
+        """Scroll the mouse wheel by the given amount (positive = up, negative = down)."""
         try:
             self._desktop.scroll(amount)
             return {"success": True, "output": f"Scrolled {amount}"}
@@ -690,6 +698,7 @@ class ActionExecutor:
             return {"success": False, "output": f"Scroll failed: {exc}", "error": "scroll_failed"}
 
     def _screenshot(self, **_) -> dict:
+        """Capture a screenshot and return it as a base64-encoded string."""
         try:
             b64 = capture_to_base64(monitor=self.monitor)
             return {
@@ -705,6 +714,7 @@ class ActionExecutor:
             }
 
     def _find_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
+        """Locate a template image on screen and return its position."""
         try:
             pos = find_template(template_path, confidence)
             if pos:
@@ -726,6 +736,7 @@ class ActionExecutor:
             }
 
     def _wait(self, *, seconds: float = 1.0, **_) -> dict:
+        """Sleep for the given duration, capped at 60s to prevent runaway waits."""
         import time as _time
 
         seconds = max(0.0, float(seconds))
@@ -738,6 +749,7 @@ class ActionExecutor:
             return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
     def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_) -> dict:
+        """Poll until a template image appears on screen or timeout elapses."""
         try:
             pos = wait_for_template(template_path, float(timeout))
             if pos:
@@ -834,6 +846,7 @@ class ActionExecutor:
             }
 
     def _open_app(self, *, path: str, args: list | None = None, **_) -> dict:
+        """Launch an application by executable path with optional arguments."""
         try:
             pid = pm.start_process(path, args)
             if pid:
@@ -876,6 +889,7 @@ class ActionExecutor:
         return result
 
     def _close_app(self, *, name: str | None = None, pid: int | None = None, **_) -> dict:
+        """Kill a running process by name or PID."""
         target = pid or name
         if target is None:
             return {
@@ -939,6 +953,7 @@ class ActionExecutor:
             }
 
     def _close_window(self, *, title: str, **_) -> dict:
+        """Close a window by partial title match."""
         try:
             ok = wm.close_window(title)
             return {"success": ok, "output": f"Window '{title}' {'closed' if ok else 'not found'}"}
@@ -950,6 +965,7 @@ class ActionExecutor:
             }
 
     def _list_windows(self, **_) -> dict:
+        """List all visible windows with titles and positions."""
         try:
             windows = wm.list_windows()
             return {"success": True, "output": windows}
@@ -961,6 +977,7 @@ class ActionExecutor:
             }
 
     def _read_file(self, *, path: str, **_) -> dict:
+        """Read a file's contents and return up to 5000 chars as a preview."""
         try:
             content = file_ops.read_file(path)
             if content is not None:
@@ -979,6 +996,7 @@ class ActionExecutor:
             }
 
     def _write_file(self, *, path: str, content: str, **_) -> dict:
+        """Write content to a file on disk."""
         try:
             ok = file_ops.write_file(path, content)
             return {"success": ok, "output": f"File {'written' if ok else 'write failed'}"}
@@ -990,6 +1008,7 @@ class ActionExecutor:
             }
 
     def _list_directory(self, *, path: str = ".", **_) -> dict:
+        """List files and subdirectories in the given directory path."""
         try:
             entries = file_ops.list_directory(path)
             if entries is not None:
@@ -1003,6 +1022,7 @@ class ActionExecutor:
             }
 
     def _clipboard_read(self, **_) -> dict:
+        """Read the current contents of the system clipboard."""
         try:
             text = clip.clipboard_read()
             return {"success": text is not None, "output": text or ""}
@@ -1014,6 +1034,7 @@ class ActionExecutor:
             }
 
     def _clipboard_write(self, *, text: str, **_) -> dict:
+        """Write text to the system clipboard."""
         try:
             ok = clip.clipboard_write(text)
             return {"success": ok, "output": f"Clipboard {'updated' if ok else 'failed'}"}
@@ -1025,6 +1046,7 @@ class ActionExecutor:
             }
 
     def _system_info(self, **_) -> dict:
+        """Return OS, CPU, memory, and disk information."""
         try:
             info = sysinfo.system_info()
             return {"success": True, "output": info}
@@ -1036,6 +1058,7 @@ class ActionExecutor:
             }
 
     def _list_processes(self, **_) -> dict:
+        """List running processes (up to 100 entries)."""
         try:
             procs = pm.list_processes()
             return {"success": True, "output": procs[:100]}
@@ -1047,6 +1070,7 @@ class ActionExecutor:
             }
 
     def _start_process(self, *, path: str, args: list | None = None, **_) -> dict:
+        """Start a new process by executable path and return its PID."""
         try:
             pid = pm.start_process(path, args)
             return {"success": pid is not None, "output": f"pid={pid}"}
@@ -1058,6 +1082,7 @@ class ActionExecutor:
             }
 
     def _kill_process(self, *, pid: int | None = None, name: str | None = None, **_) -> dict:
+        """Terminate a process by PID or name."""
         target = pid or name
         try:
             killed = pm.kill_process(target)
