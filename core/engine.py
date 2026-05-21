@@ -484,52 +484,18 @@ class AgentEngine:
 
     def _run_inner(self, goal: str) -> dict[str, Any]:
         """Inner agent loop — called by run() with virtual desktop wrapping."""
+        # Validate required configuration (provider, API key, model)
+        err = self._validate_run_config()
+        if err:
+            return err
+
         provider = self.config.get("provider", "")
         api_key = self.config.get("api_key", "")
         model = self.config.get("model", "")
 
-        if not api_key and provider not in ("ollama", "lmstudio", "custom"):
-            self.notes = [
-                "Error: API key not configured. Open ⚙ Settings, pick a "
-                "provider, paste your API key, and choose a model."
-            ]
-            self.running = False
-            return {"steps": 0, "notes": self.notes, "error": "api_key_missing"}
-        if not provider:
-            self.notes = ["Error: No LLM provider selected. Open ⚙ Settings."]
-            self.running = False
-            return {"steps": 0, "notes": self.notes, "error": "provider_missing"}
-        if not model:
-            self.notes = [
-                f"Error: No model selected for provider {provider!r}. "
-                "Open ⚙ Settings, click 🔍 Detect, or type a model name."
-            ]
-            self.running = False
-            return {"steps": 0, "notes": self.notes, "error": "model_missing"}
-
-        # Build system prompt. We use .replace() — NOT .format() — because
-        # the prompt contains literal JSON examples like {"action":"click"}
-        # whose braces would otherwise be interpreted as format placeholders
-        # (Python's str.format raises KeyError: '"action"' on those).
-        env_context = self._build_env_context()
-        system_prompt = SYSTEM_PROMPT.replace("{env_context}", env_context)
-
-        # Inject app profile context — detect active window and add profile hints
-        app_context = self._build_app_context()
-        system_prompt = system_prompt.replace("{app_context}", app_context)
-        messages = [{"role": "system", "content": system_prompt}]
-
-        # Initial screenshot + goal
-        try:
-            screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
-        except (OSError, ValueError, RuntimeError) as exc:
-            logger.warning("Initial screen capture failed: %s", exc)
-            screenshot_b64 = ""
-        self._add_vision_message(
-            messages,
-            screenshot_b64,
-            f"Goal: {goal}\n\nI can see this screen. What should I do first?",
-        )
+        # Build system prompt and initial screenshot message
+        messages = self._build_initial_messages(goal)
+        screenshot_b64: str | None = ""  # updated each iteration
 
         start_time = time.time()
 
@@ -674,79 +640,10 @@ class AgentEngine:
                     action = approved_action or action
 
                 # MFA/UAC detection — pause if auth prompt is on screen
-                mfa_result = self.mfa_detector.check_window_titles()
-                if not mfa_result.detected:
-                    try:
-                        from core.screenshot import capture_screen
-
-                        screen = capture_screen()
-                        mfa_result = self.mfa_detector.check_screen(screen)
-                    except (OSError, RuntimeError) as exc:
-                        logger.warning("MFA screen check failed: %s", exc)
-                if mfa_result.detected:
-                    self._mfa_paused = True
-                    self.logger.log_event(
-                        "mfa_pause",
-                        {
-                            "type": mfa_result.type,
-                            "prompt": mfa_result.prompt_text,
-                            "window": mfa_result.window_title,
-                        },
-                    )
-                    if self.on_step_callback:
-                        try:
-                            self.on_step_callback(
-                                step=self.step,
-                                action={"action": "mfa_pause"},
-                                result={
-                                    "ok": False,
-                                    "msg": (
-                                        f"🔐 {mfa_result.type.upper()} detected: "
-                                        f"{mfa_result.prompt_text}"
-                                    ),
-                                },
-                            )
-                        except (RuntimeError, TypeError) as exc:
-                            logger.debug("MFA step callback failed: %s", exc)
-                    # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
-                    for _ in range(self.MFA_POLL_ITERATIONS):
-                        time.sleep(self.MFA_POLL_INTERVAL_SECONDS)
-                        if not self.running:
-                            break
-                        recheck = self.mfa_detector.check_window_titles()
-                        if not recheck.detected:
-                            self._mfa_paused = False
-                            self.logger.log_event("mfa_resume", {"msg": "Auth prompt dismissed"})
-                            break
+                self._check_mfa_pause()
 
                 # Popup dialog detection — check for and optionally dismiss
-                # common popups that block automation (save prompts, error
-                # dialogs, certificate warnings, update notifications, etc.)
-                try:
-                    from core.screenshot import capture_screen as _cs
-
-                    _screen = _cs()
-                    _popup_result = self._popup_handler.check_and_dismiss(screenshot=_screen)
-                    if _popup_result.detected:
-                        self.logger.log_event(
-                            "popup_detected",
-                            {
-                                "type": _popup_result.popup_type,
-                                "confidence": _popup_result.confidence,
-                                "dismissed": _popup_result.dismissed,
-                                "action": _popup_result.dismiss_action,
-                            },
-                        )
-                        if _popup_result.dismissed:
-                            logger.info(
-                                "Popup auto-dismissed: %s via %s",
-                                _popup_result.popup_type,
-                                _popup_result.dismiss_action,
-                            )
-                            # Small pause for the dismiss to take effect
-                            time.sleep(self.POPUP_DISMISS_DELAY)
-                except Exception as exc:
-                    logger.debug("Popup handler check failed: %s", exc)
+                self._check_popup_dismiss()
 
                 # Log the action
                 self._log_step(action, {"pending": True})
@@ -931,6 +828,166 @@ class AgentEngine:
             status = "completed" if self.finish_summary else "error"
             self.logger.end_run(status, self.finish_summary or "Run ended", self.step)
 
+        return self._finalize_run(goal, start_time)
+
+    # ------------------------------------------------------------------
+    # Run decomposition helpers
+    # ------------------------------------------------------------------
+
+    def _validate_run_config(self) -> dict[str, Any] | None:
+        """Validate provider, API key, and model configuration.
+
+        Returns an error dict if configuration is incomplete, or None if valid.
+        Sets self.running = False and populates self.notes on failure.
+        """
+        provider = self.config.get("provider", "")
+        api_key = self.config.get("api_key", "")
+        model = self.config.get("model", "")
+
+        if not api_key and provider not in ("ollama", "lmstudio", "custom"):
+            self.notes = [
+                "Error: API key not configured. Open ⚙ Settings, pick a "
+                "provider, paste your API key, and choose a model."
+            ]
+            self.running = False
+            return {"steps": 0, "notes": self.notes, "error": "api_key_missing"}
+        if not provider:
+            self.notes = ["Error: No LLM provider selected. Open ⚙ Settings."]
+            self.running = False
+            return {"steps": 0, "notes": self.notes, "error": "provider_missing"}
+        if not model:
+            self.notes = [
+                f"Error: No model selected for provider {provider!r}. "
+                "Open ⚙ Settings, click 🔍 Detect, or type a model name."
+            ]
+            self.running = False
+            return {"steps": 0, "notes": self.notes, "error": "model_missing"}
+        return None
+
+    def _build_initial_messages(self, goal: str) -> list[dict[str, Any]]:
+        """Build system prompt and initial screenshot message list.
+
+        Constructs the system prompt from the template with environment and
+        app context injected, then captures an initial screenshot and adds
+        the goal as the first user message.
+        """
+        # Build system prompt. We use .replace() — NOT .format() — because
+        # the prompt contains literal JSON examples like {"action":"click"}
+        # whose braces would otherwise be interpreted as format placeholders
+        # (Python's str.format raises KeyError: '"action"' on those).
+        env_context = self._build_env_context()
+        system_prompt = SYSTEM_PROMPT.replace("{env_context}", env_context)
+
+        # Inject app profile context — detect active window and add profile hints
+        app_context = self._build_app_context()
+        system_prompt = system_prompt.replace("{app_context}", app_context)
+        messages = [{"role": "system", "content": system_prompt}]
+
+        # Initial screenshot + goal
+        try:
+            screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+        except (OSError, ValueError, RuntimeError) as exc:
+            logger.warning("Initial screen capture failed: %s", exc)
+            screenshot_b64 = ""
+        self._add_vision_message(
+            messages,
+            screenshot_b64,
+            f"Goal: {goal}\n\nI can see this screen. What should I do first?",
+        )
+        return messages
+
+    def _check_mfa_pause(self) -> None:
+        """Detect MFA/UAC prompts and pause the agent loop until dismissed.
+
+        Checks window titles and screen content for authentication prompts.
+        If detected, polls every MFA_POLL_INTERVAL_SECONDS up to
+        MFA_POLL_ITERATIONS times waiting for the prompt to disappear.
+        """
+        mfa_result = self.mfa_detector.check_window_titles()
+        if not mfa_result.detected:
+            try:
+                from core.screenshot import capture_screen
+
+                screen = capture_screen()
+                mfa_result = self.mfa_detector.check_screen(screen)
+            except (OSError, RuntimeError) as exc:
+                logger.warning("MFA screen check failed: %s", exc)
+        if mfa_result.detected:
+            self._mfa_paused = True
+            self.logger.log_event(
+                "mfa_pause",
+                {
+                    "type": mfa_result.type,
+                    "prompt": mfa_result.prompt_text,
+                    "window": mfa_result.window_title,
+                },
+            )
+            if self.on_step_callback:
+                try:
+                    self.on_step_callback(
+                        step=self.step,
+                        action={"action": "mfa_pause"},
+                        result={
+                            "ok": False,
+                            "msg": (
+                                f"🔐 {mfa_result.type.upper()} detected: "
+                                f"{mfa_result.prompt_text}"
+                            ),
+                        },
+                    )
+                except (RuntimeError, TypeError) as exc:
+                    logger.debug("MFA step callback failed: %s", exc)
+            # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
+            for _ in range(self.MFA_POLL_ITERATIONS):
+                time.sleep(self.MFA_POLL_INTERVAL_SECONDS)
+                if not self.running:
+                    break
+                recheck = self.mfa_detector.check_window_titles()
+                if not recheck.detected:
+                    self._mfa_paused = False
+                    self.logger.log_event("mfa_resume", {"msg": "Auth prompt dismissed"})
+                    break
+
+    def _check_popup_dismiss(self) -> None:
+        """Detect and optionally dismiss popup dialogs blocking automation.
+
+        Checks for common popups (save prompts, error dialogs, certificate
+        warnings, update notifications) via screenshot analysis. If
+        auto_dismiss is enabled, attempts to dismiss and pauses briefly.
+        """
+        try:
+            from core.screenshot import capture_screen as _cs
+
+            _screen = _cs()
+            _popup_result = self._popup_handler.check_and_dismiss(screenshot=_screen)
+            if _popup_result.detected:
+                self.logger.log_event(
+                    "popup_detected",
+                    {
+                        "type": _popup_result.popup_type,
+                        "confidence": _popup_result.confidence,
+                        "dismissed": _popup_result.dismissed,
+                        "action": _popup_result.dismiss_action,
+                    },
+                )
+                if _popup_result.dismissed:
+                    logger.info(
+                        "Popup auto-dismissed: %s via %s",
+                        _popup_result.popup_type,
+                        _popup_result.dismiss_action,
+                    )
+                    # Small pause for the dismiss to take effect
+                    time.sleep(self.POPUP_DISMISS_DELAY)
+        except Exception as exc:
+            logger.debug("Popup handler check failed: %s", exc)
+
+    def _finalize_run(self, goal: str, start_time: float) -> dict[str, Any]:
+        """Clean up after a run, play notification sound, and return results.
+
+        Handles the post-loop cleanup: logs elapsed time, plays a
+        completion or error sound, and assembles the run result dict.
+        Must be called after the try/except/finally block in _run_inner.
+        """
         elapsed = time.time() - start_time
         logger.info("Agent run finished: steps=%d, elapsed=%.1fs", self.step, elapsed)
 
