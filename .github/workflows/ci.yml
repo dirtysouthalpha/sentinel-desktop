@@ -31,7 +31,24 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Pytest
-        run: pytest --cov=sentinel_desktop --cov-report=term-missing --cov-report=xml -q
+        run: |
+          pytest \
+            --timeout=30 \
+            --cov=core \
+            --cov=api \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --junitxml=test-results.xml \
+            -q
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-py${{ matrix.python-version }}
+          path: |
+            test-results.xml
+            coverage.xml
 
   lint:
     name: ruff lint + format
@@ -58,8 +75,6 @@ jobs:
   types:
     name: mypy (informational)
     runs-on: ubuntu-latest
-    # Informational while window_manager.py et al. still have untyped defs
-    # and ctypes.windll attr-defined errors on non-Windows. See RECOMMENDATIONS.md.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
