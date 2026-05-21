@@ -3,6 +3,7 @@
 import pytest
 
 from core.auth import (
+    DEFAULT_ADMIN_PASSWORD,
     AuthManager,
     Role,
     User,
@@ -113,7 +114,7 @@ class TestAuthManager:
         assert users[0].role == "admin"
 
     def test_authenticate_default_admin(self, auth):
-        user = auth.authenticate("admin", "sentinel")
+        user = auth.authenticate("admin", DEFAULT_ADMIN_PASSWORD)
         assert user is not None
         assert user.username == "admin"
         assert user.last_login is not None

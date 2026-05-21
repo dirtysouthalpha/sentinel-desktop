@@ -10,6 +10,8 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 # 1) Make sure the project root is importable as `core`, `gui`, `api`, etc.
 PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if PROJECT_ROOT not in sys.path:
@@ -67,3 +69,16 @@ def _install_headless_stubs() -> None:
 
 
 _install_headless_stubs()
+
+
+@pytest.fixture(autouse=True)
+def _restore_headless_stubs():
+    """Re-install headless stubs if a test deleted them from sys.modules.
+
+    Some tests (e.g. popup_handler key-send tests) temporarily replace or
+    delete ``pyautogui`` / ``mouseinfo`` from ``sys.modules``.  Without this
+    guard, later tests that ``import pyautogui`` trigger the real X11 module
+    load and crash on headless CI.
+    """
+    yield
+    _install_headless_stubs()
