@@ -667,153 +667,21 @@ class AgentEngine:
                 # If action failed, run recovery analysis and handle failure tracking
                 action_succeeded = result.get("success", True) and action_error is None
                 if not action_succeeded:
-                    self._consecutive_failures += 1
                     error_msg = result.get("output", str(action_error))
-                    logger.warning(
-                        "Action '%s' failed (consecutive_failures=%d): %s",
-                        action_name,
-                        self._consecutive_failures,
-                        error_msg[:200],
+                    failure_result = self._handle_action_failure(
+                        action, action_name, error_msg, messages,
                     )
-
-                    # Consult recovery engine
-                    suggestion = self._recovery_engine.analyze_failure(
-                        action,
-                        error_msg,
-                        {"step": self.step, "consecutive_failures": self._consecutive_failures},
-                    )
-                    self.logger.log_event(
-                        "recovery_suggestion",
-                        {
-                            "pattern": suggestion.pattern,
-                            "strategy": suggestion.strategy,
-                            "confidence": suggestion.confidence,
-                            "action": action_name,
-                        },
-                    )
-
-                    # Add error to message history so the LLM can adapt
-                    recovery_msg = f"Action '{action_name}' failed: {error_msg[:300]}."
-                    if suggestion.recovery_prompt:
-                        recovery_msg += f"\n\nRecovery hint: {suggestion.recovery_prompt}"
-
-                    # Inject recovery prompt into conversation
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": recovery_msg,
-                        }
-                    )
-
-                    # Check failure thresholds
-                    if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
-                        error_summary = (
-                            f"Run terminated after "
-                            f"{self._consecutive_failures} consecutive failures. "
-                            f"Last error: {error_msg[:200]}"
-                        )
-                        self.notes.append(error_summary)
-                        self.logger.log_event(
-                            "abort",
-                            {
-                                "reason": "max_consecutive_failures",
-                                "count": self._consecutive_failures,
-                                "last_error": error_msg[:200],
-                            },
-                        )
+                    if failure_result == "abort":
                         break
-
-                    if self._consecutive_failures >= self.RECOVERY_PROMPT_THRESHOLD:
-                        # Inject a strong recovery prompt
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content": (
-                                    "[SYSTEM RECOVERY] You have had multiple consecutive failures. "
-                                    "Please completely change your approach. Consider: "
-                                    "1) Taking a fresh screenshot to reassess, "
-                                    "2) Using a different action type "
-                                    "(e.g., list_controls, read_text), "
-                                    "3) Trying keyboard navigation instead of mouse clicks, "
-                                    "4) Finishing with a note if the goal is partially achieved."
-                                ),
-                            }
-                        )
                     continue  # skip screenshot below, go to next iteration
                 else:
                     # Action succeeded -- reset consecutive failure counter
                     self._consecutive_failures = 0
 
-                # Capture for script recorder if recording
-                if self.recorder.is_recording:
-                    self.recorder.capture_action(action, result)
-
-                log_result = {
-                    "ok": result.get("success", True),
-                    "msg": str(result.get("output", ""))[:500],
-                }
-                self._log_step_result(self.step, log_result)
-
-                # Structured forensic log
-                self.logger.log_step(
-                    self.step,
-                    action_name,
-                    str(action.get("x", action.get("name", ""))),
-                    action,
-                    log_result,
+                # Post-action success: log, checkpoint, screenshot
+                screenshot_b64 = self._handle_post_action_success(
+                    action, action_name, result, goal, messages, screenshot_b64,
                 )
-
-                # Checkpoint every 5 steps
-                if self.checkpoint.should_auto_save(self.step):
-                    try:
-                        safe_config = {
-                            k: v for k, v in self.config.items() if k != "api_key"
-                        }
-                        self.checkpoint.save(
-                            goal=goal,
-                            step_num=self.step,
-                            agent_memory=self.notes,
-                            last_screenshot_path=None,
-                            config=safe_config,
-                            status="running",
-                            messages=messages,
-                        )
-                    except (OSError, ValueError) as exc:
-                        logger.warning("Checkpoint save failed: %s", exc)
-
-                # Note actions are no-ops at the executor level; record once
-                # here so we don't double-log.
-                if action_name == "note":
-                    self.notes.append(action.get("text", ""))
-
-                # Notify callback
-                if self.on_step_callback:
-                    try:
-                        self.on_step_callback(
-                            step=self.step,
-                            action=action,
-                            result=log_result,
-                            screenshot=screenshot_b64,
-                        )
-                    except (RuntimeError, TypeError) as exc:
-                        logger.warning("Step callback failed: %s", exc)
-
-                # Take new screenshot for next iteration
-                if self.running and self.config.get("auto_screenshot", True):
-                    # Prune old screenshots before adding a new one so the
-                    # conversation doesn't balloon to dozens of images.
-                    self._prune_old_screenshots(messages)
-                    try:
-                        screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
-                    except (OSError, ValueError, RuntimeError) as exc:
-                        logger.debug("Screen capture failed mid-run: %s", exc)
-                        screenshot_b64 = None
-                    if screenshot_b64:
-                        self._add_vision_message(
-                            messages,
-                            screenshot_b64,
-                            f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
-                        )
 
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -980,6 +848,199 @@ class AgentEngine:
                     time.sleep(self.POPUP_DISMISS_DELAY)
         except Exception as exc:
             logger.debug("Popup handler check failed: %s", exc)
+
+    def _handle_action_failure(
+        self,
+        action: dict[str, Any],
+        action_name: str,
+        error_msg: str,
+        messages: list[dict[str, Any]],
+    ) -> str | None:
+        """Process a failed action: consult recovery engine and inject prompts.
+
+        Increments the consecutive failure counter, asks the recovery engine
+        for a suggestion, logs the event, and injects recovery messages into
+        the conversation history.  Also checks failure thresholds and injects
+        a strong recovery prompt when consecutive failures mount.
+
+        Args:
+            action: The action dict that failed.
+            action_name: Short name of the action (e.g. ``"click"``).
+            error_msg: Error output from the executor.
+            messages: Conversation history list (mutated in-place).
+
+        Returns:
+            ``"abort"`` if the run should terminate (max failures reached),
+            ``"recover"`` if a strong recovery prompt was injected, or
+            ``None`` for a normal handled failure.
+        """
+        self._consecutive_failures += 1
+        logger.warning(
+            "Action '%s' failed (consecutive_failures=%d): %s",
+            action_name,
+            self._consecutive_failures,
+            error_msg[:200],
+        )
+
+        # Consult recovery engine
+        suggestion = self._recovery_engine.analyze_failure(
+            action,
+            error_msg,
+            {"step": self.step, "consecutive_failures": self._consecutive_failures},
+        )
+        self.logger.log_event(
+            "recovery_suggestion",
+            {
+                "pattern": suggestion.pattern,
+                "strategy": suggestion.strategy,
+                "confidence": suggestion.confidence,
+                "action": action_name,
+            },
+        )
+
+        # Build recovery message for the LLM
+        recovery_msg = f"Action '{action_name}' failed: {error_msg[:300]}."
+        if suggestion.recovery_prompt:
+            recovery_msg += f"\n\nRecovery hint: {suggestion.recovery_prompt}"
+
+        messages.append({"role": "user", "content": recovery_msg})
+
+        # Check failure thresholds
+        if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
+            error_summary = (
+                f"Run terminated after "
+                f"{self._consecutive_failures} consecutive failures. "
+                f"Last error: {error_msg[:200]}"
+            )
+            self.notes.append(error_summary)
+            self.logger.log_event(
+                "abort",
+                {
+                    "reason": "max_consecutive_failures",
+                    "count": self._consecutive_failures,
+                    "last_error": error_msg[:200],
+                },
+            )
+            return "abort"
+
+        if self._consecutive_failures >= self.RECOVERY_PROMPT_THRESHOLD:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "[SYSTEM RECOVERY] You have had multiple consecutive failures. "
+                        "Please completely change your approach. Consider: "
+                        "1) Taking a fresh screenshot to reassess, "
+                        "2) Using a different action type "
+                        "(e.g., list_controls, read_text), "
+                        "3) Trying keyboard navigation instead of mouse clicks, "
+                        "4) Finishing with a note if the goal is partially achieved."
+                    ),
+                }
+            )
+            return "recover"
+
+        return None
+
+    def _handle_post_action_success(
+        self,
+        action: dict[str, Any],
+        action_name: str,
+        result: dict[str, Any],
+        goal: str,
+        messages: list[dict[str, Any]],
+        screenshot_b64: str | None,
+    ) -> str | None:
+        """Log, checkpoint, and capture screenshot after a successful action.
+
+        Handles script recording capture, step result logging, forensic
+        logging, periodic checkpoint saves, note-action recording, the
+        on_step_callback notification, and automatic screenshot capture
+        for the next loop iteration.
+
+        Args:
+            action: The action dict that was executed.
+            action_name: Short name of the action.
+            result: Executor result dict.
+            goal: The original goal string (for checkpoint metadata).
+            messages: Conversation history list (mutated in-place for screenshots).
+            screenshot_b64: Current base64 screenshot, or None.
+
+        Returns:
+            Updated screenshot_b64 (may be new or None).
+        """
+        # Capture for script recorder if recording
+        if self.recorder.is_recording:
+            self.recorder.capture_action(action, result)
+
+        log_result = {
+            "ok": result.get("success", True),
+            "msg": str(result.get("output", ""))[:500],
+        }
+        self._log_step_result(self.step, log_result)
+
+        # Structured forensic log
+        self.logger.log_step(
+            self.step,
+            action_name,
+            str(action.get("x", action.get("name", ""))),
+            action,
+            log_result,
+        )
+
+        # Checkpoint every 5 steps
+        if self.checkpoint.should_auto_save(self.step):
+            try:
+                safe_config = {
+                    k: v for k, v in self.config.items() if k != "api_key"
+                }
+                self.checkpoint.save(
+                    goal=goal,
+                    step_num=self.step,
+                    agent_memory=self.notes,
+                    last_screenshot_path=None,
+                    config=safe_config,
+                    status="running",
+                    messages=messages,
+                )
+            except (OSError, ValueError) as exc:
+                logger.warning("Checkpoint save failed: %s", exc)
+
+        # Note actions are no-ops at the executor level; record once
+        # here so we don't double-log.
+        if action_name == "note":
+            self.notes.append(action.get("text", ""))
+
+        # Notify callback
+        if self.on_step_callback:
+            try:
+                self.on_step_callback(
+                    step=self.step,
+                    action=action,
+                    result=log_result,
+                    screenshot=screenshot_b64,
+                )
+            except (RuntimeError, TypeError) as exc:
+                logger.warning("Step callback failed: %s", exc)
+
+        # Take new screenshot for next iteration
+        if self.running and self.config.get("auto_screenshot", True):
+            # Prune old screenshots before adding a new one so the
+            # conversation doesn't balloon to dozens of images.
+            self._prune_old_screenshots(messages)
+            try:
+                screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+            except (OSError, ValueError, RuntimeError) as exc:
+                logger.debug("Screen capture failed mid-run: %s", exc)
+                screenshot_b64 = None
+            if screenshot_b64:
+                self._add_vision_message(
+                    messages,
+                    screenshot_b64,
+                    f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
+                )
+
+        return screenshot_b64
 
     def _finalize_run(self, goal: str, start_time: float) -> dict[str, Any]:
         """Clean up after a run, play notification sound, and return results.

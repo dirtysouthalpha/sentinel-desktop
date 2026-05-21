@@ -46,6 +46,12 @@ class WorkflowStep:
     completed_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize step to a JSON-friendly dictionary.
+
+        Returns:
+            Dict containing step id, name, action, params, timeout,
+            max_retries, condition, on_failure policy, status, and error.
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -81,6 +87,17 @@ class Workflow:
         params: dict | None = None,
         **kwargs,
     ) -> WorkflowStep:
+        """Append a new step to the end of the workflow.
+
+        Args:
+            action: Action type identifier (e.g. ``"click"``, ``"type_text"``).
+            name: Human-readable step label. Defaults to *action*.
+            params: Keyword arguments forwarded to the action executor.
+            **kwargs: Additional WorkflowStep fields (timeout, max_retries, etc.).
+
+        Returns:
+            The newly created and appended WorkflowStep.
+        """
         step = WorkflowStep(
             name=name or action,
             action=action,
@@ -92,12 +109,31 @@ class Workflow:
         return step
 
     def insert_step(self, index: int, action: str, name: str = "", **kwargs) -> WorkflowStep:
+        """Insert a new step at a specific position in the workflow.
+
+        Args:
+            index: Zero-based insertion position.
+            action: Action type identifier.
+            name: Human-readable step label. Defaults to *action*.
+            **kwargs: Additional WorkflowStep fields.
+
+        Returns:
+            The newly created and inserted WorkflowStep.
+        """
         step = WorkflowStep(name=name or action, action=action, **kwargs)
         self.steps.insert(index, step)
         self.updated_at = datetime.now(timezone.utc)
         return step
 
     def remove_step(self, step_id: str) -> bool:
+        """Remove a step from the workflow by its ID.
+
+        Args:
+            step_id: UUID of the step to remove.
+
+        Returns:
+            True if a step was removed, False if no matching step was found.
+        """
         before = len(self.steps)
         self.steps = [s for s in self.steps if s.id != step_id]
         if len(self.steps) < before:
@@ -106,11 +142,25 @@ class Workflow:
         return False
 
     def reorder_steps(self, step_ids: list[str]) -> None:
+        """Reorder workflow steps to match the given list of step IDs.
+
+        Steps whose IDs are not present in *step_ids* are dropped.
+        Updates the workflow's ``updated_at`` timestamp.
+
+        Args:
+            step_ids: Desired step ordering as a list of step UUIDs.
+        """
         step_map = {s.id: s for s in self.steps}
         self.steps = [step_map[sid] for sid in step_ids if sid in step_map]
         self.updated_at = datetime.now(timezone.utc)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize the workflow and its steps to a JSON-friendly dict.
+
+        Returns:
+            Dict with workflow metadata, serialized step list, variables,
+            timestamps, and run statistics.
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -133,23 +183,63 @@ class WorkflowStore:
         self._workflows: dict[str, Workflow] = {}
 
     def create(self, name: str, description: str = "") -> Workflow:
+        """Create a new workflow and register it in the store.
+
+        Args:
+            name: Human-readable workflow name.
+            description: Optional longer description.
+
+        Returns:
+            The newly created Workflow (status set to ACTIVE).
+        """
         wf = Workflow(name=name, description=description, status=WorkflowStatus.ACTIVE)
         self._workflows[wf.id] = wf
         return wf
 
     def get(self, workflow_id: str) -> Workflow | None:
+        """Retrieve a workflow by ID.
+
+        Args:
+            workflow_id: UUID of the workflow.
+
+        Returns:
+            The matching Workflow, or None if not found.
+        """
         return self._workflows.get(workflow_id)
 
     def list_all(self) -> list[Workflow]:
+        """Return all workflows in the store.
+
+        Returns:
+            List of all registered Workflow instances.
+        """
         return list(self._workflows.values())
 
     def delete(self, workflow_id: str) -> bool:
+        """Remove a workflow from the store.
+
+        Args:
+            workflow_id: UUID of the workflow to delete.
+
+        Returns:
+            True if the workflow was found and deleted, False otherwise.
+        """
         if workflow_id in self._workflows:
             del self._workflows[workflow_id]
             return True
         return False
 
     def duplicate(self, workflow_id: str, new_name: str | None = None) -> Workflow | None:
+        """Deep-copy a workflow with all its steps.
+
+        Args:
+            workflow_id: UUID of the source workflow.
+            new_name: Optional name for the copy. Defaults to
+                ``"<source name> (Copy)"``.
+
+        Returns:
+            The newly created duplicate, or None if the source was not found.
+        """
         source = self._workflows.get(workflow_id)
         if not source:
             return None

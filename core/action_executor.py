@@ -98,6 +98,12 @@ class ActionExecutor:
 
     @property
     def log(self) -> list[dict[str, Any]]:
+        """Return a shallow copy of the action execution log.
+
+        Returns:
+            List of dicts, one per executed action, containing action name,
+            result, and timing information.
+        """
         return list(self._log)
 
     async def execute(self, action: dict[str, Any]) -> dict[str, Any]:
