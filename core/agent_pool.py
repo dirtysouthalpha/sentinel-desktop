@@ -402,6 +402,15 @@ class AgentPool:
             desktop_name,
         )
 
+    def _mark_session_failed(
+        self, session: AgentSession, error: str, error_type: str
+    ) -> None:
+        """Thread-safe helper to mark a session as failed with error metadata."""
+        with self._lock:
+            session.status = STATUS_FAILED
+            session.result = {"error": error, "error_type": error_type}
+            session.end_time = datetime.now(timezone.utc)
+
     def _agent_worker(self, session_id: str, desktop_name: str) -> None:
         """Worker function executed inside the agent thread."""
         try:
@@ -413,10 +422,8 @@ class AgentPool:
             )
             with self._lock:
                 session = self._sessions.get(session_id)
-                if session is not None:
-                    session.status = STATUS_FAILED
-                    session.result = {"error": str(exc), "error_type": "ImportError"}
-                    session.end_time = datetime.now(timezone.utc)
+            if session is not None:
+                self._mark_session_failed(session, str(exc), "ImportError")
             self._dispatcher_event.set()
             return
 
@@ -468,17 +475,11 @@ class AgentPool:
 
         except (RuntimeError, OSError, ValueError, ImportError) as exc:
             logger.exception("Session %s failed with exception", session_id)
-            with self._lock:
-                session.status = STATUS_FAILED
-                session.result = {"error": str(exc), "error_type": type(exc).__name__}
-                session.end_time = datetime.now(timezone.utc)
+            self._mark_session_failed(session, str(exc), type(exc).__name__)
         except (TypeError, AttributeError) as exc:
             # These usually indicate programming bugs — log at error level
             logger.exception("Session %s failed with unexpected error (possible bug)", session_id)
-            with self._lock:
-                session.status = STATUS_FAILED
-                session.result = {"error": str(exc), "error_type": type(exc).__name__}
-                session.end_time = datetime.now(timezone.utc)
+            self._mark_session_failed(session, str(exc), type(exc).__name__)
 
         finally:
             # Clean up virtual desktop

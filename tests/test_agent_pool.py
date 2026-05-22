@@ -196,3 +196,31 @@ class TestAgentPoolProperties:
             assert pool.queued_count >= 0
         finally:
             pool.shutdown(wait=False)
+
+
+# ---------------------------------------------------------------------------
+# AgentPool — _mark_session_failed helper
+# ---------------------------------------------------------------------------
+
+
+class TestMarkSessionFailed:
+    def test_sets_status_to_failed(self):
+        pool = AgentPool(max_agents=1)
+        try:
+            s = AgentSession(id="fail1", goal="test")
+            pool._mark_session_failed(s, "something broke", "RuntimeError")
+            assert s.status == "failed"
+            assert s.result == {"error": "something broke", "error_type": "RuntimeError"}
+            assert s.end_time is not None
+        finally:
+            pool.shutdown(wait=False)
+
+    def test_overwrites_previous_status(self):
+        pool = AgentPool(max_agents=1)
+        try:
+            s = AgentSession(id="fail2", goal="test", status=STATUS_RUNNING)
+            pool._mark_session_failed(s, "crash", "OSError")
+            assert s.status == "failed"
+            assert s.result["error_type"] == "OSError"
+        finally:
+            pool.shutdown(wait=False)
