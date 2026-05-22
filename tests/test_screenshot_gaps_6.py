@@ -154,7 +154,7 @@ class TestListMonitorsWithMss:
         with patch("core.screenshot.mss") as mock_mss_mod:
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("nope"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
-            with patch("pyautogui.size", return_value=(1920, 1080)):
+            with patch.object(sc.pyautogui, "size", return_value=(1920, 1080)):
                 result = sc.list_monitors()
         assert len(result) == 1
         assert result[0]["width"] == 1920
@@ -163,7 +163,7 @@ class TestListMonitorsWithMss:
 
     @patch("core.screenshot._HAS_MSS", False)
     def test_no_mss_uses_pyautogui(self):
-        with patch("pyautogui.size", return_value=(1280, 720)):
+        with patch.object(sc.pyautogui, "size", return_value=(1280, 720)):
             result = sc.list_monitors()
         assert len(result) == 1
         assert result[0]["width"] == 1280
@@ -171,7 +171,7 @@ class TestListMonitorsWithMss:
 
     @patch("core.screenshot._HAS_MSS", False)
     def test_no_mss_pyautogui_error(self):
-        with patch("pyautogui.size", side_effect=OSError("no screen")):
+        with patch.object(sc.pyautogui, "size", side_effect=OSError("no screen")):
             result = sc.list_monitors()
         assert len(result) == 1
         assert result[0]["width"] == 0
@@ -221,7 +221,7 @@ class TestCaptureScreenWithMss:
 
         with patch("core.screenshot.resolve_monitor", return_value=5), \
              patch("core.screenshot.mss") as mock_mss_mod, \
-             patch("pyautogui.screenshot", return_value=fake_img):
+             patch.object(sc.pyautogui, "screenshot", return_value=fake_img):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(return_value=mock_sct)
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.capture_screen(monitor=5)
@@ -234,7 +234,7 @@ class TestCaptureScreenWithMss:
 
         with patch("core.screenshot.resolve_monitor", return_value=1), \
              patch("core.screenshot.mss") as mock_mss_mod, \
-             patch("pyautogui.screenshot", return_value=fake_img):
+             patch.object(sc.pyautogui, "screenshot", return_value=fake_img):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("mss fail"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.capture_screen(monitor=1)
@@ -247,7 +247,7 @@ class TestCaptureScreenFallback:
     @patch("core.screenshot._HAS_MSS", False)
     def test_pyautogui_failure_raises_oserror(self):
         with patch("core.screenshot.resolve_monitor", return_value=None), \
-             patch("pyautogui.screenshot", side_effect=OSError("no screen")):
+             patch.object(sc.pyautogui, "screenshot", side_effect=OSError("no screen")):
             with pytest.raises(OSError, match="All screen capture methods failed"):
                 sc.capture_screen()
 
@@ -255,7 +255,7 @@ class TestCaptureScreenFallback:
     def test_all_methods_fail_raises_oserror(self):
         with patch("core.screenshot.resolve_monitor", return_value=1), \
              patch("core.screenshot.mss") as mock_mss_mod, \
-             patch("pyautogui.screenshot", side_effect=RuntimeError("nope")):
+             patch.object(sc.pyautogui, "screenshot", side_effect=RuntimeError("nope")):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("mss fail"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             with pytest.raises(OSError, match="All screen capture methods failed"):
@@ -295,7 +295,7 @@ class TestCaptureRegionWithMss:
         fake_img = Image.new("RGB", (30, 30))
 
         with patch("core.screenshot.mss") as mock_mss_mod, \
-             patch("pyautogui.screenshot", return_value=fake_img):
+             patch.object(sc.pyautogui, "screenshot", return_value=fake_img):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("fail"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.capture_region(0, 0, 30, 30)
@@ -304,13 +304,13 @@ class TestCaptureRegionWithMss:
     @patch("core.screenshot._HAS_MSS", False)
     def test_capture_region_no_mss(self):
         fake_img = Image.new("RGB", (40, 40))
-        with patch("pyautogui.screenshot", return_value=fake_img):
+        with patch.object(sc.pyautogui, "screenshot", return_value=fake_img):
             result = sc.capture_region(5, 5, 40, 40)
         assert result is fake_img
 
     @patch("core.screenshot._HAS_MSS", False)
     def test_capture_region_all_fail_raises(self):
-        with patch("pyautogui.screenshot", side_effect=OSError("nope")):
+        with patch.object(sc.pyautogui, "screenshot", side_effect=OSError("nope")):
             with pytest.raises(OSError, match="Region capture failed"):
                 sc.capture_region(0, 0, 10, 10)
 
