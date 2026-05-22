@@ -224,3 +224,102 @@ class TestMarkSessionFailed:
             assert s.result["error_type"] == "OSError"
         finally:
             pool.shutdown(wait=False)
+
+
+# ---------------------------------------------------------------------------
+# AgentPool — _cleanup_virtual_desktop helper
+# ---------------------------------------------------------------------------
+
+
+class TestCleanupVirtualDesktop:
+    def test_calls_switch_back_and_close(self):
+        pool = AgentPool(max_agents=1)
+        try:
+            from unittest.mock import MagicMock
+
+            vd = MagicMock()
+            pool._cleanup_virtual_desktop(vd, "s1", "test-desktop")
+            vd.switch_back.assert_called_once()
+            vd.close.assert_called_once()
+        finally:
+            pool.shutdown(wait=False)
+
+    def test_logs_warning_on_error(self, caplog):
+        pool = AgentPool(max_agents=1)
+        try:
+            from unittest.mock import MagicMock
+
+            vd = MagicMock()
+            vd.switch_back.side_effect = OSError("nope")
+            pool._cleanup_virtual_desktop(vd, "s1", "d1")
+            assert any("error cleaning up" in r.message.lower() for r in caplog.records)
+        finally:
+            pool.shutdown(wait=False)
+
+    def test_handles_attribute_error(self):
+        pool = AgentPool(max_agents=1)
+        try:
+            from unittest.mock import MagicMock
+
+            vd = MagicMock()
+            vd.switch_back.side_effect = AttributeError("missing")
+            # Should not raise — error is caught and logged
+            pool._cleanup_virtual_desktop(vd, "s1", "d1")
+        finally:
+            pool.shutdown(wait=False)
+
+
+# ---------------------------------------------------------------------------
+# AgentPool — _notify_session_complete helper
+# ---------------------------------------------------------------------------
+
+
+class TestNotifySessionComplete:
+    def test_calls_callback_with_snapshot(self):
+        pool = AgentPool(max_agents=1)
+        try:
+            captured = {}
+            pool._on_session_complete = lambda snap: captured.update(snap)
+            s = AgentSession(id="cb1", goal="test goal")
+            pool._notify_session_complete(s)
+            assert captured["id"] == "cb1"
+            assert captured["goal"] == "test goal"
+        finally:
+            pool.shutdown(wait=False)
+
+    def test_noop_when_callback_is_none(self):
+        pool = AgentPool(max_agents=1)
+        try:
+            s = AgentSession(id="nocb", goal="test")
+            # Should not raise
+            pool._notify_session_complete(s)
+        finally:
+            pool.shutdown(wait=False)
+
+    def test_catches_callback_exception(self, caplog):
+        pool = AgentPool(max_agents=1)
+        try:
+
+            def bad_callback(snap):
+                raise RuntimeError("boom")
+
+            pool._on_session_complete = bad_callback
+            s = AgentSession(id="badcb", goal="test")
+            pool._notify_session_complete(s)
+            assert any("boom" in r.message for r in caplog.records)
+        finally:
+            pool.shutdown(wait=False)
+
+    def test_catches_type_error_from_to_dict(self):
+        pool = AgentPool(max_agents=1)
+        try:
+
+            class BadSession:
+                def to_dict(self):
+                    raise TypeError(" serialization fail")
+
+            pool._on_session_complete = lambda snap: None
+            # Should not raise even though to_dict fails
+            pool._notify_session_complete(BadSession())
+        finally:
+            pool.shutdown(wait=False)
