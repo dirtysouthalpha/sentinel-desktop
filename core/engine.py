@@ -1513,6 +1513,7 @@ class AgentEngine:
         return {"action": str(name), **(args if isinstance(args, dict) else {})}
 
     def _log_step(self, action: dict[str, Any], result: dict[str, Any]) -> None:
+        """Append an action step record to the in-memory forensic log."""
         self.forensic_log.append(
             {
                 "step": self.step,
@@ -1524,6 +1525,7 @@ class AgentEngine:
         )
 
     def _log_step_result(self, step: int, result: dict[str, Any]) -> None:
+        """Update the result dict of the most recent log entry for *step*."""
         for entry in reversed(self.forensic_log):
             if entry.get("step") == step:
                 entry["result"] = result

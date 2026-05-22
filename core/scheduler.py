@@ -384,6 +384,10 @@ class TaskScheduler:
     # ── Internal helpers ────────────────────────────────────────────────
 
     def _set_enabled(self, task_id: str, value: bool) -> bool:
+        """Enable or disable a scheduled task by ID and persist the change.
+
+        Returns ``True`` if the task was found, ``False`` otherwise.
+        """
         with self._lock:
             task = self._tasks.get(task_id)
             if task is None:

@@ -134,6 +134,7 @@ SELF_WINDOW_HINTS = ("sentinel desktop",)
 
 
 def _is_self_window(title: str) -> bool:
+    """Return ``True`` if *title* matches a known Sentinel Desktop window hint."""
     if not title:
         return False
     low = title.lower()

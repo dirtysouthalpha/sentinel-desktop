@@ -365,6 +365,7 @@ class ActionRecorder:
 
     @staticmethod
     def _describe_step_static(action_type: str, params: dict[str, Any]) -> str:
+        """Describe a recorded step without requiring an :class:`ActionRecorder` instance."""
         return ActionRecorder._describe_step(action_type, params, "")
 
     @staticmethod

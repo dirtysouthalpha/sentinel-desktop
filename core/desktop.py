@@ -195,6 +195,7 @@ _ctrl: DesktopController | None = None
 
 
 def _get_controller() -> DesktopController:
+    """Return the module-level :class:`DesktopController` singleton."""
     global _ctrl
     if _ctrl is None:
         _ctrl = DesktopController()

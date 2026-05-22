@@ -80,6 +80,7 @@ class FailsafeListener:
     # -- internal -------------------------------------------------------
 
     def _on_esc(self, _event: Any) -> None:
+        """Handle a single keypress event; trigger panic after rapid triple-press."""
         now = time.monotonic()
         with self._lock:
             self._presses.append(now)

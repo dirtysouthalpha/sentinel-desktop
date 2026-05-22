@@ -549,6 +549,7 @@ def _fuzzy_line_hit(
 
 
 def _centroid(boxes: list[dict[str, Any]]) -> tuple[int, int] | None:
+    """Return the geometric centre of a group of bounding boxes, or ``None``."""
     if not boxes:
         return None
     x0 = min(b["x"] for b in boxes)

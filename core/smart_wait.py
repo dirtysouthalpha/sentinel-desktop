@@ -226,6 +226,7 @@ class SmartWait:
         self._cancel_event.clear()
 
     def _cancelled(self) -> bool:
+        """Return ``True`` if the wait has been cancelled via :meth:`cancel`."""
         return self._cancel_event.is_set()
 
     # ------------------------------------------------------------------

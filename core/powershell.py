@@ -76,10 +76,12 @@ class PSResult:
 
 
 def _is_windows() -> bool:
+    """Return ``True`` when running on the Windows platform."""
     return platform.system() == "Windows"
 
 
 def _non_windows_result() -> PSResult:
+    """Return a failure result indicating PowerShell is Windows-only."""
     return PSResult(
         success=False,
         exit_code=-1,
@@ -161,15 +163,22 @@ class PowerShellRunner:
         return self.POWERSHELL_EXE
 
     def _build_env(self) -> dict[str, str]:
+        """Merge ``os.environ`` with any custom env vars configured on the runner."""
         env = os.environ.copy()
         env.update({k: str(v) for k, v in self.env_vars.items()})
         return env
 
     def _base_args(self) -> list[str]:
+        """Return the common PowerShell invocation flags (no profile, JSON output)."""
         return [self._ps_exe, "-NoProfile", "-NonInteractive", "-OutputFormat", "JSON"]
 
     @staticmethod
     def _parse_json_output(stdout: str) -> list[dict[str, Any]]:
+        """Parse stdout from a PowerShell JSON-format command into a list of dicts.
+
+        A single JSON object is wrapped in a list; bare scalars become ``{value: …}``.
+        Returns an empty list on empty or unparseable output.
+        """
         stdout = stdout.strip()
         if not stdout:
             return []

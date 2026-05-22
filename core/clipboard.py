@@ -19,6 +19,10 @@ except ImportError:
 
 
 def _get_clipboard() -> Any | None:
+    """Lazily resolve and cache the ``pyperclip`` module.
+
+    Returns ``None`` when pyperclip is not installed.
+    """
     global _clipboard
     if _clipboard is None:
         if pyperclip is None:

@@ -109,10 +109,12 @@ class UIAActionPipeline:
 
     @staticmethod
     def _uia_ok() -> bool:
+        """Return ``True`` if Windows UIAutomation is available."""
         return _probe_uia()
 
     @staticmethod
     def _postmessage_ok() -> bool:
+        """Return ``True`` if the PostMessage Win32 API is probeable."""
         return _probe_postmessage()
 
     def _get_physical_desktop(self) -> Any:

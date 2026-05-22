@@ -75,6 +75,10 @@ _compiled_patterns: list[tuple[re.Pattern, str]] | None = None
 
 
 def _match_pattern(error_msg: str) -> str | None:
+    """Try to match *error_msg* against a known recovery pattern.
+
+    Returns the pattern name on match, otherwise ``None``.
+    """
     global _compiled_patterns
     if _compiled_patterns is None:
         _compiled_patterns = _compile_patterns()

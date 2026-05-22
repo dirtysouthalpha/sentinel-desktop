@@ -93,6 +93,7 @@ def _compute_summary(masked_log: list[dict[str, Any]], metadata: dict[str, Any])
 
 
 def _now_iso() -> str:
+    """Return the current UTC timestamp as an ISO 8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -546,6 +547,7 @@ class AuditExporter:
 
     @staticmethod
     def _html_postamble() -> str:
+        """Return the closing HTML tags and footer for the audit report."""
         return (
             '<hr style="border:none;border-top:1px solid var(--border);margin:2rem 0 1rem;">'
             '<p style="color:var(--text-dim);font-size:0.78rem;">'
@@ -558,6 +560,7 @@ class AuditExporter:
     # ------------------------------------------------------------------
 
     def _filename(self, base: str, ext: str) -> str:
+        """Build a timestamped output path under ``self.output_dir``."""
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         return str(Path(self.output_dir) / f"{base}_{ts}.{ext}")
 

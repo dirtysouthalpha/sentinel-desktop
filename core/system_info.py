@@ -98,6 +98,7 @@ def system_info() -> dict[str, Any]:
 
 
 def _screen_resolution() -> str:  # noqa: F811 — intentional re-export
+    """Detect the primary screen resolution via pyautogui, falling back to ``'unknown'``."""
     try:
         import pyautogui
 

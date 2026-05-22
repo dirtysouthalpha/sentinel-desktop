@@ -353,6 +353,7 @@ def create_default_palette(app: SentinelApp) -> CommandPalette:
 
 
 def _start_recording(app: Any) -> None:
+    """Begin macro recording via the app's engine recorder."""
     try:
         if hasattr(app, "engine") and app.engine:
             app.engine.recorder.start_recording("")
@@ -363,6 +364,7 @@ def _start_recording(app: Any) -> None:
 
 
 def _stop_recording(app: Any) -> None:
+    """Stop the current macro recording session."""
     try:
         if hasattr(app, "engine") and app.engine:
             app.engine.recorder.stop_recording()
@@ -373,6 +375,7 @@ def _stop_recording(app: Any) -> None:
 
 
 def _run_script_dialog(app: Any) -> None:
+    """Open the script replay dialog from the recorder panel."""
     try:
         if hasattr(app, "recorder_panel"):
             app.recorder_panel._on_play_click()
@@ -381,6 +384,7 @@ def _run_script_dialog(app: Any) -> None:
 
 
 def _show_script_library(app: Any) -> None:
+    """Open the script library browser from the recorder panel."""
     try:
         if hasattr(app, "recorder_panel"):
             app.recorder_panel._on_library_click()
@@ -389,6 +393,7 @@ def _show_script_library(app: Any) -> None:
 
 
 def _run_powershell_dialog(app: Any) -> None:
+    """Prompt for a PowerShell command and execute it through the engine."""
     import tkinter.simpledialog as sd
 
     cmd = sd.askstring("PowerShell", "Enter PowerShell command:", parent=app.root)
@@ -426,6 +431,7 @@ def _run_powershell_dialog(app: Any) -> None:
 
 
 def _run_it_script(app: Any, script_name: str) -> None:
+    """Execute a named IT-support script template and display the result."""
     scripts_dir = Path(__file__).resolve().parent.parent / "scripts" / "it_support"
     path = scripts_dir / f"{script_name}.json"
     if not path.exists():

@@ -80,6 +80,7 @@ class WorkflowEngine:
         self._callbacks[event] = fn
 
     def _fire(self, event: str, *args: Any, **kwargs: Any) -> None:
+        """Invoke the callback registered for *event*, if any, swallowing errors."""
         cb = self._callbacks.get(event)
         if cb:
             try:

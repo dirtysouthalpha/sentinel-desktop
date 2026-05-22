@@ -85,6 +85,7 @@ _kernel32: Any | None = None
 
 
 def _get_user32() -> Any:
+    """Lazily load and cache ``ctypes.windll.user32``."""
     global _user32
     if _user32 is None:
         import ctypes
@@ -94,6 +95,7 @@ def _get_user32() -> Any:
 
 
 def _get_kernel32() -> Any:
+    """Lazily load and cache ``ctypes.windll.kernel32``."""
     global _kernel32
     if _kernel32 is None:
         import ctypes
