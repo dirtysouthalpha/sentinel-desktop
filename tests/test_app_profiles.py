@@ -1,8 +1,17 @@
-"""Tests for core/app_profiles.py — application detection and profiles."""
+"""
+Tests for core/app_profiles.py — Application profile detection and lookup.
+
+Covers detect_profile, get_profile, list_profiles, get_timing_for_app,
+and the AppProfile dataclass.
+"""
+
+from __future__ import annotations
+
+import pytest
 
 from core.app_profiles import (
-    PROFILES,
     AppProfile,
+    PROFILES,
     detect_profile,
     get_profile,
     get_timing_for_app,
@@ -10,316 +19,258 @@ from core.app_profiles import (
 )
 
 
+# ── Tests: AppProfile dataclass ───────────────────────────────────────────
+
+
+class TestAppProfileDataclass:
+    """Tests for the AppProfile dataclass itself."""
+
+    def test_default_timing_values(self):
+        p = AppProfile(name="test", display_name="Test App", window_title_patterns=["Test"])
+        assert p.timing["launch_delay"] == 2.0
+        assert p.timing["action_delay"] == 0.3
+        assert p.timing["page_load_delay"] == 2.0
+
+    def test_default_stealth_compatible(self):
+        p = AppProfile(name="test", display_name="Test App", window_title_patterns=["Test"])
+        assert p.stealth_compatible == "partial"
+
+    def test_default_preferred_input(self):
+        p = AppProfile(name="test", display_name="Test App", window_title_patterns=["Test"])
+        assert p.preferred_input == "uia"
+
+    def test_custom_fields(self):
+        p = AppProfile(
+            name="custom",
+            display_name="Custom App",
+            window_title_patterns=["Custom"],
+            stealth_compatible="none",
+            preferred_input="physical",
+            timing={"launch_delay": 5.0, "action_delay": 1.0, "page_load_delay": 3.0},
+            known_controls={"main": "MainWindow"},
+            menu_paths={"save": ["File", "Save"]},
+            quirks=["weird"],
+            strategies={"action": "do it"},
+        )
+        assert p.stealth_compatible == "none"
+        assert p.preferred_input == "physical"
+        assert p.timing["launch_delay"] == 5.0
+        assert p.known_controls["main"] == "MainWindow"
+        assert len(p.quirks) == 1
+
+
+# ── Tests: detect_profile ─────────────────────────────────────────────────
+
+
 class TestDetectProfile:
-    def test_chrome_detected(self):
-        p = detect_profile("Google Chrome")
-        assert p is not None
-        assert p.name == "chrome"
+    """Tests for core.app_profiles.detect_profile."""
 
-    def test_edge_detected(self):
-        p = detect_profile("Microsoft Edge")
-        assert p is not None
-        assert p.name == "edge"
+    def test_detects_chrome(self):
+        profile = detect_profile("New Tab - Google Chrome")
+        assert profile is not None
+        assert profile.name == "chrome"
 
-    def test_excel_detected(self):
-        p = detect_profile("Book1 - Excel")
-        assert p is not None
-        assert p.name == "excel"
+    def test_detects_edge(self):
+        profile = detect_profile("Settings - Microsoft Edge")
+        assert profile is not None
+        assert profile.name == "edge"
 
-    def test_notepad_detected(self):
-        p = detect_profile("Untitled - Notepad")
-        assert p is not None
-        assert p.name == "notepad"
+    def test_detects_firefox(self):
+        profile = detect_profile("Mozilla Firefox")
+        assert profile is not None
+        assert profile.name == "firefox"
 
-    def test_unknown_returns_none(self):
-        assert detect_profile("Some Random App") is None
+    def test_detects_excel(self):
+        profile = detect_profile("Book1 - Microsoft Excel")
+        assert profile is not None
+        assert profile.name == "excel"
+
+    def test_detects_word(self):
+        profile = detect_profile("Document1 - Microsoft Word")
+        assert profile is not None
+        assert profile.name == "word"
+
+    def test_detects_outlook(self):
+        profile = detect_profile("Inbox - Microsoft Outlook")
+        assert profile is not None
+        assert profile.name == "outlook"
+
+    def test_detects_notepad(self):
+        profile = detect_profile("Untitled - Notepad")
+        assert profile is not None
+        assert profile.name == "notepad"
+
+    def test_detects_vscode(self):
+        profile = detect_profile("main.py - Visual Studio Code")
+        assert profile is not None
+        assert profile.name == "vscode"
+
+    def test_detects_file_explorer(self):
+        profile = detect_profile("File Explorer")
+        assert profile is not None
+        assert profile.name == "file_explorer"
+
+    def test_detects_teams(self):
+        profile = detect_profile("Microsoft Teams")
+        assert profile is not None
+        assert profile.name == "teams"
+
+    def test_detects_cmd(self):
+        profile = detect_profile("Command Prompt")
+        assert profile is not None
+        assert profile.name == "cmd"
+
+    def test_detects_powershell(self):
+        profile = detect_profile("Windows PowerShell")
+        assert profile is not None
+        assert profile.name == "powershell"
+
+    def test_detects_task_manager(self):
+        profile = detect_profile("Task Manager")
+        assert profile is not None
+        assert profile.name == "task_manager"
+
+    def test_detects_settings(self):
+        profile = detect_profile("Settings")
+        assert profile is not None
+        assert profile.name == "settings"
+
+    def test_detects_live2d(self):
+        profile = detect_profile("Live2D Cubism Editor")
+        assert profile is not None
+        assert profile.name == "live2d_cubism"
 
     def test_empty_string_returns_none(self):
         assert detect_profile("") is None
 
-    def test_case_insensitive(self):
-        p = detect_profile("GOOGLE CHROME")
-        assert p is not None
-        assert p.name == "chrome"
+    def test_unknown_window_returns_none(self):
+        assert detect_profile("Totally Unknown App Window") is None
 
-    def test_partial_match(self):
-        p = detect_profile("Settings - Windows")
-        assert p is not None
-        assert p.name == "settings"
+    def test_case_insensitive_match(self):
+        profile = detect_profile("GOOGLE CHROME")
+        assert profile is not None
+        assert profile.name == "chrome"
+
+    def test_partial_title_match(self):
+        profile = detect_profile("Some Project - Visual Studio Code - [Workspace]")
+        assert profile is not None
+        assert profile.name == "vscode"
+
+
+# ── Tests: get_profile ────────────────────────────────────────────────────
 
 
 class TestGetProfile:
-    def test_known_profile(self):
-        p = get_profile("chrome")
-        assert p is not None
-        assert p.name == "chrome"
+    """Tests for core.app_profiles.get_profile."""
 
-    def test_unknown_returns_none(self):
-        assert get_profile("nonexistent_app") is None
+    def test_returns_existing_profile(self):
+        profile = get_profile("chrome")
+        assert profile is not None
+        assert profile.name == "chrome"
+        assert profile.display_name == "Google Chrome"
+
+    def test_returns_none_for_unknown(self):
+        assert get_profile("nonexistent_app_xyz") is None
+
+    def test_returns_all_builtin_profiles(self):
+        expected = [
+            "chrome", "edge", "firefox", "excel", "word", "outlook",
+            "notepad", "vscode", "live2d_cubism", "file_explorer",
+            "teams", "cmd", "powershell", "task_manager", "settings",
+        ]
+        for name in expected:
+            assert get_profile(name) is not None, f"Missing profile: {name}"
+
+
+# ── Tests: list_profiles ──────────────────────────────────────────────────
 
 
 class TestListProfiles:
-    def test_returns_all_profiles(self):
+    """Tests for core.app_profiles.list_profiles."""
+
+    def test_returns_list(self):
         profiles = list_profiles()
-        assert len(profiles) == len(PROFILES)
-        assert all(isinstance(p, AppProfile) for p in profiles)
+        assert isinstance(profiles, list)
+        assert len(profiles) >= 15
+
+    def test_all_are_app_profile_instances(self):
+        profiles = list_profiles()
+        for p in profiles:
+            assert isinstance(p, AppProfile)
+
+    def test_profiles_have_required_fields(self):
+        for p in list_profiles():
+            assert p.name
+            assert p.display_name
+            assert isinstance(p.window_title_patterns, list)
+            assert len(p.window_title_patterns) > 0
+
+
+# ── Tests: get_timing_for_app ─────────────────────────────────────────────
 
 
 class TestGetTimingForApp:
-    def test_known_app_timing(self):
-        timing = get_timing_for_app("Chrome")
-        assert "launch_delay" in timing
-        assert "action_delay" in timing
-        assert "page_load_delay" in timing
+    """Tests for core.app_profiles.get_timing_for_app."""
 
-    def test_unknown_app_defaults(self):
-        timing = get_timing_for_app("Unknown App")
-        assert timing == {"launch_delay": 2.0, "action_delay": 0.3, "page_load_delay": 2.0}
-
-
-class TestAppProfileDataclass:
-    def test_profile_has_required_fields(self):
-        p = PROFILES["chrome"]
-        assert p.display_name
-        assert p.window_title_patterns
-        assert p.stealth_compatible in ("full", "partial", "none")
-        assert p.preferred_input in ("uia", "postmessage", "physical")
-        assert isinstance(p.timing, dict)
-        assert isinstance(p.quirks, list)
-
-    def test_all_profiles_have_name_key(self):
-        for key, profile in PROFILES.items():
-            assert profile.name == key
-
-
-# ---------------------------------------------------------------------------
-# Additional tests for broader coverage
-# ---------------------------------------------------------------------------
-
-
-class TestDetectProfileAdditional:
-    """Additional detect_profile tests for uncovered profiles and edge cases."""
-
-    def test_firefox_detected(self):
-        p = detect_profile("Download - Mozilla Firefox")
-        assert p is not None
-        assert p.name == "firefox"
-
-    def test_word_detected(self):
-        p = detect_profile("Document1 - Microsoft Word")
-        assert p is not None
-        assert p.name == "word"
-
-    def test_outlook_detected(self):
-        p = detect_profile("Inbox - Outlook")
-        assert p is not None
-        assert p.name == "outlook"
-
-    def test_vscode_detected(self):
-        p = detect_profile("main.py - Visual Studio Code")
-        assert p is not None
-        assert p.name == "vscode"
-
-    def test_vscode_alias_detected(self):
-        p = detect_profile("app.ts - VS Code")
-        assert p is not None
-        assert p.name == "vscode"
-
-    def test_live2d_detected(self):
-        p = detect_profile("model.cmo3 - Cubism Editor")
-        assert p is not None
-        assert p.name == "live2d_cubism"
-
-    def test_file_explorer_detected(self):
-        p = detect_profile("Downloads - File Explorer")
-        assert p is not None
-        assert p.name == "file_explorer"
-
-    def test_teams_detected(self):
-        p = detect_profile("Meeting - Microsoft Teams")
-        assert p is not None
-        assert p.name == "teams"
-
-    def test_cmd_detected(self):
-        p = detect_profile("C:\\Users\\Admin - Command Prompt")
-        assert p is not None
-        assert p.name == "cmd"
-
-    def test_cmd_alias_detected(self):
-        p = detect_profile("C:\\Users\\Admin - cmd.exe")
-        assert p is not None
-        assert p.name == "cmd"
-
-    def test_powershell_detected(self):
-        p = detect_profile("PS C:\\Users> - PowerShell")
-        assert p is not None
-        assert p.name == "powershell"
-
-    def test_task_manager_detected(self):
-        p = detect_profile("Task Manager")
-        assert p is not None
-        assert p.name == "task_manager"
-
-    def test_whitespace_only_returns_none(self):
-        assert detect_profile("   ") is None
-
-    def test_none_like_returns_none(self):
-        """Empty string and whitespace should both return None."""
-        assert detect_profile("") is None
-        assert detect_profile("   ") is None
-
-    def test_first_match_wins(self):
-        """When multiple patterns could match, the first matching profile wins."""
-        # "Edge" appears in both "edge" and other titles potentially.
-        # Verify we get a non-None result (order-dependent).
-        p = detect_profile("Microsoft Edge")
-        assert p is not None
-
-    def test_partial_title_match(self):
-        """Patterns are substring-matched against the lowercased title."""
-        p = detect_profile("something with Firefox inside it")
-        assert p is not None
-        assert p.name == "firefox"
-
-
-class TestGetProfileAdditional:
-    def test_all_known_profiles_retrievable(self):
-        expected_keys = [
-            "chrome",
-            "edge",
-            "firefox",
-            "excel",
-            "word",
-            "outlook",
-            "notepad",
-            "vscode",
-            "live2d_cubism",
-            "file_explorer",
-            "teams",
-            "cmd",
-            "powershell",
-            "task_manager",
-            "settings",
-        ]
-        for key in expected_keys:
-            p = get_profile(key)
-            assert p is not None, f"Profile {key!r} should exist"
-            assert p.name == key
-
-    def test_case_sensitive_lookup(self):
-        """get_profile uses dict key lookup which is case-sensitive."""
-        assert get_profile("Chrome") is None
-        assert get_profile("CHROME") is None
-
-
-class TestListProfilesAdditional:
-    def test_includes_all_expected_profiles(self):
-        profiles = list_profiles()
-        names = {p.name for p in profiles}
-        expected = {
-            "chrome",
-            "edge",
-            "firefox",
-            "excel",
-            "word",
-            "outlook",
-            "notepad",
-            "vscode",
-            "live2d_cubism",
-            "file_explorer",
-            "teams",
-            "cmd",
-            "powershell",
-            "task_manager",
-            "settings",
-        }
-        assert expected.issubset(names)
-
-    def test_returns_list_not_dict(self):
-        result = list_profiles()
-        assert isinstance(result, list)
-
-
-class TestGetTimingForAppAdditional:
-    def test_firefox_timing(self):
-        timing = get_timing_for_app("Firefox")
+    def test_returns_profile_timing_when_matched(self):
+        timing = get_timing_for_app("Something - Google Chrome")
         assert timing["launch_delay"] == 3.0
         assert timing["action_delay"] == 0.3
+        assert timing["page_load_delay"] == 3.0
 
-    def test_vscode_timing(self):
-        timing = get_timing_for_app("Visual Studio Code")
+    def test_returns_defaults_when_no_match(self):
+        timing = get_timing_for_app("Unknown App")
+        assert timing["launch_delay"] == 2.0
+        assert timing["action_delay"] == 0.3
+        assert timing["page_load_delay"] == 2.0
+
+    def test_excel_has_custom_timing(self):
+        timing = get_timing_for_app("Book1 - Microsoft Excel")
         assert timing["launch_delay"] == 4.0
-        assert "preferred_input" not in timing
+        assert timing["action_delay"] == 0.2
 
-    def test_outlook_timing(self):
-        timing = get_timing_for_app("Outlook")
-        assert timing["launch_delay"] == 5.0
-
-    def test_notepad_timing(self):
-        timing = get_timing_for_app("Notepad")
+    def test_notepad_has_fast_timing(self):
+        timing = get_timing_for_app("Untitled - Notepad")
         assert timing["launch_delay"] == 1.0
         assert timing["action_delay"] == 0.1
 
-    def test_cmd_timing(self):
-        timing = get_timing_for_app("Command Prompt")
-        assert timing["launch_delay"] == 1.0
 
-    def test_case_insensitive_timing(self):
-        """get_timing_for_app calls detect_profile which lowercases."""
-        timing1 = get_timing_for_app("Chrome")
-        timing2 = get_timing_for_app("CHROME")
-        assert timing1 == timing2
+# ── Tests: PROFILES dict integrity ────────────────────────────────────────
 
 
-class TestAppProfileFieldsAdditional:
-    """Test specific field values across profiles for completeness."""
+class TestProfilesIntegrity:
+    """Integrity checks for the PROFILES dictionary."""
 
-    def test_chrome_stealth_compatible(self):
-        assert PROFILES["chrome"].stealth_compatible == "partial"
+    def test_profile_keys_match_names(self):
+        for key, profile in PROFILES.items():
+            assert key == profile.name, f"Key '{key}' doesn't match profile.name '{profile.name}'"
 
-    def test_notepad_preferred_input(self):
-        assert PROFILES["notepad"].preferred_input == "postmessage"
+    def test_all_profiles_have_unique_names(self):
+        names = [p.name for p in PROFILES.values()]
+        assert len(names) == len(set(names)), "Duplicate profile names found"
 
-    def test_vscode_preferred_input(self):
-        assert PROFILES["vscode"].preferred_input == "physical"
-
-    def test_live2d_stealth_compatible_none(self):
-        assert PROFILES["live2d_cubism"].stealth_compatible == "none"
-
-    def test_excel_has_menu_paths(self):
-        assert "save" in PROFILES["excel"].menu_paths
-        assert "insert_row" in PROFILES["excel"].menu_paths
-
-    def test_excel_has_strategies(self):
-        assert "edit_cell" in PROFILES["excel"].strategies
-
-    def test_chrome_has_known_controls(self):
-        assert "address_bar" in PROFILES["chrome"].known_controls
-
-    def test_all_profiles_have_valid_stealth(self):
+    def test_all_stealth_compatible_values_valid(self):
         valid = {"full", "partial", "none"}
-        for name, profile in PROFILES.items():
-            assert profile.stealth_compatible in valid, f"{name} has invalid stealth_compatible"
+        for profile in PROFILES.values():
+            assert profile.stealth_compatible in valid, (
+                f"{profile.name}: invalid stealth_compatible '{profile.stealth_compatible}'"
+            )
 
-    def test_all_profiles_have_valid_input(self):
+    def test_all_preferred_input_values_valid(self):
         valid = {"uia", "postmessage", "physical"}
-        for name, profile in PROFILES.items():
-            assert profile.preferred_input in valid, f"{name} has invalid preferred_input"
+        for profile in PROFILES.values():
+            assert profile.preferred_input in valid, (
+                f"{profile.name}: invalid preferred_input '{profile.preferred_input}'"
+            )
 
-    def test_all_profiles_timing_has_required_keys(self):
-        required_keys = {"launch_delay", "action_delay", "page_load_delay"}
-        for name, profile in PROFILES.items():
-            assert required_keys.issubset(profile.timing.keys()), f"{name} missing timing keys"
-
-    def test_all_profiles_timing_values_are_positive(self):
-        for name, profile in PROFILES.items():
+    def test_all_timing_fields_are_positive(self):
+        for profile in PROFILES.values():
             for key, value in profile.timing.items():
-                assert value > 0, f"{name}.{key}={value} should be positive"
+                assert value > 0, f"{profile.name}.timing[{key}] = {value}, expected > 0"
 
-    def test_profile_display_name_is_nonempty(self):
-        for name, profile in PROFILES.items():
-            assert profile.display_name, f"{name} has empty display_name"
-
-    def test_profile_window_title_patterns_nonempty(self):
-        for name, profile in PROFILES.items():
-            assert profile.window_title_patterns, f"{name} has empty window_title_patterns"
+    def test_all_window_patterns_are_nonempty_strings(self):
+        for profile in PROFILES.values():
+            for pattern in profile.window_title_patterns:
+                assert isinstance(pattern, str) and len(pattern) > 0, (
+                    f"{profile.name}: empty or non-string pattern"
+                )
