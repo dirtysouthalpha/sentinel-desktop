@@ -38,6 +38,7 @@ def list_windows() -> list[dict[str, Any]]:
     if HAS_WIN32:
 
         def _enum(hwnd: int, _: Any) -> None:
+            """EnumWindows callback — collect visible windows with titles."""
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
                 if title:
@@ -301,6 +302,7 @@ def close_window(title: str) -> bool:
         found = False
 
         def _find(hwnd: int, _: Any) -> None:
+            """EnumWindows callback — post WM_CLOSE to the first matching window."""
             nonlocal found
             if found:
                 return  # Already closed one; stop iterating.

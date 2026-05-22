@@ -739,6 +739,7 @@ class PopupHandler:
         target = button_text.lower()
 
         def _enum(hwnd: int, _lparam: int) -> None:
+            """EnumWindows callback — collect buttons matching the target text."""
             try:
                 import win32gui  # type: ignore
 

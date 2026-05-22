@@ -69,6 +69,7 @@ def _substitute_params(value: Any, params: dict[str, Any]) -> Any:
         return value
 
     def _replacer(match: re.Match) -> str:
+        """Replace a ``{{key}}`` placeholder with the corresponding param value."""
         key = match.group(1)
         if key not in params:
             # Leave the placeholder intact if no substitution provided.

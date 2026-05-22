@@ -271,6 +271,7 @@ def _find_control(
     best_score = -1
 
     def _matches(node: Any) -> int:
+        """Score a UI node against the search criteria; return -1 to reject."""
         score = 0
         n = (node.Name or "").lower()
         a = (getattr(node, "AutomationId", "") or "").lower()

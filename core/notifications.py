@@ -470,6 +470,7 @@ class NotificationManager:
             import ctypes  # type: ignore
 
             def _show_box() -> None:
+                """Display a native Windows message box on a background thread."""
                 ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
                     0,
                     message,

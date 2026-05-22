@@ -492,6 +492,7 @@ class _Win32VirtualDesktop:
                 WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 
                 def _enum_cb(hwnd: int, lparam: int) -> bool:
+                    """EnumWindows callback — collect visible windows on this virtual desktop."""
                     if not user32.IsWindowVisible(hwnd):
                         return True
                     # Retrieve the window's desktop.
