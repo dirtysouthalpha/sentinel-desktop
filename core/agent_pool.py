@@ -35,7 +35,10 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import IntEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from core.virtual_desktop import VirtualDesktop
 
 logger = logging.getLogger(__name__)
 
@@ -413,7 +416,7 @@ class AgentPool:
 
     def _setup_virtual_desktop(
         self, session_id: str, desktop_name: str,
-    ) -> "VirtualDesktop | None":
+    ) -> VirtualDesktop | None:
         """Create and switch to an isolated virtual desktop for a session.
 
         Returns the VirtualDesktop instance on success, or None if the
@@ -440,7 +443,7 @@ class AgentPool:
         return vd
 
     def _cleanup_virtual_desktop(
-        self, vd: "VirtualDesktop", session_id: str, desktop_name: str,
+        self, vd: VirtualDesktop, session_id: str, desktop_name: str,
     ) -> None:
         """Switch back from and close a session's virtual desktop.
 
@@ -462,7 +465,7 @@ class AgentPool:
                 exc,
             )
 
-    def _notify_session_complete(self, session: "AgentSession") -> None:
+    def _notify_session_complete(self, session: AgentSession) -> None:
         """Fire the on_session_complete callback with a session snapshot."""
         if self._on_session_complete is None:
             return
@@ -481,7 +484,6 @@ class AgentPool:
         """Worker function executed inside the agent thread."""
         try:
             from core.engine import AgentEngine
-            from core.virtual_desktop import VirtualDesktop
         except ImportError as exc:
             logger.exception(
                 "Worker: failed to import engine/virtual_desktop for session %s", session_id
