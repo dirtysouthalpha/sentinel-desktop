@@ -411,6 +411,72 @@ class AgentPool:
             session.result = {"error": error, "error_type": error_type}
             session.end_time = datetime.now(timezone.utc)
 
+    def _setup_virtual_desktop(
+        self, session_id: str, desktop_name: str,
+    ) -> "VirtualDesktop | None":
+        """Create and switch to an isolated virtual desktop for a session.
+
+        Returns the VirtualDesktop instance on success, or None if the
+        desktop couldn't be created (the session continues on the
+        current desktop).
+        """
+        from core.virtual_desktop import VirtualDesktop
+
+        vd = VirtualDesktop(name=desktop_name)
+        vd_created = vd.create()
+        if vd_created:
+            vd.switch_to()
+            logger.info(
+                "Session %s: switched to virtual desktop '%s'",
+                session_id,
+                desktop_name,
+            )
+        else:
+            logger.warning(
+                "Session %s: virtual desktop '%s' unavailable, running on current desktop",
+                session_id,
+                desktop_name,
+            )
+        return vd
+
+    def _cleanup_virtual_desktop(
+        self, vd: "VirtualDesktop", session_id: str, desktop_name: str,
+    ) -> None:
+        """Switch back from and close a session's virtual desktop.
+
+        Non-fatal — errors are logged but don't propagate.
+        """
+        try:
+            vd.switch_back()
+            vd.close()
+            logger.debug(
+                "Session %s: virtual desktop '%s' cleaned up",
+                session_id,
+                desktop_name,
+            )
+        except (OSError, RuntimeError, AttributeError) as exc:
+            logger.warning(
+                "Session %s: error cleaning up desktop '%s': %s",
+                session_id,
+                desktop_name,
+                exc,
+            )
+
+    def _notify_session_complete(self, session: "AgentSession") -> None:
+        """Fire the on_session_complete callback with a session snapshot."""
+        if self._on_session_complete is None:
+            return
+        try:
+            with self._lock:
+                snapshot = session.to_dict()
+            self._on_session_complete(snapshot)
+        except (RuntimeError, OSError, ValueError, TypeError) as exc:
+            logger.error(
+                "on_session_complete callback raised %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
     def _agent_worker(self, session_id: str, desktop_name: str) -> None:
         """Worker function executed inside the agent thread."""
         try:
@@ -434,24 +500,8 @@ class AgentPool:
             return
 
         vd: VirtualDesktop | None = None
-        engine: AgentEngine | None = None
         try:
-            # Create a virtual desktop for isolation
-            vd = VirtualDesktop(name=desktop_name)
-            vd_created = vd.create()
-            if vd_created:
-                vd.switch_to()
-                logger.info(
-                    "Session %s: switched to virtual desktop '%s'",
-                    session_id,
-                    desktop_name,
-                )
-            else:
-                logger.warning(
-                    "Session %s: virtual desktop '%s' unavailable, running on current desktop",
-                    session_id,
-                    desktop_name,
-                )
+            vd = self._setup_virtual_desktop(session_id, desktop_name)
 
             # Merge pool-level config with per-session config
             merged_config = dict(session.config or {})
@@ -482,37 +532,9 @@ class AgentPool:
             self._mark_session_failed(session, str(exc), type(exc).__name__)
 
         finally:
-            # Clean up virtual desktop
             if vd is not None:
-                try:
-                    vd.switch_back()
-                    vd.close()
-                    logger.debug(
-                        "Session %s: virtual desktop '%s' cleaned up",
-                        session_id,
-                        desktop_name,
-                    )
-                except (OSError, RuntimeError, AttributeError) as exc:
-                    logger.warning(
-                        "Session %s: error cleaning up desktop '%s': %s",
-                        session_id,
-                        desktop_name,
-                        exc,
-                    )
-
-            # Notify callback
-            if self._on_session_complete is not None:
-                try:
-                    with self._lock:
-                        snapshot = session.to_dict()
-                    self._on_session_complete(snapshot)
-                except (RuntimeError, OSError, ValueError, TypeError) as exc:
-                    logger.error(
-                        "on_session_complete callback raised %s: %s",
-                        type(exc).__name__,
-                        exc,
-                    )
-
+                self._cleanup_virtual_desktop(vd, session_id, desktop_name)
+            self._notify_session_complete(session)
             # Wake dispatcher in case a slot freed up
             self._dispatcher_event.set()
 
