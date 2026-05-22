@@ -51,16 +51,22 @@ API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # noqa: S105
 
 
 class GoalRequest(BaseModel):
+    """Request body for POST /goal — start a new agent run."""
+
     goal: str
     max_steps: int | None = None
     approval_mode: bool | None = None
 
 
 class CommandRequest(BaseModel):
+    """Request body for POST /command — execute a single desktop command."""
+
     command: str  # JSON action dict or natural language
 
 
 class ConfigUpdate(BaseModel):
+    """Request body for PUT /config — update runtime configuration."""
+
     provider: str | None = None
     model: str | None = None
     max_steps: int | None = None
@@ -69,25 +75,35 @@ class ConfigUpdate(BaseModel):
 
 
 class ScriptRunRequest(BaseModel):
+    """Request body for POST /scripts/run — execute a saved script."""
+
     path: str
     params: dict[str, Any] | None = None
 
 
 class PowerShellRequest(BaseModel):
+    """Request body for POST /powershell — run a PowerShell command."""
+
     command: str = Field(max_length=2000)
 
 
 class RecorderStopRequest(BaseModel):
+    """Request body for POST /recorder/stop — stop recording and save."""
+
     name: str = "Untitled"
     description: str = ""
 
 
 class WorkflowRunRequest(BaseModel):
+    """Request body for POST /workflows/run — execute a workflow."""
+
     path: str
     variables: dict[str, Any] | None = None
 
 
 class ScheduleAddRequest(BaseModel):
+    """Request body for POST /schedule/add — create a scheduled task."""
+
     name: str
     goal: str
     cron: str | None = None
@@ -95,39 +111,55 @@ class ScheduleAddRequest(BaseModel):
 
 
 class ScheduleRemoveRequest(BaseModel):
+    """Request body for POST /schedule/remove — delete a scheduled task."""
+
     task_id: str
 
 
 class ScheduleRunRequest(BaseModel):
+    """Request body for POST /schedule/run — trigger a task immediately."""
+
     task_id: str
 
 
 class NotifyRequest(BaseModel):
+    """Request body for POST /notify — send a desktop notification."""
+
     title: str = "Sentinel"
     message: str
     level: str = "info"
 
 
 class PluginReloadRequest(BaseModel):
+    """Request body for POST /plugins/reload — reload a named plugin."""
+
     name: str
 
 
 class AgentSubmitRequest(BaseModel):
+    """Request body for POST /agents/submit — queue an agent goal."""
+
     goal: str
     config: dict[str, Any] | None = None
     priority: str = "normal"
 
 
 class AgentCancelRequest(BaseModel):
+    """Request body for POST /agents/cancel — cancel a running agent."""
+
     session_id: str
 
 
 class AuthLoginRequest(BaseModel):
+    """Request body for POST /auth/login — authenticate a user."""
+
     username: str
     password: str
 
 
 class AuthLogoutRequest(BaseModel):
+    """Request body for POST /auth/logout — revoke a session token."""
+
     token: str
 
 
@@ -135,6 +167,13 @@ class AuthLogoutRequest(BaseModel):
 
 
 class SentinelServer:
+    """FastAPI headless control server for Sentinel Desktop.
+
+    Manages the agent engine lifecycle, exposes REST and WebSocket
+    endpoints for remote control, and bridges step events to
+    connected WebSocket clients in real time.
+    """
+
     def __init__(self, config: Config) -> None:
         self.config = config
         self.engine: AgentEngine | None = None
