@@ -142,6 +142,7 @@ class PowerShellRunner:
     # -- internal -----------------------------------------------------------
 
     def _resolve_ps_exe(self) -> str:
+        """Pick the best PowerShell executable (pwsh > powershell) on Windows."""
         if not _is_windows():
             return self.POWERSHELL_EXE
         for candidate in (self.PS_CORE_EXE, self.POWERSHELL_EXE):

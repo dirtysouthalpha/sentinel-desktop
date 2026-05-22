@@ -355,6 +355,7 @@ class AuditExporter:
 
     @staticmethod
     def _html_preamble() -> str:
+        """Return the HTML boilerplate and CSS for the dark-themed audit report."""
         return (
             '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
             '<meta charset="UTF-8">\n'
@@ -455,6 +456,7 @@ class AuditExporter:
 
     @staticmethod
     def _html_metadata_section(metadata: dict[str, Any]) -> str:
+        """Render the goal, timing, and model metadata cards as HTML."""
         gen_ts = _now_iso()
         cards = [
             ("Goal", metadata.get("goal", "N/A")),
@@ -478,6 +480,7 @@ class AuditExporter:
 
     @staticmethod
     def _html_timeline(masked_log: list[dict[str, Any]]) -> str:
+        """Render the step-by-step timeline table from the masked audit log."""
         rows = []
         for entry in masked_log:
             result_raw = str(entry.get("result", ""))
@@ -512,6 +515,7 @@ class AuditExporter:
 
     @staticmethod
     def _html_summary(summary: dict[str, Any]) -> str:
+        """Render the summary cards (total/success/fail/warnings) as HTML."""
         cards = [
             (str(summary["total_steps"]), "Total Steps"),
             (str(summary["success_count"]), "Successful"),
