@@ -96,6 +96,7 @@ class WorkflowEngine:
             return text
 
         def _replacer(match: re.Match[str]) -> str:
+            """Resolve a ``{{…}}`` placeholder inside a workflow step template."""
             ref = match.group(1).strip()
 
             # Step output reference: step.s1.output.field or step.s1.success

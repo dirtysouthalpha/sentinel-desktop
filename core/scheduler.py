@@ -420,6 +420,7 @@ class TaskScheduler:
         return base
 
     def _exec_script(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Run a pre-built IT-support script via the engine's script runner."""
         r = {
             "success": False,
             "output": None,
@@ -447,6 +448,7 @@ class TaskScheduler:
         return r
 
     def _exec_goal(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Execute a free-form natural-language goal through the agent engine."""
         r = {
             "success": False,
             "output": None,
@@ -467,6 +469,7 @@ class TaskScheduler:
         return r
 
     def _exec_powershell(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Execute a PowerShell command via the engine's powershell runner."""
         r = {
             "success": False,
             "output": None,

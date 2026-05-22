@@ -219,6 +219,7 @@ def _find_window(window_title: str | None) -> Any | None:
 def _walk(
     node: Any, out: list[dict[str, Any]], depth: int, max_depth: int, max_results: int
 ) -> None:
+    """Recursively collect UI node properties up to *max_depth* / *max_results*."""
     if len(out) >= max_results or depth > max_depth:
         return
     try:
@@ -254,6 +255,11 @@ def _find_control(
     control_type: str | None = None,
     window_title: str | None = None,
 ) -> Any | None:
+    """Breadth-first search for a UI element matching the given criteria.
+
+    Scoring: exact match = 3, substring = 2, type match = 1.  Returns the
+    highest-scoring match or ``None`` if nothing clears the bar.
+    """
     root = _find_window(window_title)
     if root is None:
         return None

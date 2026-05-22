@@ -480,6 +480,7 @@ def _exact_substring_hit(
     boxes: list[dict[str, Any]],
     needle: str,
 ) -> tuple[int, int] | None:
+    """Find needle via case-insensitive substring match across OCR line groups."""
     # Group word boxes into lines, then test the joined lower-cased line text.
     by_line: dict[tuple[int, int, int], list[dict[str, Any]]] = {}
     for b in boxes:
@@ -525,6 +526,7 @@ def _fuzzy_line_hit(
     needle: str,
     min_score: float,
 ) -> tuple[int, int] | None:
+    """Find needle via fuzzy ratio scoring across OCR line groups."""
     by_line: dict[tuple[int, int, int], list[dict[str, Any]]] = {}
     for b in boxes:
         by_line.setdefault(b["line_id"], []).append(b)

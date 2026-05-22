@@ -1298,6 +1298,7 @@ class AgentEngine:
     # ── Internal ────────────────────────────────────────────────────────
 
     def _build_env_context(self) -> str:
+        """Gather OS info, active window title, and tenant metadata for the prompt."""
         try:
             info = sysinfo.brief_system_info()
         except (OSError, RuntimeError) as exc:
