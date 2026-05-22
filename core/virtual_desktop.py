@@ -315,6 +315,12 @@ class _Win32VirtualDesktop:
         # STARTUPINFOW structure (68 bytes on 64-bit, 48 on 32-bit — we use
         # the explicit cb field so it's correct on both).
         class STARTUPINFOW(ctypes.Structure):
+            """Win32 STARTUPINFOW structure for CreateProcessW calls.
+
+            Specifies window station, desktop, and appearance settings for
+            a new process. Used internally by ``_launch_app_locked`` to
+            spawn applications on a specific virtual desktop.
+            """
             _fields_ = [
                 ("cb", wintypes.DWORD),
                 ("lpReserved", wintypes.LPWSTR),
@@ -337,6 +343,11 @@ class _Win32VirtualDesktop:
             ]
 
         class PROCESS_INFORMATION(ctypes.Structure):
+            """Win32 PROCESS_INFORMATION structure returned by CreateProcessW.
+
+            Contains handles and IDs for the newly created process and its
+            primary thread.
+            """
             _fields_ = [
                 ("hProcess", wintypes.HANDLE),
                 ("hThread", wintypes.HANDLE),
