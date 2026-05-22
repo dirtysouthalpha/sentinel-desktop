@@ -1178,24 +1178,8 @@ class AgentEngine:
         provider = self.config.get("provider", "unknown")
         model = self.config.get("model", "unknown")
 
-        action_counts: dict[str, int] = {}
-        for entry in self.forensic_log:
-            a = entry.get("action", "unknown")
-            action_counts[a] = action_counts.get(a, 0) + 1
-
-        step_trace = [
-            {
-                "step": e.get("step"),
-                "action": e.get("action"),
-                "params": {
-                    k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
-                },
-                "ok": e.get("result", {}).get("ok", True),
-                "output_preview": str(e.get("result", {}).get("msg", ""))[:200],
-                "timestamp": e.get("timestamp"),
-            }
-            for e in self.forensic_log
-        ]
+        action_counts = self._compute_action_counts()
+        step_trace = self._build_step_trace(self.forensic_log)
 
         report = {
             "session_id": now.strftime("%Y%m%d-%H%M%S"),
@@ -1212,21 +1196,79 @@ class AgentEngine:
             "summary": self.finish_summary or "Run ended without completion",
             "notes": self.notes,
             "step_trace": step_trace,
-            "error_list": [
-                {
-                    "step": e.get("step"),
-                    "action": e.get("action"),
-                    "params": {
-                        k: v for k, v in (e.get("params") or {}).items() if k not in ("screenshot",)
-                    },
-                    "error": e.get("result", {}).get("msg", "")[:300],
-                    "timestamp": e.get("timestamp"),
-                }
-                for e in errors[:20]
-            ],
+            "error_list": self._build_error_list(errors),
         }
 
-        # Human-readable text for ticketing
+        report["text"] = self._build_report_text(
+            report, goal, elapsed, success, errors, provider, model,
+        )
+        return report
+
+    def _compute_action_counts(self) -> dict[str, int]:
+        """Count occurrences of each action type in the forensic log."""
+        counts: dict[str, int] = {}
+        for entry in self.forensic_log:
+            a = entry.get("action", "unknown")
+            counts[a] = counts.get(a, 0) + 1
+        return counts
+
+    @staticmethod
+    def _strip_screenshot_params(params: dict[str, Any] | None) -> dict[str, Any]:
+        """Remove screenshot data from action params for report output."""
+        if not params:
+            return {}
+        return {k: v for k, v in params.items() if k not in ("screenshot",)}
+
+    def _build_step_trace(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Build the step_trace summary list from forensic log entries.
+
+        Each entry is sanitized to remove bulky screenshot params and
+        truncates the output preview to keep reports compact.
+        """
+        return [
+            {
+                "step": e.get("step"),
+                "action": e.get("action"),
+                "params": self._strip_screenshot_params(e.get("params")),
+                "ok": e.get("result", {}).get("ok", True),
+                "output_preview": str(e.get("result", {}).get("msg", ""))[:200],
+                "timestamp": e.get("timestamp"),
+            }
+            for e in entries
+        ]
+
+    def _build_error_list(self, errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Build a capped error summary from failed forensic log entries.
+
+        Returns at most 20 entries to prevent unbounded report growth on
+        runs with many failures.
+        """
+        return [
+            {
+                "step": e.get("step"),
+                "action": e.get("action"),
+                "params": self._strip_screenshot_params(e.get("params")),
+                "error": e.get("result", {}).get("msg", "")[:300],
+                "timestamp": e.get("timestamp"),
+            }
+            for e in errors[:20]
+        ]
+
+    def _build_report_text(
+        self,
+        report: dict[str, Any],
+        goal: str,
+        elapsed: float,
+        success: bool,
+        errors: list[dict[str, Any]],
+        provider: str,
+        model: str,
+    ) -> str:
+        """Format the human-readable ticketing block for the run report.
+
+        Generates a plain-text summary suitable for pasting into an MSP
+        ticket or change-management log.
+        """
         lines = [
             "SENTINEL DESKTOP — AUTOMATION REPORT",
             f"Session: {report['session_id']}",
@@ -1246,8 +1288,7 @@ class AgentEngine:
             for e in errors[:5]:
                 msg = e.get("result", {}).get("msg", "")[:150]
                 lines.append(f"  Step {e.get('step')}: {e.get('action')} — {msg}")
-        report["text"] = "\n".join(lines)
-        return report
+        return "\n".join(lines)
 
     def stop(self) -> None:
         """Stop the agent loop."""
