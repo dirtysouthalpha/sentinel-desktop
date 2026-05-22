@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class ApprovalDecision(Enum):
+    """User decision on a pending agent action in approval mode."""
+
     APPROVE = "approve"
     MODIFY = "modify"  # user changed params before approving
     SKIP = "skip"  # skip this action, continue agent loop

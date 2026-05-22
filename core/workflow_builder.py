@@ -13,6 +13,8 @@ from typing import Any
 
 
 class WorkflowStatus(str, Enum):
+    """Lifecycle status of a workflow (draft, active, running, etc.)."""
+
     DRAFT = "draft"
     ACTIVE = "active"
     RUNNING = "running"
@@ -22,6 +24,8 @@ class WorkflowStatus(str, Enum):
 
 
 class StepStatus(str, Enum):
+    """Execution status of a single workflow step."""
+
     PENDING = "pending"
     RUNNING = "running"
     DONE = "done"
@@ -31,6 +35,12 @@ class StepStatus(str, Enum):
 
 @dataclass
 class WorkflowStep:
+    """A single executable step within a builder workflow.
+
+    Each step represents one action (click, type, script, etc.) with
+    optional timeout, retries, and conditional execution.
+    """
+
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = ""
     action: str = ""
@@ -68,6 +78,12 @@ class WorkflowStep:
 
 @dataclass
 class Workflow:
+    """A named, ordered collection of workflow steps with lifecycle tracking.
+
+    Supports CRUD operations on steps, serialization to/from dicts,
+    and duplication for templating.
+    """
+
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = "Untitled Workflow"
     description: str = ""

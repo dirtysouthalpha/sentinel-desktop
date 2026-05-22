@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 class StepType(str, Enum):
+    """Enumeration of workflow step types.
+
+    Defines the kinds of operations a workflow step can perform,
+    from running scripts to evaluating conditions.
+    """
+
     SCRIPT = "script"
     ACTION = "action"
     CONDITION = "condition"
@@ -29,6 +35,8 @@ class StepType(str, Enum):
 
 
 class ErrorPolicy(str, Enum):
+    """Policy for handling errors during workflow step execution."""
+
     STOP = "stop"
     SKIP = "skip"
     RETRY = "retry"
@@ -36,6 +44,11 @@ class ErrorPolicy(str, Enum):
 
 @dataclass
 class WorkflowResult:
+    """Result of a completed workflow run.
+
+    Tracks success status, step counts, timing, and per-step outputs.
+    """
+
     success: bool = False
     steps_completed: int = 0
     steps_total: int = 0
@@ -47,6 +60,12 @@ class WorkflowResult:
 
 @dataclass
 class WorkflowStep:
+    """A single step within a workflow definition.
+
+    Each step has a type (script, action, condition, etc.), optional
+    parameters, and control-flow links for branching.
+    """
+
     id: str
     type: str
     path: str | None = None
