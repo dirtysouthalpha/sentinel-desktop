@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from unittest.mock import patch, mock_open
 
 import pytest
 
@@ -262,18 +263,13 @@ class TestSaveEdgeCases:
         assert data["goal"] == long_goal
 
     def test_save_returns_none_on_write_failure(self, tmp_path):
-        import os
-
         ro_dir = tmp_path / "readonly"
         ro_dir.mkdir()
         cm = CheckpointManager(checkpoint_dir=str(ro_dir))
-        # Make directory read-only after init
-        os.chmod(ro_dir, 0o444)
-        try:
+        # Mock Path.open to raise OSError (simulating write failure)
+        with patch.object(Path, "open", side_effect=OSError("Simulated write failure")):
             result = _save_checkpoint(cm)
             assert result is None
-        finally:
-            os.chmod(ro_dir, 0o755)
 
     def test_empty_goal_handled(self, cm):
         cp_id = cm.save(
