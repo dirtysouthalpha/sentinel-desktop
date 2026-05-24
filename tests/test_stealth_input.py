@@ -103,28 +103,34 @@ def test_stealth_press_named_key(fake_executor, monkeypatch):
 
 # ---- Stealth input: non-Windows / no-win32 fallback ----
 
-def test_is_available_false_without_win32():
+def test_is_available_false_without_win32(monkeypatch):
     """On Linux/non-Windows, is_available returns False."""
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
     assert stealth_input.is_available() is False
 
 
-def test_post_click_returns_false_without_win32():
+def test_post_click_returns_false_without_win32(monkeypatch):
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
     assert stealth_input.post_click(100, 200) is False
 
 
-def test_post_text_returns_false_without_win32():
+def test_post_text_returns_false_without_win32(monkeypatch):
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
     assert stealth_input.post_text("hello") is False
 
 
-def test_post_key_returns_false_without_win32():
+def test_post_key_returns_false_without_win32(monkeypatch):
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
     assert stealth_input.post_key(0x0D) is False
 
 
-def test_post_hotkey_returns_false_without_win32():
+def test_post_hotkey_returns_false_without_win32(monkeypatch):
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
     assert stealth_input.post_hotkey(["ctrl", "c"]) is False
 
 
-def test_post_named_key_returns_false_without_win32():
+def test_post_named_key_returns_false_without_win32(monkeypatch):
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
     assert stealth_input.post_named_key("enter") is False
 
 
