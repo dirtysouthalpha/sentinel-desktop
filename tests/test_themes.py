@@ -1,6 +1,11 @@
 """Tests for gui.themes — pure functions only (no Tkinter required)."""
 
-from gui.themes import THEMES, get_theme, get_theme_names
+import sys
+from unittest.mock import patch
+
+import customtkinter as ctk
+
+from gui.themes import THEMES, apply_theme, get_theme, get_theme_names
 
 
 def test_get_theme_returns_named_theme():
@@ -62,3 +67,53 @@ def test_sentinel_theme_matches_override_spec():
     assert s["bg_primary"] == "#050608"
     assert s["tag_assistant"] == "#95E400"
     assert s["tag_action"] == "#FBBC00"
+
+
+# ---------------------------------------------------------------------------
+# apply_theme
+# ---------------------------------------------------------------------------
+def test_apply_theme_by_name_returns_theme_and_calls_ctk():
+    with (
+        patch.object(ctk, "set_appearance_mode") as mock_appearance,
+        patch.object(ctk, "set_default_color_theme") as mock_color,
+    ):
+        result = apply_theme("matrix")
+    assert result is THEMES["matrix"]
+    mock_appearance.assert_called_once_with("dark")
+    mock_color.assert_called_once_with("dark-blue")
+
+
+def test_apply_theme_unknown_name_falls_back_to_sentinel():
+    with patch.object(ctk, "set_appearance_mode"), patch.object(ctk, "set_default_color_theme"):
+        result = apply_theme("does_not_exist")
+    assert result is THEMES["sentinel"]
+
+
+def test_apply_theme_accepts_dict_passthrough():
+    custom = {"appearance": "light", "color_theme": "blue", "accent": "#123456"}
+    with (
+        patch.object(ctk, "set_appearance_mode") as mock_appearance,
+        patch.object(ctk, "set_default_color_theme") as mock_color,
+    ):
+        result = apply_theme(custom)
+    assert result is custom
+    mock_appearance.assert_called_once_with("light")
+    mock_color.assert_called_once_with("blue")
+
+
+def test_apply_theme_dict_uses_defaults_when_keys_missing():
+    with (
+        patch.object(ctk, "set_appearance_mode") as mock_appearance,
+        patch.object(ctk, "set_default_color_theme") as mock_color,
+    ):
+        result = apply_theme({})
+    assert result == {}
+    mock_appearance.assert_called_once_with("dark")
+    mock_color.assert_called_once_with("dark-blue")
+
+
+def test_apply_theme_returns_sentinel_when_customtkinter_missing():
+    # Setting the module to None makes ``import customtkinter`` raise ImportError.
+    with patch.dict(sys.modules, {"customtkinter": None}):
+        result = apply_theme("matrix")
+    assert result is THEMES["sentinel"]
