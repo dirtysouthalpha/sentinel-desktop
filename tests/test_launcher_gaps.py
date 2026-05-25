@@ -75,6 +75,16 @@ class TestSmartOpenEdgeCases:
         assert result["success"] is False
         assert result["error"] == "empty_name"
 
+    @patch("core.launcher._find_existing", side_effect=OSError("enum failed"))
+    @patch("core.launcher.subprocess.Popen")
+    def test_find_existing_error_falls_through_to_launch(self, mock_popen, mock_find):
+        # When the window probe itself raises, smart_open must treat it as
+        # "no existing window" and proceed to launch.
+        mock_popen.return_value = MagicMock()
+        result = launcher.smart_open("some-app")
+        assert result["success"] is True
+        mock_popen.assert_called_once()
+
     @patch("core.window_manager.list_windows", return_value=[])
     @patch("core.launcher.subprocess.Popen")
     def test_exe_suffix_stripped(self, mock_popen, mock_lw):
