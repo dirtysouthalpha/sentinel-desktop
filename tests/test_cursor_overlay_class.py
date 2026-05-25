@@ -8,11 +8,26 @@ mocks where the real Tk lifecycle isn't under test.
 from __future__ import annotations
 
 import sys
+import types
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import gui.cursor_overlay as co
+
+
+def _fake_tk(**attrs):
+    """A throwaway ``tkinter`` module with a *real* TclError exception.
+
+    Used by except-branch tests so they stay correct regardless of test
+    ordering — another test module rebinds ``sys.modules['tkinter']`` to a
+    MagicMock at import time, whose ``TclError`` is not a real exception.
+    """
+    mod = types.ModuleType("tkinter")
+    mod.TclError = type("TclError", (Exception,), {})
+    for k, v in attrs.items():
+        setattr(mod, k, v)
+    return mod
 from gui.cursor_overlay import (
     CursorOverlay,
     get_overlay,
@@ -79,11 +94,13 @@ class TestStartStop:
         ov = CursorOverlay()
         fake_root = MagicMock()
         fake_root.winfo_id.return_value = 0
-        fake_root.wm_attributes.side_effect = co.tk.TclError("no transparentcolor")
-        fake_root.mainloop.side_effect = co.tk.TclError("mainloop boom")
+        fake = _fake_tk(Tk=lambda *a, **k: fake_root, Canvas=lambda *a, **k: MagicMock())
+        fake_root.wm_attributes.side_effect = fake.TclError("no transparentcolor")
+        fake_root.mainloop.side_effect = fake.TclError("mainloop boom")
+        # _run_loop does a local ``import tkinter`` -> patch sys.modules too.
         with (
-            patch.object(co.tk, "Tk", return_value=fake_root),
-            patch.object(co.tk, "Canvas", return_value=MagicMock()),
+            patch.dict(sys.modules, {"tkinter": fake}),
+            patch.object(co, "tk", fake),
         ):
             ov._running = True
             ov._run_loop()  # must not raise despite the injected TclErrors
@@ -103,10 +120,12 @@ class TestStartStop:
         assert ov._running is False
 
     def test_stop_swallows_destroy_errors(self):
+        fake = _fake_tk()
         ov = CursorOverlay()
         ov._root = MagicMock()
-        ov._root.after.side_effect = co.tk.TclError("dead")
-        ov.stop()  # must not raise
+        ov._root.after.side_effect = fake.TclError("dead")
+        with patch.object(co, "tk", fake):  # stop() uses the module-level tk
+            ov.stop()  # must not raise
 
 
 # ---------------------------------------------------------------------------

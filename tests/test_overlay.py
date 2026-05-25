@@ -8,6 +8,7 @@ _color_for_kind. GUI class tests are not included (require tkinter runtime).
 from __future__ import annotations
 
 import sys
+import types
 from unittest.mock import MagicMock, patch
 
 import gui.overlay as overlay_mod
@@ -19,6 +20,19 @@ from gui.overlay import (
     _label_for_action,
     _make_clickthrough,
 )
+
+
+def _patched_tk():
+    """A throwaway ``tkinter`` module exposing a *real* TclError.
+
+    Except-branch tests patch ``overlay_mod.tk`` with this so they remain
+    correct regardless of test ordering — another test module rebinds
+    ``sys.modules['tkinter']`` to a MagicMock at import time, whose
+    ``TclError`` is not a real exception and so is never caught.
+    """
+    mod = types.ModuleType("tkinter")
+    mod.TclError = type("TclError", (Exception,), {})
+    return mod
 
 # ── Tests: _coords_from_action ────────────────────────────────────────────
 
@@ -197,10 +211,12 @@ class TestActionOverlay:
         master.after.assert_not_called()
 
     def test_show_action_swallows_schedule_errors(self):
+        fake = _patched_tk()
         master = MagicMock()
-        master.after.side_effect = overlay_mod.tk.TclError("dead")
+        master.after.side_effect = fake.TclError("dead")
         ov = ActionOverlay(master)
-        ov.show_action({"action": "click", "x": 1, "y": 2})  # must not raise
+        with patch.object(overlay_mod, "tk", fake):
+            ov.show_action({"action": "click", "x": 1, "y": 2})  # must not raise
 
     def test_show_main_creates_indicator_and_schedules_dismiss(self):
         master = MagicMock()
@@ -222,9 +238,13 @@ class TestActionOverlay:
         previous.destroy.assert_called_once()
 
     def test_show_main_swallows_draw_errors(self):
+        fake = _patched_tk()
         master = MagicMock()
         ov = ActionOverlay(master)
-        with patch.object(overlay_mod, "_Indicator", side_effect=overlay_mod.tk.TclError("x")):
+        with (
+            patch.object(overlay_mod, "tk", fake),
+            patch.object(overlay_mod, "_Indicator", side_effect=fake.TclError("x")),
+        ):
             ov._show_main((5, 6), "label", "click")  # must not raise
 
     def test_dismiss_destroys_and_clears_current(self):
@@ -236,11 +256,13 @@ class TestActionOverlay:
         assert ov._current is None
 
     def test_dismiss_swallows_destroy_errors(self):
+        fake = _patched_tk()
         ov = ActionOverlay(MagicMock())
         ind = MagicMock()
-        ind.destroy.side_effect = overlay_mod.tk.TclError("boom")
+        ind.destroy.side_effect = fake.TclError("boom")
         ov._current = ind
-        ov._dismiss()  # must not raise
+        with patch.object(overlay_mod, "tk", fake):
+            ov._dismiss()  # must not raise
         assert ov._current is None
 
     def test_dismiss_noop_when_no_current(self):
@@ -264,21 +286,68 @@ class TestIndicator:
         ind.destroy()
 
     def test_destroy_swallows_errors(self):
+        fake = _patched_tk()
         ind = _Indicator(MagicMock(), x=10, y=10, label="x", kind="hotkey")
         ind.win = MagicMock()
-        ind.win.destroy.side_effect = overlay_mod.tk.TclError("gone")
-        ind.destroy()  # must not raise
+        ind.win.destroy.side_effect = fake.TclError("gone")
+        with patch.object(overlay_mod, "tk", fake):
+            ind.destroy()  # must not raise
 
     def test_construct_when_transparency_unsupported(self):
-        class _NoAlphaWin(overlay_mod.tk.Toplevel):
+        # Build a self-consistent fake tkinter with a real TclError. _Indicator
+        # does a local ``import tkinter`` and its except uses the module-level
+        # tk, so patch both sys.modules and overlay_mod.tk — this keeps the
+        # test correct regardless of test ordering (another module rebinds
+        # sys.modules['tkinter'] to a MagicMock at import time).
+        fake = types.ModuleType("tkinter")
+        fake.TclError = type("TclError", (Exception,), {})
+
+        class _NoAlphaWin:
+            def __init__(self, *a, **kw):
+                pass
+
+            def overrideredirect(self, *a, **kw):
+                pass
+
             def attributes(self, *a, **kw):
                 # -topmost succeeds; -alpha / -transparentcolor are unsupported.
                 if a and a[0] in ("-alpha", "-transparentcolor"):
-                    raise overlay_mod.tk.TclError("unsupported")
+                    raise fake.TclError("unsupported")
 
-        with patch.object(overlay_mod.tk, "Toplevel", _NoAlphaWin):
+            def geometry(self, *a, **kw):
+                pass
+
+            def winfo_id(self):
+                return 0
+
+            def destroy(self):
+                pass
+
+        class _Canvas:
+            def __init__(self, *a, **kw):
+                pass
+
+            def pack(self, *a, **kw):
+                pass
+
+            def create_oval(self, *a, **kw):
+                return 1
+
+            def create_text(self, *a, **kw):
+                return 2
+
+            def create_rectangle(self, *a, **kw):
+                return 3
+
+        fake.Toplevel = _NoAlphaWin
+        fake.Canvas = _Canvas
+
+        with (
+            patch.dict(sys.modules, {"tkinter": fake}),
+            patch.object(overlay_mod, "tk", fake),
+        ):
             ind = _Indicator(MagicMock(), x=5, y=5, label="x", kind="click")
-        ind.destroy()
+            ind.destroy()
 
 
 # ── Tests: _make_clickthrough ─────────────────────────────────────────────
