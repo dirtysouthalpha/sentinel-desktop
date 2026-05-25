@@ -54,6 +54,15 @@ class TestForegroundWindowTitleFallback:
     def test_non_windows_returns_empty(self):
         assert ph._get_foreground_window_title() == ""
 
+    def test_wm_fallback_raising_returns_empty(self):
+        """Lines 382-383: when the window_manager fallback itself raises, the
+        exception is swallowed and an empty title is returned."""
+        with patch.object(ph, "_IS_WINDOWS", True), \
+             patch("core.window_manager.list_windows", side_effect=OSError("no wm")):
+            # win32gui import fails on Linux (first except), then the wm
+            # fallback raises too (second except) -> "".
+            assert ph._get_foreground_window_title() == ""
+
 
 class TestDetectFromScreenshotEmptyLines:
     """Line 530: detect_from_screenshot with empty OCR lines."""
@@ -95,6 +104,67 @@ class TestClickButtonWin32:
         with patch("core.ocr.find_text", side_effect=ImportError("nope")), \
              patch("core.ui_tree.click_control", side_effect=ImportError("nope")):
             result = handler._click_button("OK")
+        assert result is False
+
+    @patch.object(ph, "_IS_WINDOWS", True)
+    def test_click_button_strategy3_win32_success(self):
+        """Lines 718-727: OCR and UIA strategies miss, Win32 SendMessage clicks."""
+        handler = ph.PopupHandler()
+        mock_win32gui = MagicMock()
+        mock_win32gui.GetForegroundWindow.return_value = 999
+        mock_win32con = MagicMock()
+
+        with patch("core.ocr.find_text", return_value=None), \
+             patch("core.ui_tree.click_control", return_value=None), \
+             patch.object(handler, "_find_button_hwnd", return_value=100), \
+             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": mock_win32con}):
+            result = handler._click_button("OK")
+
+        assert result is True
+        mock_win32gui.SendMessage.assert_called_once()
+
+    @patch.object(ph, "_IS_WINDOWS", True)
+    def test_click_button_strategy3_no_foreground_window(self):
+        """Branch 723->731: GetForegroundWindow returns 0 (no window) → False."""
+        handler = ph.PopupHandler()
+        mock_win32gui = MagicMock()
+        mock_win32gui.GetForegroundWindow.return_value = 0
+
+        with patch("core.ocr.find_text", return_value=None), \
+             patch("core.ui_tree.click_control", return_value=None), \
+             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}):
+            result = handler._click_button("OK")
+
+        assert result is False
+
+    @patch.object(ph, "_IS_WINDOWS", True)
+    def test_click_button_strategy3_button_not_found(self):
+        """Branch 725->731: foreground window exists but no button matches → False."""
+        handler = ph.PopupHandler()
+        mock_win32gui = MagicMock()
+        mock_win32gui.GetForegroundWindow.return_value = 999
+
+        with patch("core.ocr.find_text", return_value=None), \
+             patch("core.ui_tree.click_control", return_value=None), \
+             patch.object(handler, "_find_button_hwnd", return_value=None), \
+             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}):
+            result = handler._click_button("OK")
+
+        assert result is False
+        mock_win32gui.SendMessage.assert_not_called()
+
+    @patch.object(ph, "_IS_WINDOWS", True)
+    def test_click_button_strategy3_win32_exception(self):
+        """Lines 728-729: a Win32 error in Strategy 3 is swallowed → False."""
+        handler = ph.PopupHandler()
+        mock_win32gui = MagicMock()
+        mock_win32gui.GetForegroundWindow.side_effect = OSError("win32 boom")
+
+        with patch("core.ocr.find_text", return_value=None), \
+             patch("core.ui_tree.click_control", return_value=None), \
+             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}):
+            result = handler._click_button("OK")
+
         assert result is False
 
     @patch.object(ph, "_IS_WINDOWS", True)

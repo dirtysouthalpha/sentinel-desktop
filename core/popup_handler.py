@@ -526,7 +526,10 @@ class PopupHandler:
 
         # Heuristic split: first non-empty line is "title", rest is "body".
         lines = [line.strip() for line in ocr_output.splitlines() if line.strip()]
-        if not lines:
+        # Defensive: ``ocr_output.strip()`` above is already truthy here and every
+        # ``splitlines()`` boundary is whitespace, so ``lines`` is necessarily
+        # non-empty — but keep the guard in case ``_ocr_text`` ever changes.
+        if not lines:  # pragma: no cover
             return PopupDetectionResult()
 
         title_text = lines[0] if lines else ""
