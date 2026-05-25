@@ -184,6 +184,16 @@ class TestWaitForStable:
             t.join()
             assert result.success is False
 
+    def test_mid_loop_capture_failure_skipped(self):
+        """A None capture inside the polling loop is skipped (continue), not fatal."""
+        sw = SmartWait()
+        same = Image.new("RGB", (50, 50), (100, 100, 100))
+        # baseline succeeds, then one failed poll (None), then steady frames.
+        with patch.object(sw, "_capture", side_effect=[same, None] + [same] * 40):
+            with patch("core.smart_wait._save_snapshot", return_value="/tmp/test.png"):
+                result = sw.wait_for_stable(timeout=5, stable_time=0.2, interval=0.05)
+                assert result.success is True
+
 
 # ---------------------------------------------------------------------------
 # wait_for_match
@@ -250,6 +260,15 @@ class TestWaitForMatch:
                     assert result.success is True
                     assert result.change_score == 0.95
 
+    def test_match_succeeds_when_snapshot_capture_fails(self):
+        """Match found but the snapshot capture errors → still success, no path."""
+        sw = SmartWait()
+        with patch("core.screenshot.find_template", return_value=(50, 50)):
+            with patch("core.smart_wait.capture_screen", side_effect=OSError("no screen")):
+                result = sw.wait_for_match("/tmp/tmpl.png", timeout=1, interval=0.05)
+                assert result.success is True
+                assert result.snapshot_path is None
+
 
 # ---------------------------------------------------------------------------
 # wait_for_text
@@ -309,6 +328,15 @@ class TestWaitForText:
             result = sw.wait_for_text("target", timeout=5, interval=0.05)
             t.join()
             assert result.success is False
+
+    def test_text_match_when_snapshot_capture_fails(self):
+        """Text found but the post-match snapshot capture errors → still success."""
+        sw = SmartWait()
+        with patch("core.ocr.read_screen_text", return_value="Hello World"):
+            with patch.object(sw, "_capture", side_effect=RuntimeError("capture boom")):
+                result = sw.wait_for_text("hello", timeout=1, interval=0.05)
+                assert result.success is True
+                assert result.snapshot_path is None
 
 
 # ---------------------------------------------------------------------------
@@ -379,6 +407,20 @@ class TestWaitForColor:
             result = sw.wait_for_color(10, 20, (255, 255, 255), timeout=5)
             t.join()
             assert result.success is False
+
+    def test_color_match_when_snapshot_capture_fails(self):
+        """Pixel matches but the context-snapshot capture errors → still success."""
+        sw = SmartWait()
+        pixel_img = Image.new("RGB", (2, 2), (100, 150, 200))
+        # First capture_region samples the pixel (match); the second, for the
+        # context snapshot, raises.
+        with patch(
+            "core.smart_wait.capture_region",
+            side_effect=[pixel_img, OSError("snapshot fail")],
+        ):
+            result = sw.wait_for_color(10, 20, (100, 150, 200), timeout=1)
+            assert result.success is True
+            assert result.snapshot_path is None
 
 
 # ---------------------------------------------------------------------------

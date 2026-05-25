@@ -19,6 +19,31 @@ from PIL import Image
 # ---------------------------------------------------------------------------
 
 
+class TestNumpyImportGuard:
+    """The module-level ``try: import numpy / except ImportError`` guard."""
+
+    def test_import_falls_back_when_numpy_missing(self):
+        """A missing numpy at import time sets ``_HAS_NUMPY`` False (lines 50-52).
+
+        Setting ``sys.modules['numpy'] = None`` forces ``import numpy`` to raise
+        ImportError, so reloading the module re-runs the top-level guard down the
+        fallback path. The module is reloaded again afterwards to restore the real
+        numpy-backed state for the rest of the session.
+        """
+        import importlib
+
+        import core.smart_wait as sw
+
+        try:
+            with patch.dict(sys.modules, {"numpy": None}):
+                reloaded = importlib.reload(sw)
+                assert reloaded._HAS_NUMPY is False
+                assert reloaded.np is None
+        finally:
+            importlib.reload(sw)
+        assert sw._HAS_NUMPY is True
+
+
 class TestComputeChangeScorePILFallback:
     """Test _compute_change_score when _HAS_NUMPY is False."""
 
