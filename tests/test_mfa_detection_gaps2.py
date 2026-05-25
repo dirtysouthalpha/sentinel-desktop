@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import MagicMock, patch
 
 from PIL import Image
@@ -60,37 +61,31 @@ class TestGetWindowTitlesEnumCallback:
     """_get_window_titles _enum callback via win32gui.EnumWindows."""
 
     def test_enum_callback_collects_visible_titled_windows(self):
-        """Lines 212-215: _enum checks IsWindowVisible, GetWindowText, appends title."""
-        import win32gui
+        """Lines 213-216: _enum checks IsWindowVisible, GetWindowText, appends title.
+
+        Inject a self-contained fake ``win32gui`` into ``sys.modules`` so the
+        in-function ``import win32gui`` binds it on any platform. ``patch.dict``
+        removes it again afterwards, so the test neither depends on nor leaks
+        global module state.
+        """
+        fake_win32gui = MagicMock()
 
         def fake_enum_windows(callback, lparam):
-            # Visible window with a title -> should be collected
-            callback(1001, None)
-            # Not visible -> skipped
-            callback(1002, None)
-            # Visible but empty title -> skipped
-            callback(1003, None)
+            callback(1001, None)  # visible + titled -> collected
+            callback(1002, None)  # not visible -> skipped
+            callback(1003, None)  # visible but empty title -> skipped
 
-        def fake_is_window_visible(hwnd):
-            if hwnd in (1001, 1003):
-                return True
-            return False
+        fake_win32gui.EnumWindows.side_effect = fake_enum_windows
+        fake_win32gui.IsWindowVisible.side_effect = lambda hwnd: hwnd in (1001, 1003)
+        fake_win32gui.GetWindowText.side_effect = lambda hwnd: (
+            "My App Window" if hwnd == 1001 else ""
+        )
 
-        def fake_get_window_text(hwnd):
-            if hwnd == 1001:
-                return "My App Window"
-            if hwnd == 1003:
-                return ""
-            return ""
+        with patch("core.mfa_detection._IS_WINDOWS", True), \
+             patch.dict(sys.modules, {"win32gui": fake_win32gui}):
+            titles = _get_window_titles()
 
-        with patch("core.mfa_detection._IS_WINDOWS", True):
-            with patch.object(win32gui, "EnumWindows", side_effect=fake_enum_windows):
-                with patch.object(win32gui, "IsWindowVisible", side_effect=fake_is_window_visible):
-                    with patch.object(win32gui, "GetWindowText", side_effect=fake_get_window_text):
-                        titles = _get_window_titles()
-
-        assert "My App Window" in titles
-        assert len(titles) == 1
+        assert titles == ["My App Window"]
 
 
 # -----------------------------------------------------------------------

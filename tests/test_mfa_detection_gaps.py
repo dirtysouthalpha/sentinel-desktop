@@ -75,6 +75,20 @@ class TestHaveUiaProbe:
         with patch("builtins.__import__", side_effect=ImportError("nope")):
             assert _have_uia() is False
 
+    def test_import_success_sets_auto(self):
+        """Lines 139-140: a successful uiautomation import caches the module."""
+        import core.mfa_detection as m
+
+        fake_uia = MagicMock()
+        try:
+            with patch.dict(sys.modules, {"uiautomation": fake_uia}):
+                assert _have_uia() is True
+            assert m._auto is fake_uia
+            assert m._UIA_AVAILABLE is True
+        finally:
+            m._UIA_AVAILABLE = None
+            m._auto = None
+
 
 class TestGetWindowTitles:
     """_get_window_titles on non-Windows."""
@@ -439,6 +453,42 @@ class TestMonitorLoopDetection:
 
             assert callback.called
 
+    def test_detection_without_callback_records_but_skips_invoke(self):
+        """Branch 618->624: a detection with no registered callback is still
+        recorded; the loop must not crash trying to invoke a None callback."""
+        with patch("core.mfa_detection._IS_WINDOWS", True):
+            detector = MFADetector(cooldown_seconds=100.0)
+
+            call_count = 0
+
+            def fake_capture():
+                nonlocal call_count
+                call_count += 1
+                if call_count >= 2:
+                    detector._monitor_stop.set()
+                return Image.new("RGB", (10, 10))
+
+            detection = DetectionResult(
+                detected=True,
+                type="mfa",
+                confidence=0.8,
+                action="pause_agent",
+                prompt_text="verify your identity",
+                window_title="Login",
+            )
+
+            with patch.object(detector, "check_window_titles", return_value=_empty_result()):
+                with patch("core.mfa_detection._ocr_check", return_value=detection):
+                    with patch("core.mfa_detection._uia_check", return_value=None):
+                        with patch("core.screenshot.capture_screen", side_effect=fake_capture):
+                            # No callback registered.
+                            detector.start_monitoring(None, interval=0.1)  # type: ignore[arg-type]
+                            detector._monitor_thread.join(timeout=5.0)
+
+            recorded = detector.get_last_detection()
+            assert recorded is not None
+            assert recorded.detected is True
+
     def test_cooldown_skips_duplicate(self):
         with patch("core.mfa_detection._IS_WINDOWS", True):
             detector = MFADetector(cooldown_seconds=100.0)
@@ -569,3 +619,119 @@ class TestExtractExcerptEdge:
         text = "x" * 200 + "verify your identity"
         excerpt = _extract_excerpt(text, "verify your identity")
         assert "verify your identity" in excerpt
+
+
+class TestGetWindowTitlesWin32Fallback:
+    """Lines 219-230: win32gui EnumWindows failure → window_manager fallback.
+
+    These run on any platform by injecting a fake ``win32gui`` into
+    ``sys.modules`` so the in-function ``import win32gui`` binds the mock.
+    """
+
+    def test_enum_error_falls_back_to_window_manager(self):
+        fake_win32gui = MagicMock()
+        fake_win32gui.EnumWindows.side_effect = OSError("EnumWindows blew up")
+        with patch("core.mfa_detection._IS_WINDOWS", True), \
+             patch.dict(sys.modules, {"win32gui": fake_win32gui}), \
+             patch(
+                 "core.window_manager.list_windows",
+                 return_value=[{"title": "Chrome"}, {"title": ""}],
+             ):
+            titles = _get_window_titles()
+        # The empty-title window is skipped (the ``if t:`` false branch).
+        assert titles == ["Chrome"]
+
+    def test_enum_and_window_manager_both_fail(self):
+        fake_win32gui = MagicMock()
+        fake_win32gui.EnumWindows.side_effect = OSError("EnumWindows blew up")
+        with patch("core.mfa_detection._IS_WINDOWS", True), \
+             patch.dict(sys.modules, {"win32gui": fake_win32gui}), \
+             patch("core.window_manager.list_windows", side_effect=OSError("wm dead")):
+            titles = _get_window_titles()
+        assert titles == []
+
+
+class _FakeControl:
+    """Minimal stand-in for a uiautomation control with raising properties.
+
+    MagicMock attribute access never raises (``side_effect`` only fires on
+    *call*), so to exercise the attribute-read ``except`` branches we need real
+    properties that raise.
+    """
+
+    def __init__(
+        self,
+        type_name="",
+        name="",
+        is_password=False,
+        raise_type=False,
+        raise_name=False,
+    ):
+        self._type_name = type_name
+        self._name = name
+        self.IsPassword = is_password
+        self._raise_type = raise_type
+        self._raise_name = raise_name
+
+    @property
+    def ControlTypeName(self):
+        if self._raise_type:
+            raise RuntimeError("ControlTypeName read failed")
+        return self._type_name
+
+    @property
+    def Name(self):
+        if self._raise_name:
+            raise RuntimeError("Name read failed")
+        return self._name
+
+
+class TestUiaCheckChildScanBranches:
+    """Branches in _uia_check's child-control scan: 376-378, 383->389, 392->373, 399-400."""
+
+    def setup_method(self):
+        import core.mfa_detection as m
+
+        m._UIA_AVAILABLE = None
+        m._auto = None
+
+    def teardown_method(self):
+        import core.mfa_detection as m
+
+        m._UIA_AVAILABLE = None
+        m._auto = None
+
+    def _run(self, children, win_name="ZZZ Unmatched Window 98765"):
+        import core.mfa_detection as m
+
+        m._UIA_AVAILABLE = True
+        mock_auto = MagicMock()
+        m._auto = mock_auto
+        win = MagicMock()
+        win.Name = win_name
+        win.GetChildren.return_value = children
+        root = MagicMock()
+        root.GetChildren.return_value = [win]
+        mock_auto.GetRootControl.return_value = root
+        with patch("core.mfa_detection._IS_WINDOWS", True):
+            return _uia_check()
+
+    def test_control_type_read_error_skips_control(self):
+        """Lines 376-378: reading ControlTypeName raises → control skipped."""
+        result = self._run([_FakeControl(raise_type=True)])
+        assert result is None
+
+    def test_edit_control_not_password_falls_through(self):
+        """Branch 383->389: an EditControl that is not a password field."""
+        result = self._run([_FakeControl(type_name="EditControl", is_password=False)])
+        assert result is None
+
+    def test_text_control_empty_name_skipped(self):
+        """Branch 392->373: a TextControl with whitespace-only Name."""
+        result = self._run([_FakeControl(type_name="TextControl", name="   ")])
+        assert result is None
+
+    def test_text_control_name_read_error(self):
+        """Lines 399-400: reading a TextControl's Name raises → swallowed."""
+        result = self._run([_FakeControl(type_name="TextControl", raise_name=True)])
+        assert result is None
