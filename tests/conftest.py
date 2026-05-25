@@ -90,23 +90,81 @@ def _install_headless_stubs() -> None:
             def after(self, *a, **kw): pass
             def after_cancel(self, *a): pass
             def bind(self, *a, **kw): pass
+            def unbind(self, *a, **kw): pass
             def configure(self, *a, **kw): pass
+            config = configure
+            def cget(self, key, default=None): return default
             def grid(self, *a, **kw): pass
+            def grid_remove(self, *a, **kw): pass
+            def grid_forget(self, *a, **kw): pass
+            def grid_columnconfigure(self, *a, **kw): pass
+            def grid_rowconfigure(self, *a, **kw): pass
             def pack(self, *a, **kw): pass
+            def pack_forget(self, *a, **kw): pass
             def place(self, *a, **kw): pass
+            def place_forget(self, *a, **kw): pass
+            def overrideredirect(self, *a, **kw): pass
+            def attributes(self, *a, **kw): pass
+            def wm_attributes(self, *a, **kw): pass
+            def geometry(self, *a, **kw): pass
+            def title(self, *a, **kw): pass
+            def lift(self, *a, **kw): pass
+            def lower(self, *a, **kw): pass
+            def withdraw(self, *a, **kw): pass
+            def deiconify(self, *a, **kw): pass
+            def iconify(self, *a, **kw): pass
+            def state(self, *a, **kw): return "normal"
+            def protocol(self, *a, **kw): pass
+            def focus_set(self, *a, **kw): pass
+            def focus_force(self, *a, **kw): pass
+            def update(self, *a, **kw): pass
+            def update_idletasks(self, *a, **kw): pass
+            def winfo_id(self): return 0
             def winfo_children(self): return []
             def winfo_exists(self): return True
+            def winfo_width(self): return 100
+            def winfo_height(self): return 100
+            def winfo_x(self): return 0
+            def winfo_y(self): return 0
+            def winfo_rootx(self): return 0
+            def winfo_rooty(self): return 0
+            def winfo_screenwidth(self): return 1920
+            def winfo_screenheight(self): return 1080
+            def winfo_ismapped(self): return True
+
+        # Canvas adds item-creation helpers; each returns a fake item id.
+        _canvas_extra = {
+            "create_oval": lambda self, *a, **kw: 1,
+            "create_text": lambda self, *a, **kw: 2,
+            "create_rectangle": lambda self, *a, **kw: 3,
+            "create_line": lambda self, *a, **kw: 4,
+            "create_polygon": lambda self, *a, **kw: 5,
+            "create_arc": lambda self, *a, **kw: 6,
+            "create_image": lambda self, *a, **kw: 7,
+            "create_window": lambda self, *a, **kw: 8,
+            "delete": lambda self, *a, **kw: None,
+            "coords": lambda self, *a, **kw: (0, 0, 0, 0),
+            "itemconfig": lambda self, *a, **kw: None,
+            "itemconfigure": lambda self, *a, **kw: None,
+            "move": lambda self, *a, **kw: None,
+            "bbox": lambda self, *a, **kw: (0, 0, 0, 0),
+            "tag_bind": lambda self, *a, **kw: None,
+            "yview": lambda self, *a, **kw: None,
+            "xview": lambda self, *a, **kw: None,
+        }
 
         _tk.Tk = _Tk
         _tk.Frame = type("Frame", (_Tk,), {})
+        _tk.Toplevel = type("Toplevel", (_Tk,), {})
         _tk.Label = type("Label", (_Tk,), {})
         _tk.Button = type("Button", (_Tk,), {})
         _tk.Entry = type("Entry", (_Tk,), {})
         _tk.Text = type("Text", (_Tk,), {})
-        _tk.Canvas = type("Canvas", (_Tk,), {})
+        _tk.Canvas = type("Canvas", (_Tk,), _canvas_extra)
         _tk.Scrollbar = type("Scrollbar", (_Tk,), {})
         _tk.Listbox = type("Listbox", (_Tk,), {})
         _tk.Menu = type("Menu", (_Tk,), {})
+        _tk.TclError = type("TclError", (Exception,), {})
         _tk.StringVar = type("StringVar", (_Var,), {})
         _tk.IntVar = type("IntVar", (_Var,), {})
         _tk.DoubleVar = type("DoubleVar", (_Var,), {})

@@ -7,9 +7,20 @@ _color_for_kind. GUI class tests are not included (require tkinter runtime).
 
 from __future__ import annotations
 
+import sys
+from unittest.mock import MagicMock, patch
+
 import pytest
 
-from gui.overlay import _coords_from_action, _label_for_action, _color_for_kind
+import gui.overlay as overlay_mod
+from gui.overlay import (
+    ActionOverlay,
+    _Indicator,
+    _color_for_kind,
+    _coords_from_action,
+    _label_for_action,
+    _make_clickthrough,
+)
 
 
 # ── Tests: _coords_from_action ────────────────────────────────────────────
@@ -168,3 +179,149 @@ class TestColorForKind:
 
     def test_empty_string_is_orange(self):
         assert _color_for_kind("") == "#e8793a"
+
+
+# ── Tests: ActionOverlay (class) ──────────────────────────────────────────
+
+
+class TestActionOverlay:
+    def test_show_action_schedules_on_main_thread(self):
+        master = MagicMock()
+        ov = ActionOverlay(master)
+        ov.show_action({"action": "click", "x": 10, "y": 20})
+        master.after.assert_called_once()
+        # First positional arg is delay (0), second is the bound _show_main.
+        assert master.after.call_args.args[0] == 0
+
+    def test_show_action_ignores_actions_without_coords(self):
+        master = MagicMock()
+        ov = ActionOverlay(master)
+        ov.show_action({"action": "scroll"})
+        master.after.assert_not_called()
+
+    def test_show_action_swallows_schedule_errors(self):
+        master = MagicMock()
+        master.after.side_effect = overlay_mod.tk.TclError("dead")
+        ov = ActionOverlay(master)
+        ov.show_action({"action": "click", "x": 1, "y": 2})  # must not raise
+
+    def test_show_main_creates_indicator_and_schedules_dismiss(self):
+        master = MagicMock()
+        ov = ActionOverlay(master)
+        with patch.object(overlay_mod, "_Indicator") as FakeInd:
+            ov._show_main((5, 6), "click", "click")
+        FakeInd.assert_called_once()
+        assert ov._current is FakeInd.return_value
+        # Schedules the auto-dismiss with _SHOW_MS.
+        master.after.assert_called_once_with(overlay_mod._SHOW_MS, ov._dismiss)
+
+    def test_show_main_destroys_previous_indicator(self):
+        master = MagicMock()
+        ov = ActionOverlay(master)
+        previous = MagicMock()
+        ov._current = previous
+        with patch.object(overlay_mod, "_Indicator"):
+            ov._show_main((5, 6), "label", "click")
+        previous.destroy.assert_called_once()
+
+    def test_show_main_swallows_draw_errors(self):
+        master = MagicMock()
+        ov = ActionOverlay(master)
+        with patch.object(overlay_mod, "_Indicator", side_effect=overlay_mod.tk.TclError("x")):
+            ov._show_main((5, 6), "label", "click")  # must not raise
+
+    def test_dismiss_destroys_and_clears_current(self):
+        ov = ActionOverlay(MagicMock())
+        ind = MagicMock()
+        ov._current = ind
+        ov._dismiss()
+        ind.destroy.assert_called_once()
+        assert ov._current is None
+
+    def test_dismiss_swallows_destroy_errors(self):
+        ov = ActionOverlay(MagicMock())
+        ind = MagicMock()
+        ind.destroy.side_effect = overlay_mod.tk.TclError("boom")
+        ov._current = ind
+        ov._dismiss()  # must not raise
+        assert ov._current is None
+
+    def test_dismiss_noop_when_no_current(self):
+        ov = ActionOverlay(MagicMock())
+        ov._dismiss()  # nothing to destroy, must not raise
+        assert ov._current is None
+
+
+# ── Tests: _Indicator (class) ─────────────────────────────────────────────
+
+
+class TestIndicator:
+    def test_construct_with_label_draws_canvas(self):
+        ind = _Indicator(MagicMock(), x=100, y=200, label="click (1, 2)", kind="click")
+        assert ind.win is not None
+        assert ind.canvas is not None
+        ind.destroy()
+
+    def test_construct_without_label(self):
+        ind = _Indicator(MagicMock(), x=0, y=0, label="", kind="type_text")
+        ind.destroy()
+
+    def test_destroy_swallows_errors(self):
+        ind = _Indicator(MagicMock(), x=10, y=10, label="x", kind="hotkey")
+        ind.win = MagicMock()
+        ind.win.destroy.side_effect = overlay_mod.tk.TclError("gone")
+        ind.destroy()  # must not raise
+
+    def test_construct_when_transparency_unsupported(self):
+        class _NoAlphaWin(overlay_mod.tk.Toplevel):
+            def attributes(self, *a, **kw):
+                # -topmost succeeds; -alpha / -transparentcolor are unsupported.
+                if a and a[0] in ("-alpha", "-transparentcolor"):
+                    raise overlay_mod.tk.TclError("unsupported")
+
+        with patch.object(overlay_mod.tk, "Toplevel", _NoAlphaWin):
+            ind = _Indicator(MagicMock(), x=5, y=5, label="x", kind="click")
+        ind.destroy()
+
+
+# ── Tests: _make_clickthrough ─────────────────────────────────────────────
+
+
+class TestMakeClickthrough:
+    def test_noop_on_non_windows(self):
+        with patch.object(sys, "platform", "linux"):
+            _make_clickthrough(MagicMock())  # returns early, no raise
+
+    def test_applies_extended_style_on_windows(self):
+        fake_user32 = MagicMock()
+        fake_user32.GetParent.return_value = 1234
+        fake_user32.GetWindowLongW.return_value = 0
+        fake_ctypes = MagicMock()
+        fake_ctypes.windll.user32 = fake_user32
+        with (
+            patch.object(sys, "platform", "win32"),
+            patch.dict(sys.modules, {"ctypes": fake_ctypes}),
+        ):
+            _make_clickthrough(MagicMock())
+        fake_user32.SetWindowLongW.assert_called_once()
+
+    def test_returns_when_no_hwnd(self):
+        fake_user32 = MagicMock()
+        fake_user32.GetParent.return_value = 0  # falsy hwnd → early return
+        fake_ctypes = MagicMock()
+        fake_ctypes.windll.user32 = fake_user32
+        with (
+            patch.object(sys, "platform", "win32"),
+            patch.dict(sys.modules, {"ctypes": fake_ctypes}),
+        ):
+            _make_clickthrough(MagicMock())
+        fake_user32.SetWindowLongW.assert_not_called()
+
+    def test_swallows_oserror(self):
+        fake_ctypes = MagicMock()
+        fake_ctypes.windll.user32.GetParent.side_effect = OSError("nope")
+        with (
+            patch.object(sys, "platform", "win32"),
+            patch.dict(sys.modules, {"ctypes": fake_ctypes}),
+        ):
+            _make_clickthrough(MagicMock())  # must not raise
