@@ -150,3 +150,120 @@ class TestRetriesExhaustedConnectionError:
                 base_delay=0.01,
                 provider_label="test",
             )
+
+
+class TestPostWithRetryLoopNeverRuns:
+    """The defensive 'unknown reasons' fallback (loop body never executes)."""
+
+    @patch("core.llm_client.requests.post")
+    def test_negative_max_retries_raises_unknown_reason(self, mock_post: MagicMock) -> None:
+        """With max_retries < 0 the retry loop never enters, so neither
+        last_status nor last_exc is set and the final fallback raises."""
+        client = LLMClient()
+        with pytest.raises(LLMError, match="failed for unknown reasons"):
+            client._post_with_retry(
+                "https://api.example.com/v1/chat/completions",
+                {"Content-Type": "application/json"},
+                {"model": "gpt-4o", "messages": []},
+                timeout=10,
+                max_retries=-1,
+                base_delay=0.01,
+                provider_label="test",
+            )
+        # The loop body never ran, so requests.post was never called.
+        mock_post.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# list_models convenience wrapper
+# ---------------------------------------------------------------------------
+
+
+class TestListModelsWrapper:
+    """list_models() delegates to the module-level fetch_models()."""
+
+    @patch("core.llm_client.fetch_models", return_value=["m-a", "m-b"])
+    def test_delegates_to_fetch_models(self, mock_fetch: MagicMock) -> None:
+        client = LLMClient()
+        result = client.list_models("openai", "sk-test", "https://custom")
+        assert result == ["m-a", "m-b"]
+        mock_fetch.assert_called_once_with("openai", "sk-test", "https://custom")
+
+
+# ---------------------------------------------------------------------------
+# Anthropic-native paths: vision message + message/block conversion edges
+# ---------------------------------------------------------------------------
+
+
+class TestAnthropicVisionAndConversion:
+    """Cover the anthropic_native vision branch and the conversion loops."""
+
+    @patch("core.llm_client.requests.post")
+    def test_vision_uses_native_anthropic_image_block(self, mock_post: MagicMock) -> None:
+        """chat_with_vision against an anthropic provider builds a native
+        image block via _make_anthropic_vision_message and routes to
+        _chat_anthropic."""
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=MagicMock(return_value={"content": [{"type": "text", "text": "a cat"}]}),
+        )
+        client = LLMClient()
+        result = client.chat_with_vision(
+            "anthropic",
+            "sk-ant",
+            "claude-opus-4-7",
+            [{"role": "user", "content": "earlier"}],
+            image_base64="aGVsbG8=",
+            prompt="What is this?",
+        )
+        assert result == "a cat"
+        # The outgoing payload's final message must carry a native image block.
+        sent_payload = mock_post.call_args.kwargs["json"]
+        last_msg = sent_payload["messages"][-1]
+        block_types = [b["type"] for b in last_msg["content"]]
+        assert "image" in block_types
+
+    @patch("core.llm_client.requests.post")
+    def test_anthropic_skips_unrecognised_role(self, mock_post: MagicMock) -> None:
+        """A message whose role is neither system nor user/assistant is dropped."""
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=MagicMock(return_value={"content": [{"type": "text", "text": "ok"}]}),
+        )
+        client = LLMClient()
+        result = client.chat(
+            "anthropic",
+            "sk-ant",
+            "claude-opus-4-7",
+            [
+                {"role": "tool", "content": "ignored tool output"},
+                {"role": "user", "content": "hi"},
+            ],
+        )
+        assert result == "ok"
+        sent_payload = mock_post.call_args.kwargs["json"]
+        roles = [m["role"] for m in sent_payload["messages"]]
+        assert roles == ["user"]  # the 'tool' message was skipped
+
+    @patch("core.llm_client.requests.post")
+    def test_anthropic_skips_unknown_content_block(self, mock_post: MagicMock) -> None:
+        """A response content block of an unknown type is ignored; text is kept."""
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=MagicMock(
+                return_value={
+                    "content": [
+                        {"type": "thinking", "text": "scratchpad"},
+                        {"type": "text", "text": "final answer"},
+                    ]
+                }
+            ),
+        )
+        client = LLMClient()
+        result = client.chat(
+            "anthropic",
+            "sk-ant",
+            "claude-opus-4-7",
+            [{"role": "user", "content": "hi"}],
+        )
+        assert result == "final answer"
