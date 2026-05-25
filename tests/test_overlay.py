@@ -10,18 +10,15 @@ from __future__ import annotations
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import gui.overlay as overlay_mod
 from gui.overlay import (
     ActionOverlay,
-    _Indicator,
     _color_for_kind,
     _coords_from_action,
+    _Indicator,
     _label_for_action,
     _make_clickthrough,
 )
-
 
 # ── Tests: _coords_from_action ────────────────────────────────────────────
 
