@@ -208,16 +208,73 @@ def _install_headless_stubs() -> None:
                 for k, v in kw.items():
                     setattr(self, k, v)
             def grid(self, *a, **kw): pass
+            def grid_forget(self, *a, **kw): pass
             def pack(self, *a, **kw): pass
+            def pack_forget(self, *a, **kw): pass
             def place(self, *a, **kw): pass
+            def place_forget(self, *a, **kw): pass
             def configure(self, *a, **kw): pass
+            config = configure
             def cget(self, key, default=None): return getattr(self, key, default)
             def bind(self, *a, **kw): pass
+            def unbind(self, *a, **kw): pass
             def after(self, *a, **kw): return ""
             def after_cancel(self, *a): pass
             def destroy(self): pass
+            # text/entry widget helpers
+            def insert(self, *a, **kw): pass
+            def delete(self, *a, **kw): pass
+            def get(self, *a, **kw): return ""
+            def set(self, *a, **kw): pass
+            def see(self, *a, **kw): pass
+            def index(self, *a, **kw): return "1.0"
+            def icursor(self, *a, **kw): pass
+            def select_range(self, *a, **kw): pass
+            def focus(self, *a, **kw): pass
+            def focus_set(self, *a, **kw): pass
+            def focus_force(self, *a, **kw): pass
+            def yview(self, *a, **kw): pass
+            def yview_moveto(self, *a, **kw): pass
+            def xview(self, *a, **kw): pass
+            def tag_add(self, *a, **kw): pass
+            def tag_config(self, *a, **kw): pass
+            def tag_configure(self, *a, **kw): pass
+            def tag_remove(self, *a, **kw): pass
+            def tag_bind(self, *a, **kw): pass
+            # toplevel/window helpers
+            def title(self, *a, **kw): pass
+            def geometry(self, *a, **kw): pass
+            def resizable(self, *a, **kw): pass
+            def minsize(self, *a, **kw): pass
+            def maxsize(self, *a, **kw): pass
+            def transient(self, *a, **kw): pass
+            def grab_set(self, *a, **kw): pass
+            def grab_release(self, *a, **kw): pass
+            def wait_window(self, *a, **kw): pass
+            def protocol(self, *a, **kw): pass
+            def overrideredirect(self, *a, **kw): pass
+            def attributes(self, *a, **kw): pass
+            def wm_attributes(self, *a, **kw): pass
+            def lift(self, *a, **kw): pass
+            def lower(self, *a, **kw): pass
+            def deiconify(self, *a, **kw): pass
+            def withdraw(self, *a, **kw): pass
+            def iconify(self, *a, **kw): pass
+            def state(self, *a, **kw): return "normal"
             def winfo_children(self): return []
             def winfo_exists(self): return True
+            def winfo_toplevel(self): return self
+            def winfo_width(self): return 100
+            def winfo_height(self): return 100
+            def winfo_x(self): return 0
+            def winfo_y(self): return 0
+            def winfo_rootx(self): return 0
+            def winfo_rooty(self): return 0
+            def winfo_reqwidth(self): return 100
+            def winfo_reqheight(self): return 100
+            def winfo_screenwidth(self): return 1920
+            def winfo_screenheight(self): return 1080
+            def winfo_ismapped(self): return True
             def grid_remove(self): pass
             def grid_columnconfigure(self, *a, **kw): pass
             def grid_rowconfigure(self, *a, **kw): pass
