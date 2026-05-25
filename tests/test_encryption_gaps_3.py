@@ -4,6 +4,7 @@ Mocks Windows-only ctypes structures and DPAPI functions to exercise
 the encrypt/decrypt Windows branches (lines 264-290, 306-331) on Linux.
 """
 
+import importlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -234,3 +235,32 @@ class TestRoundTripWindowsDPAPI:
             result = vault2.retrieve("test_key")
 
         assert result == "my_secret_value"
+
+
+class TestWindowsDpapiBindingsImport:
+    """Lines 40-87: the module-level Windows DPAPI ctypes bindings.
+
+    These only execute at import time on Windows. We reimport the module with
+    ``platform.system()`` faked to ``"Windows"`` and ``ctypes.windll`` created
+    (the real ctypes on Linux has no ``windll``), so the binding block runs.
+    The module is reloaded again afterwards to restore the Linux state.
+    """
+
+    def test_windows_bindings_are_set_up_on_import(self):
+        with patch("ctypes.windll", MagicMock(), create=True):
+            try:
+                with patch("platform.system", return_value="Windows"):
+                    reloaded = importlib.reload(enc_mod)
+                    assert reloaded._IS_WINDOWS is True
+                    # The DPAPI Structure and function bindings exist.
+                    assert hasattr(reloaded, "_DATA_BLOB")
+                    assert hasattr(reloaded, "_CryptProtectData")
+                    assert hasattr(reloaded, "_CryptUnprotectData")
+                    assert reloaded.CRYPTPROTECT_UI_FORBIDDEN == 0x01
+                    # The DATA_BLOB layout carries the two documented fields.
+                    field_names = [name for name, _ in reloaded._DATA_BLOB._fields_]
+                    assert field_names == ["cbData", "pbData"]
+            finally:
+                importlib.reload(enc_mod)
+        # Back to the Linux defaults for the rest of the session.
+        assert enc_mod._IS_WINDOWS is False
