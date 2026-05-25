@@ -1,10 +1,13 @@
 """Tests for gui/tabs/settings_tab.py — logic methods with mocked CTk."""
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import customtkinter as ctk
 import pytest
+
+import gui.tabs.settings_tab as st_mod
 
 
 @pytest.fixture()
@@ -119,3 +122,100 @@ class TestSettingsTabReloadPlugins:
         settings_tab.app.engine = MagicMock()
         settings_tab.app.engine.plugin_loader.list_plugins.side_effect = RuntimeError("fail")
         settings_tab._refresh_plugin_list()  # should not raise
+
+    def test_refresh_destroys_existing_children(self, settings_tab):
+        # Existing children must be destroyed before re-rendering.
+        stale = MagicMock()
+        settings_tab.plugin_list_frame.winfo_children = lambda: [stale]
+        settings_tab.app.engine = None
+        settings_tab._refresh_plugin_list()
+        stale.destroy.assert_called_once()
+
+    def test_refresh_renders_plugin_rows(self, settings_tab):
+        settings_tab.app.engine = MagicMock()
+        settings_tab.app.engine.plugin_loader.list_plugins.return_value = [
+            {"name": "alpha", "version": "1.2", "description": "first"},
+            {"name": "beta", "version": "0.9", "description": "second"},
+        ]
+        # Renders a row per plugin without raising (stub widgets don't track
+        # children, so we assert the data path ran).
+        settings_tab._refresh_plugin_list()
+        settings_tab.app.engine.plugin_loader.list_plugins.assert_called_once()
+
+    def test_reload_plugins_success_calls_load_all(self, settings_tab):
+        settings_tab.app.engine = MagicMock()
+        settings_tab.app.engine.plugin_loader.list_plugins.return_value = []
+        settings_tab._reload_plugins()
+        settings_tab.app.engine.plugin_loader.load_all.assert_called_once()
+
+    def test_reload_plugins_handles_error(self, settings_tab):
+        settings_tab.app.engine = MagicMock()
+        settings_tab.app.engine.plugin_loader.load_all.side_effect = ImportError("boom")
+        settings_tab._reload_plugins()  # should not raise
+
+
+class TestSettingsTabAddFieldUnknownType:
+    def test_unknown_field_type_returns_without_widget(self, settings_tab):
+        before = dict(settings_tab._vars)
+        settings_tab._add_field(
+            settings_tab.scroll, "Label", "mystery", "", field_type="bogus"
+        )
+        # No var registered for an unrecognised field type.
+        assert settings_tab._vars == before
+
+
+class TestSettingsTabResetTypedVars:
+    def test_reset_double_var(self, settings_tab):
+        var = MagicMock(spec=ctk.DoubleVar)
+        settings_tab._vars = {"temperature": var}
+        settings_tab._reset()
+        var.set.assert_called_with(float("0.3"))
+
+    def test_reset_boolean_var(self, settings_tab):
+        var = MagicMock(spec=ctk.BooleanVar)
+        settings_tab._vars = {"debug_mode": var}
+        settings_tab._reset()
+        var.set.assert_called_with(False)
+
+
+class TestSettingsTabLoadConfigTypedVars:
+    def test_load_double_var(self, settings_tab):
+        var = MagicMock(spec=ctk.DoubleVar)
+        settings_tab._vars = {"temperature": var}
+        settings_tab.load_config({"temperature": "0.5"})
+        var.set.assert_called_with(0.5)
+
+
+class TestSettingsTabSaveToDisk:
+    @pytest.fixture()
+    def _patch_config_path(self, tmp_path, monkeypatch):
+        # Redirect Path(__file__).resolve().parent.parent / "config" / ... into tmp.
+        fake_file = tmp_path / "gui" / "tabs" / "settings_tab.py"
+        monkeypatch.setattr(st_mod, "Path", lambda _arg: fake_file)
+        return tmp_path / "gui" / "config" / "config.json"
+
+    def test_save_writes_new_file(self, settings_tab, _patch_config_path):
+        settings_tab._gather_config = lambda: {"model": "claude-3.5-sonnet"}
+        settings_tab._save()
+        assert _patch_config_path.exists()
+        assert json.loads(_patch_config_path.read_text())["model"] == "claude-3.5-sonnet"
+
+    def test_save_merges_existing(self, settings_tab, _patch_config_path):
+        _patch_config_path.parent.mkdir(parents=True, exist_ok=True)
+        _patch_config_path.write_text(json.dumps({"existing": "kept", "model": "old"}))
+        settings_tab._gather_config = lambda: {"model": "new"}
+        settings_tab._save()
+        data = json.loads(_patch_config_path.read_text())
+        assert data["existing"] == "kept"
+        assert data["model"] == "new"
+
+    def test_save_applies_theme(self, settings_tab, _patch_config_path):
+        settings_tab._gather_config = lambda: {"theme": "dracula"}
+        settings_tab._save()
+        settings_tab.app.set_theme.assert_called_with("dracula")
+
+    def test_save_handles_corrupt_existing(self, settings_tab, _patch_config_path):
+        _patch_config_path.parent.mkdir(parents=True, exist_ok=True)
+        _patch_config_path.write_text("{not valid json")
+        settings_tab._gather_config = lambda: {"model": "x"}
+        settings_tab._save()  # JSONDecodeError is caught, no raise
