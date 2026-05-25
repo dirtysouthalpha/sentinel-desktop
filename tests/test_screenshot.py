@@ -473,11 +473,13 @@ class TestFindTemplate:
     def test_no_cv2_returns_none(self):
         from core.screenshot import find_template
 
+        # Setting a module to None in sys.modules makes ``import <name>``
+        # raise ImportError natively — no need to patch builtins.__import__
+        # (which is fragile: traceback formatting lazily imports ``os`` and
+        # would re-enter the mock on Python 3.14).
         with patch.dict("sys.modules", {"cv2": None, "numpy": None}):
-            # Force re-import failure
-            with patch("builtins.__import__", side_effect=lambda *a, **kw: __import__(*a, **kw) if a[0] not in ("cv2", "numpy") else (_ for _ in ()).throw(ImportError("no cv2"))):
-                result = find_template("test.png")
-                assert result is None
+            result = find_template("test.png")
+            assert result is None
 
 
 class TestWaitForTemplate:
