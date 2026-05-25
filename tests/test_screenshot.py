@@ -266,7 +266,7 @@ class TestCaptureRegion:
         fake_img = Image.new("RGB", (50, 50), "green")
         with patch("core.screenshot.pyautogui") as mock_pg:
             mock_pg.screenshot.return_value = fake_img
-            result = capture_region(10, 20, 50, 50)
+            capture_region(10, 20, 50, 50)
             mock_pg.screenshot.assert_called_with(region=(10, 20, 50, 50))
 
     @patch("core.screenshot._HAS_MSS", True)
