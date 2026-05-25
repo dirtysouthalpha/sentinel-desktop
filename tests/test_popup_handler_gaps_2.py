@@ -6,7 +6,6 @@ Focuses on lines 349, 382-383, 530, 718-729, 735-760.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PIL import Image
 
 import core.popup_handler as ph
@@ -56,11 +55,19 @@ class TestForegroundWindowTitleFallback:
 
     def test_wm_fallback_raising_returns_empty(self):
         """Lines 382-383: when the window_manager fallback itself raises, the
-        exception is swallowed and an empty title is returned."""
+        exception is swallowed and an empty title is returned.
+
+        A fake ``win32gui`` whose ``GetForegroundWindow`` raises is injected so
+        the first try-block fails deterministically (instead of relying on
+        win32gui being unimportable, which isn't guaranteed once another test
+        has left a fake win32gui in ``sys.modules``)."""
+        fake_win32gui = MagicMock()
+        fake_win32gui.GetForegroundWindow.side_effect = OSError("no win32")
         with patch.object(ph, "_IS_WINDOWS", True), \
+             patch.dict("sys.modules", {"win32gui": fake_win32gui}), \
              patch("core.window_manager.list_windows", side_effect=OSError("no wm")):
-            # win32gui import fails on Linux (first except), then the wm
-            # fallback raises too (second except) -> "".
+            # win32gui path raises (first except), then the wm fallback raises
+            # too (second except) -> "".
             assert ph._get_foreground_window_title() == ""
 
 
@@ -344,7 +351,7 @@ class TestCheckAndDismiss:
         with patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100))), \
              patch.object(ph, "_ocr_text", return_value="Error\nAn error has occurred."), \
              patch.object(ph, "_get_foreground_window_title", return_value="Error"):
-            result = handler.check_and_dismiss()
+            handler.check_and_dismiss()
         # Should not have attempted to dismiss
         assert handler._dismiss_attempts == handler.MAX_DISMISS_ATTEMPTS
 
