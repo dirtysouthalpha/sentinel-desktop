@@ -7,11 +7,11 @@ FastAPI endpoints with psutil mocked appropriately.
 
 from __future__ import annotations
 
-import importlib
+import builtins
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
-from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -75,6 +75,26 @@ def _make_psutil(
     return mod
 
 
+@contextmanager
+def _no_psutil():
+    """Make an in-function ``import psutil`` raise ImportError.
+
+    The dashboard helpers import psutil lazily inside each function, so the
+    ``except ImportError`` fallback only fires when the import statement
+    itself fails. Patching ``builtins.__import__`` intercepts the statement
+    regardless of whether psutil is already cached in ``sys.modules``.
+    """
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "psutil":
+            raise ImportError("psutil unavailable")
+        return real_import(name, *args, **kwargs)
+
+    with patch("builtins.__import__", side_effect=fake_import):
+        yield
+
+
 # ── Tests: _get_cpu_info ──────────────────────────────────────────────────
 
 
@@ -111,12 +131,13 @@ class TestGetCpuInfo:
     def test_fallback_when_no_psutil(self):
         import core.dashboard as dash
 
-        # Patch the function to simulate ImportError fallback
-        with patch.object(dash, "_get_cpu_info", wraps=None) as mock_cpu:
-            mock_cpu.return_value = {"percent": 0, "count_logical": "unknown"}
+        # Genuinely trigger the ``except ImportError`` branch by making the
+        # in-function ``import psutil`` fail.
+        with _no_psutil():
             result = dash._get_cpu_info()
-        assert "percent" in result
         assert result["percent"] == 0
+        # On ImportError the logical-count falls back to platform.processor().
+        assert "count_logical" in result
 
 
 # ── Tests: _get_memory_info ───────────────────────────────────────────────
@@ -140,8 +161,7 @@ class TestGetMemoryInfo:
     def test_fallback_when_no_psutil(self):
         import core.dashboard as dash
 
-        with patch.object(dash, "_get_memory_info", wraps=None) as mock_mem:
-            mock_mem.return_value = {"total_gb": 0, "percent": 0}
+        with _no_psutil():
             result = dash._get_memory_info()
         assert result["total_gb"] == 0
         assert result["percent"] == 0
@@ -189,8 +209,7 @@ class TestGetDiskInfo:
     def test_fallback_when_no_psutil(self):
         import core.dashboard as dash
 
-        with patch.object(dash, "_get_disk_info", wraps=None) as mock_disk:
-            mock_disk.return_value = []
+        with _no_psutil():
             result = dash._get_disk_info()
         assert result == []
 
@@ -314,8 +333,9 @@ class TestDashboardOverview:
 
     @pytest.mark.asyncio
     async def test_overview_platform_info(self):
-        import core.dashboard as dash
         import platform
+
+        import core.dashboard as dash
 
         fake_psutil = _make_psutil()
         with patch.dict(sys.modules, {"psutil": fake_psutil}), \
