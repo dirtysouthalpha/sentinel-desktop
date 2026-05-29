@@ -92,7 +92,11 @@ class User:
     last_login: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialise to a JSON-friendly dict."""
+        """Serialise to a JSON-friendly dict.
+
+        Returns:
+            dict[str, Any]: Dictionary containing all user fields.
+        """
         return {
             "username": self.username,
             "password_hash": self.password_hash,
@@ -105,7 +109,14 @@ class User:
 
     @classmethod
     def from_dict(cls: type[User], data: dict[str, Any]) -> User:
-        """Deserialise from a dict (e.g. loaded from JSON)."""
+        """Deserialise from a dict (e.g. loaded from JSON).
+
+        Args:
+            data: Dictionary with user fields (username, password_hash, salt, etc.).
+
+        Returns:
+            User: Reconstructed User instance.
+        """
         return cls(
             username=data["username"],
             password_hash=data["password_hash"],
@@ -169,6 +180,12 @@ def is_default_password(password: str) -> bool:
 
     This is a fast constant-time check that callers can use to determine
     whether a user still needs to rotate the bootstrap password.
+
+    Args:
+        password: The password string to check.
+
+    Returns:
+        bool: True if the password matches the default admin password.
     """
     return secrets.compare_digest(password, DEFAULT_ADMIN_PASSWORD)
 
@@ -267,12 +284,16 @@ class AuthManager:
     ) -> User:
         """Create a new user and persist to disk.
 
-        Returns the created ``User`` instance.
+        Args:
+            username: Unique username for the new account.
+            password: Plain-text password (will be bcrypt-hashed before storage).
+            role: Role to assign (defaults to VIEWER).
 
-        Raises
-        ------
-        ValueError
-            If *username* already exists.
+        Returns:
+            User: The created ``User`` instance.
+
+        Raises:
+            ValueError: If *username* already exists.
         """
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
@@ -293,7 +314,14 @@ class AuthManager:
         return user
 
     def delete_user(self, username: str) -> bool:
-        """Delete a user. Returns ``True`` if the user existed and was removed."""
+        """Delete a user.
+
+        Args:
+            username: The username to delete.
+
+        Returns:
+            bool: True if the user existed and was removed, False otherwise.
+        """
         user = self._users.pop(username, None)
         if user is None:
             return False
@@ -322,7 +350,13 @@ class AuthManager:
     ) -> User | None:
         """Update mutable fields of an existing user.
 
-        Returns the updated ``User``, or ``None`` if the user was not found.
+        Keyword Args:
+            password: New plain-text password (will be bcrypt-hashed).
+            role: New role to assign.
+            regenerate_api_key: If True, generate a fresh API key.
+
+        Returns:
+            User | None: The updated ``User``, or ``None`` if not found.
         """
         user = self._users.get(username)
         if user is None:
@@ -345,11 +379,22 @@ class AuthManager:
         return user
 
     def list_users(self) -> list[User]:
-        """Return a list of all registered users."""
+        """Return a list of all registered users.
+
+        Returns:
+            list[User]: All user accounts.
+        """
         return list(self._users.values())
 
     def get_user(self, username: str) -> User | None:
-        """Look up a user by username."""
+        """Look up a user by username.
+
+        Args:
+            username: The username to look up.
+
+        Returns:
+            User | None: The matching User, or None if not found.
+        """
         return self._users.get(username)
 
     # ------------------------------------------------------------------
@@ -359,8 +404,13 @@ class AuthManager:
     def authenticate(self, username: str, password: str) -> User | None:
         """Verify a username/password pair.
 
-        Returns the ``User`` on success or ``None`` on failure.
-        Updates ``last_login`` on success.
+        Args:
+            username: The username to authenticate.
+            password: The plain-text password to verify.
+
+        Returns:
+            User | None: The ``User`` on success or ``None`` on failure.
+            Updates ``last_login`` on success.
 
         If the user authenticates with ``DEFAULT_ADMIN_PASSWORD``, a warning
         is logged and the caller should check
@@ -398,7 +448,11 @@ class AuthManager:
     def authenticate_api_key(self, key: str) -> User | None:
         """Look up the user that owns *key*.
 
-        Returns the ``User`` or ``None`` if the key is unknown.
+        Args:
+            key: The API key string to look up.
+
+        Returns:
+            User | None: The ``User`` or ``None`` if the key is unknown.
         """
         username = self._api_key_index.get(key)
         if username is None:
@@ -411,6 +465,12 @@ class AuthManager:
 
         This can be used by the API server to refuse startup or force a
         password change redirect before allowing normal operation.
+
+        Args:
+            username: The username to check.
+
+        Returns:
+            bool: True if the user's password matches the default.
         """
         user = self._users.get(username)
         if user is None:
@@ -418,7 +478,11 @@ class AuthManager:
         return _verify_password(DEFAULT_ADMIN_PASSWORD, user.password_hash, user.salt)
 
     def get_users_requiring_rotation(self) -> list[User]:
-        """Return all users whose password still matches ``DEFAULT_ADMIN_PASSWORD``."""
+        """Return all users whose password still matches ``DEFAULT_ADMIN_PASSWORD``.
+
+        Returns:
+            list[User]: Users requiring password rotation.
+        """
         return [
             u for u in self._users.values()
             if _verify_password(DEFAULT_ADMIN_PASSWORD, u.password_hash, u.salt)
@@ -436,19 +500,13 @@ class AuthManager:
     ) -> bool:
         """Decide whether *user* is allowed to perform *method* on *path*.
 
-        Parameters
-        ----------
-        user : User
-            The authenticated user.
-        method : str
-            HTTP method (``GET``, ``POST``, ``PUT``, ``DELETE``, …).
-        path : str
-            Request path, e.g. ``/api/goal``.
+        Args:
+            user: The authenticated user.
+            method: HTTP method (``GET``, ``POST``, ``PUT``, ``DELETE``, …).
+            path: Request path, e.g. ``/api/goal``.
 
-        Returns
-        -------
-        bool
-            ``True`` if the action is permitted.
+        Returns:
+            bool: ``True`` if the action is permitted.
         """
         method = method.upper()
         role = Role(user.role)
@@ -478,7 +536,11 @@ class AuthManager:
     def create_session(self, user: User) -> str:
         """Create a new session token for *user*.
 
-        Returns an opaque token string.
+        Args:
+            user: The authenticated user to create a session for.
+
+        Returns:
+            str: An opaque session token string.
         """
         token = secrets.token_urlsafe(48)
         now = time.time()
@@ -494,8 +556,12 @@ class AuthManager:
     def validate_session(self, token: str) -> User | None:
         """Validate *token* and return the associated ``User``.
 
-        Returns ``None`` if the token is missing, expired, or revoked.
-        Expired sessions are cleaned up automatically.
+        Args:
+            token: The session token to validate.
+
+        Returns:
+            User | None: The associated User, or None if the token is
+            missing, expired, or revoked. Expired sessions are cleaned up.
         """
         session = self._sessions.get(token)
         if session is None:
