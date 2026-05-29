@@ -564,7 +564,26 @@ class PopupHandler:
             A :class:`PopupDetectionResult` with detection and dismissal
             status.
         """
-        # Step 1: Get screenshot
+        inputs = self._prepare_detection_inputs(screenshot)
+        if inputs is None:
+            return PopupDetectionResult()
+        title_text, body_text = inputs
+
+        result = self.detect(title_text, body_text)
+        if not result.detected:
+            self._dismiss_attempts = 0
+            return result
+
+        return self._apply_cooldown_and_dismiss(result)
+
+    def _prepare_detection_inputs(
+        self, screenshot: Image.Image | None
+    ) -> tuple[str, str] | None:
+        """Capture screenshot (if needed), OCR it, and extract title/body text.
+
+        Returns:
+            (title_text, body_text) on success, or None if screenshot capture fails.
+        """
         if screenshot is None:
             try:
                 from core.screenshot import capture_screen
@@ -572,30 +591,20 @@ class PopupHandler:
                 screenshot = capture_screen()
             except Exception as exc:
                 logger.debug("PopupHandler screenshot capture failed: %s", exc)
-                return PopupDetectionResult()
+                return None
 
-        # Step 2: Get foreground window title (Windows-only)
         title_text = _get_foreground_window_title()
-
-        # Step 3: OCR the screenshot
         ocr_output = _ocr_text(screenshot)
         lines = (
             [line.strip() for line in ocr_output.splitlines() if line.strip()] if ocr_output else []
         )
-
-        # If we have a window title, use it; otherwise first OCR line
         if not title_text and lines:
             title_text = lines[0]
         body_text = " ".join(lines[1:]) if len(lines) > 1 else ""
+        return title_text, body_text
 
-        # Step 4: Detect
-        result = self.detect(title_text, body_text)
-
-        if not result.detected:
-            self._dismiss_attempts = 0
-            return result
-
-        # Step 5: Cooldown check — skip if same popup seen recently
+    def _apply_cooldown_and_dismiss(self, result: PopupDetectionResult) -> PopupDetectionResult:
+        """Apply cooldown guard and conditionally auto-dismiss a detected popup."""
         now = time.monotonic()
         if (
             result.popup_type == self._last_popup_type
@@ -612,7 +621,6 @@ class PopupHandler:
         self._last_popup_type = result.popup_type
         self._last_detection_time = now
 
-        # Step 6: Auto-dismiss if enabled and under attempt limit
         if self.auto_dismiss and self._dismiss_attempts < self.MAX_DISMISS_ATTEMPTS:
             result = self.dismiss(result)
 
