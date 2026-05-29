@@ -151,3 +151,67 @@ class TestExecSubWorkflowParams:
         assert result["success"] is True
         call_kwargs = mock_run.call_args
         assert "resolved_val" in str(call_kwargs)
+
+
+# ===========================================================================
+# Missing-branch gap-fills
+# ===========================================================================
+
+
+class TestLoopBodyFailureContinues:
+    """Branch 363->355: body error_policy is NOT 'stop' → loop continues."""
+
+    def test_loop_body_failure_continues_when_policy_is_not_stop(self):
+        engine = WorkflowEngine()
+        tmpdir = tempfile.mkdtemp()
+        wf_path = str(Path(tmpdir) / "test_wf.json")
+
+        body_step = {
+            "id": "body",
+            "type": "action",
+            "action": {"type": "click"},
+            "error_policy": "continue",  # NOT "stop" → loop should not break
+        }
+        loop_step = {
+            "id": "loop1",
+            "type": "loop",
+            "over": "a,b",
+            "body_step": "body",
+            "next_step": None,
+        }
+        wf_data = {"steps": [loop_step, body_step]}
+        Path(wf_path).write_text(json.dumps(wf_data))
+
+        mock_executor = MagicMock()
+        mock_executor.execute_sync.side_effect = RuntimeError("action failed")
+        engine.executor = mock_executor
+
+        result = engine.run_workflow(wf_path)
+        # Both items should have been attempted (2 calls) since policy is "continue"
+        assert mock_executor.execute_sync.call_count == 2
+        assert result.step_results is not None
+
+
+class TestExecActionNonStringValues:
+    """Branch 468->467: action dict value is not a str → loop continues without interpolation."""
+
+    def test_non_string_action_values_skipped(self):
+        engine = WorkflowEngine()
+        engine._variables = {}
+        engine._step_outputs = {}
+
+        mock_executor = MagicMock()
+        mock_executor.execute_sync.return_value = {"success": True, "output": "clicked"}
+        engine.executor = mock_executor
+
+        step = WorkflowStep(
+            id="s1",
+            type="action",
+            action={"action": "click", "x": 50, "y": 100},  # x, y are ints, not strings
+        )
+        result = engine._exec_action(step)
+        assert result["success"] is True
+        # Executor should have been called with the int values preserved
+        called_action = mock_executor.execute_sync.call_args[0][0]
+        assert called_action["x"] == 50
+        assert called_action["y"] == 100

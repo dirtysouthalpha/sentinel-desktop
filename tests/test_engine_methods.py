@@ -159,6 +159,29 @@ class TestLogStepResult:
         eng.forensic_log = []
         eng._log_step_result(99, {"ok": True})  # should not raise
 
+    def test_reversed_loop_skips_non_matching_entries(self):
+        """Covers 1521->1520: the reversed loop passes over non-matching entries
+        before finding the target.
+
+        With log = [step1, step2, step3] and searching for step2, the reversed
+        iteration first encounters step3 (no match → continues), then step2
+        (matches → updates and breaks).  step1 is never reached.
+        """
+        eng = AgentEngine.__new__(AgentEngine)
+        eng.forensic_log = [
+            {"step": 1, "action": "type", "result": {"pending": True}},
+            {"step": 2, "action": "click", "result": {"pending": True}},
+            {"step": 3, "action": "screenshot", "result": {"pending": True}},
+        ]
+        eng._log_step_result(2, {"ok": True, "msg": "clicked"})
+        # step2 must be updated
+        assert eng.forensic_log[1]["result"]["ok"] is True
+        assert eng.forensic_log[1]["result"]["msg"] == "clicked"
+        # step3 was seen first but must NOT be modified (step != 2 → 1521->1520)
+        assert eng.forensic_log[2]["result"]["pending"] is True
+        # step1 must remain untouched as well
+        assert eng.forensic_log[0]["result"]["pending"] is True
+
 
 class TestExportLog:
     def test_exports_valid_json(self):

@@ -1629,3 +1629,186 @@ class TestRunWrapperOllamaBypass:
         with patch.object(eng, "_run_inner", return_value={"steps": 1}) as mock_inner:
             eng.run("test")
             mock_inner.assert_called_once_with("test")
+
+
+# ===================================================================
+# _handle_action_failure — line 846->848 (empty recovery_prompt)
+# ===================================================================
+
+
+class TestHandleActionFailureNoRecoveryPrompt:
+    def _make_eng_with_suggestion(self, recovery_prompt):
+        """Build a minimal bare engine and wire up a recovery suggestion."""
+        eng = AgentEngine.__new__(AgentEngine)
+        eng.step = 1
+        eng._consecutive_failures = 0
+        eng.forensic_log = []
+        eng.logger = MagicMock()
+        eng._recovery_engine = MagicMock()
+
+        suggestion = _recovery_suggestion(
+            strategy="retry_same",
+            pattern="click_miss",
+            confidence=0.5,
+            recovery_prompt=recovery_prompt,
+        )
+        eng._recovery_engine.analyze_failure.return_value = suggestion
+
+        # Stub out the threshold check so it returns None (normal flow)
+        eng._check_action_failure_threshold = MagicMock(return_value=None)
+        return eng
+
+    def test_empty_recovery_prompt_not_appended(self):
+        """Covers 846->848: suggestion.recovery_prompt is "" → False branch.
+
+        The recovery message appended to messages must NOT contain
+        "Recovery hint:" when recovery_prompt is falsy.
+        """
+        eng = self._make_eng_with_suggestion(recovery_prompt="")
+        action = {"action": "click", "x": 1, "y": 2}
+        messages: list = []
+
+        eng._handle_action_failure(action, "click", "missed target", messages)
+
+        assert len(messages) == 1
+        recovery_msg = messages[0]["content"]
+        assert "failed:" in recovery_msg
+        assert "Recovery hint:" not in recovery_msg
+
+    def test_none_recovery_prompt_not_appended(self):
+        """Covers 846->848: suggestion.recovery_prompt is None → False branch."""
+        eng = self._make_eng_with_suggestion(recovery_prompt=None)
+        action = {"action": "click", "x": 1, "y": 2}
+        messages: list = []
+
+        eng._handle_action_failure(action, "click", "missed target", messages)
+
+        assert len(messages) == 1
+        recovery_msg = messages[0]["content"]
+        assert "failed:" in recovery_msg
+        assert "Recovery hint:" not in recovery_msg
+
+
+# ===================================================================
+# _prune_old_screenshots — missing branches 1420->1427, 1421->1420, 1424->1427
+# ===================================================================
+
+
+class TestPruneOldScreenshotsMissingBranches:
+    def test_empty_content_list_no_text_extracted(self):
+        """Covers 1420->1427: content is [] so the for-loop has no iterations.
+
+        The stub should be used without any prefix text.
+        """
+        eng = AgentEngine.__new__(AgentEngine)
+        eng.step = 10
+        eng.image_history = 1
+        messages = [
+            {
+                "role": "user",
+                "content": [],          # <-- empty list → loop body never runs
+                "_sentinel_has_image": True,
+                "_sentinel_step": 1,
+            },
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "latest step"}],
+                "_sentinel_has_image": True,
+                "_sentinel_step": 10,
+            },
+        ]
+        eng._prune_old_screenshots(messages)
+        pruned = messages[0]["content"]
+        # No preserved_text → result is just the stub
+        assert isinstance(pruned, str)
+        assert "screenshot at step 1 omitted" in pruned
+        # Must NOT have a leading newline from empty preserved_text
+        assert not pruned.startswith("\n")
+
+    def test_non_text_block_before_text_block_skipped(self):
+        """Covers 1421->1420: a non-text block (e.g. image_url) is encountered
+        first in the content list and the inner loop continues to the text block.
+        """
+        eng = AgentEngine.__new__(AgentEngine)
+        eng.step = 10
+        eng.image_history = 1
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+                    {"type": "text", "text": "the preserved text"},
+                ],
+                "_sentinel_has_image": True,
+                "_sentinel_step": 1,
+            },
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "latest step"}],
+                "_sentinel_has_image": True,
+                "_sentinel_step": 10,
+            },
+        ]
+        eng._prune_old_screenshots(messages)
+        pruned = messages[0]["content"]
+        assert isinstance(pruned, str)
+        # Text from the second block must be preserved
+        assert "the preserved text" in pruned
+        assert "screenshot at step 1 omitted" in pruned
+
+    def test_non_text_block_only_no_text_extracted(self):
+        """Covers 1421->1420 + 1420->1427: content has only non-text blocks,
+        so the loop iterates but never matches → preserved_text stays empty.
+        """
+        eng = AgentEngine.__new__(AgentEngine)
+        eng.step = 10
+        eng.image_history = 1
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,xyz"}},
+                ],
+                "_sentinel_has_image": True,
+                "_sentinel_step": 1,
+            },
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "latest step"}],
+                "_sentinel_has_image": True,
+                "_sentinel_step": 10,
+            },
+        ]
+        eng._prune_old_screenshots(messages)
+        pruned = messages[0]["content"]
+        assert isinstance(pruned, str)
+        assert "screenshot at step 1 omitted" in pruned
+        assert not pruned.startswith("\n")
+
+    def test_none_content_neither_list_nor_str(self):
+        """Covers 1424->1427: content is None → neither list nor str branch taken.
+
+        preserved_text stays "" and the stub is used alone.
+        """
+        eng = AgentEngine.__new__(AgentEngine)
+        eng.step = 10
+        eng.image_history = 1
+        messages = [
+            {
+                "role": "user",
+                "content": None,        # <-- not list, not str → falls through
+                "_sentinel_has_image": True,
+                "_sentinel_step": 1,
+            },
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "latest step"}],
+                "_sentinel_has_image": True,
+                "_sentinel_step": 10,
+            },
+        ]
+        eng._prune_old_screenshots(messages)
+        pruned = messages[0]["content"]
+        assert isinstance(pruned, str)
+        assert "screenshot at step 1 omitted" in pruned
+        assert not pruned.startswith("\n")
