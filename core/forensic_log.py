@@ -375,54 +375,20 @@ class ForensicLog:
         Returns ``True`` on success.
         """
         columns = [
-            "run_id",
-            "step_num",
-            "timestamp",
-            "action_type",
-            "target",
-            "params_preview",
-            "result_preview",
-            "success",
-            "event_type",
+            "run_id", "step_num", "timestamp", "action_type", "target",
+            "params_preview", "result_preview", "success", "event_type",
         ]
-
         with self._lock:
             steps = [dict(s) for s in self._steps]
             run_id = self._run.get("run_id", "")
 
-        rows = []
-        for s in steps:
-            params_preview = _preview(s.get("params", {}))
-            result_raw = s.get("result", "")
-            result_preview = _preview(result_raw)
-
-            # Determine success boolean
-            result_lower = str(result_raw).lower()
-            success = "true" if "success" in result_lower or "ok" in result_lower else "false"
-
-            rows.append(
-                {
-                    "run_id": run_id,
-                    "step_num": s.get("step_num", ""),
-                    "timestamp": s.get("timestamp", ""),
-                    "action_type": s.get("action_type", ""),
-                    "target": s.get("target", ""),
-                    "params_preview": params_preview,
-                    "result_preview": result_preview,
-                    "success": success,
-                    "event_type": s.get("event_type", ""),
-                }
-            )
+        rows = [self._build_csv_row(s, run_id) for s in steps]
 
         try:
             file_path = Path(path)
             file_path.parent.mkdir(parents=True, exist_ok=True)
             with file_path.open("w", encoding="utf-8", newline="") as fh:
-                writer = csv.DictWriter(
-                    fh,
-                    fieldnames=columns,
-                    quoting=csv.QUOTE_ALL,  # RFC-4180
-                )
+                writer = csv.DictWriter(fh, fieldnames=columns, quoting=csv.QUOTE_ALL)
                 writer.writeheader()
                 writer.writerows(rows)
         except (OSError, csv.Error):
@@ -431,6 +397,24 @@ class ForensicLog:
         else:
             logger.debug("Forensic CSV exported to %s (%d rows)", path, len(rows))
             return True
+
+    @staticmethod
+    def _build_csv_row(s: dict[str, Any], run_id: str) -> dict[str, Any]:
+        """Convert a single step record into a CSV row dict."""
+        result_raw = s.get("result", "")
+        result_lower = str(result_raw).lower()
+        success = "true" if "success" in result_lower or "ok" in result_lower else "false"
+        return {
+            "run_id": run_id,
+            "step_num": s.get("step_num", ""),
+            "timestamp": s.get("timestamp", ""),
+            "action_type": s.get("action_type", ""),
+            "target": s.get("target", ""),
+            "params_preview": _preview(s.get("params", {})),
+            "result_preview": _preview(result_raw),
+            "success": success,
+            "event_type": s.get("event_type", ""),
+        }
 
     # ------------------------------------------------------------------
     # Internal helpers

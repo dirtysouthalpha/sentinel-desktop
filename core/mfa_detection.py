@@ -25,6 +25,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from PIL import Image
 
@@ -349,8 +350,6 @@ def _uia_check() -> DetectionResult | None:
     try:
         auto = _auto  # type: ignore[union-attr]
         root = auto.GetRootControl()
-
-        # Iterate over top-level windows
         for win in root.GetChildren():
             try:
                 title = win.Name or ""
@@ -358,64 +357,74 @@ def _uia_check() -> DetectionResult | None:
                 logger.debug("Failed to read window name: %s", exc)
                 title = ""
 
-            # If the window already matches by title, skip — the title
-            # checker handles that with higher confidence.
+            # Skip windows already matched by title — the title checker has
+            # higher confidence and handles those.
             tl = title.lower()
-            already_matched = any(substr.lower() in tl for substr, _ in AUTH_WINDOW_TITLES)
-            if already_matched:
+            if any(substr.lower() in tl for substr, _ in AUTH_WINDOW_TITLES):
                 continue
 
-            found_password = False
-            found_auth_text = False
-            prompt_text_parts: list[str] = []
-
-            # Walk immediate children (don't recurse too deep — it's slow).
-            for ctrl in win.GetChildren():
-                try:
-                    ctrl_type = ctrl.ControlTypeName
-                except (OSError, AttributeError, RuntimeError) as exc:
-                    logger.debug("Failed to read control type: %s", exc)
-                    continue
-
-                # Password edit controls
-                if ctrl_type == "EditControl":
-                    try:
-                        if getattr(ctrl, "IsPassword", False):
-                            found_password = True
-                    except (OSError, AttributeError, RuntimeError) as exc:
-                        logger.debug("IsPassword check failed: %s", exc)
-
-                # Text elements matching auth patterns
-                if ctrl_type in ("TextControl", "StaticControl"):
-                    try:
-                        text = (ctrl.Name or "").strip()
-                        if text:
-                            tl_text = text.lower()
-                            for pattern, _det_type in MFA_PATTERNS:
-                                if pattern.lower() in tl_text:
-                                    found_auth_text = True
-                                    prompt_text_parts.append(text[:120])
-                                    break
-                    except (OSError, AttributeError, RuntimeError) as exc:
-                        logger.debug("Text pattern matching failed: %s", exc)
-
-            if found_password or found_auth_text:
-                det_type = "credential" if found_password else "mfa"
-                prompt = " | ".join(prompt_text_parts[:3]) if prompt_text_parts else title
-                confidence = 0.8 if found_password else 0.7
-                return DetectionResult(
-                    detected=True,
-                    type=det_type,
-                    prompt_text=prompt,
-                    window_title=title,
-                    confidence=confidence,
-                    action=_classify_action(det_type, confidence),
-                )
+            result = _scan_window_for_auth(win, title)
+            if result is not None:
+                return result
 
     except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("MFA UIA scan failed: %s", exc)
 
     return None
+
+
+def _scan_window_for_auth(win: Any, title: str) -> DetectionResult | None:
+    """Scan one top-level window's immediate children for auth indicators.
+
+    Checks for password ``EditControl`` fields and text controls matching
+    known MFA/credential patterns. Returns a :class:`DetectionResult` on
+    match, or ``None``.
+    """
+    found_password = False
+    found_auth_text = False
+    prompt_text_parts: list[str] = []
+
+    for ctrl in win.GetChildren():
+        try:
+            ctrl_type = ctrl.ControlTypeName
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("Failed to read control type: %s", exc)
+            continue
+
+        if ctrl_type == "EditControl":
+            try:
+                if getattr(ctrl, "IsPassword", False):
+                    found_password = True
+            except (OSError, AttributeError, RuntimeError) as exc:
+                logger.debug("IsPassword check failed: %s", exc)
+
+        if ctrl_type in ("TextControl", "StaticControl"):
+            try:
+                text = (ctrl.Name or "").strip()
+                if text:
+                    tl_text = text.lower()
+                    for pattern, _det_type in MFA_PATTERNS:
+                        if pattern.lower() in tl_text:
+                            found_auth_text = True
+                            prompt_text_parts.append(text[:120])
+                            break
+            except (OSError, AttributeError, RuntimeError) as exc:
+                logger.debug("Text pattern matching failed: %s", exc)
+
+    if not (found_password or found_auth_text):
+        return None
+
+    det_type = "credential" if found_password else "mfa"
+    prompt = " | ".join(prompt_text_parts[:3]) if prompt_text_parts else title
+    confidence = 0.8 if found_password else 0.7
+    return DetectionResult(
+        detected=True,
+        type=det_type,
+        prompt_text=prompt,
+        window_title=title,
+        confidence=confidence,
+        action=_classify_action(det_type, confidence),
+    )
 
 
 # ---------------------------------------------------------------------------

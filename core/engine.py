@@ -484,7 +484,6 @@ class AgentEngine:
 
     def _run_inner(self, goal: str) -> dict[str, Any]:
         """Inner agent loop — called by run() with virtual desktop wrapping."""
-        # Validate required configuration (provider, API key, model)
         err = self._validate_run_config()
         if err:
             return err
@@ -493,147 +492,22 @@ class AgentEngine:
         api_key = self.config.get("api_key", "")
         model = self.config.get("model", "")
 
-        # Build system prompt and initial screenshot message
         messages = self._build_initial_messages(goal)
-        screenshot_b64: str | None = ""  # updated each iteration
-
+        screenshot_b64: str | None = ""
         start_time = time.time()
 
-        # Start structured forensic log
         self.logger.start_run(goal, provider, model)
-
-        # Arm the Esc-x3 failsafe for the duration of this run. Safe no-op
-        # if the keyboard package isn't installed or can't hook globally.
         failsafe.arm(self.stop)
 
         try:
             while self.running and self.step < self.max_steps:
                 self.step += 1
                 logger.info("Step %d/%d", self.step, self.max_steps)
-
-                # Call LLM. Strip internal `_sentinel_*` markers so they
-                # never reach the provider's API.
-                use_tools = (
-                    self.config.get("use_tools", True) and provider in TOOL_CAPABLE_PROVIDERS
+                outcome, screenshot_b64 = self._run_one_step(
+                    provider, api_key, model, goal, messages, screenshot_b64
                 )
-                tools = ACTION_TOOLS if use_tools else None
-
-                # LLM call with exponential backoff retry for network/rate-limit errors.
-                response_text = self._call_llm_with_retry(
-                    provider=provider,
-                    api_key=api_key,
-                    model=model,
-                    messages=messages,
-                    tools=tools,
-                )
-                if response_text is None:
-                    # LLM call failed after all retries — track consecutive failure
-                    result = self._handle_consecutive_failure("llm_call", messages)
-                    if result == "abort":
-                        break
-                    continue
-
-                # Add to conversation
-                messages.append({"role": "assistant", "content": response_text})
-
-                # Parse action from response
-                action = self._parse_action(response_text)
-                if not action:
-                    # LLM didn't return valid JSON — track consecutive parse failure
-                    result = self._handle_consecutive_failure("parse", messages)
-                    if result == "abort":
-                        break
-                    continue
-
-                # Schema-validate against per-action pydantic models. Modeled
-                # actions get defaults filled in and out-of-range numeric fields
-                # rejected. Unmodeled actions pass through. We warn-and-continue
-                # on errors so the engine keeps making progress — tighten to
-                # reject later once telemetry is clean.
-                action, _schema_errors = validate_action(action)
-                if _schema_errors:
-                    err_msg = (
-                        f"Step {self.step}: action {action.get('action')!r} "
-                        f"failed schema validation: {'; '.join(_schema_errors)}"
-                    )
-                    logger.warning(err_msg)
-                    self.notes.append(err_msg)
-
-                action_name = action.get("action", "")
-
-                # Check for finish
-                if action_name == "finish":
-                    self.finish_summary = action.get("summary", "Task completed")
-                    self.notes.append(self.finish_summary)
-                    self._log_step(action, {"ok": True, "msg": self.finish_summary})
-                    self.running = False
+                if outcome == "abort":
                     break
-
-                # Approval gate via ApprovalGate subsystem
-                if self.gate.enabled and action_name in APPROVAL_REQUIRED_ACTIONS:
-                    decision, approved_action = self.gate.evaluate(action, self.step)
-                    if decision in (ApprovalDecision.SKIP, ApprovalDecision.ABORT):
-                        rejection = {"ok": False, "msg": f"Action {decision.value} by user"}
-                        self._log_step(action, rejection)
-                        self.logger.log_step(self.step, action_name, str(action), action, rejection)
-                        if decision == ApprovalDecision.ABORT:
-                            self.running = False
-                            break
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content": (
-                                    "The user skipped that action. Try a different approach."
-                                ),
-                            }
-                        )
-                        continue
-                    action = approved_action or action
-
-                # MFA/UAC detection — pause if auth prompt is on screen
-                self._check_mfa_pause()
-
-                # Popup dialog detection — check for and optionally dismiss
-                self._check_popup_dismiss()
-
-                # Log the action
-                self._log_step(action, {"pending": True})
-
-                # Execute the action -- wrapped in try/except for per-action failure tracking
-                action_error = None
-                result = None
-                try:
-                    result = self.executor.execute_sync(action)
-                except (KeyboardInterrupt, SystemExit, MemoryError):
-                    raise
-                except Exception as exc:
-                    logger.exception("Action '%s' threw an exception", action_name)
-                    action_error = exc
-                    result = {
-                        "success": False,
-                        "output": f"Action execution error: {exc}",
-                        "error": type(exc).__name__,
-                    }
-
-                # If action failed, run recovery analysis and handle failure tracking
-                action_succeeded = result.get("success", True) and action_error is None
-                if not action_succeeded:
-                    error_msg = result.get("output", str(action_error))
-                    failure_result = self._handle_action_failure(
-                        action, action_name, error_msg, messages,
-                    )
-                    if failure_result == "abort":
-                        break
-                    continue  # skip screenshot below, go to next iteration
-                else:
-                    # Action succeeded -- reset consecutive failure counter
-                    self._consecutive_failures = 0
-
-                # Post-action success: log, checkpoint, screenshot
-                screenshot_b64 = self._handle_post_action_success(
-                    action, action_name, result, goal, messages, screenshot_b64,
-                )
-
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as exc:
@@ -643,11 +517,154 @@ class AgentEngine:
         finally:
             self.running = False
             failsafe.disarm()
-            # Finalize structured forensic log
             status = "completed" if self.finish_summary else "error"
             self.logger.end_run(status, self.finish_summary or "Run ended", self.step)
 
         return self._finalize_run(goal, start_time)
+
+    def _run_one_step(
+        self,
+        provider: str,
+        api_key: str,
+        model: str,
+        goal: str,
+        messages: list[dict[str, Any]],
+        screenshot_b64: str | None,
+    ) -> tuple[str, str | None]:
+        """Execute one agent loop iteration.
+
+        Returns (outcome, screenshot_b64) where outcome is "abort", "continue", or "ok".
+        "abort" breaks the run loop; "continue" skips to the next iteration.
+        """
+        action, early_outcome = self._prepare_step_action(provider, api_key, model, messages)
+        if early_outcome is not None:
+            return early_outcome, screenshot_b64
+
+        action_name = action.get("action", "")
+
+        if action_name == "finish":
+            self.finish_summary = action.get("summary", "Task completed")
+            self.notes.append(self.finish_summary)
+            self._log_step(action, {"ok": True, "msg": self.finish_summary})
+            self.running = False
+            return "abort", screenshot_b64
+
+        action, gate_outcome = self._check_approval_gate(action, action_name, messages)
+        if gate_outcome is not None:
+            return gate_outcome, screenshot_b64
+
+        self._check_mfa_pause()
+        self._check_popup_dismiss()
+        self._log_step(action, {"pending": True})
+        return self._execute_action(action, action_name, goal, messages, screenshot_b64)
+
+    def _prepare_step_action(
+        self,
+        provider: str,
+        api_key: str,
+        model: str,
+        messages: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """Call LLM, append response to messages, parse and schema-validate the action.
+
+        Returns (action, None) on success, or (None, outcome) for early exit.
+        outcome is "abort" or "continue".
+        """
+        use_tools = self.config.get("use_tools", True) and provider in TOOL_CAPABLE_PROVIDERS
+        tools = ACTION_TOOLS if use_tools else None
+
+        response_text = self._call_llm_with_retry(
+            provider=provider, api_key=api_key, model=model, messages=messages, tools=tools,
+        )
+        if response_text is None:
+            result = self._handle_consecutive_failure("llm_call", messages)
+            return None, ("abort" if result == "abort" else "continue")
+
+        messages.append({"role": "assistant", "content": response_text})
+
+        action = self._parse_action(response_text)
+        if not action:
+            result = self._handle_consecutive_failure("parse", messages)
+            return None, ("abort" if result == "abort" else "continue")
+
+        # Schema-validate — warn and continue on errors so the engine keeps
+        # making progress. Unmodeled actions pass through unchanged.
+        action, schema_errors = validate_action(action)
+        if schema_errors:
+            err_msg = (
+                f"Step {self.step}: action {action.get('action')!r} "
+                f"failed schema validation: {'; '.join(schema_errors)}"
+            )
+            logger.warning(err_msg)
+            self.notes.append(err_msg)
+        return action, None
+
+    def _check_approval_gate(
+        self,
+        action: dict[str, Any],
+        action_name: str,
+        messages: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], str | None]:
+        """Evaluate the approval gate for actions that require it.
+
+        Returns (action, None) when execution should proceed (action may be modified),
+        or (action, outcome) for early exit. outcome is "abort" or "continue".
+        """
+        if not (self.gate.enabled and action_name in APPROVAL_REQUIRED_ACTIONS):
+            return action, None
+
+        decision, approved_action = self.gate.evaluate(action, self.step)
+        if decision in (ApprovalDecision.SKIP, ApprovalDecision.ABORT):
+            rejection = {"ok": False, "msg": f"Action {decision.value} by user"}
+            self._log_step(action, rejection)
+            self.logger.log_step(self.step, action_name, str(action), action, rejection)
+            if decision == ApprovalDecision.ABORT:
+                self.running = False
+                return action, "abort"
+            messages.append(
+                {"role": "user", "content": "The user skipped that action. Try a different approach."}
+            )
+            return action, "continue"
+        return approved_action or action, None
+
+    def _execute_action(
+        self,
+        action: dict[str, Any],
+        action_name: str,
+        goal: str,
+        messages: list[dict[str, Any]],
+        screenshot_b64: str | None,
+    ) -> tuple[str, str | None]:
+        """Execute the action and handle success or failure.
+
+        Returns (outcome, screenshot_b64) where outcome is "abort", "continue", or "ok".
+        """
+        action_error = None
+        result = None
+        try:
+            result = self.executor.execute_sync(action)
+        except (KeyboardInterrupt, SystemExit, MemoryError):
+            raise
+        except Exception as exc:
+            logger.exception("Action '%s' threw an exception", action_name)
+            action_error = exc
+            result = {
+                "success": False,
+                "output": f"Action execution error: {exc}",
+                "error": type(exc).__name__,
+            }
+
+        action_succeeded = result.get("success", True) and action_error is None
+        if not action_succeeded:
+            error_msg = result.get("output", str(action_error))
+            failure_result = self._handle_action_failure(action, action_name, error_msg, messages)
+            return ("abort" if failure_result == "abort" else "continue"), screenshot_b64
+
+        self._consecutive_failures = 0
+        new_screenshot = self._handle_post_action_success(
+            action, action_name, result, goal, messages, screenshot_b64,
+        )
+        return "ok", new_screenshot
 
     # ------------------------------------------------------------------
     # Run decomposition helpers
@@ -732,40 +749,39 @@ class AgentEngine:
             except (OSError, RuntimeError) as exc:
                 logger.warning("MFA screen check failed: %s", exc)
         if mfa_result.detected:
-            self._mfa_paused = True
-            self.logger.log_event(
-                "mfa_pause",
-                {
-                    "type": mfa_result.type,
-                    "prompt": mfa_result.prompt_text,
-                    "window": mfa_result.window_title,
-                },
-            )
-            if self.on_step_callback:
-                try:
-                    self.on_step_callback(
-                        step=self.step,
-                        action={"action": "mfa_pause"},
-                        result={
-                            "ok": False,
-                            "msg": (
-                                f"🔐 {mfa_result.type.upper()} detected: "
-                                f"{mfa_result.prompt_text}"
-                            ),
-                        },
-                    )
-                except (RuntimeError, TypeError) as exc:
-                    logger.debug("MFA step callback failed: %s", exc)
-            # Wait for auth prompt to disappear (poll every 2s, up to 5 min)
-            for _ in range(self.MFA_POLL_ITERATIONS):
-                time.sleep(self.MFA_POLL_INTERVAL_SECONDS)
-                if not self.running:
-                    break
-                recheck = self.mfa_detector.check_window_titles()
-                if not recheck.detected:
-                    self._mfa_paused = False
-                    self.logger.log_event("mfa_resume", {"msg": "Auth prompt dismissed"})
-                    break
+            self._handle_mfa_detected(mfa_result)
+
+    def _handle_mfa_detected(self, mfa_result: Any) -> None:
+        """Log, notify, and poll until the detected MFA/UAC prompt is dismissed."""
+        self._mfa_paused = True
+        self.logger.log_event(
+            "mfa_pause",
+            {
+                "type": mfa_result.type,
+                "prompt": mfa_result.prompt_text,
+                "window": mfa_result.window_title,
+            },
+        )
+        if self.on_step_callback:
+            try:
+                self.on_step_callback(
+                    step=self.step,
+                    action={"action": "mfa_pause"},
+                    result={
+                        "ok": False,
+                        "msg": f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}",
+                    },
+                )
+            except (RuntimeError, TypeError) as exc:
+                logger.debug("MFA step callback failed: %s", exc)
+        for _ in range(self.MFA_POLL_ITERATIONS):
+            time.sleep(self.MFA_POLL_INTERVAL_SECONDS)
+            if not self.running:
+                break
+            if not self.mfa_detector.check_window_titles().detected:
+                self._mfa_paused = False
+                self.logger.log_event("mfa_resume", {"msg": "Auth prompt dismissed"})
+                break
 
     def _check_popup_dismiss(self) -> None:
         """Detect and optionally dismiss popup dialogs blocking automation.
