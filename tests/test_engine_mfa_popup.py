@@ -1,6 +1,6 @@
 """Tests for core/engine.py — _check_popup_dismiss and _check_mfa_pause."""
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from core.engine import AgentEngine
 

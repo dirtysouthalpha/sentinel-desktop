@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 # Mock tkinter before importing command_palette to avoid ModuleNotFoundError on Linux
 mock_askstring = MagicMock()

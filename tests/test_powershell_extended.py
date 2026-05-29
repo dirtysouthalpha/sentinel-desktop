@@ -1,7 +1,5 @@
 """Extended tests for core/powershell.py — runner config, helpers, JSON parsing, platform guards."""
 
-import json
-import platform
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +13,6 @@ from core.powershell import (
     _ps_escape_single_quoted,
     get_default_runner,
 )
-
 
 # ---------------------------------------------------------------------------
 # _ps_escape_single_quoted extended

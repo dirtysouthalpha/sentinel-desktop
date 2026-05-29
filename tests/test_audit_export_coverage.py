@@ -1,7 +1,6 @@
 """Additional coverage tests for audit_export.py — edge cases and gap paths."""
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -14,7 +13,6 @@ from core.audit_export import (
     _mask_value,
     export_audit,
 )
-
 
 # ---------------------------------------------------------------------------
 # _mask_value edge cases

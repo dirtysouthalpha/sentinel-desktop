@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from core.recovery import RecoveryEngine, RecoverySuggestion, _RECOVERY_HANDLERS
+from core.recovery import _RECOVERY_HANDLERS, RecoveryEngine
 
 
 class TestHandlerExceptionFallback:

@@ -174,7 +174,6 @@ def test_vk_names_has_common_keys():
 
 
 def test_vk_names_values_are_ints():
-    from core.stealth_input import VK_NAMES
     for name, vk in stealth_input.VK_NAMES.items():
         assert isinstance(vk, int), f"VK_NAMES[{name!r}] = {vk!r} not int"
 

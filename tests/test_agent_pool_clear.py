@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from core.agent_pool import (
     STATUS_CANCELLED,
     STATUS_COMPLETED,

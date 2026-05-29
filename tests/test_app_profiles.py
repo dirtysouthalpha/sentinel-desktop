@@ -7,17 +7,14 @@ and the AppProfile dataclass.
 
 from __future__ import annotations
 
-import pytest
-
 from core.app_profiles import (
-    AppProfile,
     PROFILES,
+    AppProfile,
     detect_profile,
     get_profile,
     get_timing_for_app,
     list_profiles,
 )
-
 
 # ── Tests: AppProfile dataclass ───────────────────────────────────────────
 

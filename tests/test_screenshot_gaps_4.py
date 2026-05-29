@@ -4,7 +4,6 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from PIL import Image
 
 from core.screenshot import (

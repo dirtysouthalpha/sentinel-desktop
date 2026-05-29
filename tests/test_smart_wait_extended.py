@@ -8,16 +8,15 @@ import pytest
 from PIL import Image
 
 from core.smart_wait import (
-    WaitResult,
-    SmartWait,
     _CHANNEL_THRESHOLD,
     _DOWNSCALE,
+    SmartWait,
+    WaitResult,
     _compute_change_score,
     _crop_to_region,
     _downsample,
     _save_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

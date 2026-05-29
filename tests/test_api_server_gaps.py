@@ -9,7 +9,6 @@ import api.server as mod
 from api.server import SentinelServer
 from config import Config
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

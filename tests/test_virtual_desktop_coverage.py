@@ -5,14 +5,12 @@ Targets _StubVirtualDesktop (lines 604-683) and VirtualDesktop wrapper
 and repr which are platform-agnostic.
 """
 
-from unittest.mock import MagicMock, patch
-
 import subprocess
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core import virtual_desktop
-
 
 # ---------------------------------------------------------------------------
 # _StubVirtualDesktop — directly tested (it's the impl on Linux)

@@ -7,13 +7,11 @@ On Linux, win32api/win32con/win32gui are never imported, so we inject mock modul
 as module-level attributes on stealth_input before calling each function.
 """
 
-import sys
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from core import stealth_input
-
 
 # ---------------------------------------------------------------------------
 # Helpers — inject mock win32 modules into the stealth_input module namespace

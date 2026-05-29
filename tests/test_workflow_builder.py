@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-import pytest
-
 from core.workflow_builder import (
+    TEMPLATES,
     StepStatus,
     Workflow,
     WorkflowStatus,
     WorkflowStep,
     WorkflowStore,
-    TEMPLATES,
     workflow_store,
 )
-
 
 # ─── WorkflowStep ──────────────────────────────────────────────────────────
 

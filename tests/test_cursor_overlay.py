@@ -7,8 +7,6 @@ Tests the pure helper function _ease_out. Class tests are not included
 
 from __future__ import annotations
 
-import pytest
-
 from gui.cursor_overlay import _ease_out
 
 

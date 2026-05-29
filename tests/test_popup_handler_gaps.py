@@ -5,15 +5,12 @@ check_and_dismiss cooldown/dismiss-attempt logic, detect_from_screenshot
 edge cases, and _click_button strategy fallbacks.
 """
 
-import importlib
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PIL import Image
 
 import core.popup_handler as ph
-
 
 # ---------------------------------------------------------------------------
 # _have_tesseract

@@ -8,17 +8,12 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
-
 from core.auth import (
     DEFAULT_ADMIN_PASSWORD,
     AuthManager,
     Role,
-    User,
-    _hash_password_bcrypt,
     is_default_password,
 )
-
 
 # ---------------------------------------------------------------------------
 # is_default_password

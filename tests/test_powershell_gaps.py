@@ -6,10 +6,7 @@ built-in helpers on non-Windows, PSResult edge cases, and the module-level
 get_default_runner() factory.
 """
 
-import os
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from core.powershell import (
     PowerShellRunner,
@@ -19,7 +16,6 @@ from core.powershell import (
     _ps_escape_single_quoted,
     get_default_runner,
 )
-
 
 # ---------------------------------------------------------------------------
 # _is_windows / _non_windows_result

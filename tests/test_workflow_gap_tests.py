@@ -1,10 +1,9 @@
 """Gap tests for workflow.py — _handle_step_error unknown policy, _exec_script/_exec_sub_workflow exception paths."""
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from core.workflow import WorkflowEngine, WorkflowStep, WorkflowResult
+from core.workflow import WorkflowEngine, WorkflowResult, WorkflowStep
 
 
 class TestHandleStepErrorUnknownPolicy:

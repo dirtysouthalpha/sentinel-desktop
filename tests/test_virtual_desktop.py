@@ -7,8 +7,6 @@ import pytest
 from core.virtual_desktop import (
     _DESKTOP_FULL_ACCESS,
     _IS_WINDOWS,
-    _StubVirtualDesktop,
-    _get_current_desktop_name,
     DESKTOP_CREATEMENU,
     DESKTOP_CREATEWINDOW,
     DESKTOP_ENUMERATE,
@@ -19,6 +17,8 @@ from core.virtual_desktop import (
     DESKTOP_SWITCHDESKTOP,
     DESKTOP_WRITEOBJECTS,
     VirtualDesktop,
+    _get_current_desktop_name,
+    _StubVirtualDesktop,
 )
 
 

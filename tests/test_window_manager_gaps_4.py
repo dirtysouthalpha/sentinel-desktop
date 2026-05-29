@@ -10,8 +10,9 @@ These lines execute at import time inside conditional/try-except blocks:
 import importlib
 import platform
 import sys
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import core.window_manager as wm_original
 

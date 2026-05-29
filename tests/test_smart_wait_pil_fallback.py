@@ -8,11 +8,10 @@ the zero-dimension image edge case, and _downsample with tiny images.
 from __future__ import annotations
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from PIL import Image
-
 
 # ---------------------------------------------------------------------------
 # _compute_change_score — pure-PIL fallback (numpy unavailable)

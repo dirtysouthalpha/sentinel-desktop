@@ -8,14 +8,12 @@ by mocking ctypes.win32 APIs so the tests run on any platform.
 from __future__ import annotations
 
 import ctypes
-import signal
 import threading
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import core.virtual_desktop as vd
-
 
 # ---------------------------------------------------------------------------
 # Helpers

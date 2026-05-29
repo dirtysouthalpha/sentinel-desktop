@@ -7,20 +7,14 @@ Targets lines 234-239 (cancel terminal state), 284 (get_result success),
 
 from __future__ import annotations
 
-import threading
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from core.agent_pool import (
     STATUS_CANCELLED,
     STATUS_COMPLETED,
     STATUS_FAILED,
-    STATUS_QUEUED,
-    STATUS_RUNNING,
     AgentPool,
-    AgentSession,
 )
 
 

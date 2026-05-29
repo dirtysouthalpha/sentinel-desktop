@@ -5,22 +5,19 @@ wait_for_text, wait_for_color), cancellation, _crop_to_region, and edge cases
 that the base test file doesn't exercise.
 """
 
-import time
 import threading
+import time
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PIL import Image
 
 from core.smart_wait import (
     SmartWait,
     WaitResult,
-    _compute_change_score,
     _crop_to_region,
     _downsample,
     _save_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # _crop_to_region

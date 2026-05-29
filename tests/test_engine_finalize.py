@@ -1,10 +1,8 @@
 """Tests for core/engine.py — _finalize_run, _validate_run_config, _build_initial_messages."""
 
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.engine import AgentEngine
-
 
 # ---------------------------------------------------------------------------
 # _finalize_run
