@@ -486,115 +486,96 @@ class SentinelApp:
             approval_callback=self._approve_action,
             pre_action_callback=self.overlay.show_action,
         )
-
-        def _on_step(**kwargs: Any) -> None:
-            """Callback from engine on each step. Runs on worker thread."""
-            step = kwargs.get("step", 0)
-            action = kwargs.get("action", {})
-            result = kwargs.get("result", {})
-            action_name = action.get("action", "?")
-            params = {k: v for k, v in action.items() if k != "action"}
-            self._add_chat(f"Step {step}: {action_name}({params})", "action")
-            if result:
-                ok = result.get("ok", True)
-                msg = result.get("msg", result.get("error", ""))
-                if msg:
-                    self._add_chat(f"  → {msg}", "assistant" if ok else "error")
-
-            # All Tk widget updates must run on the main thread.
-            self.root.after(0, self._update_step_labels, step)
-
-            # Feed action history sidebar
-            self.root.after(
-                0,
-                self._add_history_entry,
-                step,
-                action_name,
-                {"ok": result.get("ok", True), "msg": result.get("msg", "")},
-            )
-
-            # Update screenshot if provided
-            screenshot_b64 = kwargs.get("screenshot")
-            if screenshot_b64:
-                self.root.after(0, self._update_screenshot, screenshot_b64)
-
-        self.engine.on_step_callback = _on_step
-
-        def _run() -> None:
-            try:
-                result = self.engine.run(goal)
-                steps = result.get("steps", 0)
-                notes = result.get("notes") or []
-                summary = result.get("finish_summary") or ""
-
-                if result.get("error"):
-                    # Engine bailed before doing anything — show the real reason.
-                    for n in notes:
-                        self._add_chat(f"❌ {n}", "error")
-                elif steps == 0 and notes and not summary:
-                    # No work done and no summary, but there are notes — surface them.
-                    for n in notes:
-                        self._add_chat(f"⚠ {n}", "error")
-                else:
-                    self._add_chat(
-                        f"✅ Completed in {steps} step{'' if steps == 1 else 's'}."
-                        + (f"\n{summary}" if summary else ""),
-                        "assistant",
-                    )
-                    # If we're minimized to tray, ping a desktop notification
-                    # so the user knows the run is done.
-                    if self.tray:
-                        try:
-                            self.tray.notify(
-                                "Sentinel Desktop",
-                                f"Finished in {steps} steps. " + (summary[:120] if summary else ""),
-                            )
-                        except (OSError, RuntimeError) as exc:
-                            logger.debug("Tray notification failed: %s", exc)
-            except (OSError, RuntimeError, ValueError) as e:
-                # Show the exception type + message, and dump the full traceback
-                # to a debug log so the user can paste it for diagnosis.
-                import traceback
-
-                tb = traceback.format_exc()
-                self._add_chat(
-                    f"❌ {type(e).__name__}: {e}",
-                    "error",
-                )
-                log_path = (
-                    Path(os.environ.get("APPDATA", str(Path.home())))
-                    / "SentinelDesktop"
-                    / "last_error.log"
-                )
-                try:
-                    log_path.parent.mkdir(parents=True, exist_ok=True)
-                    with log_path.open("w", encoding="utf-8") as f:
-                        f.write(f"Goal: {goal}\n\n{tb}\n")
-                    self._add_chat(
-                        f"   Full traceback saved to: {log_path}",
-                        "system",
-                    )
-                except (OSError, RuntimeError) as exc2:
-                    logger.debug("Failed to write error log: %s", exc2)
-                logger.exception("Agent run crashed")
-            finally:
-                # Belt-and-suspenders: the engine always resets this, but if the
-                # caller threw before run() returned we still want to be unblocked.
-                if self.engine:
-                    self.engine.running = False
-                self.root.after(
-                    0,
-                    lambda: self.status_label.configure(
-                        text="● IDLE",
-                        text_color=self._t("status_idle", "#849495"),
-                    ),
-                )
-
+        self.engine.on_step_callback = self._on_engine_step
         self.status_label.configure(
             text="● RUNNING", text_color=self._t("status_running", "#95E400")
         )
-        self.engine_thread = threading.Thread(target=_run, daemon=True)
+        self.engine_thread = threading.Thread(
+            target=lambda: self._agent_run_thread(goal), daemon=True
+        )
         self.engine_thread.start()
+
+    def _on_engine_step(self, **kwargs: Any) -> None:
+        """Callback from engine on each step. Runs on worker thread."""
+        step = kwargs.get("step", 0)
+        action = kwargs.get("action", {})
+        result = kwargs.get("result", {})
+        action_name = action.get("action", "?")
+        params = {k: v for k, v in action.items() if k != "action"}
+        self._add_chat(f"Step {step}: {action_name}({params})", "action")
+        if result:
+            ok = result.get("ok", True)
+            msg = result.get("msg", result.get("error", ""))
+            if msg:
+                self._add_chat(f"  → {msg}", "assistant" if ok else "error")
+        self.root.after(0, self._update_step_labels, step)
+        self.root.after(
+            0,
+            self._add_history_entry,
+            step,
+            action_name,
+            {"ok": result.get("ok", True), "msg": result.get("msg", "")},
+        )
+        screenshot_b64 = kwargs.get("screenshot")
+        if screenshot_b64:
+            self.root.after(0, self._update_screenshot, screenshot_b64)
+
+    def _agent_run_thread(self, goal: str) -> None:
+        """Thread target: run the agent and update the UI when done."""
+        try:
+            result = self.engine.run(goal)
+            steps = result.get("steps", 0)
+            notes = result.get("notes") or []
+            summary = result.get("finish_summary") or ""
+
+            if result.get("error"):
+                for n in notes:
+                    self._add_chat(f"❌ {n}", "error")
+            elif steps == 0 and notes and not summary:
+                for n in notes:
+                    self._add_chat(f"⚠ {n}", "error")
+            else:
+                self._add_chat(
+                    f"✅ Completed in {steps} step{'' if steps == 1 else 's'}."
+                    + (f"\n{summary}" if summary else ""),
+                    "assistant",
+                )
+                if self.tray:
+                    try:
+                        self.tray.notify(
+                            "Sentinel Desktop",
+                            f"Finished in {steps} steps. " + (summary[:120] if summary else ""),
+                        )
+                    except (OSError, RuntimeError) as exc:
+                        logger.debug("Tray notification failed: %s", exc)
+        except (OSError, RuntimeError, ValueError) as e:
+            import traceback
+
+            tb = traceback.format_exc()
+            self._add_chat(f"❌ {type(e).__name__}: {e}", "error")
+            log_path = (
+                Path(os.environ.get("APPDATA", str(Path.home())))
+                / "SentinelDesktop"
+                / "last_error.log"
+            )
+            try:
+                log_path.parent.mkdir(parents=True, exist_ok=True)
+                with log_path.open("w", encoding="utf-8") as f:
+                    f.write(f"Goal: {goal}\n\n{tb}\n")
+                self._add_chat(f"   Full traceback saved to: {log_path}", "system")
+            except (OSError, RuntimeError) as exc2:
+                logger.debug("Failed to write error log: %s", exc2)
+            logger.exception("Agent run crashed")
+        finally:
+            if self.engine:
+                self.engine.running = False
+            self.root.after(
+                0,
+                lambda: self.status_label.configure(
+                    text="● IDLE",
+                    text_color=self._t("status_idle", "#849495"),
+                ),
+            )
 
     def _update_step_labels(self, step: int) -> None:
         """Main-thread helper for updating the step/notes labels."""
