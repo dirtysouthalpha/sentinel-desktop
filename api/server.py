@@ -175,6 +175,12 @@ class SentinelServer:
     """
 
     def __init__(self, config: Config) -> None:
+        """Initialize the API server with application config.
+
+        Args:
+            config: Application :class:`Config` used to load provider settings
+                and API token configuration.
+        """
         self.config = config
         self.engine: AgentEngine | None = None
         self._run_thread: threading.Thread | None = None

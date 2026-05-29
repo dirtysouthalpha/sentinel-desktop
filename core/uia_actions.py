@@ -29,6 +29,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Short-lived bounds cache: (name, control_type, window_title) → (bounds_dict, timestamp)
+# TTL is very short (0.5 s) — enough to avoid duplicate BFS walks within a single
+# action sequence but short enough that stale entries don't survive UI transitions.
+_bounds_cache: dict[tuple[str | None, ...], tuple[dict[str, Any], float]] = {}
+_BOUNDS_CACHE_TTL = 0.5  # seconds
+
 # ---------------------------------------------------------------------------
 # Availability probes
 # ---------------------------------------------------------------------------
@@ -576,9 +582,18 @@ class UIAActionPipeline:
         control_type: str | None = None,
         window_title: str | None = None,
     ) -> dict[str, Any] | None:
-        """Try to get bounding rectangle for a named control via UIA."""
+        """Try to get bounding rectangle for a named control via UIA.
+
+        Results are cached for ``_BOUNDS_CACHE_TTL`` seconds to avoid
+        redundant BFS walks when the same element is queried multiple times
+        in quick succession (e.g. click then type into the same field).
+        """
         if not _probe_uia():
             return None
+        cache_key = (name, control_type, window_title)
+        cached, ts = _bounds_cache.get(cache_key, (None, 0.0))
+        if cached is not None and (time.monotonic() - ts) < _BOUNDS_CACHE_TTL:
+            return cached
         try:
             from core.ui_tree import _find_control
 
@@ -590,7 +605,7 @@ class UIAActionPipeline:
             if ctrl is None:
                 return None
             rect = ctrl.BoundingRectangle
-            return {
+            bounds = {
                 "x": int(rect.left),
                 "y": int(rect.top),
                 "width": int(rect.right - rect.left),
@@ -598,6 +613,8 @@ class UIAActionPipeline:
                 "center_x": (rect.left + rect.right) // 2,
                 "center_y": (rect.top + rect.bottom) // 2,
             }
+            _bounds_cache[cache_key] = (bounds, time.monotonic())
+            return bounds
         except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Bounding box lookup failed: %s", exc)
             return None

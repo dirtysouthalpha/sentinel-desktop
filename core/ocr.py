@@ -49,6 +49,7 @@ _MAX_OCR_RESOLUTION = (1920, 1080)
 # OCR result cache: (cache_key) → (text, confidence_data, timestamp)
 _ocr_cache: dict[str, tuple[str, dict[str, Any], float]] = {}
 _CACHE_TTL = 3.0  # seconds
+_CACHE_MAX_SIZE = 50  # evict oldest when cache exceeds this
 
 logger = logging.getLogger(__name__)
 
@@ -78,22 +79,16 @@ def _have_tesseract() -> bool:
 
 
 def _image_cache_key(img: Image.Image) -> str:
-    """Lightweight cache key based on image dimensions and mean pixel value."""
+    """Lightweight cache key: dimensions + mode + 4×4 sampled pixel grid."""
     w, h = img.size
-    # Compute a quick fingerprint: size + a few sampled pixel values
-    # Using mean of a small region as a cheap hash
     try:
-        # Sample a few pixels for a lightweight fingerprint
-        sample_points = [
-            img.getpixel((0, 0)),
-            img.getpixel((w // 2, h // 2)),
-            img.getpixel((w - 1, h - 1)),
-            img.getpixel((w // 4, h // 4)),
-            img.getpixel((3 * w // 4, 3 * h // 4)),
-        ]
-        fingerprint = f"{w}x{h}:{sample_points}"
+        # 16-point grid sample reduces false cache-hit probability
+        xs = [w * i // 5 for i in range(1, 5)]
+        ys = [h * i // 5 for i in range(1, 5)]
+        samples = [img.getpixel((x, y)) for x in xs for y in ys]
+        fingerprint = f"{w}x{h}:{img.mode}:{samples}"
     except (IndexError, OSError):
-        fingerprint = f"{w}x{h}"
+        fingerprint = f"{w}x{h}:{img.mode}"
     return hashlib.md5(fingerprint.encode()).hexdigest()  # noqa: S324
 
 
@@ -109,13 +104,18 @@ def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:
 
 
 def _store_cache(key: str, text: str, conf_data: dict[str, Any]) -> None:
-    """Store an OCR result in the cache."""
+    """Store an OCR result in the cache, pruning expired and oversized entries."""
     _ocr_cache[key] = (text, conf_data, time.monotonic())
-    # Prune expired entries periodically
     now = time.monotonic()
+    # Remove expired entries
     expired = [k for k, (_, _, ts) in _ocr_cache.items() if now - ts >= _CACHE_TTL]
     for k in expired:
         del _ocr_cache[k]
+    # Evict oldest entries if cache exceeds max size
+    if len(_ocr_cache) > _CACHE_MAX_SIZE:
+        oldest = sorted(_ocr_cache, key=lambda k: _ocr_cache[k][2])
+        for k in oldest[: len(_ocr_cache) - _CACHE_MAX_SIZE]:
+            del _ocr_cache[k]
 
 
 def _downsample_if_needed(img: Image.Image) -> Image.Image:
