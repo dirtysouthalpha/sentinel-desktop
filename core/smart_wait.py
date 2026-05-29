@@ -260,6 +260,21 @@ class SmartWait:
         """Capture a frame, possibly restricted to *region*."""
         return _crop_to_region(region)
 
+    def _loop_check(
+        self, start: float, timeout: float, frames: int, extra_score: float = 0.0
+    ) -> WaitResult | None:
+        """Return a failure WaitResult if the loop should stop, else None.
+
+        Centralises the timeout and cancellation checks shared by all
+        ``wait_for_*`` polling loops.
+        """
+        elapsed = time.monotonic() - start
+        if elapsed >= timeout:
+            return _fail(elapsed, frames, extra_score)
+        if self._cancelled():
+            return _fail(time.monotonic() - start, frames, extra_score)
+        return None
+
     # ------------------------------------------------------------------
     # wait_for_change
     # ------------------------------------------------------------------
@@ -297,11 +312,9 @@ class SmartWait:
         frames += 1
 
         while True:
-            elapsed = time.monotonic() - start
-            if elapsed >= timeout:
-                return _fail(elapsed, frames)
-            if self._cancelled():
-                return _fail(time.monotonic() - start, frames)
+            abort = self._loop_check(start, timeout, frames)
+            if abort is not None:
+                return abort
 
             time.sleep(interval)
             current = self._capture(region)
@@ -368,11 +381,9 @@ class SmartWait:
         frames += 1
 
         while True:
-            elapsed = time.monotonic() - start
-            if elapsed >= timeout:
-                return _fail(elapsed, frames, last_score)
-            if self._cancelled():
-                return _fail(time.monotonic() - start, frames, last_score)
+            abort = self._loop_check(start, timeout, frames, last_score)
+            if abort is not None:
+                return abort
 
             time.sleep(interval)
             current = self._capture(region)
@@ -450,11 +461,9 @@ class SmartWait:
         from core.screenshot import find_template
 
         while True:
-            elapsed = time.monotonic() - start
-            if elapsed >= timeout:
-                return _fail(elapsed, frames)
-            if self._cancelled():
-                return _fail(time.monotonic() - start, frames)
+            abort = self._loop_check(start, timeout, frames)
+            if abort is not None:
+                return abort
 
             frames += 1
             try:
@@ -599,11 +608,9 @@ class SmartWait:
 
         # We use a tiny 1×1 capture via capture_region for efficiency.
         while True:
-            elapsed = time.monotonic() - start
-            if elapsed >= timeout:
-                return _fail(elapsed, frames)
-            if self._cancelled():
-                return _fail(time.monotonic() - start, frames)
+            abort = self._loop_check(start, timeout, frames)
+            if abort is not None:
+                return abort
 
             frames += 1
             try:
