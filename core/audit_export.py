@@ -10,9 +10,11 @@ import csv
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from core.utils import iso_now as _now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +94,6 @@ def _compute_summary(masked_log: list[dict[str, Any]], metadata: dict[str, Any])
     }
 
 
-def _now_iso() -> str:
-    """Return the current UTC timestamp as an ISO 8601 string."""
-    return datetime.now(timezone.utc).isoformat()
 
 
 _TEXT_COL_WIDTHS = (6, 22, 18, 30)

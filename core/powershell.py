@@ -12,12 +12,13 @@ import contextlib
 import json
 import logging
 import os
-import platform
 import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from core.utils import is_windows as _is_windows
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +74,6 @@ class PSResult:
 # ---------------------------------------------------------------------------
 # Platform guard
 # ---------------------------------------------------------------------------
-
-
-def _is_windows() -> bool:
-    """Return ``True`` when running on the Windows platform."""
-    return platform.system() == "Windows"
 
 
 def _non_windows_result() -> PSResult:

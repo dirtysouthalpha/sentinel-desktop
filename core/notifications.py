@@ -51,7 +51,6 @@ Quick start::
 
 import json
 import logging
-import platform
 import smtplib
 import threading
 import time
@@ -61,6 +60,8 @@ from email.mime.text import MIMEText
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
+
+from core.utils import is_windows as _is_windows
 
 logger = logging.getLogger(__name__)
 
@@ -98,11 +99,6 @@ RATE_LIMIT_SECONDS = 5.0
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _is_windows() -> bool:
-    """Return ``True`` when running on Microsoft Windows."""
-    return platform.system() == "Windows"
 
 
 def _send_http(

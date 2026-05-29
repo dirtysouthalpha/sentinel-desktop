@@ -13,9 +13,11 @@ import json
 import logging
 import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from core.utils import iso_now as _iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +61,6 @@ def _default_log_dir() -> str:
 # ---------------------------------------------------------------------------
 
 
-def _iso_now() -> str:
-    """Return the current UTC time as an ISO-8601 string."""
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _redact_params(params: dict[str, Any]) -> dict[str, Any]:

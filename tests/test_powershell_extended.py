@@ -107,15 +107,15 @@ class TestPSResultExtended:
 # ---------------------------------------------------------------------------
 
 class TestPlatformGuards:
-    @patch("core.powershell.platform.system", return_value="Linux")
+    @patch("core.utils.platform.system", return_value="Linux")
     def test_is_windows_false_on_linux(self, mock_sys):
         assert _is_windows() is False
 
-    @patch("core.powershell.platform.system", return_value="Windows")
+    @patch("core.utils.platform.system", return_value="Windows")
     def test_is_windows_true_on_windows(self, mock_sys):
         assert _is_windows() is True
 
-    @patch("core.powershell.platform.system", return_value="Darwin")
+    @patch("core.utils.platform.system", return_value="Darwin")
     def test_is_windows_false_on_mac(self, mock_sys):
         assert _is_windows() is False
 
