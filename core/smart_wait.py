@@ -87,6 +87,17 @@ class WaitResult:
     snapshot_path: str | None = field(default=None)
 
 
+def _fail(elapsed: float, frames: int, change_score: float = 0.0) -> WaitResult:
+    """Return a failed WaitResult with no snapshot."""
+    return WaitResult(
+        success=False,
+        elapsed=elapsed,
+        frames_checked=frames,
+        change_score=change_score,
+        snapshot_path=None,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Visual diff helpers
 # ---------------------------------------------------------------------------
@@ -268,13 +279,7 @@ class SmartWait:
         # Capture the initial baseline and track cumulative change from it.
         baseline = self._capture(region)
         if baseline is None:
-            return WaitResult(
-                success=False,
-                elapsed=time.monotonic() - start,
-                frames_checked=frames,
-                change_score=0.0,
-                snapshot_path=None,
-            )
+            return _fail(time.monotonic() - start, frames)
         baseline_small = _downsample(baseline)
         prev_small = baseline_small
         frames += 1
@@ -282,21 +287,9 @@ class SmartWait:
         while True:
             elapsed = time.monotonic() - start
             if elapsed >= timeout:
-                return WaitResult(
-                    success=False,
-                    elapsed=elapsed,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(elapsed, frames)
             if self._cancelled():
-                return WaitResult(
-                    success=False,
-                    elapsed=time.monotonic() - start,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(time.monotonic() - start, frames)
 
             time.sleep(interval)
             current = self._capture(region)
@@ -358,34 +351,16 @@ class SmartWait:
 
         prev = self._capture(region)
         if prev is None:
-            return WaitResult(
-                success=False,
-                elapsed=time.monotonic() - start,
-                frames_checked=frames,
-                change_score=last_score,
-                snapshot_path=None,
-            )
+            return _fail(time.monotonic() - start, frames, last_score)
         prev_small = _downsample(prev)
         frames += 1
 
         while True:
             elapsed = time.monotonic() - start
             if elapsed >= timeout:
-                return WaitResult(
-                    success=False,
-                    elapsed=elapsed,
-                    frames_checked=frames,
-                    change_score=last_score,
-                    snapshot_path=None,
-                )
+                return _fail(elapsed, frames, last_score)
             if self._cancelled():
-                return WaitResult(
-                    success=False,
-                    elapsed=time.monotonic() - start,
-                    frames_checked=frames,
-                    change_score=last_score,
-                    snapshot_path=None,
-                )
+                return _fail(time.monotonic() - start, frames, last_score)
 
             time.sleep(interval)
             current = self._capture(region)
@@ -451,21 +426,9 @@ class SmartWait:
         while True:
             elapsed = time.monotonic() - start
             if elapsed >= timeout:
-                return WaitResult(
-                    success=False,
-                    elapsed=elapsed,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(elapsed, frames)
             if self._cancelled():
-                return WaitResult(
-                    success=False,
-                    elapsed=time.monotonic() - start,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(time.monotonic() - start, frames)
 
             frames += 1
             try:
@@ -521,13 +484,7 @@ class SmartWait:
         frames = 0
         needle = text.strip().lower()
         if not needle:
-            return WaitResult(
-                success=False,
-                elapsed=0.0,
-                frames_checked=0,
-                change_score=0.0,
-                snapshot_path=None,
-            )
+            return _fail(0.0, 0)
 
         # Lazy import — OCR is optional.
         try:
@@ -540,32 +497,14 @@ class SmartWait:
 
         if not _ocr_available:
             logger.warning("OCR unavailable — wait_for_text cannot proceed")
-            return WaitResult(
-                success=False,
-                elapsed=0.0,
-                frames_checked=0,
-                change_score=0.0,
-                snapshot_path=None,
-            )
+            return _fail(0.0, 0)
 
         while True:
             elapsed = time.monotonic() - start
             if elapsed >= timeout:
-                return WaitResult(
-                    success=False,
-                    elapsed=elapsed,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(elapsed, frames)
             if self._cancelled():
-                return WaitResult(
-                    success=False,
-                    elapsed=time.monotonic() - start,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(time.monotonic() - start, frames)
 
             frames += 1
             try:
@@ -632,21 +571,9 @@ class SmartWait:
         while True:
             elapsed = time.monotonic() - start
             if elapsed >= timeout:
-                return WaitResult(
-                    success=False,
-                    elapsed=elapsed,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(elapsed, frames)
             if self._cancelled():
-                return WaitResult(
-                    success=False,
-                    elapsed=time.monotonic() - start,
-                    frames_checked=frames,
-                    change_score=0.0,
-                    snapshot_path=None,
-                )
+                return _fail(time.monotonic() - start, frames)
 
             frames += 1
             try:

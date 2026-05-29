@@ -384,6 +384,48 @@ def get_base_url(provider_key: str, custom_url: str | None = None) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _fetch_models_raw(url: str, headers: dict[str, str], provider_key: str) -> object | None:
+    """GET *url* and return the parsed JSON body, or None on any error."""
+    try:
+        resp = requests.get(url, headers=headers, timeout=30.0)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.exceptions.Timeout:
+        logger.warning("fetch_models(%s): request timed out", provider_key)
+    except requests.exceptions.ConnectionError:
+        logger.warning("fetch_models(%s): connection error", provider_key)
+    except requests.exceptions.HTTPError as exc:
+        logger.warning(
+            "fetch_models(%s): HTTP %s — %s",
+            provider_key,
+            exc.response.status_code,
+            exc,
+        )
+    except (ValueError, KeyError, TypeError) as exc:
+        logger.error("fetch_models(%s): unexpected %s: %s", provider_key, type(exc).__name__, exc)
+    return None
+
+
+def _extract_model_ids(data: object, provider_key: str) -> list[str] | None:
+    """Return sorted model ID strings parsed from *data*, or None if unparseable."""
+    models_list = data if isinstance(data, list) else (
+        data.get("data", data.get("models", [])) if isinstance(data, dict) else None  # type: ignore[union-attr]
+    )
+    if not isinstance(models_list, list):
+        logger.warning("fetch_models(%s): unexpected response shape", provider_key)
+        return None
+
+    ids: list[str] = []
+    for entry in models_list:
+        if isinstance(entry, dict):
+            mid = entry.get("id") or entry.get("name") or entry.get("model", "")
+        else:
+            mid = str(entry)
+        if mid:
+            ids.append(mid)
+    return sorted(ids)
+
+
 def fetch_models(
     provider_key: str,
     api_key: str = "",
@@ -415,8 +457,7 @@ def fetch_models(
     # Providers that don't expose a /models endpoint → manual list or empty.
     models_endpoint = provider.get("models_endpoint")
     if models_endpoint is None:
-        manual = provider.get("manual_models", [])
-        return sorted(manual)
+        return sorted(provider.get("manual_models", []))
 
     # Resolve base URL.
     base_url = get_base_url(provider_key, custom_url)
@@ -425,54 +466,13 @@ def fetch_models(
         return []
 
     url = f"{base_url}{models_endpoint}"
-
-    # Build headers (same logic as LLMClient.chat).
     headers: dict[str, str] = {}
     if not provider.get("no_auth") and api_key:
         headers[provider["auth_header"]] = f"{provider['auth_prefix']}{api_key}"
 
-    try:
-        resp = requests.get(url, headers=headers, timeout=30.0)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.exceptions.Timeout:
-        logger.warning("fetch_models(%s): request timed out", provider_key)
-        return []
-    except requests.exceptions.ConnectionError:
-        logger.warning("fetch_models(%s): connection error", provider_key)
-        return []
-    except requests.exceptions.HTTPError as exc:
-        logger.warning(
-            "fetch_models(%s): HTTP %s — %s",
-            provider_key,
-            exc.response.status_code,
-            exc,
-        )
-        return []
-    except (ValueError, KeyError, TypeError) as exc:
-        logger.error("fetch_models(%s): unexpected %s: %s", provider_key, type(exc).__name__, exc)
+    data = _fetch_models_raw(url, headers, provider_key)
+    if data is None:
         return []
 
-    # Parse response — tolerate a few shapes.
-    models_list = data if isinstance(data, list) else data.get("data", data.get("models", []))
-    if not isinstance(models_list, list):
-        # Some providers wrap the list differently.
-        if isinstance(data, list):
-            models_list = data
-        else:
-            logger.warning(
-                "fetch_models(%s): unexpected response shape",
-                provider_key,
-            )
-            return []
-
-    ids: list[str] = []
-    for entry in models_list:
-        if isinstance(entry, dict):
-            mid = entry.get("id") or entry.get("name") or entry.get("model", "")
-        else:
-            mid = str(entry)
-        if mid:
-            ids.append(mid)
-
-    return sorted(ids)
+    ids = _extract_model_ids(data, provider_key)
+    return ids if ids is not None else []
