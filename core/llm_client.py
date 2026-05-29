@@ -438,63 +438,35 @@ class LLMClient:
         while attempt <= max_retries:
             try:
                 resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
-            except requests.exceptions.Timeout as exc:
+            except (
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.RequestException,
+            ) as exc:
                 last_exc = exc
                 logger.warning(
-                    "%s: request timed out (attempt %d/%d)",
+                    "%s: %s (attempt %d/%d): %s",
                     provider_label,
-                    attempt + 1,
-                    max_retries + 1,
-                )
-            except requests.exceptions.ConnectionError as exc:
-                last_exc = exc
-                logger.warning(
-                    "%s: connection error (attempt %d/%d): %s",
-                    provider_label,
-                    attempt + 1,
-                    max_retries + 1,
-                    exc,
-                )
-            except requests.exceptions.RequestException as exc:
-                last_exc = exc
-                logger.warning(
-                    "%s: request error (attempt %d/%d): %s",
-                    provider_label,
+                    type(exc).__name__,
                     attempt + 1,
                     max_retries + 1,
                     exc,
                 )
             else:
+                # Success — return immediately.
                 if resp.status_code < 400:
-                    try:
-                        return resp.json()
-                    except ValueError as exc:
-                        raise LLMError(
-                            f"{provider_label}: provider returned non-JSON body"
-                        ) from exc
-                last_status = resp.status_code
-                last_body = (resp.text or "")[:500]
-                if resp.status_code not in RETRY_STATUSES:
-                    # Non-retriable HTTP error — raise immediately.
-                    raise LLMError(_friendly_http_error(resp.status_code, last_body))
-                logger.warning(
-                    "%s: HTTP %d (attempt %d/%d) — %s",
-                    provider_label,
-                    resp.status_code,
-                    attempt + 1,
-                    max_retries + 1,
-                    last_body[:120],
+                    return self._parse_response_json(resp, provider_label)
+                last_status, last_body = self._classify_error_response(
+                    resp, provider_label, attempt, max_retries
                 )
 
             if attempt >= max_retries:
                 break
-            # Exponential backoff with jitter (capped at 30s).
             delay = min(30.0, base_delay * (2**attempt))
             delay += random.uniform(0, base_delay)  # noqa: S311
             time.sleep(delay)
             attempt += 1
 
-        # Out of retries.
         if last_status is not None:
             raise LLMError(_friendly_http_error(last_status, last_body))
         if last_exc is not None:
@@ -504,6 +476,32 @@ class LLMClient:
         raise LLMError(
             f"{provider_label}: request failed for unknown reasons ({max_retries + 1} attempts)"
         )
+
+    @staticmethod
+    def _parse_response_json(resp: Any, provider_label: str) -> dict[str, Any]:
+        """Parse a successful HTTP response as JSON, raising LLMError on decode failure."""
+        try:
+            return resp.json()  # type: ignore[no-any-return]
+        except ValueError as exc:
+            raise LLMError(f"{provider_label}: provider returned non-JSON body") from exc
+
+    @staticmethod
+    def _classify_error_response(
+        resp: Any, provider_label: str, attempt: int, max_retries: int
+    ) -> tuple[int, str]:
+        """Handle a ≥400 HTTP response. Raises for non-retriable; returns (status, body) for retriable."""
+        body = (resp.text or "")[:500]
+        if resp.status_code not in RETRY_STATUSES:
+            raise LLMError(_friendly_http_error(resp.status_code, body))
+        logger.warning(
+            "%s: HTTP %d (attempt %d/%d) — %s",
+            provider_label,
+            resp.status_code,
+            attempt + 1,
+            max_retries + 1,
+            body[:120],
+        )
+        return resp.status_code, body
 
     @staticmethod
     def _build_headers(

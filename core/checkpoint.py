@@ -151,14 +151,29 @@ class CheckpointManager:
             status = "running"
 
         checkpoint_id = str(uuid.uuid4())
-        timestamp = _iso_now()
-        goal_preview = goal[:200] if goal else ""
+        record = self._build_checkpoint_record(
+            checkpoint_id, goal, step_num, status, agent_memory,
+            last_screenshot_path, config, messages,
+        )
+        return checkpoint_id if self._persist_checkpoint(record, checkpoint_id, step_num, status) else None
 
-        record: dict[str, Any] = {
+    def _build_checkpoint_record(
+        self,
+        checkpoint_id: str,
+        goal: str,
+        step_num: int,
+        status: str,
+        agent_memory: list[Any],
+        last_screenshot_path: str | None,
+        config: dict[str, Any],
+        messages: list[dict[str, Any]] | None,
+    ) -> dict[str, Any]:
+        """Assemble the checkpoint record dict."""
+        return {
             "id": checkpoint_id,
-            "timestamp": timestamp,
+            "timestamp": _iso_now(),
             "goal": goal,
-            "goal_preview": goal_preview,
+            "goal_preview": goal[:200] if goal else "",
             "step_num": step_num,
             "status": status,
             "agent_memory": agent_memory,
@@ -169,23 +184,25 @@ class CheckpointManager:
             "model": config.get("model", ""),
         }
 
+    def _persist_checkpoint(
+        self, record: dict[str, Any], checkpoint_id: str, step_num: int, status: str
+    ) -> bool:
+        """Write checkpoint record to disk. Returns True on success."""
         dest = self._dir / f"{checkpoint_id}.json"
-        saved = False
         with self._lock:
             try:
                 with dest.open("w", encoding="utf-8") as fh:
                     json.dump(record, fh, indent=2, default=str, ensure_ascii=False)
-                saved = True
                 logger.info(
                     "Checkpoint saved: %s  step=%d  status=%s",
                     checkpoint_id[:8],
                     step_num,
                     status,
                 )
+                return True
             except (OSError, TypeError, ValueError):
                 logger.exception("Failed to save checkpoint %s", checkpoint_id[:8])
-
-        return checkpoint_id if saved else None
+                return False
 
     # ------------------------------------------------------------------
     # Load helpers

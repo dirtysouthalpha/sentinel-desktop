@@ -384,22 +384,36 @@ class SmartWait:
             prev_small = current_small
 
             if score > 0.0:
-                # Screen is still changing — reset the stability clock.
                 last_change_time = time.monotonic()
                 last_score = score
             else:
-                # No change since last frame.  Have we been stable long
-                # enough?
-                stable_for = time.monotonic() - last_change_time
-                if stable_for >= stable_time:
-                    snap_path = _save_snapshot(current, prefix="stable")
-                    return WaitResult(
-                        success=True,
-                        elapsed=time.monotonic() - start,
-                        frames_checked=frames,
-                        change_score=last_score,
-                        snapshot_path=snap_path or None,
-                    )
+                result = self._check_stable_duration(
+                    current, start, frames, last_score, last_change_time, stable_time
+                )
+                if result is not None:
+                    return result
+
+    def _check_stable_duration(
+        self,
+        current: Image.Image,
+        start: float,
+        frames: int,
+        last_score: float,
+        last_change_time: float,
+        stable_time: float,
+    ) -> WaitResult | None:
+        """Return a success WaitResult if the screen has been stable long enough, else None."""
+        stable_for = time.monotonic() - last_change_time
+        if stable_for >= stable_time:
+            snap_path = _save_snapshot(current, prefix="stable")
+            return WaitResult(
+                success=True,
+                elapsed=time.monotonic() - start,
+                frames_checked=frames,
+                change_score=last_score,
+                snapshot_path=snap_path or None,
+            )
+        return None
 
     # ------------------------------------------------------------------
     # wait_for_match

@@ -407,37 +407,44 @@ class ActionExecutor:
                     "output": f"Clicked control at {pos}",
                     "position": list(pos),
                 }
-
-            # Fallback: if name was provided, try OCR text click
-            if name:
-                try:
-                    ocr_pos = ocr.find_text(name, fuzzy=True)
-                    if ocr_pos:
-                        sx = ocr_pos[0] + self.click_offset[0]
-                        sy = ocr_pos[1] + self.click_offset[1]
-                        self._desktop.click(sx, sy, button=button)
-                        return {
-                            "success": True,
-                            "output": f"Clicked control {name!r} via OCR at ({sx},{sy})",
-                            "position": [sx, sy],
-                            "fallback": "ocr",
-                        }
-                except Exception as exc:
-                    logger.debug("click_control OCR fallback failed: %s", exc)
-
-            return {
-                "success": False,
-                "output": f"No control matched (name={name!r}, automation_id={automation_id!r}, "
-                f"control_type={control_type!r})",
-                "error": "control_not_found",
-                "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
-            }
+            return self._click_control_ocr_fallback(name, automation_id, control_type, button)
         except Exception as exc:
             return {
                 "success": False,
                 "output": f"click_control error: {exc}",
                 "error": "click_control_failed",
             }
+
+    def _click_control_ocr_fallback(
+        self,
+        name: str | None,
+        automation_id: str | None,
+        control_type: str | None,
+        button: str,
+    ) -> dict:
+        """Fallback: try OCR text click when UIA found no matching control."""
+        if name:
+            try:
+                ocr_pos = ocr.find_text(name, fuzzy=True)
+                if ocr_pos:
+                    sx = ocr_pos[0] + self.click_offset[0]
+                    sy = ocr_pos[1] + self.click_offset[1]
+                    self._desktop.click(sx, sy, button=button)
+                    return {
+                        "success": True,
+                        "output": f"Clicked control {name!r} via OCR at ({sx},{sy})",
+                        "position": [sx, sy],
+                        "fallback": "ocr",
+                    }
+            except Exception as exc:
+                logger.debug("click_control OCR fallback failed: %s", exc)
+        return {
+            "success": False,
+            "output": f"No control matched (name={name!r}, automation_id={automation_id!r}, "
+            f"control_type={control_type!r})",
+            "error": "control_not_found",
+            "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
+        }
 
     def _list_controls(
         self, *, window_title: str | None = None, max_results: int = 60, **_
@@ -501,55 +508,61 @@ class ActionExecutor:
             )
             if ok:
                 return {"success": True, "output": f"Set text on {name or automation_id!r}"}
-
-            # Fallback: try finding the control position, click it, select-all, type
-            try:
-                controls = ui_tree.list_controls(window_title=window_title, max_results=30)
-                target = None
-                for c in controls:
-                    cname = (c.get("name") or "").lower()
-                    cid = (c.get("automation_id") or "").lower()
-                    if name and name.lower() in cname:
-                        target = c
-                        break
-                    if automation_id and automation_id.lower() in cid:
-                        target = c
-                        break
-                    if c.get("control_type") == "Edit" and not name and not automation_id:
-                        target = c
-                        break
-                if target and not target.get("is_offscreen"):
-                    cx = target["x"] + target["width"] // 2
-                    cy = target["y"] + target["height"] // 2
-                    sx = cx + self.click_offset[0]
-                    sy = cy + self.click_offset[1]
-                    self._desktop.click(sx, sy)
-                    import time as _t
-
-                    _t.sleep(0.15)
-                    self._desktop.hotkey("ctrl", "a")
-                    _t.sleep(0.1)
-                    self._desktop.type_text(text)
-                    return {
-                        "success": True,
-                        "output": f"Set text via click+type on control at ({sx},{sy})",
-                        "fallback": "click_and_type",
-                    }
-            except Exception as exc:
-                logger.debug("set_text click+type fallback failed: %s", exc)
-
-            return {
-                "success": False,
-                "output": f"No editable control matched (name={name!r})",
-                "error": "control_not_found",
-                "hint": "Try click_text() on the field label, then type_text()",
-            }
+            return self._set_text_click_fallback(window_title, name, automation_id, text)
         except Exception as exc:
             return {
                 "success": False,
                 "output": f"set_text error: {exc}",
                 "error": "set_text_failed",
             }
+
+    def _set_text_click_fallback(
+        self,
+        window_title: str | None,
+        name: str | None,
+        automation_id: str | None,
+        text: str,
+    ) -> dict:
+        """Fallback: find edit control via UIA, click it, select-all, then type."""
+        try:
+            controls = ui_tree.list_controls(window_title=window_title, max_results=30)
+            target = None
+            for c in controls:
+                cname = (c.get("name") or "").lower()
+                cid = (c.get("automation_id") or "").lower()
+                if name and name.lower() in cname:
+                    target = c
+                    break
+                if automation_id and automation_id.lower() in cid:
+                    target = c
+                    break
+                if c.get("control_type") == "Edit" and not name and not automation_id:
+                    target = c
+                    break
+            if target and not target.get("is_offscreen"):
+                import time as _t
+                cx = target["x"] + target["width"] // 2
+                cy = target["y"] + target["height"] // 2
+                sx = cx + self.click_offset[0]
+                sy = cy + self.click_offset[1]
+                self._desktop.click(sx, sy)
+                _t.sleep(0.15)
+                self._desktop.hotkey("ctrl", "a")
+                _t.sleep(0.1)
+                self._desktop.type_text(text)
+                return {
+                    "success": True,
+                    "output": f"Set text via click+type on control at ({sx},{sy})",
+                    "fallback": "click_and_type",
+                }
+        except Exception as exc:
+            logger.debug("set_text click+type fallback failed: %s", exc)
+        return {
+            "success": False,
+            "output": f"No editable control matched (name={name!r})",
+            "error": "control_not_found",
+            "hint": "Try click_text() on the field label, then type_text()",
+        }
 
     def _click_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
         """Find a template image on screen and click it, using stealth if available."""

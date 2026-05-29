@@ -605,49 +605,44 @@ class MFADetector:
                 logger.debug("MFA monitor poll error: %s", exc)
                 result = _empty_result()
 
-            now = time.monotonic()
-
-            if result.detected:
-                # Cooldown: skip if we already detected this exact prompt
-                # within the cooldown window.
-                sig = f"{result.type}:{result.window_title}:{result.prompt_text[:40]}"
-                with self._lock:
-                    in_cooldown = (
-                        sig == self._last_prompt_sig
-                        and (now - self._last_detection_time) < self._cooldown
-                    )
-
-                if not in_cooldown:
-                    with self._lock:
-                        self._last_detection = result
-                        self._last_detection_time = now
-                        self._last_prompt_sig = sig
-
-                    # Invoke user callback
-                    if self._callback is not None:
-                        try:
-                            self._callback(result.type, result.prompt_text)
-                        except (RuntimeError, OSError, ValueError) as exc:
-                            logger.warning("MFA callback error: %s", exc)
-
-                    was_detected = True
-                    logger.info(
-                        "MFA detected: type=%s confidence=%.2f title=%r",
-                        result.type,
-                        result.confidence,
-                        result.window_title[:60],
-                    )
-
-            elif was_detected:
-                # Auto-resume: the dialog has disappeared.
-                logger.info("MFA prompt no longer visible — auto-resume")
-                was_detected = False
-                with self._lock:
-                    self._last_detection = None
-                    self._last_prompt_sig = ""
-
-            # Wait for next interval (interruptible by stop).
+            was_detected = self._handle_poll_result(result, time.monotonic(), was_detected)
             self._monitor_stop.wait(timeout=self._interval)
+
+    def _handle_poll_result(
+        self, result: DetectionResult, now: float, was_detected: bool
+    ) -> bool:
+        """Process one poll result; update state and invoke callback. Returns new was_detected."""
+        if result.detected:
+            sig = f"{result.type}:{result.window_title}:{result.prompt_text[:40]}"
+            with self._lock:
+                in_cooldown = (
+                    sig == self._last_prompt_sig
+                    and (now - self._last_detection_time) < self._cooldown
+                )
+            if not in_cooldown:
+                with self._lock:
+                    self._last_detection = result
+                    self._last_detection_time = now
+                    self._last_prompt_sig = sig
+                if self._callback is not None:
+                    try:
+                        self._callback(result.type, result.prompt_text)
+                    except (RuntimeError, OSError, ValueError) as exc:
+                        logger.warning("MFA callback error: %s", exc)
+                logger.info(
+                    "MFA detected: type=%s confidence=%.2f title=%r",
+                    result.type,
+                    result.confidence,
+                    result.window_title[:60],
+                )
+                return True
+        elif was_detected:
+            logger.info("MFA prompt no longer visible — auto-resume")
+            with self._lock:
+                self._last_detection = None
+                self._last_prompt_sig = ""
+            return False
+        return was_detected
 
     def _poll_once(
         self,

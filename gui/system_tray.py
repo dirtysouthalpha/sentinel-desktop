@@ -269,34 +269,8 @@ class SystemTrayIcon:
 
     # ── Menu construction ───────────────────────────────────────────────
 
-    def _build_menu(self) -> pystray.Menu:
-        """Build the full right-click context menu."""
-        items = []
-
-        # --- Primary actions ------------------------------------------------
-        items.append(
-            pystray.MenuItem(
-                "▶ New Task",
-                self._on_new_task,
-                default=True,
-            )
-        )
-        items.append(
-            pystray.MenuItem(
-                "⏺ Record",
-                self._on_record,
-            )
-        )
-        items.append(
-            pystray.MenuItem(
-                "▶ Run Last Script",
-                self._on_run_last_script,
-            )
-        )
-
-        items.append(pystray.Menu.SEPARATOR)
-
-        # --- IT Quick Actions submenu ----------------------------------------
+    def _build_it_actions_submenu(self) -> pystray.Menu:
+        """Build the IT Quick Actions submenu."""
         it_items = []
         for action_info in _IT_QUICK_ACTIONS:
             script_path = action_info["script"]
@@ -306,46 +280,27 @@ class SystemTrayIcon:
                     lambda _icon, _item, sp=script_path: self._run_it_script(sp),
                 )
             )
+        return pystray.Menu(*it_items)
 
-        items.append(
-            pystray.MenuItem(
-                "🔧 IT Quick Actions",
-                pystray.Menu(*it_items),
-            )
-        )
-
-        items.append(pystray.Menu.SEPARATOR)
-
-        # --- Status indicator (non-clickable, dynamically updated) ----------
-        items.append(
+    def _build_menu(self) -> pystray.Menu:
+        """Build the full right-click context menu."""
+        return pystray.Menu(
+            pystray.MenuItem("▶ New Task", self._on_new_task, default=True),
+            pystray.MenuItem("⏺ Record", self._on_record),
+            pystray.MenuItem("▶ Run Last Script", self._on_run_last_script),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("🔧 IT Quick Actions", self._build_it_actions_submenu()),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem(
                 lambda text: f"Status: {self._current_status.replace('_', ' ').title()}",
-                lambda icon, item: None,  # no-op click
+                lambda icon, item: None,
                 enabled=False,
-            )
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Show Window", lambda _icon, _item: self._show_window()),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Exit", self._on_exit),
         )
-
-        items.append(pystray.Menu.SEPARATOR)
-
-        # --- Show / Hide window ---------------------------------------------
-        items.append(
-            pystray.MenuItem(
-                "Show Window",
-                lambda _icon, _item: self._show_window(),
-            )
-        )
-
-        items.append(pystray.Menu.SEPARATOR)
-
-        # --- Exit -----------------------------------------------------------
-        items.append(
-            pystray.MenuItem(
-                "Exit",
-                self._on_exit,
-            )
-        )
-
-        return pystray.Menu(*items)
 
     # ── Menu callbacks ──────────────────────────────────────────────────
 

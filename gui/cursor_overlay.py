@@ -190,32 +190,25 @@ class CursorOverlay:
 
         self._root.after(16, self._process_queue)  # ~60fps check
 
-    def _animate_action(self, action: dict[str, Any]) -> None:
-        """Animate a single action: glide → pulse → fade."""
-        target_x = action.get("x", 0)
-        target_y = action.get("y", 0)
-        label = action.get("label", action.get("type", ""))
-        action_type = action.get("type", "")
-
-        # Choose ring style based on action type
+    def _resolve_ring_color(self, action_type: str) -> str:
+        """Map action type to ring color."""
         if action_type in ("click", "click_element", "click_image"):
-            ring_color = self._accent
-        elif action_type in ("type_text", "type_into_field"):
-            ring_color = "#95E400"  # lime (Override success)
-        elif action_type in ("press_key", "hotkey"):
-            ring_color = "#FBBC00"  # amber (Override warning)
-        elif action_type == "scroll":
-            ring_color = "#8a5cff"  # phantom purple
-        else:
-            ring_color = self._accent
+            return self._accent
+        if action_type in ("type_text", "type_into_field"):
+            return "#95E400"  # lime
+        if action_type in ("press_key", "hotkey"):
+            return "#FBBC00"  # amber
+        if action_type == "scroll":
+            return "#8a5cff"  # phantom purple
+        return self._accent
 
-        # Step 1: Glide from current position to target
+    def _glide_to(self, target_x: float, target_y: float, ring_color: str) -> bool:
+        """Glide ring from current position to target. Returns False if stopped."""
         start_x, start_y = self._current_x, self._current_y
         glide_steps = int(_GLIDE_DURATION * _STEPS_PER_SECOND)
-
         for i in range(glide_steps):
             if not self._running:
-                return
+                return False
             t = _ease_out(i / max(glide_steps, 1))
             cx = start_x + (target_x - start_x) * t
             cy = start_y + (target_y - start_y) * t
@@ -230,42 +223,56 @@ class CursorOverlay:
             self._root.attributes("-alpha", 0.85)
             self._root.update_idletasks()
             time.sleep(1.0 / _STEPS_PER_SECOND)
-
         self._current_x, self._current_y = target_x, target_y
+        return True
 
-        # Step 2: Show label
-        if label:
-            self._canvas.coords(self._label_id, target_x, target_y - _RING_RADIUS - 6)
-            self._canvas.itemconfig(self._label_id, text=label, fill=ring_color)
-
-        # Step 3: Pulse effect
+    def _pulse_at(self, target_x: float, target_y: float) -> bool:
+        """Pulse ring at target position. Returns False if stopped."""
         pulse_steps = int(_PULSE_DURATION * _STEPS_PER_SECOND)
         for i in range(pulse_steps):
             if not self._running:
-                return
+                return False
             t = i / max(pulse_steps, 1)
             scale = 1.0 + 0.5 * math.sin(t * math.pi)
             r = _RING_RADIUS * scale
-            cx, cy = target_x, target_y
-            self._canvas.coords(self._ring_id, cx - r, cy - r, cx + r, cy + r)
+            self._canvas.coords(self._ring_id, target_x - r, target_y - r, target_x + r, target_y + r)
             self._root.update_idletasks()
             time.sleep(1.0 / _STEPS_PER_SECOND)
+        return True
 
-        # Step 4: Fade out
+    def _fade_out(self) -> None:
+        """Fade ring to transparent and hide all canvas items."""
         fade_steps = int(_FADE_DURATION * _STEPS_PER_SECOND)
         for i in range(fade_steps):
             if not self._running:
-                return
+                break
             alpha = 0.85 * (1.0 - i / max(fade_steps, 1))
             self._root.attributes("-alpha", alpha)
             self._root.update_idletasks()
             time.sleep(1.0 / _STEPS_PER_SECOND)
-
-        # Hide
         self._root.attributes("-alpha", 0.0)
         self._canvas.coords(self._ring_id, -100, -100, -100, -100)
         self._canvas.coords(self._inner_id, -100, -100, -100, -100)
         self._canvas.coords(self._label_id, -100, -100)
+
+    def _animate_action(self, action: dict[str, Any]) -> None:
+        """Animate a single action: glide → pulse → fade."""
+        target_x = action.get("x", 0)
+        target_y = action.get("y", 0)
+        label = action.get("label", action.get("type", ""))
+        ring_color = self._resolve_ring_color(action.get("type", ""))
+
+        if not self._glide_to(target_x, target_y, ring_color):
+            return
+
+        if label:
+            self._canvas.coords(self._label_id, target_x, target_y - _RING_RADIUS - 6)
+            self._canvas.itemconfig(self._label_id, text=label, fill=ring_color)
+
+        if not self._pulse_at(target_x, target_y):
+            return
+
+        self._fade_out()
 
 
 # ── Singleton ───────────────────────────────────────────────────────

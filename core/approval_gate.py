@@ -127,24 +127,27 @@ class ApprovalGate:
             return ApprovalDecision.APPROVE, action
 
         self._current_request = None
+        return self._process_decision(request, action)
 
-        # Process decision
+    def _process_decision(
+        self, request: ApprovalRequest, action: dict[str, Any]
+    ) -> tuple[ApprovalDecision, dict[str, Any] | None]:
+        """Tally stats and return the (decision, action) tuple."""
         decision = request.decision or ApprovalDecision.APPROVE
 
         if decision == ApprovalDecision.APPROVE:
             self._stats["approved"] += 1
             return decision, action
-        elif decision == ApprovalDecision.MODIFY:
+        if decision == ApprovalDecision.MODIFY:
             self._stats["modified"] += 1
             return decision, request.modified_action or action
-        elif decision == ApprovalDecision.SKIP:
+        if decision == ApprovalDecision.SKIP:
             self._stats["skipped"] += 1
             return decision, None
-        elif decision == ApprovalDecision.ABORT:
+        if decision == ApprovalDecision.ABORT:
             self._stats["aborted"] += 1
             return decision, None
-        else:
-            return ApprovalDecision.APPROVE, action
+        return ApprovalDecision.APPROVE, action
 
     def respond_current(
         self, decision: ApprovalDecision, modified_action: dict[str, Any] | None = None

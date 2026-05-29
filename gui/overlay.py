@@ -85,67 +85,49 @@ class _Indicator:
         w = max(diameter, text_w) + 24
         h = diameter + 30
 
-        self.win = tk.Toplevel(master)
-        self.win.overrideredirect(True)
-        self.win.attributes("-topmost", True)
+        self.win, self.canvas = self._setup_window(tk, master, w, h, x, y)
+        self._draw_indicator(w, h, _color_for_kind(kind), label)
+        _make_clickthrough(self.win)
+
+    def _setup_window(
+        self, tk: Any, master: Any, w: int, h: int, x: int, y: int
+    ) -> tuple[Any, Any]:
+        """Create and position the transparent Toplevel window and its canvas."""
+        win = tk.Toplevel(master)
+        win.overrideredirect(True)
+        win.attributes("-topmost", True)
         try:
-            self.win.attributes("-alpha", 0.85)
-            self.win.attributes("-transparentcolor", "#010203")
+            win.attributes("-alpha", 0.85)
+            win.attributes("-transparentcolor", "#010203")
         except (RuntimeError, tk.TclError) as exc:
             logger.debug("Overlay transparency attributes not supported: %s", exc)
-        # Position centered on (x, y).
         gx = max(0, x - w // 2)
         gy = max(0, y - h // 2)
-        self.win.geometry(f"{w}x{h}+{gx}+{gy}")
+        win.geometry(f"{w}x{h}+{gx}+{gy}")
+        canvas = tk.Canvas(win, width=w, height=h, highlightthickness=0, bg="#010203")
+        canvas.pack(fill="both", expand=True)
+        return win, canvas
 
-        self.canvas = tk.Canvas(
-            self.win,
-            width=w,
-            height=h,
-            highlightthickness=0,
-            bg="#010203",  # the transparent color
-        )
-        self.canvas.pack(fill="both", expand=True)
-
+    def _draw_indicator(self, w: int, h: int, color: str, label: str) -> None:
+        """Draw the ring, dot, and optional label onto the canvas."""
         cx = w // 2
-        cy = (h - 26) // 2  # room for label
-        color = _color_for_kind(kind)
-
-        # Ring
+        cy = (h - 26) // 2
         self.canvas.create_oval(
-            cx - _RING_RADIUS,
-            cy - _RING_RADIUS,
-            cx + _RING_RADIUS,
-            cy + _RING_RADIUS,
-            outline=color,
-            width=4,
+            cx - _RING_RADIUS, cy - _RING_RADIUS,
+            cx + _RING_RADIUS, cy + _RING_RADIUS,
+            outline=color, width=4,
         )
-        # Crosshair dot
         self.canvas.create_oval(cx - 3, cy - 3, cx + 3, cy + 3, fill=color, outline=color)
-
-        # Label background
         label = (label or "").strip()
         if label:
             text_y = h - 14
             self.canvas.create_rectangle(
-                4,
-                text_y - 11,
-                w - 4,
-                text_y + 10,
-                fill="#0A0C10",
-                outline=color,
-                width=1,
+                4, text_y - 11, w - 4, text_y + 10,
+                fill="#0A0C10", outline=color, width=1,
             )
             self.canvas.create_text(
-                cx,
-                text_y,
-                text=label,
-                fill="#e2e2e8",
-                font=("Segoe UI", 9, "bold"),
+                cx, text_y, text=label, fill="#e2e2e8", font=("Segoe UI", 9, "bold"),
             )
-
-        # Make the whole window click-through on Windows.
-        _make_clickthrough(self.win)
 
     def destroy(self) -> None:
         """Destroy the overlay indicator window."""

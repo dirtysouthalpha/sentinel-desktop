@@ -267,12 +267,7 @@ class AgentEngine:
     ) -> None:
         self.config = config or {}
         self.llm = LLMClient()
-        # approval_callback(action_dict) -> bool. When set AND
-        # config['approval_mode'] is truthy, every action in
-        # APPROVAL_REQUIRED_ACTIONS is shown to the user before execution.
         self.approval_callback = approval_callback
-        # pre_action_callback(action_dict) -> None. Invoked just before each
-        # action is dispatched. GUI uses it to flash an on-screen overlay.
         self.pre_action_callback = pre_action_callback
         self.executor = ActionExecutor(
             dry_run=bool(self.config.get("dry_run", False)),
@@ -292,7 +287,11 @@ class AgentEngine:
         self.on_step_callback: Callable[..., None] | None = None
         self.finish_summary: str = ""
 
-        # ── Core subsystems (always needed) ──────────────────────────
+        self._init_core_subsystems()
+        self._init_lazy_subsystems()
+
+    def _init_core_subsystems(self) -> None:
+        """Initialise always-needed subsystems."""
         self.logger = ForensicLog()
         self.checkpoint = CheckpointManager()
         self.gate = ApprovalGate(
@@ -303,17 +302,14 @@ class AgentEngine:
         self.mfa_detector = MFADetector()
         self._mfa_paused = False
         self.smart_waiter = SmartWait()
-
-        # Failure tracking and recovery
         self._consecutive_failures = 0
         self._recovery_engine = RecoveryEngine()
-
-        # Popup dialog detection and dismissal
         self._popup_handler = PopupHandler(
             auto_dismiss=bool(self.config.get("auto_dismiss_popups", False)),
         )
 
-        # ── Lazy-loaded subsystems (only created when accessed) ──────
+    def _init_lazy_subsystems(self) -> None:
+        """Set lazy-loaded subsystem slots to None (created on first access)."""
         self._recorder = None
         self._script_engine = None
         self._powershell = None
@@ -1013,34 +1009,8 @@ class AgentEngine:
         Returns:
             Updated screenshot_b64 (may be new or None).
         """
-        # Capture for script recorder if recording
-        if self.recorder.is_recording:
-            self.recorder.capture_action(action, result)
+        log_result = self._record_step_outcome(action, action_name, result, goal, messages)
 
-        log_result = {
-            "ok": result.get("success", True),
-            "msg": str(result.get("output", ""))[:500],
-        }
-        self._log_step_result(self.step, log_result)
-
-        # Structured forensic log
-        self.logger.log_step(
-            self.step,
-            action_name,
-            str(action.get("x", action.get("name", ""))),
-            action,
-            log_result,
-        )
-
-        # Checkpoint every 5 steps
-        self._try_save_checkpoint(goal, messages)
-
-        # Note actions are no-ops at the executor level; record once
-        # here so we don't double-log.
-        if action_name == "note":
-            self.notes.append(action.get("text", ""))
-
-        # Notify callback
         if self.on_step_callback:
             try:
                 self.on_step_callback(
@@ -1052,8 +1022,40 @@ class AgentEngine:
             except (RuntimeError, TypeError) as exc:
                 logger.warning("Step callback failed: %s", exc)
 
-        # Take new screenshot for next iteration
         return self._capture_next_screenshot(messages, log_result["msg"], screenshot_b64)
+
+    def _record_step_outcome(
+        self,
+        action: dict[str, Any],
+        action_name: str,
+        result: dict[str, Any],
+        goal: str,
+        messages: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Log step to recorder, forensic log, and checkpoint; return log_result dict."""
+        if self.recorder.is_recording:
+            self.recorder.capture_action(action, result)
+
+        log_result = {
+            "ok": result.get("success", True),
+            "msg": str(result.get("output", ""))[:500],
+        }
+        self._log_step_result(self.step, log_result)
+
+        self.logger.log_step(
+            self.step,
+            action_name,
+            str(action.get("x", action.get("name", ""))),
+            action,
+            log_result,
+        )
+
+        self._try_save_checkpoint(goal, messages)
+
+        if action_name == "note":
+            self.notes.append(action.get("text", ""))
+
+        return log_result
 
     def _finalize_run(self, goal: str, start_time: float) -> dict[str, Any]:
         """Clean up after a run, play notification sound, and return results.
@@ -1121,35 +1123,38 @@ class AgentEngine:
                     tools=tools,
                     temperature=self.LLM_TEMPERATURE,
                     custom_url=self.config.get("custom_base_url") or None,
-                    max_retries=0,  # disable client-level retry; we handle it here
+                    max_retries=0,
                     retry_base_delay=0,
                 )
             except LLMError as exc:
-                # Non-retriable LLM errors (auth, model not found, etc.)
                 logger.error("LLM error (non-retriable): %s", exc)
                 self.notes.append(f"LLM error at step {self.step}: {exc}")
                 return None
             except (ConnectionError, TimeoutError, OSError) as exc:
-                # Network / transient errors -- retry
-                logger.warning(
-                    "LLM call attempt %d failed: %s: %s",
-                    attempt + 1,
-                    type(exc).__name__,
-                    exc,
-                )
-                if attempt >= len(self._LLM_RETRY_DELAYS):
-                    # Exhausted all retries
-                    logger.error(
-                        "LLM call failed after %d retries: %s",
-                        len(self._LLM_RETRY_DELAYS) + 1,
-                        exc,
-                    )
-                    self.notes.append(
-                        f"LLM error at step {self.step} "
-                        f"(after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
-                    )
+                if self._handle_llm_network_error(exc, attempt):
                     return None
-        return None  # pragma: no cover  # unreachable, satisfies type checker
+        return None  # pragma: no cover
+
+    def _handle_llm_network_error(self, exc: Exception, attempt: int) -> bool:
+        """Log a transient LLM network error. Returns True when retries are exhausted."""
+        logger.warning(
+            "LLM call attempt %d failed: %s: %s",
+            attempt + 1,
+            type(exc).__name__,
+            exc,
+        )
+        if attempt >= len(self._LLM_RETRY_DELAYS):
+            logger.error(
+                "LLM call failed after %d retries: %s",
+                len(self._LLM_RETRY_DELAYS) + 1,
+                exc,
+            )
+            self.notes.append(
+                f"LLM error at step {self.step} "
+                f"(after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
+            )
+            return True
+        return False
 
     def _generate_report(self, goal: str, elapsed: float) -> dict[str, Any]:
         """Generate a structured run report for MSP work notes.
