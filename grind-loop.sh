@@ -1,33 +1,45 @@
 #!/bin/bash
+# Sentinel Desktop Grind Loop — Sonnet 4.6
 cd ~/Projects/sentinel-desktop
 mkdir -p ~/grind-logs
 
-# Wait for deps to finish installing
-echo "[$(date)] Waiting for pip install to finish..."
-while ! source .venv/bin/activate && python -c "import customtkinter" 2>/dev/null; do
-    echo "[$(date)] Deps not ready, waiting 30s..."
-    sleep 30
-done
-echo "[$(date)] Deps ready!"
+# Quick health check — make sure venv exists
+if [ ! -f .venv/bin/python ]; then
+    echo "[$(date)] ERROR: .venv not found. Run python3 -m venv .venv && .venv/bin/pip install -r requirements.txt first."
+    exit 1
+fi
+
+# Install missing deps quietly
+.venv/bin/pip install -q pytest pytest-timeout pytest-asyncio pytest-cov ruff 2>/dev/null
 
 while true; do
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     LOG=~/grind-logs/desktop-${TIMESTAMP}.log
-    
-    echo "[$(date)] Starting Sentinel Desktop PRODUCTION POLISH grind (Opus)..." | tee -a "$LOG"
-    
-    source .venv/bin/activate
-    
-    claude -p "Read CLAUDE.md. You are polishing Sentinel Desktop v3.0 — a massive Python desktop automation agent (234 files, 71K lines). Your priority: (1) Run the test suite and fix ALL failures, (2) Run ruff and fix ALL lint errors, (3) Improve test coverage for untested modules, (4) Complete any in-progress features (workflow builder API handlers, IT support scripts), (5) Edge case hardening for recovery/scheduler/LLM client, (6) Performance optimization, (7) Documentation gaps. Work through every item in CLAUDE.md systematically. After each fix, commit with conventional commit messages and push. Do NOT stop until everything passes clean." \
+
+    echo "[$(date)] Starting Sentinel Desktop grind (Sonnet 4.6)..." | tee -a "$LOG"
+
+    cd ~/Projects/sentinel-desktop
+    git pull origin main 2>&1 | tee -a "$LOG"
+    rm -rf .aider.chat.history.md .aider.input.history .aider.tags.cache.v4/ 2>/dev/null
+
+    claude -p "Read CLAUDE.md and follow ALL instructions. You are improving Sentinel Desktop v3.0 — a Python desktop automation agent. Use .venv/bin/python for all python commands and .venv/bin/ruff for linting. After EVERY change, run the test suite (.venv/bin/python -m pytest tests/ -q --timeout=10) and verify tests pass BEFORE committing. If a test fails, fix it immediately. Push after every 3-5 commits. Work through every priority in CLAUDE.md systematically." \
         --allowedTools Read,Write,Edit,Bash \
         --dangerously-skip-permissions \
         --max-turns 500 \
-        --model opus \
+        --model claude-sonnet-4-6 \
         2>&1 | tee -a "$LOG"
-    
+
+    # Post-session verification
+    echo "[$(date)] Running post-session test verification..." | tee -a "$LOG"
+    .venv/bin/python -m pytest tests/ -q --timeout=10 --tb=line 2>&1 | tail -5 | tee -a "$LOG"
+    echo "[$(date)] Test exit code: ${PIPESTATUS[0]}" | tee -a "$LOG"
+
+    # Push any unpushed commits
+    git push origin main 2>&1 | tee -a "$LOG"
+
     echo "[$(date)] Session ended. Restarting in 60s..." | tee -a "$LOG"
-    
+
     # Keep last 10 logs
-    ls -t ~/grind-logs/desktop-*.log | tail -n +11 | xargs -r rm
+    cd ~/grind-logs && ls -t desktop-*.log | tail -n +11 | xargs -r rm
     sleep 60
 done

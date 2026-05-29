@@ -3,8 +3,8 @@
 Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician.
 
 ## What To Do (Priority Order)
-1. Run `python -m pytest tests/ -q` — fix ALL failing tests first.
-2. Run `ruff check core/ gui/ api/` — fix ALL lint errors.
+1. Run `.venv/bin/python -m pytest tests/ -q --timeout=10` — fix ALL failing tests first.
+2. Run `.venv/bin/ruff check core/ gui/ api/` — fix ALL lint errors.
 3. Improve test coverage — add tests for any remaining untested modules in core/ and gui/. Target: every module should have ≥80% branch coverage.
 4. Finish remaining in-progress features:
    - `api/server.py` — workflow builder API endpoints need handler bodies completed (_handle_workflow_add_step, _handle_workflow_remove_step, etc.)
