@@ -908,3 +908,156 @@ class TestReadWindowLowConfidence:
         result = ex._read_window(title="App")
         assert result["success"] is False
         assert result["error"] == "read_window_failed"
+
+
+# ===================================================================
+# Missing-branch gap-fills
+# ===================================================================
+
+
+class TestApprovalCallbackApproved:
+    """Branch 129->139: approval_callback returns True — action proceeds."""
+
+    def test_approved_action_executes_normally(self, monkeypatch):
+        """When approval_callback returns True the action runs and succeeds."""
+        monkeypatch.setattr(desktop_mod, "DesktopEngine", FakeDesktop)
+
+        async def approve(_action):
+            return True
+
+        ex = ActionExecutor(approval_callback=approve)
+        result = asyncio.run(ex.execute({"action": "click", "x": 5, "y": 5}))
+        assert result["success"] is True
+
+
+class TestHandlerTimeoutAsync:
+    """Branch 164: asyncio.wait_for raises TimeoutError."""
+
+    def test_timeout_returns_timeout_error(self, fake_executor, monkeypatch):
+        import asyncio as asyncio_mod
+        import core.action_executor as ae_mod
+
+        ex = fake_executor()
+        # Inject a coroutine handler that waits longer than the timeout
+        async def _slow_handler(self_ref, **_):
+            await asyncio_mod.sleep(0.5)
+            return {"success": True, "output": "too slow"}
+
+        ex._dispatch_table = dict(ex._dispatch_table)
+        ex._dispatch_table["click"] = _slow_handler
+
+        # Patch wait_for timeout down to a tiny value so it fires
+        original_wait_for = asyncio_mod.wait_for
+
+        async def _short_wait(coro, timeout):
+            return await original_wait_for(coro, timeout=0.001)
+
+        monkeypatch.setattr(ae_mod.asyncio, "wait_for", _short_wait)
+        result = asyncio_mod.run(ex.execute({"action": "click", "x": 1, "y": 1}))
+        assert result["success"] is False
+        assert result["error"] == "timeout"
+
+
+class TestClickTextStealthReturnsFalse:
+    """Branch 270->276: stealth post_click returns False, falls to physical."""
+
+    def test_stealth_post_click_false_uses_physical(self, monkeypatch):
+        import core.action_executor as ae_mod
+        from core import ocr
+
+        monkeypatch.setattr(ocr, "find_text", lambda t, fuzzy=True: (100, 200))
+        monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
+        monkeypatch.setattr(ae_mod.stealth_input, "post_click", MagicMock(return_value=False))
+
+        ex = _make_executor(stealth=True)
+        result = ex._click_text(text="Submit")
+        assert result["success"] is True
+        assert "stealth" not in result["output"]
+
+
+class TestSetTextClickFallbackLoopContinue:
+    """Branch 543->534: first control in loop doesn't match → loop continues."""
+
+    def test_non_matching_control_skipped(self, monkeypatch):
+        import core.action_executor as ae_mod
+        import core.ui_tree as ui_tree_mod
+
+        non_match = {
+            "name": "Unrelated Label",
+            "automation_id": "",
+            "control_type": "Text",
+            "x": 0,
+            "y": 0,
+            "width": 50,
+            "height": 20,
+            "is_offscreen": False,
+        }
+        match = {
+            "name": "Search Box",
+            "automation_id": "",
+            "control_type": "Edit",
+            "x": 10,
+            "y": 50,
+            "width": 200,
+            "height": 30,
+            "is_offscreen": False,
+        }
+        monkeypatch.setattr(ui_tree_mod, "list_controls", lambda **kw: [non_match, match])
+        monkeypatch.setattr(ui_tree_mod, "set_text", lambda t, **kw: False)
+
+        import time
+        monkeypatch.setattr(time, "sleep", lambda _: None)
+
+        ex = _make_executor()
+        result = ex._set_text_click_fallback(None, "search box", None, "hello")
+        # Should have clicked the matching control
+        assert any(c[0] == "click" for c in ex._desktop.calls)
+
+
+class TestClickImageStealthReturnsFalse:
+    """Branch 581->586: stealth post_click returns False, falls to click_image."""
+
+    def test_stealth_post_click_false_uses_physical(self, monkeypatch):
+        import core.action_executor as ae_mod
+
+        monkeypatch.setattr(ae_mod, "find_template", lambda t, c=0.8: (150, 250))
+        monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
+        monkeypatch.setattr(ae_mod.stealth_input, "post_click", MagicMock(return_value=False))
+
+        ex = _make_executor(stealth=True)
+        result = ex._click_image(template_path="btn.png")
+        assert result["success"] is True
+        assert "stealth" not in result["output"]
+
+
+class TestTypeTextStealthReturnsFalse:
+    """Branch 608->610: stealth post_text returns False, falls to physical type_text."""
+
+    def test_stealth_post_text_false_uses_physical(self, monkeypatch):
+        import core.action_executor as ae_mod
+
+        monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
+        monkeypatch.setattr(ae_mod.stealth_input, "post_text", MagicMock(return_value=False))
+
+        ex = _make_executor(stealth=True)
+        result = ex._type_text(text="hello")
+        assert result["success"] is True
+        assert "stealth" not in result["output"]
+        assert any(c[0] == "type_text" for c in ex._desktop.calls)
+
+
+class TestPressKeyStealthReturnsFalse:
+    """Branch 632->634: stealth post_named_key returns False, falls to physical."""
+
+    def test_stealth_post_named_key_false_uses_physical(self, monkeypatch):
+        import core.action_executor as ae_mod
+
+        monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
+        monkeypatch.setattr(
+            ae_mod.stealth_input, "post_named_key", MagicMock(return_value=False)
+        )
+
+        ex = _make_executor(stealth=True)
+        result = ex._press_key(key="enter")
+        assert result["success"] is True
+        assert any(c[0] == "press_key" for c in ex._desktop.calls)
