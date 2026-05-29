@@ -152,12 +152,16 @@ class ActionExecutor:
         handler = self._dispatch_table.get(action_type)
         if handler:
             try:
-                # Run sync functions in executor to not block the event loop
                 if asyncio.iscoroutinefunction(handler):
-                    result = await handler(self, **params)
+                    result = await asyncio.wait_for(handler(self, **params), timeout=60.0)
                 else:
                     loop = asyncio.get_event_loop()
-                    result = await loop.run_in_executor(None, lambda: handler(self, **params))
+                    result = await asyncio.wait_for(
+                        loop.run_in_executor(None, lambda: handler(self, **params)),
+                        timeout=60.0,
+                    )
+            except asyncio.TimeoutError:
+                result = {"success": False, "output": f"Action '{action_type}' timed out", "error": "timeout"}
             except Exception as exc:
                 logger.exception("Action '%s' failed", action_type)
                 result = {"success": False, "output": str(exc), "error": type(exc).__name__}
