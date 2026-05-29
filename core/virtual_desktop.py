@@ -471,25 +471,26 @@ class _Win32VirtualDesktop:
         Returns a list of dicts with ``title``, ``x``, ``y``, ``width``,
         ``height``, ``hwnd`` keys.
         """
-        windows: list[dict[str, Any]] = []
-
         if not _IS_WINDOWS or not self._handle:
-            # Fallback: use the standard window_manager enumeration.
             try:
                 from core import window_manager as wm
 
                 return wm.list_windows()
             except (ImportError, OSError) as exc:
                 logger.debug("window_manager fallback failed: %s", exc)
-                return windows
+                return []
 
+        return self._list_windows_win32()
+
+    def _list_windows_win32(self) -> list[dict[str, Any]]:
+        """Enumerate visible windows via Win32 EnumWindows (Windows only)."""
+        windows: list[dict[str, Any]] = []
         try:
             import ctypes
             from ctypes import wintypes
 
             user32 = _get_user32()
 
-            # We need to be on the virtual desktop to enumerate its windows.
             acquired = self._lock.acquire(timeout=5)
             if not acquired:
                 return windows
@@ -498,53 +499,8 @@ class _Win32VirtualDesktop:
                 if not self._is_active:
                     switched = self._switch_to_locked()
 
-                # Callback for EnumWindows — only collects windows whose
-                # desktop matches ours.
                 WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-
-                def _enum_cb(hwnd: int, lparam: int) -> bool:
-                    """EnumWindows callback — collect visible windows on this virtual desktop."""
-                    if not user32.IsWindowVisible(hwnd):
-                        return True
-                    # Retrieve the window's desktop.
-                    # GetWindowDesktopHandle is not a standard API, so we
-                    # check by process/thread instead: query the thread that
-                    # owns the window and see if it's on our desktop.
-                    tid = user32.GetWindowThreadProcessId(hwnd, None)
-                    if not tid:
-                        return True
-                    hdesk = user32.GetThreadDesktop(tid)
-                    # Compare handles (our handle is the virtual desktop).
-                    if hdesk != self._handle:
-                        return True  # not ours, skip
-
-                    # Get title.
-                    length = user32.GetWindowTextLengthW(hwnd)
-                    if length == 0:
-                        return True
-                    buf = ctypes.create_unicode_buffer(length + 1)
-                    user32.GetWindowTextW(hwnd, buf, length + 1)
-                    title = buf.value
-                    if not title:
-                        return True
-
-                    # Get rect.
-                    rect = wintypes.RECT()
-                    user32.GetWindowRect(hwnd, ctypes.byref(rect))
-                    windows.append(
-                        {
-                            "title": title,
-                            "x": rect.left,
-                            "y": rect.top,
-                            "width": rect.right - rect.left,
-                            "height": rect.bottom - rect.top,
-                            "hwnd": hwnd,
-                            "is_focused": hwnd == user32.GetForegroundWindow(),
-                        }
-                    )
-                    return True
-
-                callback = WNDENUMPROC(_enum_cb)
+                callback = WNDENUMPROC(self._make_enum_callback(windows, user32, ctypes, wintypes))
                 user32.EnumWindows(callback, 0)
 
                 if switched:
@@ -556,6 +512,52 @@ class _Win32VirtualDesktop:
             logger.warning("list_windows on virtual desktop failed: %s", exc)
 
         return windows
+
+    def _make_enum_callback(
+        self,
+        windows: list[dict[str, Any]],
+        user32: object,
+        ctypes: object,
+        wintypes: object,
+    ) -> object:
+        """Return an EnumWindows callback that appends matching window info to *windows*."""
+        desktop_handle = self._handle
+
+        def _enum_cb(hwnd: int, lparam: int) -> bool:
+            if not user32.IsWindowVisible(hwnd):  # type: ignore[union-attr]
+                return True
+            tid = user32.GetWindowThreadProcessId(hwnd, None)  # type: ignore[union-attr]
+            if not tid:
+                return True
+            hdesk = user32.GetThreadDesktop(tid)  # type: ignore[union-attr]
+            if hdesk != desktop_handle:
+                return True
+
+            length = user32.GetWindowTextLengthW(hwnd)  # type: ignore[union-attr]
+            if length == 0:
+                return True
+            buf = ctypes.create_unicode_buffer(length + 1)  # type: ignore[union-attr]
+            user32.GetWindowTextW(hwnd, buf, length + 1)  # type: ignore[union-attr]
+            title = buf.value
+            if not title:
+                return True
+
+            rect = wintypes.RECT()  # type: ignore[union-attr]
+            user32.GetWindowRect(hwnd, ctypes.byref(rect))  # type: ignore[union-attr]
+            windows.append(
+                {
+                    "title": title,
+                    "x": rect.left,
+                    "y": rect.top,
+                    "width": rect.right - rect.left,
+                    "height": rect.bottom - rect.top,
+                    "hwnd": hwnd,
+                    "is_focused": hwnd == user32.GetForegroundWindow(),  # type: ignore[union-attr]
+                }
+            )
+            return True
+
+        return _enum_cb
 
     # -- internal locked helpers ---------------------------------------------
 
