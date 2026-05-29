@@ -114,104 +114,71 @@ class ScriptsTab:
         right.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(4, 0))
         right.grid_columnconfigure(0, weight=1)
         right.grid_rowconfigure(5, weight=1)
+        self._build_script_info_labels(right)
+        self._build_params_section(right)
+        self._build_action_buttons_section(right)
+        self._build_output_section(right)
 
-        # Script name (large)
+    def _build_script_info_labels(self, parent: Any) -> None:
+        """Build name, description, and metadata labels."""
         self._name_label = ctk.CTkLabel(
-            right,
-            text="Select a script",
-            font=("Segoe UI", 18, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"),
-            anchor="w",
+            parent, text="Select a script", font=("Segoe UI", 18, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"), anchor="w",
         )
         self._name_label.grid(row=0, column=0, sticky="ew", padx=16, pady=(16, 2))
-
-        # Description
         self._desc_label = ctk.CTkLabel(
-            right,
-            text="",
-            font=("Segoe UI", 12),
+            parent, text="", font=("Segoe UI", 12),
             text_color=self._t("text_secondary", "#b9cacb"),
-            wraplength=500,
-            justify="left",
-            anchor="w",
+            wraplength=500, justify="left", anchor="w",
         )
         self._desc_label.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 4))
-
-        # Meta: steps · author · date
         self._meta_label = ctk.CTkLabel(
-            right,
-            text="",
-            font=("Segoe UI", 10),
-            text_color=self._t("text_secondary", "#b9cacb"),
-            anchor="w",
+            parent, text="", font=("Segoe UI", 10),
+            text_color=self._t("text_secondary", "#b9cacb"), anchor="w",
         )
         self._meta_label.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 8))
 
-        # Parameters header
+    def _build_params_section(self, parent: Any) -> None:
+        """Build the parameters header label and dynamic fields container."""
         self._params_label = ctk.CTkLabel(
-            right,
-            text="Parameters",
-            font=("Segoe UI", 12, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"),
-            anchor="w",
+            parent, text="Parameters", font=("Segoe UI", 12, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"), anchor="w",
         )
         self._params_label.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 2))
-
-        # Dynamic parameter entry fields container
-        self._params_frame = ctk.CTkFrame(right, fg_color="transparent")
+        self._params_frame = ctk.CTkFrame(parent, fg_color="transparent")
         self._params_frame.grid(row=4, column=0, sticky="ew", padx=16, pady=(0, 8))
         self._params_frame.grid_columnconfigure(1, weight=1)
 
-        # Action buttons
-        btn_row = ctk.CTkFrame(right, fg_color="transparent")
+    def _build_action_buttons_section(self, parent: Any) -> None:
+        """Build Run Script and Record New buttons."""
+        btn_row = ctk.CTkFrame(parent, fg_color="transparent")
         btn_row.grid(row=5, column=0, sticky="nw", padx=16, pady=(4, 4))
-
         self._run_btn = ctk.CTkButton(
-            btn_row,
-            text="▶ Run Script",
-            width=140,
-            height=38,
+            btn_row, text="▶ Run Script", width=140, height=38,
             font=("Segoe UI", 13, "bold"),
             fg_color=self._t("accent", "#00F0FF"),
             hover_color=self._t("accent_hover", "#00c8d4"),
-            text_color="#ffffff",
-            corner_radius=4,
-            command=self.run_selected_script,
+            text_color="#ffffff", corner_radius=4, command=self.run_selected_script,
         )
         self._run_btn.pack(side="left", padx=(0, 8))
-
         ctk.CTkButton(
-            btn_row,
-            text="⏺ Record New",
-            width=140,
-            height=38,
-            font=("Segoe UI", 13),
+            btn_row, text="⏺ Record New", width=140, height=38, font=("Segoe UI", 13),
             fg_color=self._t("bg_input", "#111418"),
             hover_color=self._t("bg_hover", "#333539"),
             text_color=self._t("text_primary", "#e2e2e8"),
-            corner_radius=4,
-            command=self._open_recorder,
+            corner_radius=4, command=self._open_recorder,
         ).pack(side="left")
 
-        # Output header
+    def _build_output_section(self, parent: Any) -> None:
+        """Build the output header and scrollable textbox."""
         ctk.CTkLabel(
-            right,
-            text="Output",
-            font=("Segoe UI", 12, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"),
-            anchor="w",
+            parent, text="Output", font=("Segoe UI", 12, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"), anchor="w",
         ).grid(row=6, column=0, sticky="ew", padx=16, pady=(8, 2))
-
-        # Output textbox
         self._output_box = ctk.CTkTextbox(
-            right,
-            height=120,
-            font=("Consolas", 11),
-            wrap="word",
-            state="disabled",
+            parent, height=120, font=("Consolas", 11), wrap="word", state="disabled",
             fg_color=self._t("bg_input", "#111418"),
-            text_color=self._t("text_primary", "#e2e2e8"),
-            corner_radius=4,
+            text_color=self._t("text_primary", "#e2e2e8"), corner_radius=4,
         )
         self._output_box.grid(row=7, column=0, sticky="ew", padx=16, pady=(0, 16))
 

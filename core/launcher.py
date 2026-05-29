@@ -94,24 +94,11 @@ def smart_open(name: str) -> dict[str, Any]:
     if not name or not name.strip():
         return {"success": False, "output": "smart_open needs an app name", "error": "empty_name"}
 
-    key = re.sub(r"\.(exe|lnk|url)$", "", name.strip().lower())
-    alias = APP_ALIASES.get(key)
-    if alias is not None:
-        # Curated entry — trusted.
-        title_hint = alias["title"]
-        launch_cmd = alias["launch"]
-    else:
-        # Unknown name — caller-supplied, validate before spawning.
-        if not _is_safe_launch_token(key):
-            return {
-                "success": False,
-                "output": f"refusing to launch {name!r}: contains shell metacharacters",
-                "error": "unsafe_app_name",
-            }
-        title_hint = key
-        launch_cmd = key
+    resolved = _resolve_app(name)
+    if isinstance(resolved, dict):
+        return resolved  # error result from validation
+    title_hint, launch_cmd = resolved
 
-    # 1) Is there already an open window matching this app?
     try:
         existing = _find_existing(title_hint)
     except (OSError, RuntimeError) as exc:
@@ -132,7 +119,6 @@ def smart_open(name: str) -> dict[str, Any]:
                 "window_title": existing,
             }
 
-    # 2) Launch via the Windows shell so PATH and URI protocols both work.
     try:
         subprocess.Popen(
             ["cmd", "/c", "start", "", launch_cmd],
@@ -147,11 +133,22 @@ def smart_open(name: str) -> dict[str, Any]:
             "command": launch_cmd,
         }
     except (OSError, subprocess.SubprocessError, FileNotFoundError) as exc:
+        return {"success": False, "output": f"Failed to launch {name!r}: {exc}", "error": "launch_failed"}
+
+
+def _resolve_app(name: str) -> tuple[str, str] | dict[str, Any]:
+    """Resolve *name* to (title_hint, launch_cmd), or return an error dict."""
+    key = re.sub(r"\.(exe|lnk|url)$", "", name.strip().lower())
+    alias = APP_ALIASES.get(key)
+    if alias is not None:
+        return alias["title"], alias["launch"]
+    if not _is_safe_launch_token(key):
         return {
             "success": False,
-            "output": f"Failed to launch {name!r}: {exc}",
-            "error": "launch_failed",
+            "output": f"refusing to launch {name!r}: contains shell metacharacters",
+            "error": "unsafe_app_name",
         }
+    return key, key
 
 
 def _find_existing(title_hint: str) -> str | None:

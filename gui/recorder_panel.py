@@ -322,18 +322,39 @@ class RecorderPanel(ctk.CTkFrame):
     # ── Script Library ─────────────────────────────────────────────────
 
     def _on_library(self) -> None:
+        scripts = self._load_library_scripts()
+        if scripts is None:
+            return
+        dlg, lf, items = self._create_library_dialog()
+        for info in scripts:
+            self._build_script_row(lf, info, dlg, items)
+        if not scripts:
+            ctk.CTkLabel(
+                lf,
+                text="No scripts found.\nRecord an automation or drop .json into scripts/.",
+                font=("Segoe UI", 12),
+                text_color=self._t("text_secondary", "#b9cacb"),
+            ).pack(pady=40)
+        ctk.CTkButton(
+            dlg, text="Close", width=80, fg_color="transparent", command=dlg.destroy
+        ).grid(row=3, column=0, pady=(4, 12))
+
+    def _load_library_scripts(self) -> list[dict[str, Any]] | None:
+        """Load available scripts; returns None on import error, [] on list error."""
         try:
             from core.recorder import ActionRecorder
         except ImportError as exc:
             logger.error("Recorder module unavailable: %s", exc)
             messagebox.showerror("Library Error", f"Recorder module unavailable:\n{exc}")
-            return
+            return None
         try:
-            scripts = ActionRecorder.list_scripts(_ensure_scripts_dir())
+            return ActionRecorder.list_scripts(_ensure_scripts_dir())
         except (OSError, ValueError):
             logger.exception("Failed to list scripts")
-            scripts = []
+            return []
 
+    def _create_library_dialog(self) -> tuple[Any, Any, list[dict[str, Any]]]:
+        """Create the library dialog window with search bar and scrollable list."""
         dlg = ctk.CTkToplevel(self)
         dlg.title("📋 Script Library")
         dlg.geometry("560x480")
@@ -341,15 +362,11 @@ class RecorderPanel(ctk.CTkFrame):
         dlg.grab_set()
         dlg.grid_rowconfigure(2, weight=1)
         dlg.grid_columnconfigure(0, weight=1)
-
         sv = ctk.StringVar()
         ctk.CTkEntry(
-            dlg,
-            placeholder_text="🔍 Search by name or tags…",
-            font=("Segoe UI", 12),
-            textvariable=sv,
+            dlg, placeholder_text="🔍 Search by name or tags…",
+            font=("Segoe UI", 12), textvariable=sv,
         ).grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 4))
-
         lf = ctk.CTkScrollableFrame(dlg)
         lf.grid(row=2, column=0, sticky="nsew", padx=12, pady=4)
         items: list[dict[str, Any]] = []
@@ -366,80 +383,60 @@ class RecorderPanel(ctk.CTkFrame):
                 (r.grid if (ok or not q) else r.grid_remove)()
 
         sv.trace_add("write", _refresh)
+        return dlg, lf, items
 
-        for info in scripts:
-            row = ctk.CTkFrame(lf, height=50, corner_radius=3)
-            row.pack(fill="x", pady=2, padx=2)
-            p = info.get("path", "")
-            sc = 0
-            try:
-                with Path(p).open(encoding="utf-8") as fh:
-                    sc = len(json.load(fh).get("steps", []))
-            except (OSError, json.JSONDecodeError) as exc:
-                logger.debug("Failed to read workflow step count: %s", exc)
-            ctk.CTkLabel(row, text="📜", font=("Segoe UI", 14), width=28).pack(
-                side="left", padx=(8, 4)
-            )
-            inner = ctk.CTkFrame(row, fg_color="transparent")
-            inner.pack(side="left", fill="x", expand=True, padx=4, pady=4)
+    def _build_script_row(
+        self,
+        lf: Any,
+        info: dict[str, Any],
+        dlg: Any,
+        items: list[dict[str, Any]],
+    ) -> None:
+        """Build one script row in the library list frame."""
+        row = ctk.CTkFrame(lf, height=50, corner_radius=3)
+        row.pack(fill="x", pady=2, padx=2)
+        p = info.get("path", "")
+        sc = 0
+        try:
+            with Path(p).open(encoding="utf-8") as fh:
+                sc = len(json.load(fh).get("steps", []))
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.debug("Failed to read workflow step count: %s", exc)
+        ctk.CTkLabel(row, text="📜", font=("Segoe UI", 14), width=28).pack(side="left", padx=(8, 4))
+        inner = ctk.CTkFrame(row, fg_color="transparent")
+        inner.pack(side="left", fill="x", expand=True, padx=4, pady=4)
+        ctk.CTkLabel(
+            inner, text=info.get("name", "Untitled"),
+            font=("Segoe UI", 12, "bold"), text_color=self._t("text_primary", "#e2e2e8"),
+        ).pack(anchor="w")
+        det = f"{sc} step(s)"
+        if desc := info.get("description", ""):
+            det += f" — {desc[:60]}"
+        ctk.CTkLabel(
+            inner, text=det, font=("Segoe UI", 10),
+            text_color=self._t("text_secondary", "#b9cacb"),
+        ).pack(anchor="w")
+        if tags := info.get("tags", []):
             ctk.CTkLabel(
-                inner,
-                text=info.get("name", "Untitled"),
-                font=("Segoe UI", 12, "bold"),
-                text_color=self._t("text_primary", "#e2e2e8"),
+                inner, text=" ".join(f"#{t}" for t in tags),
+                font=("Segoe UI", 9), text_color=self._t("accent", "#00F0FF"),
             ).pack(anchor="w")
-            det = f"{sc} step(s)"
-            desc = info.get("description", "")
-            if desc:
-                det += f" — {desc[:60]}"
-            ctk.CTkLabel(
-                inner,
-                text=det,
-                font=("Segoe UI", 10),
-                text_color=self._t("text_secondary", "#b9cacb"),
-            ).pack(anchor="w")
-            tags = info.get("tags", [])
-            if tags:
-                ctk.CTkLabel(
-                    inner,
-                    text=" ".join(f"#{t}" for t in tags),
-                    font=("Segoe UI", 9),
-                    text_color=self._t("accent", "#00F0FF"),
-                ).pack(anchor="w")
 
-            def _run(pp: str = p) -> None:
-                dlg.destroy()
-                self._run_script(pp, {}, {})
-
-            ctk.CTkButton(
-                row,
-                text="▶",
-                width=36,
-                height=36,
-                fg_color=self._t("status_running", "#95E400"),
-                hover_color="#6ed400",
-                text_color="#ffffff",
-                corner_radius=3,
-                command=_run,
-            ).pack(side="right", padx=6, pady=4)
-            menu = tk.Menu(row, tearoff=0)
-            menu.add_command(label="▶ Run", command=_run)
-            menu.add_command(label="🗑 Delete", command=lambda pp=p: self._delete_script(pp, dlg))
-            row.bind("<Button-3>", lambda e, m=menu: m.tk_popup(e.x_root, e.y_root))
-            row.bind("<Double-Button-1>", lambda e, fn=_run: fn())
-            items.append({"data": info, "row": row})
-
-        if not scripts:
-            ctk.CTkLabel(
-                lf,
-                text="No scripts found.\nRecord an automation or drop .json into scripts/.",
-                font=("Segoe UI", 12),
-                text_color=self._t("text_secondary", "#b9cacb"),
-            ).pack(pady=40)
+        def _run(pp: str = p) -> None:
+            dlg.destroy()
+            self._run_script(pp, {}, {})
 
         ctk.CTkButton(
-            dlg, text="Close", width=80, fg_color="transparent", command=dlg.destroy
-        ).grid(row=3, column=0, pady=(4, 12))
+            row, text="▶", width=36, height=36,
+            fg_color=self._t("status_running", "#95E400"),
+            hover_color="#6ed400", text_color="#ffffff", corner_radius=3, command=_run,
+        ).pack(side="right", padx=6, pady=4)
+        menu = tk.Menu(row, tearoff=0)
+        menu.add_command(label="▶ Run", command=_run)
+        menu.add_command(label="🗑 Delete", command=lambda pp=p: self._delete_script(pp, dlg))
+        row.bind("<Button-3>", lambda e, m=menu: m.tk_popup(e.x_root, e.y_root))
+        row.bind("<Double-Button-1>", lambda e, fn=_run: fn())
+        items.append({"data": info, "row": row})
 
     def _delete_script(self, path: str, parent: ctk.CTkToplevel) -> None:
         if messagebox.askyesno("Delete Script", f"Delete {Path(path).name}?"):

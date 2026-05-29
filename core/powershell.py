@@ -199,7 +199,6 @@ class PowerShellRunner:
             return _non_windows_result()
 
         args = self._base_args()
-
         if self.run_as_admin:
             tmp_out = str(Path(self.working_dir) / f"_ps_elev_{int(time.time())}.tmp")
             wrapped = (
@@ -210,11 +209,16 @@ class PowerShellRunner:
             )
             args.extend(["-Command", wrapped])
         else:
-            json_cmd = f"{command} | ConvertTo-Json -Depth 10 -Compress"
-            args.extend(["-Command", json_cmd])
+            args.extend(["-Command", f"{command} | ConvertTo-Json -Depth 10 -Compress"])
 
         logger.debug("PS args: %s", args)
+        return self._invoke_subprocess(args, command)
 
+    def _invoke_subprocess(self, args: list[str], command: str) -> PSResult:
+        """Run PowerShell subprocess and convert output to :class:`PSResult`.
+
+        Handles TimeoutExpired, FileNotFoundError, and other process errors.
+        """
         try:
             proc = subprocess.run(
                 args,
@@ -228,59 +232,46 @@ class PowerShellRunner:
             stdout = proc.stdout or ""
             stderr = proc.stderr or ""
 
-            # Elevated mode: read captured output from temp file
             if self.run_as_admin:
-                for part in command.split():
-                    if part.endswith(".tmp"):
-                        tmp_out = part.strip('"').strip("'")
-                        break
-                else:
-                    tmp_out = ""
-                if tmp_out and Path(tmp_out).is_file():
-                    try:
-                        with Path(tmp_out).open(encoding="utf-8", errors="replace") as fh:
-                            stdout = fh.read()
-                    except OSError as exc:
-                        logger.warning("Failed to read elevated output from %s: %s", tmp_out, exc)
-                    with contextlib.suppress(OSError):
-                        Path(tmp_out).unlink()
+                stdout = self._read_elevated_output(command, stdout)
 
             objects = self._parse_json_output(stdout)
-            return PSResult(
-                success=(exit_code == 0),
-                exit_code=exit_code,
-                stdout=stdout,
-                stderr=stderr,
-                objects=objects,
-            )
+            return PSResult(success=(exit_code == 0), exit_code=exit_code,
+                            stdout=stdout, stderr=stderr, objects=objects)
 
         except subprocess.TimeoutExpired:
             logger.warning("PowerShell timed out after %ds", self.timeout)
-            return PSResult(
-                success=False,
-                exit_code=-2,
-                stdout="",
-                stderr=f"Process timed out after {self.timeout} seconds.",
-                objects=[],
-            )
+            return PSResult(success=False, exit_code=-2, stdout="",
+                            stderr=f"Process timed out after {self.timeout} seconds.", objects=[])
         except FileNotFoundError:
             logger.error("PowerShell not found: %s", self._ps_exe)
-            return PSResult(
-                success=False,
-                exit_code=-3,
-                stdout="",
-                stderr=f"PowerShell executable not found: {self._ps_exe}",
-                objects=[],
-            )
+            return PSResult(success=False, exit_code=-3, stdout="",
+                            stderr=f"PowerShell executable not found: {self._ps_exe}", objects=[])
         except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
             logger.exception("Unexpected error running PowerShell")
-            return PSResult(
-                success=False,
-                exit_code=-4,
-                stdout="",
-                stderr=str(exc),
-                objects=[],
-            )
+            return PSResult(success=False, exit_code=-4, stdout="", stderr=str(exc), objects=[])
+
+    def _read_elevated_output(self, command: str, stdout: str) -> str:
+        """Read elevated-process output from temp file and clean it up.
+
+        Searches *command* tokens for a ``.tmp`` path written by the elevated
+        wrapper; reads the file if found, then deletes it unconditionally.
+        """
+        for part in command.split():
+            if part.endswith(".tmp"):
+                tmp_out = part.strip('"').strip("'")
+                break
+        else:
+            tmp_out = ""
+        if tmp_out and Path(tmp_out).is_file():
+            try:
+                with Path(tmp_out).open(encoding="utf-8", errors="replace") as fh:
+                    stdout = fh.read()
+            except OSError as exc:
+                logger.warning("Failed to read elevated output from %s: %s", tmp_out, exc)
+            with contextlib.suppress(OSError):
+                Path(tmp_out).unlink()
+        return stdout
 
     # -- public API ---------------------------------------------------------
 
