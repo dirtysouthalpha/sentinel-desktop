@@ -213,7 +213,6 @@ class ScriptEngine:
         start = time.monotonic()
         params = params or {}
 
-        # --- validate -------------------------------------------------------
         validation_errors = _validate_script(script, params, self._executor)
         if validation_errors:
             duration_ms = int((time.monotonic() - start) * 1000)
@@ -226,6 +225,27 @@ class ScriptEngine:
             )
 
         steps: list[dict[str, Any]] = script["steps"]
+        steps_completed, results, first_error, success = self._run_all_steps(steps, params)
+        duration_ms = int((time.monotonic() - start) * 1000)
+        return ScriptResult(
+            success=success,
+            steps_completed=steps_completed,
+            steps_total=len(steps),
+            results=results,
+            error=first_error,
+            duration_ms=duration_ms,
+        )
+
+    def _run_all_steps(
+        self,
+        steps: list[dict[str, Any]],
+        params: dict[str, Any],
+    ) -> tuple[int, list[dict[str, Any]], str | None, bool]:
+        """Execute each step in sequence, applying the on_error policy.
+
+        Returns:
+            (steps_completed, results, first_error, overall_success)
+        """
         total = len(steps)
         results: list[dict[str, Any]] = []
         steps_completed = 0
@@ -235,15 +255,9 @@ class ScriptEngine:
         for idx, step in enumerate(steps):
             step_num = idx + 1
             action = step["action"]
-            raw_params = step.get("params", {})
-
-            # Parameter substitution
-            resolved_params = _substitute_step(raw_params, params)
-
-            # Execute (with optional retry)
+            resolved_params = _substitute_step(step.get("params", {}), params)
             result = self._execute_step(action, resolved_params, step_num)
 
-            # Progress callback
             if self._progress_callback is not None:
                 try:
                     self._progress_callback(step_num, total, action, result)
@@ -255,38 +269,23 @@ class ScriptEngine:
             if result.get("success", False):
                 steps_completed += 1
             else:
-                # Step failed — apply error policy
                 success = False
                 if first_error is None:
                     first_error = (
                         f"Step {step_num} ({action}) failed: "
                         f"{result.get('output', result.get('error', 'unknown'))}"
                     )
+                steps_completed += 1
                 if self._on_error == "stop":
-                    steps_completed += 1  # count the failed step as completed
                     break
-                elif self._on_error == "skip":
-                    steps_completed += 1
-                    continue
-                elif self._on_error == "retry_once":
-                    steps_completed += 1
-                    # Already retried inside _execute_step; continue
-                    continue
+                # "skip" and "retry_once" both continue to the next step
+                continue
 
-            # Respect wait_after_ms
             wait_ms = step.get("wait_after_ms", 0)
             if wait_ms > 0:
                 time.sleep(wait_ms / 1000.0)
 
-        duration_ms = int((time.monotonic() - start) * 1000)
-        return ScriptResult(
-            success=success,
-            steps_completed=steps_completed,
-            steps_total=total,
-            results=results,
-            error=first_error,
-            duration_ms=duration_ms,
-        )
+        return steps_completed, results, first_error, success
 
     def dry_run(
         self,

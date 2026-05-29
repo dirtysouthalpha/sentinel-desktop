@@ -97,6 +97,79 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+_TEXT_COL_WIDTHS = (6, 22, 18, 30)
+_TEXT_HEADER_FMT = (
+    f"  {{:<{_TEXT_COL_WIDTHS[0]}}} {{:<{_TEXT_COL_WIDTHS[1]}}} "
+    f"{{:<{_TEXT_COL_WIDTHS[2]}}} {{:<{_TEXT_COL_WIDTHS[3]}}}"
+)
+
+
+def _text_header_lines() -> list[str]:
+    return [
+        "=" * 72,
+        "  Sentinel Desktop — Audit Report",
+        "=" * 72,
+        f"  Generated : {_now_iso()}",
+        "",
+    ]
+
+
+def _text_metadata_lines(metadata: dict[str, Any]) -> list[str]:
+    rows = [
+        ("Goal", metadata.get("goal", "N/A")),
+        ("Start Time", metadata.get("start_time", "N/A")),
+        ("End Time", metadata.get("end_time", "N/A")),
+        ("Total Steps", str(metadata.get("total_steps", 0))),
+        ("Status", metadata.get("status", "N/A")),
+    ]
+    lines = ["-" * 72, "  Session Metadata", "-" * 72]
+    lines += [f"  {label:<16}: {value}" for label, value in rows]
+    lines.append("")
+    return lines
+
+
+def _text_timeline_lines(masked: list[dict[str, Any]]) -> list[str]:
+    lines = ["-" * 72, "  Step Timeline", "-" * 72]
+    lines.append(_TEXT_HEADER_FMT.format("Step", "Timestamp", "Action", "Result"))
+    lines.append("  " + "-" * (sum(_TEXT_COL_WIDTHS) - 1))
+    result_max = _TEXT_COL_WIDTHS[3]
+    for entry in masked:
+        result_str = str(entry.get("result", ""))
+        if len(result_str) > result_max - 1:
+            result_str = result_str[: result_max - 4] + "..."
+        lines.append(
+            _TEXT_HEADER_FMT.format(
+                entry.get("step", ""),
+                str(entry.get("timestamp", "")),
+                entry.get("action", ""),
+                result_str,
+            )
+        )
+    lines.append("")
+    return lines
+
+
+def _text_summary_lines(summary: dict[str, Any]) -> list[str]:
+    lines = [
+        "-" * 72,
+        "  Summary Statistics",
+        "-" * 72,
+        f"  Total Steps   : {summary['total_steps']}",
+        f"  Successful    : {summary['success_count']}",
+        f"  Failed        : {summary['fail_count']}",
+        f"  Success Rate  : {summary['success_rate']}%",
+        f"  Total Duration: {summary['total_duration']}s",
+        f"  Status        : {summary['status']}",
+        "",
+    ]
+    if summary["action_counts"]:
+        lines.append("  Action Counts:")
+        for action, count in summary["action_counts"].items():
+            lines.append(f"    {action:<28}: {count}")
+    lines += ["", "=" * 72, "  End of Report", "=" * 72]
+    return lines
+
+
 # ===================================================================
 # AuditExporter
 # ===================================================================
@@ -241,78 +314,12 @@ class AuditExporter:
         """Export audit data as a plain-text report with ASCII tables."""
         masked = _mask_log(log)
         summary = _compute_summary(masked, metadata)
-        lines: list[str] = []
-
-        # Header
-        lines.append("=" * 72)
-        lines.append("  Sentinel Desktop — Audit Report")
-        lines.append("=" * 72)
-        lines.append(f"  Generated : {_now_iso()}")
-        lines.append("")
-
-        # Session metadata
-        lines.append("-" * 72)
-        lines.append("  Session Metadata")
-        lines.append("-" * 72)
-        meta_rows = [
-            ("Goal", metadata.get("goal", "N/A")),
-            ("Start Time", metadata.get("start_time", "N/A")),
-            ("End Time", metadata.get("end_time", "N/A")),
-            ("Total Steps", str(metadata.get("total_steps", 0))),
-            ("Status", metadata.get("status", "N/A")),
-        ]
-        for label, value in meta_rows:
-            lines.append(f"  {label:<16}: {value}")
-        lines.append("")
-
-        # Step timeline table
-        lines.append("-" * 72)
-        lines.append("  Step Timeline")
-        lines.append("-" * 72)
-        col_widths = (6, 22, 18, 30)
-        header_fmt = (
-            f"  {{:<{col_widths[0]}}} {{:<{col_widths[1]}}} "
-            f"{{:<{col_widths[2]}}} {{:<{col_widths[3]}}}"
+        lines = (
+            _text_header_lines()
+            + _text_metadata_lines(metadata)
+            + _text_timeline_lines(masked)
+            + _text_summary_lines(summary)
         )
-        lines.append(header_fmt.format("Step", "Timestamp", "Action", "Result"))
-        lines.append("  " + "-" * (sum(col_widths) - 1))
-
-        for entry in masked:
-            result_str = str(entry.get("result", ""))
-            if len(result_str) > col_widths[3] - 1:
-                result_str = result_str[: col_widths[3] - 4] + "..."
-            lines.append(
-                header_fmt.format(
-                    entry.get("step", ""),
-                    str(entry.get("timestamp", "")),
-                    entry.get("action", ""),
-                    result_str,
-                )
-            )
-        lines.append("")
-
-        # Summary stats
-        lines.append("-" * 72)
-        lines.append("  Summary Statistics")
-        lines.append("-" * 72)
-        lines.append(f"  Total Steps   : {summary['total_steps']}")
-        lines.append(f"  Successful    : {summary['success_count']}")
-        lines.append(f"  Failed        : {summary['fail_count']}")
-        lines.append(f"  Success Rate  : {summary['success_rate']}%")
-        lines.append(f"  Total Duration: {summary['total_duration']}s")
-        lines.append(f"  Status        : {summary['status']}")
-        lines.append("")
-
-        # Action breakdown
-        if summary["action_counts"]:
-            lines.append("  Action Counts:")
-            for action, count in summary["action_counts"].items():
-                lines.append(f"    {action:<28}: {count}")
-        lines.append("")
-        lines.append("=" * 72)
-        lines.append("  End of Report")
-        lines.append("=" * 72)
-
         filename = self._filename("audit_report", "txt")
         filepath = Path(filename)
         try:
