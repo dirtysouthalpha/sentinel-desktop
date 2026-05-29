@@ -71,6 +71,14 @@ class SentinelTray:
         on_stop_agent: Callable[[], None] | None = None,
         on_quit: Callable[[], None] | None = None,
     ) -> None:
+        """Initialize the tray icon with action callbacks.
+
+        Args:
+            on_show: Called when the user clicks "Show Window".
+            on_hide: Called when the user clicks "Hide Window".
+            on_stop_agent: Called when the user clicks "Stop Agent".
+            on_quit: Called when the user clicks "Quit".
+        """
         self._on_show = on_show
         self._on_hide = on_hide
         self._on_stop_agent = on_stop_agent

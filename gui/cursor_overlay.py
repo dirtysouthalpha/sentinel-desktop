@@ -41,6 +41,11 @@ class CursorOverlay:
     """
 
     def __init__(self, accent_color: str = "#00F0FF") -> None:
+        """Initialize the overlay renderer (does not start the background thread).
+
+        Args:
+            accent_color: Hex color string for the cursor ring and label.
+        """
         self._accent = accent_color
         self._thread: threading.Thread | None = None
         self._running: bool = False

@@ -18,6 +18,12 @@ class HistoryTab(ctk.CTkFrame):
     """Run history browser — session list + detail timeline."""
 
     def __init__(self, parent: ctk.CTkFrame, app: Any) -> None:
+        """Build the history tab layout.
+
+        Args:
+            parent: Parent frame to embed this tab in.
+            app: Main :class:`SentinelApp` instance for theme access.
+        """
         super().__init__(parent, fg_color="transparent")
         self.app = app
         self.sessions: list[dict[str, Any]] = []

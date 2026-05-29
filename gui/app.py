@@ -30,6 +30,12 @@ class SentinelApp:
     """Main application window."""
 
     def __init__(self, config: Config) -> None:
+        """Initialize the main application window and all subsystems.
+
+        Args:
+            config: Application :class:`Config` instance used to load and
+                persist runtime settings.
+        """
         self.config = config
         self.cfg = config.load()
 
@@ -861,6 +867,14 @@ class SettingsWindow:
     def __init__(
         self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None
     ) -> None:
+        """Initialize the settings modal.
+
+        Args:
+            parent: Parent Tk window (for transient/grab_set).
+            config: Application :class:`Config` used to load and save settings.
+            on_save: Optional callback invoked after the user saves changes.
+            app: Reference to the main :class:`SentinelApp` (for live reload).
+        """
         self.config = config
         self.cfg = config.load()
         self.on_save = on_save

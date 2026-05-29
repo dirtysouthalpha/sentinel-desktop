@@ -29,6 +29,12 @@ class ScriptsTab:
     """Script Library tab — browse, parameterise, and run automation scripts."""
 
     def __init__(self, parent_frame: ctk.CTkFrame, app: Any) -> None:
+        """Build the scripts tab and load the script library.
+
+        Args:
+            parent_frame: Parent frame to embed the tab into.
+            app: Main :class:`SentinelApp` instance for theme and callbacks.
+        """
         self.app = app
         self._t = app._t
         self._scripts: list[dict[str, Any]] = []

@@ -30,6 +30,12 @@ class SettingsTab:
     }
 
     def __init__(self, parent: ctk.CTkFrame, app: Any) -> None:
+        """Build the settings tab layout and populate fields from config.
+
+        Args:
+            parent: Parent frame to embed the settings form into.
+            app: Main :class:`SentinelApp` instance for config and theme access.
+        """
         self.app = app
         self.root = parent
         self._vars: dict[str, Any] = {}

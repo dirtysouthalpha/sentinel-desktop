@@ -158,6 +158,11 @@ class SystemTrayIcon:
     VALID_STATUSES = frozenset(_STATUS_COLOURS.keys())
 
     def __init__(self, app: SentinelApp) -> None:
+        """Initialize the tray icon manager (icon not started until ``start()``).
+
+        Args:
+            app: The main :class:`SentinelApp` whose state drives tray status.
+        """
         self._app = app
         self._icon: pystray.Icon | None = None
         self._thread: threading.Thread | None = None

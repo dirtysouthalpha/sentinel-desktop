@@ -33,6 +33,12 @@ class WorkflowsTab(ctk.CTkFrame):
     """Workflow management tab — list + detail + step-flow visualization."""
 
     def __init__(self, parent_frame: ctk.CTkFrame, app: Any) -> None:
+        """Build the workflows tab layout.
+
+        Args:
+            parent_frame: Parent frame to embed this tab into.
+            app: Main :class:`SentinelApp` instance for theme and callbacks.
+        """
         super().__init__(parent_frame, corner_radius=0)
         self.app = app
         self._t = app._t

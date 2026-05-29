@@ -30,6 +30,12 @@ class RecorderPanel(ctk.CTkFrame):
     """Toolbar with Record ⏺ / Stop ⏹ / Play ▶ and Script Library 📋 buttons."""
 
     def __init__(self, parent: ctk.CTkFrame, app: Any) -> None:
+        """Build the recorder toolbar widgets.
+
+        Args:
+            parent: Parent frame to attach this panel to.
+            app: Main :class:`SentinelApp` instance (for callbacks and theme).
+        """
         super().__init__(parent, height=40, corner_radius=4)
         self.app = app
         self._t = app._t

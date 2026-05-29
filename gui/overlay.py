@@ -32,6 +32,12 @@ class ActionOverlay:
     """Owns a hidden Tk root and exposes ``show_action()`` for cross-thread use."""
 
     def __init__(self, master: Any) -> None:
+        """Initialize the overlay attached to a Tk master widget.
+
+        Args:
+            master: Parent Tk widget used to schedule ``after()`` calls on
+                the main thread.
+        """
         self.master = master
         self._lock = threading.Lock()
         self._current: _Indicator | None = None
@@ -76,6 +82,15 @@ class _Indicator:
     """A single overlay instance — created and destroyed in <1 second."""
 
     def __init__(self, master: Any, *, x: int, y: int, label: str, kind: str) -> None:
+        """Create and immediately render a brief action indicator.
+
+        Args:
+            master: Parent Tk widget for the overlay window.
+            x: Screen X coordinate for the indicator centre.
+            y: Screen Y coordinate for the indicator centre.
+            label: Action description shown below the ring.
+            kind: Action type string used to select the ring colour.
+        """
         import tkinter as tk
 
         self.tk = tk
