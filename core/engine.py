@@ -969,6 +969,47 @@ class AgentEngine:
 
         return "continue"
 
+    def _try_save_checkpoint(self, goal: str, messages: list[dict[str, Any]]) -> None:
+        """Save a checkpoint at the current step if the auto-save interval is due."""
+        if not self.checkpoint.should_auto_save(self.step):
+            return
+        try:
+            safe_config = {k: v for k, v in self.config.items() if k != "api_key"}
+            self.checkpoint.save(
+                goal=goal,
+                step_num=self.step,
+                agent_memory=self.notes,
+                last_screenshot_path=None,
+                config=safe_config,
+                status="running",
+                messages=messages,
+            )
+        except (OSError, ValueError) as exc:
+            logger.warning("Checkpoint save failed: %s", exc)
+
+    def _capture_next_screenshot(
+        self,
+        messages: list[dict[str, Any]],
+        step_msg: str,
+        current_b64: str | None,
+    ) -> str | None:
+        """Capture a fresh screenshot for the next agent step if auto-screenshot is on."""
+        if not (self.running and self.config.get("auto_screenshot", True)):
+            return current_b64
+        self._prune_old_screenshots(messages)
+        try:
+            new_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+        except (OSError, ValueError, RuntimeError) as exc:
+            logger.debug("Screen capture failed mid-run: %s", exc)
+            return None
+        if new_b64:
+            self._add_vision_message(
+                messages,
+                new_b64,
+                f"Step {self.step} result: {step_msg[:200]}. Current screen:",
+            )
+        return new_b64
+
     def _handle_post_action_success(
         self,
         action: dict[str, Any],
@@ -1016,22 +1057,7 @@ class AgentEngine:
         )
 
         # Checkpoint every 5 steps
-        if self.checkpoint.should_auto_save(self.step):
-            try:
-                safe_config = {
-                    k: v for k, v in self.config.items() if k != "api_key"
-                }
-                self.checkpoint.save(
-                    goal=goal,
-                    step_num=self.step,
-                    agent_memory=self.notes,
-                    last_screenshot_path=None,
-                    config=safe_config,
-                    status="running",
-                    messages=messages,
-                )
-            except (OSError, ValueError) as exc:
-                logger.warning("Checkpoint save failed: %s", exc)
+        self._try_save_checkpoint(goal, messages)
 
         # Note actions are no-ops at the executor level; record once
         # here so we don't double-log.
@@ -1051,23 +1077,7 @@ class AgentEngine:
                 logger.warning("Step callback failed: %s", exc)
 
         # Take new screenshot for next iteration
-        if self.running and self.config.get("auto_screenshot", True):
-            # Prune old screenshots before adding a new one so the
-            # conversation doesn't balloon to dozens of images.
-            self._prune_old_screenshots(messages)
-            try:
-                screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
-            except (OSError, ValueError, RuntimeError) as exc:
-                logger.debug("Screen capture failed mid-run: %s", exc)
-                screenshot_b64 = None
-            if screenshot_b64:
-                self._add_vision_message(
-                    messages,
-                    screenshot_b64,
-                    f"Step {self.step} result: {log_result['msg'][:200]}. Current screen:",
-                )
-
-        return screenshot_b64
+        return self._capture_next_screenshot(messages, log_result["msg"], screenshot_b64)
 
     def _finalize_run(self, goal: str, start_time: float) -> dict[str, Any]:
         """Clean up after a run, play notification sound, and return results.
