@@ -194,10 +194,32 @@ class WorkflowEngine:
         return False
 
     def run_workflow(self, path: str, variables: dict[str, Any] | None = None) -> WorkflowResult:
-        """Execute a workflow from a JSON file."""
+        """Execute a workflow from a JSON file.
+
+        Orchestrates loading, validation, step execution, and finalization.
+        Returns a WorkflowResult indicating overall success or failure.
+        """
         start_time = time.time()
 
-        # Load and validate workflow file
+        loaded = self._validate_and_load_workflow(path, variables)
+        if isinstance(loaded, WorkflowResult):
+            return loaded
+
+        steps, result = loaded
+        self._execute_step_chain(steps, result)
+        self._finalize_workflow(result, start_time)
+        return result
+
+    def _validate_and_load_workflow(
+        self, path: str, variables: dict[str, Any] | None
+    ) -> tuple[list[WorkflowStep], WorkflowResult] | WorkflowResult:
+        """Load, validate, and prepare a workflow for execution.
+
+        Reads the workflow JSON file, checks that steps are defined,
+        merges variables, and builds step objects. Returns a tuple of
+        (steps, result) on success, or a WorkflowResult describing the
+        load/validation error.
+        """
         wf_data = self._load_workflow_file(path)
         if isinstance(wf_data, WorkflowResult):
             return wf_data
@@ -211,8 +233,17 @@ class WorkflowEngine:
         self._step_outputs = {}
         steps = self._build_steps(steps_data)
         result = WorkflowResult(steps_total=len(steps))
+        return steps, result
 
-        # Execute step chain
+    def _execute_step_chain(
+        self, steps: list[WorkflowStep], result: WorkflowResult
+    ) -> None:
+        """Execute the workflow step chain with cycle detection.
+
+        Walks through steps by resolving the next-step pointer after each
+        execution. Non-loop cycles are detected and broken. Errors are
+        handled according to each step's error_policy.
+        """
         step_map = {s.id: s for s in steps}
         current = steps[0].id if steps else None
         visited: set[str] = set()
@@ -242,12 +273,14 @@ class WorkflowEngine:
                 if current is None:
                     break
 
+    def _finalize_workflow(
+        self, result: WorkflowResult, start_time: float
+    ) -> None:
+        """Set final outputs, success flag, elapsed time, and fire completion callback."""
         result.outputs = dict(self._step_outputs)
         result.success = not result.error
         result.elapsed_seconds = time.time() - start_time
-
         self._fire("on_workflow_complete", result)
-        return result
 
     def _load_workflow_file(self, path: str) -> dict[str, Any] | WorkflowResult:
         """Load and parse a workflow JSON file.
