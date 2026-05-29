@@ -184,6 +184,11 @@ class AuditExporter:
     """
 
     def __init__(self, output_dir: str = "reports") -> None:
+        """Initialize the exporter and ensure the output directory exists.
+
+        Args:
+            output_dir: Directory where generated report files are written.
+        """
         self.output_dir = output_dir
         self._dir_ready = False
         try:

@@ -88,6 +88,15 @@ class WorkflowEngine:
     """Execute multi-step workflows with conditions, loops, and variables."""
 
     def __init__(self, action_executor: Any = None, script_engine: Any = None) -> None:
+        """Initialize the workflow engine.
+
+        Args:
+            action_executor: :class:`ActionExecutor` used to run individual
+                steps. Pass ``None`` to create a standalone engine that
+                only evaluates workflow logic.
+            script_engine: Optional :class:`ScriptEngine` for script-type
+                workflow steps.
+        """
         self.executor = action_executor
         self.script_engine = script_engine
         self._variables: dict[str, Any] = {}

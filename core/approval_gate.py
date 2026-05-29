@@ -34,6 +34,12 @@ class ApprovalRequest:
     """Represents a pending action awaiting user approval."""
 
     def __init__(self, action: dict[str, Any], step_num: int) -> None:
+        """Initialize a pending approval request.
+
+        Args:
+            action: The action dict awaiting user approval.
+            step_num: The agent step number that generated this request.
+        """
         self.action = action
         self.step_num = step_num
         self.decision: ApprovalDecision | None = None
@@ -72,6 +78,12 @@ class ApprovalGate:
     """
 
     def __init__(self, enabled: bool = False) -> None:
+        """Initialize the approval gate.
+
+        Args:
+            enabled: When ``True`` the gate will block and request user approval
+                before each action. When ``False`` all actions pass through.
+        """
         self.enabled = enabled
         self._callback: Callable[[ApprovalRequest], None] | None = None
         self._current_request: ApprovalRequest | None = None

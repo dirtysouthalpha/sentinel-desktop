@@ -136,6 +136,13 @@ class AgentPool:
         max_agents: int = 3,
         on_session_complete: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
+        """Initialize the pool and start the background dispatcher thread.
+
+        Args:
+            max_agents: Maximum number of agent sessions that may run concurrently.
+            on_session_complete: Optional callback invoked (from the agent thread)
+                when a session finishes — either successfully or with an error.
+        """
         if max_agents < 1:
             raise ValueError("max_agents must be >= 1")
         self._max_agents = max_agents

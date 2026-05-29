@@ -265,6 +265,17 @@ class AgentEngine:
         approval_callback: Callable[[dict[str, Any]], bool] | None = None,
         pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
+        """Initialize the agent engine and all its subsystems.
+
+        Args:
+            config: Runtime configuration dict. Recognised keys include
+                ``provider``, ``model``, ``api_key``, ``max_steps``,
+                ``approval_mode``, ``dry_run``, ``stealth_input``, and more.
+            approval_callback: Called before each action when approval mode is
+                active.  Return ``True`` to approve, ``False`` to reject.
+            pre_action_callback: Called just before each action is dispatched
+                (e.g. to update the cursor overlay).
+        """
         self.config = config or {}
         self.llm = LLMClient()
         self.approval_callback = approval_callback

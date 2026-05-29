@@ -175,6 +175,12 @@ class NotificationManager:
     """
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
+        """Initialize the notification manager with optional channel config.
+
+        Args:
+            config: Mapping of config keys to values. See class docstring for
+                recognised keys (``webhook_url``, ``email_to``, etc.).
+        """
         self._config: dict[str, Any] = {
             "enabled_channels": ["log"],
             "webhook_url": None,

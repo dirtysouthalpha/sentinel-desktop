@@ -228,6 +228,7 @@ class SmartWait:
     """
 
     def __init__(self) -> None:
+        """Initialize the waiter with a clean (non-cancelled) state."""
         self._cancel_event = threading.Event()
 
     # ------------------------------------------------------------------

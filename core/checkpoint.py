@@ -105,6 +105,12 @@ class CheckpointManager:
     """
 
     def __init__(self, checkpoint_dir: str | None = None) -> None:
+        """Initialize the checkpoint manager.
+
+        Args:
+            checkpoint_dir: Directory for checkpoint files. Defaults to
+                ``config/checkpoints``.
+        """
         self._lock = threading.Lock()
         self._dir = Path(checkpoint_dir) if checkpoint_dir else _CHECKPOINT_DIR
         try:

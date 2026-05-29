@@ -20,6 +20,7 @@ class DesktopController:
     """Controls mouse, keyboard, and screen capture."""
 
     def __init__(self) -> None:
+        """Initialize the controller and detect the current screen resolution."""
         try:
             self._screen_size: tuple[int, int] = pyautogui.size()
         except (OSError, RuntimeError, ValueError):

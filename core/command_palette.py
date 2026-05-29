@@ -34,6 +34,15 @@ class Command:
         handler: Callable[..., Any],
         keywords: list[str] | None = None,
     ) -> None:
+        """Initialize a palette command.
+
+        Args:
+            name: Display name shown in the palette.
+            shortcut: Keyboard shortcut string (e.g. ``"Ctrl+P"``).
+            category: Category label for grouping (e.g. ``"Agent"``).
+            handler: Callable invoked when the command is executed.
+            keywords: Additional search terms for fuzzy matching.
+        """
         self.name = name
         self.shortcut = shortcut
         self.category = category
@@ -79,6 +88,7 @@ class CommandPalette:
     """
 
     def __init__(self) -> None:
+        """Initialize an empty command palette."""
         self._commands: list[Command] = []
 
     def register(

@@ -30,6 +30,12 @@ class FailsafeListener:
     """Background thread that calls ``on_panic`` after three rapid Esc presses."""
 
     def __init__(self, on_panic: Callable[[], None]) -> None:
+        """Initialize the failsafe listener.
+
+        Args:
+            on_panic: Zero-argument callable invoked when the panic sequence
+                (three rapid Esc presses) is detected.
+        """
         self._on_panic = on_panic
         self._presses: deque = deque(maxlen=PANIC_PRESS_COUNT)
         self._lock = threading.Lock()

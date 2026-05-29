@@ -79,6 +79,7 @@ class LLMClient:
     """
 
     def __init__(self) -> None:
+        """Initialize the client and expose the built-in provider catalog."""
         self.providers = PROVIDERS
 
     # ------------------------------------------------------------------

@@ -456,6 +456,12 @@ class MFADetector:
     """
 
     def __init__(self, cooldown_seconds: float = 10.0) -> None:
+        """Initialize the MFA detector.
+
+        Args:
+            cooldown_seconds: Minimum seconds between repeated detections of
+                the same prompt (prevents notification spam).
+        """
         self._lock = threading.Lock()
         self._last_detection: DetectionResult | None = None
         self._last_detection_time: float = 0.0

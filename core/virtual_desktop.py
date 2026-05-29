@@ -153,6 +153,11 @@ class _Win32VirtualDesktop:
     """Internal implementation backed by real Win32 desktop objects."""
 
     def __init__(self, name: str) -> None:
+        """Initialize a Win32 virtual desktop object.
+
+        Args:
+            name: Logical name used when creating the Win32 desktop object.
+        """
         self._name = name
         self._handle: int | None = None
         self._default_desktop_name: str = _get_current_desktop_name()
@@ -592,6 +597,11 @@ class _StubVirtualDesktop:
     """Fallback used when the platform is not Windows or Win32 APIs fail."""
 
     def __init__(self, name: str) -> None:
+        """Initialize the stub and emit a platform-compatibility warning.
+
+        Args:
+            name: Logical name (stored for introspection; not used by Win32).
+        """
         self._name = name
         logger.warning(
             "VirtualDesktop(%r): not running on Windows — operating on "
@@ -715,6 +725,14 @@ class VirtualDesktop:
     """
 
     def __init__(self, name: str = "SentinelDesktop") -> None:
+        """Initialize and select the appropriate desktop implementation.
+
+        On Windows a real Win32 desktop object is created; on other platforms
+        (or if Win32 initialisation fails) a no-op stub is used instead.
+
+        Args:
+            name: Logical name for the virtual desktop object.
+        """
         self._name = name
         self._impl: Any | None = None
 

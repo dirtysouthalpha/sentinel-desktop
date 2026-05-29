@@ -40,6 +40,18 @@ class Script:
         parameters: list[dict[str, str]] | None = None,
         steps: list[dict[str, Any]] | None = None,
     ) -> None:
+        """Initialize a script with optional metadata and pre-populated steps.
+
+        Args:
+            name: Human-readable script name.
+            description: Longer description of what the script does.
+            author: Author identifier embedded in the saved file.
+            created: ISO-8601 creation timestamp; defaults to now.
+            version: Script format version string.
+            tags: Optional list of categorisation tags.
+            parameters: Optional list of user-fillable parameter dicts.
+            steps: Optional pre-populated list of action step dicts.
+        """
         self.name = name
         self.description = description
         self.author = author
@@ -123,6 +135,7 @@ class ActionRecorder:
     """
 
     def __init__(self) -> None:
+        """Initialize the recorder in idle (not-recording) state."""
         self._lock = threading.Lock()
         self._recording: bool = False
         self._goal: str = ""

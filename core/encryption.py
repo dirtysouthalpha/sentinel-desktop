@@ -110,6 +110,11 @@ class CredentialVault:
     """
 
     def __init__(self, vault_path: str = "config/vault.json") -> None:
+        """Initialize the vault and load any previously persisted keys.
+
+        Args:
+            vault_path: Path to the JSON file that stores encrypted keys.
+        """
         self._path = Path(vault_path)
         self._lock = threading.RLock()
         self._data: dict[str, Any] = self._load()

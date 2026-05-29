@@ -196,6 +196,7 @@ class WorkflowStore:
     """In-memory workflow store."""
 
     def __init__(self) -> None:
+        """Initialize an empty workflow store."""
         self._workflows: dict[str, Workflow] = {}
 
     def create(self, name: str, description: str = "") -> Workflow:

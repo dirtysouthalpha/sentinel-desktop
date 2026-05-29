@@ -210,6 +210,12 @@ class AuthManager:
     """
 
     def __init__(self, config_path: str = "config/users.json") -> None:
+        """Initialize the auth manager and load or bootstrap user data.
+
+        Args:
+            config_path: Path to the JSON file storing user records. Created
+                automatically if it does not exist.
+        """
         self.config_path: Path = Path(config_path)
         self._users: dict[str, User] = {}  # username → User
         self._api_key_index: dict[str, str] = {}  # api_key → username

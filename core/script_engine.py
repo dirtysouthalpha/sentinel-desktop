@@ -153,6 +153,12 @@ class ScriptEngine:
     """
 
     def __init__(self, action_executor: Any) -> None:
+        """Initialize the script engine.
+
+        Args:
+            action_executor: An :class:`ActionExecutor` instance used to
+                dispatch each script step.
+        """
         self._executor = action_executor
         self._progress_callback: Callable[[int, int, str, dict[str, Any]], None] | None = None
         self._on_error: str = "stop"  # 'stop' | 'skip' | 'retry_once'

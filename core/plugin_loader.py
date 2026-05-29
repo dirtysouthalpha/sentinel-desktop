@@ -97,6 +97,15 @@ class PluginAPI:
         config: dict[str, Any] | None = None,
         log_callback: Callable[[str], None] | None = None,
     ) -> None:
+        """Initialize the plugin API surface.
+
+        Args:
+            plugin_name: Name of the owning plugin (used in log messages).
+            engine: The :class:`AgentEngine` instance exposed to the plugin.
+            config: Global configuration dict forwarded from the loader.
+            log_callback: Optional callable for plugin-level log messages.
+                Defaults to the module logger.
+        """
         self._plugin_name = plugin_name
         self._engine = engine
         self._config = config or {}
@@ -239,6 +248,13 @@ class PluginLoader:
         engine: Any = None,
         config: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize the plugin loader.
+
+        Args:
+            plugin_dir: Directory scanned for plugin packages.
+            engine: The :class:`AgentEngine` instance forwarded to each plugin.
+            config: Global configuration dict forwarded to each plugin.
+        """
         self._plugin_dir = Path(plugin_dir)
         self._engine = engine
         self._config = config or {}

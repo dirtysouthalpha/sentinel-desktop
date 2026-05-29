@@ -112,6 +112,12 @@ class ForensicLog:
     """
 
     def __init__(self, log_dir: str | None = None) -> None:
+        """Initialize the forensic log.
+
+        Args:
+            log_dir: Directory for persisted run logs. Defaults to
+                ``logs/forensic``.
+        """
         self._lock = threading.Lock()
         self._log_dir = log_dir or _default_log_dir()
         self._run: dict[str, Any] = {}

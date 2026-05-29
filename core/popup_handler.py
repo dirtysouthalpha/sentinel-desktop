@@ -73,6 +73,7 @@ class PopupPattern:
     description: str = ""
 
     def __post_init__(self) -> None:
+        """Compile title and body regex patterns eagerly for fast matching."""
         # Compile regex patterns eagerly for reuse
         self._title_pat = re.compile(self.title_regex, re.IGNORECASE) if self.title_regex else None
         self._body_pat = re.compile(self.body_regex, re.IGNORECASE) if self.body_regex else None

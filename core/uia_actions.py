@@ -100,6 +100,7 @@ class UIAActionPipeline:
     """
 
     def __init__(self) -> None:
+        """Initialize the pipeline. Heavy platform modules are imported lazily."""
         # Lazy-import heavy modules at first use (done in _probe_* above).
         pass
 

@@ -148,6 +148,14 @@ class TaskScheduler:
         engine: Any | None = None,
         tasks_path: str | None = None,
     ) -> None:
+        """Initialize the scheduler and load persisted tasks.
+
+        Args:
+            engine: Optional :class:`AgentEngine` instance used to execute
+                tasks. Pass ``None`` for task storage only.
+            tasks_path: Path to the JSON persistence file. Defaults to
+                ``config/scheduled_tasks.json``.
+        """
         self.engine = engine
         self._tasks_path = Path(tasks_path) if tasks_path else DEFAULT_TASKS_PATH
         self._tasks: dict[str, dict[str, Any]] = {}
