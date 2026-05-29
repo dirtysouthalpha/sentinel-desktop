@@ -342,22 +342,10 @@ class LLMClient:
             "anthropic-version": "2025-01-01",
         }
 
-        # Convert messages: extract system prompt, build Anthropic-style list.
-        system_msg = ""
-        converted_messages: list[dict[str, Any]] = []
-        for m in messages:
-            role = m.get("role", "")
-            content = m.get("content", "")
-            if role == "system":
-                system_msg += (content if isinstance(content, str) else str(content)) + "\n"
-            elif role in ("user", "assistant"):
-                converted_messages.append({"role": role, "content": content})
-
+        system_msg, converted_messages = self._convert_messages_for_anthropic(messages)
         payload: dict[str, Any] = {
-            "model": model,
-            "messages": converted_messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+            "model": model, "messages": converted_messages,
+            "max_tokens": max_tokens, "temperature": temperature,
         }
         if system_msg.strip():
             payload["system"] = system_msg.strip()
@@ -365,18 +353,31 @@ class LLMClient:
             payload["tools"] = self._convert_tools_to_anthropic(tools)
 
         logger.info("chat → anthropic/%s", model)
-
         data = self._post_with_retry(
-            chat_url,
-            headers,
-            payload,
-            timeout,
-            max_retries=max_retries,
-            base_delay=retry_base_delay,
-            provider_label="anthropic",
+            chat_url, headers, payload, timeout,
+            max_retries=max_retries, base_delay=retry_base_delay, provider_label="anthropic",
         )
+        return self._parse_anthropic_response(data)
 
-        # Extract text / tool-use from the response.
+    @staticmethod
+    def _convert_messages_for_anthropic(
+        messages: list[dict[str, Any]],
+    ) -> tuple[str, list[dict[str, Any]]]:
+        """Split OpenAI-style messages into Anthropic system prompt + message list."""
+        system_msg = ""
+        converted: list[dict[str, Any]] = []
+        for m in messages:
+            role = m.get("role", "")
+            content = m.get("content", "")
+            if role == "system":
+                system_msg += (content if isinstance(content, str) else str(content)) + "\n"
+            elif role in ("user", "assistant"):
+                converted.append({"role": role, "content": content})
+        return system_msg, converted
+
+    @staticmethod
+    def _parse_anthropic_response(data: dict[str, Any]) -> str:
+        """Extract text or normalised tool-calls from an Anthropic /messages response."""
         content_blocks = data.get("content", [])
         text_parts: list[str] = []
         tool_use_blocks: list[dict[str, Any]] = []
@@ -389,19 +390,17 @@ class LLMClient:
                 tool_use_blocks.append(block)
 
         if tool_use_blocks:
-            # Normalise to OpenAI-style tool_calls payload.
-            openai_tool_calls = []
-            for tb in tool_use_blocks:
-                openai_tool_calls.append(
-                    {
-                        "id": tb.get("id", ""),
-                        "type": "function",
-                        "function": {
-                            "name": tb.get("name", ""),
-                            "arguments": json.dumps(tb.get("input", {})),
-                        },
-                    }
-                )
+            openai_tool_calls = [
+                {
+                    "id": tb.get("id", ""),
+                    "type": "function",
+                    "function": {
+                        "name": tb.get("name", ""),
+                        "arguments": json.dumps(tb.get("input", {})),
+                    },
+                }
+                for tb in tool_use_blocks
+            ]
             return json.dumps({"tool_calls": openai_tool_calls})
 
         return "\n".join(text_parts).strip()

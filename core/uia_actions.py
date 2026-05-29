@@ -637,69 +637,72 @@ class UIAActionPipeline:
             root = _find_window(window_title)
             if root is None:
                 return False
-
-            # Find the top-level menu bar.
-            menu_bar = None
-            for child in root.GetChildren():
-                if child.ControlTypeName == "MenuBarControl":
-                    menu_bar = child
-                    break
-            if menu_bar is None:
-                # Some apps use a generic "menu" control type.
-                for child in root.GetChildren():
-                    ct = (child.ControlTypeName or "").lower()
-                    if "menu" in ct:
-                        menu_bar = child
-                        break
+            menu_bar = self._find_menu_bar(root)
             if menu_bar is None:
                 return False
 
             current = menu_bar
             for i, segment in enumerate(segments):
-                is_last = i == len(segments) - 1
                 target = self._find_child_by_name(current, segment)
                 if target is None:
                     return False
-
-                if is_last:
-                    # Invoke / click the final menu item.
-                    try:
-                        pattern = target.GetInvokePattern()
-                        if pattern:
-                            pattern.Invoke()
-                            return True
-                    except (OSError, AttributeError, RuntimeError) as exc:
-                        logger.debug("Invoke pattern failed, trying click: %s", exc)
-                    try:
-                        target.Click(simulateMove=False)
-                        return True
-                    except (OSError, AttributeError, RuntimeError) as exc:
-                        logger.debug("Click fallback failed: %s", exc)
+                if i == len(segments) - 1:
+                    return self._invoke_menu_item(target)
+                if not self._expand_menu_item(target):
                     return False
-                else:
-                    # Intermediate item — expand to reveal submenu.
-                    try:
-                        expand = target.GetExpandCollapsePattern()
-                        if expand:
-                            expand.Expand()
-                            time.sleep(0.05)
-                            current = target
-                            continue
-                    except (OSError, AttributeError, RuntimeError) as exc:
-                        logger.debug("Expand pattern failed, trying click: %s", exc)
-                    # Fallback: click to open submenu.
-                    try:
-                        target.Click(simulateMove=False)
-                        time.sleep(0.05)
-                        current = target
-                    except (OSError, AttributeError, RuntimeError) as exc:
-                        logger.debug("Menu walk click fallback failed: %s", exc)
-                        return False
+                current = target
 
             return False  # shouldn't reach here
         except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("_uia_menu_walk failed: %s", exc)
             return False
+
+    @staticmethod
+    def _find_menu_bar(root: Any) -> Any | None:
+        """Find the top-level menu bar control in *root*'s children."""
+        for child in root.GetChildren():
+            if child.ControlTypeName == "MenuBarControl":
+                return child
+        for child in root.GetChildren():
+            if "menu" in (child.ControlTypeName or "").lower():
+                return child
+        return None
+
+    @staticmethod
+    def _invoke_menu_item(target: Any) -> bool:
+        """Invoke or click a final menu item. Returns True on success."""
+        try:
+            pattern = target.GetInvokePattern()
+            if pattern:
+                pattern.Invoke()
+                return True
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("Invoke pattern failed, trying click: %s", exc)
+        try:
+            target.Click(simulateMove=False)
+            return True
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("Click fallback failed: %s", exc)
+        return False
+
+    @staticmethod
+    def _expand_menu_item(target: Any) -> bool:
+        """Expand or click an intermediate menu item. Returns True on success."""
+        try:
+            expand = target.GetExpandCollapsePattern()
+            if expand:
+                expand.Expand()
+                time.sleep(0.05)
+                return True
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("Expand pattern failed, trying click: %s", exc)
+        try:
+            target.Click(simulateMove=False)
+            time.sleep(0.05)
+            return True
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("Menu walk click fallback failed: %s", exc)
+        return False
 
     @staticmethod
     def _find_child_by_name(parent: Any, name: str) -> Any | None:

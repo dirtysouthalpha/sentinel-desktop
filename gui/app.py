@@ -88,69 +88,39 @@ class SentinelApp:
         ctk.CTkLabel(header, text="⬡ Sentinel Desktop", font=("Segoe UI", 16, "bold")).pack(
             side="left", padx=12
         )
-
         self.status_label = ctk.CTkLabel(
-            header,
-            text="● IDLE",
-            font=("Segoe UI", 12),
+            header, text="● IDLE", font=("Segoe UI", 12),
             text_color=self._t("status_idle", "#849495"),
         )
         self.status_label.pack(side="left", padx=20)
 
-        # Surface dry-run mode prominently so the user knows actions are
-        # not actually firing.
-        if self.cfg.get("dry_run"):
-            ctk.CTkLabel(
-                header,
-                text="DRY-RUN",
-                font=("Segoe UI", 11, "bold"),
-                text_color="#000000",
-                fg_color=self._t("tag_action", "#FBBC00"),
-                corner_radius=3,
-                padx=8,
-            ).pack(side="left", padx=10)
-        # Show AUTONOMOUS chip in red so users always know when approvals
-        # are off and the agent is acting without confirmation.
-        if self.cfg.get("autonomous"):
-            ctk.CTkLabel(
-                header,
-                text="AUTONOMOUS",
-                font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff",
-                fg_color=self._t("status_error", "#ff3b3b"),
-                corner_radius=3,
-                padx=8,
-            ).pack(side="left", padx=10)
-        if self.cfg.get("stealth_input"):
-            ctk.CTkLabel(
-                header,
-                text="STEALTH",
-                font=("Segoe UI", 11, "bold"),
-                text_color="#ffffff",
-                fg_color=self._t("accent", "#00F0FF"),
-                corner_radius=3,
-                padx=8,
-            ).pack(side="left", padx=10)
+        self._build_mode_badges(header)
 
-        # Provider / model
         provider = self.cfg.get("provider", "none")
         model = self.cfg.get("model", "none")
         self.provider_label = ctk.CTkLabel(
-            header,
-            text=f"{provider} / {model}",
-            font=("Segoe UI", 10),
-            text_color=self._t("text_secondary", "#849495"),
+            header, text=f"{provider} / {model}",
+            font=("Segoe UI", 10), text_color=self._t("text_secondary", "#849495"),
         )
         self.provider_label.pack(side="right", padx=12)
+        ctk.CTkButton(header, text="⚙", width=32, height=32, command=self._open_settings).pack(
+            side="right", padx=4
+        )
 
-        # Settings button
-        ctk.CTkButton(
-            header,
-            text="⚙",
-            width=32,
-            height=32,
-            command=self._open_settings,
-        ).pack(side="right", padx=4)
+    def _build_mode_badges(self, header: Any) -> None:
+        """Add indicator badges for active run-mode flags (dry-run, autonomous, stealth)."""
+        badges = []
+        if self.cfg.get("dry_run"):
+            badges.append(("DRY-RUN", "#000000", self._t("tag_action", "#FBBC00")))
+        if self.cfg.get("autonomous"):
+            badges.append(("AUTONOMOUS", "#ffffff", self._t("status_error", "#ff3b3b")))
+        if self.cfg.get("stealth_input"):
+            badges.append(("STEALTH", "#ffffff", self._t("accent", "#00F0FF")))
+        for text, fg, bg in badges:
+            ctk.CTkLabel(
+                header, text=text, font=("Segoe UI", 11, "bold"),
+                text_color=fg, fg_color=bg, corner_radius=3, padx=8,
+            ).pack(side="left", padx=10)
 
     # ── Tabbed Layout ──────────────────────────────────────────────────
 
@@ -166,61 +136,28 @@ class SentinelApp:
         )
         self.tabview.pack(fill="both", expand=True, padx=8, pady=4)
 
-        # Create tabs
         tab_dashboard = self.tabview.add("🖥️ Dashboard")
         tab_scripts = self.tabview.add("📜 Scripts")
         tab_workflows = self.tabview.add("🔀 Workflows")
         tab_history = self.tabview.add("📁 History")
         tab_settings = self.tabview.add("⚙️ Settings")
 
-        # Dashboard tab = existing main area content
         self._build_main_area_into(tab_dashboard)
+        self._safe_load_tab(tab_scripts, "gui.tabs.scripts_tab", "ScriptsTab", "scripts_tab")
+        self._safe_load_tab(tab_workflows, "gui.tabs.workflows_tab", "WorkflowsTab", "workflows_tab")
+        self._safe_load_tab(tab_history, "gui.tabs.history_tab", "HistoryTab", "history_tab")
+        self._safe_load_tab(tab_settings, "gui.tabs.settings_tab", "SettingsTab", "settings_tab")
 
-        # Scripts tab
+    def _safe_load_tab(self, parent: Any, module_path: str, class_name: str, attr: str) -> None:
+        """Import a tab class and instantiate it; show an error label on ImportError."""
         try:
-            from gui.tabs.scripts_tab import ScriptsTab
-
-            self.scripts_tab = ScriptsTab(tab_scripts, self)
+            import importlib
+            mod = importlib.import_module(module_path)
+            setattr(self, attr, getattr(mod, class_name)(parent, self))
         except ImportError:
             ctk.CTkLabel(
-                tab_scripts,
-                text="Scripts tab unavailable",
-                text_color=self._t("text_secondary", "#b9cacb"),
-            ).pack(pady=20)
-
-        # Workflows tab
-        try:
-            from gui.tabs.workflows_tab import WorkflowsTab
-
-            self.workflows_tab = WorkflowsTab(tab_workflows, self)
-        except ImportError:
-            ctk.CTkLabel(
-                tab_workflows,
-                text="Workflows tab unavailable",
-                text_color=self._t("text_secondary", "#b9cacb"),
-            ).pack(pady=20)
-
-        # History tab
-        try:
-            from gui.tabs.history_tab import HistoryTab
-
-            self.history_tab = HistoryTab(tab_history, self)
-        except ImportError:
-            ctk.CTkLabel(
-                tab_history,
-                text="History tab unavailable",
-                text_color=self._t("text_secondary", "#b9cacb"),
-            ).pack(pady=20)
-
-        # Settings tab
-        try:
-            from gui.tabs.settings_tab import SettingsTab
-
-            self.settings_tab = SettingsTab(tab_settings, self)
-        except ImportError:
-            ctk.CTkLabel(
-                tab_settings,
-                text="Settings tab unavailable",
+                parent,
+                text=f"{class_name.replace('Tab', '')} tab unavailable",
                 text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(pady=20)
 
@@ -565,78 +502,66 @@ class SentinelApp:
     # ── Approval prompt ─────────────────────────────────────────────────
 
     def _approve_action(self, action: dict[str, Any]) -> bool:
-        """Pop up an approval dialog for a state-changing action.
-
-        Called from the engine worker thread. We use a threading.Event to
-        block this thread until the user clicks Approve or Reject on the
-        main thread.
-        """
+        """Pop up an approval dialog; blocks the worker thread until decided (60s timeout)."""
         decision = {"approved": False}
         event = threading.Event()
-
-        def _prompt() -> None:
-            try:
-                top = ctk.CTkToplevel(self.root)
-                top.title("Approve action?")
-                top.geometry("480x220")
-                top.transient(self.root)
-                top.grab_set()
-
-                action_name = action.get("action", "?")
-                params = {k: v for k, v in action.items() if k != "action"}
-
-                ctk.CTkLabel(
-                    top,
-                    text=f"The agent wants to run: {action_name}",
-                    font=("Segoe UI", 13, "bold"),
-                ).pack(anchor="w", padx=16, pady=(16, 4))
-
-                detail = json.dumps(params, indent=2)[:600]
-                ctk.CTkLabel(
-                    top,
-                    text=detail,
-                    font=("Consolas", 10),
-                    justify="left",
-                    anchor="w",
-                ).pack(fill="both", expand=True, padx=16, pady=4)
-
-                btn_frame = ctk.CTkFrame(top)
-                btn_frame.pack(fill="x", padx=16, pady=12)
-
-                def _approve() -> None:
-                    decision["approved"] = True
-                    event.set()
-                    top.destroy()
-
-                def _reject() -> None:
-                    decision["approved"] = False
-                    event.set()
-                    top.destroy()
-
-                ctk.CTkButton(
-                    btn_frame,
-                    text="✓ Approve",
-                    command=_approve,
-                    fg_color=self._t("status_running", "#95E400"),
-                    hover_color=self._t("tag_assistant", "#95E400"),
-                ).pack(side="right", padx=4)
-                ctk.CTkButton(
-                    btn_frame,
-                    text="✗ Reject",
-                    command=_reject,
-                    fg_color=self._t("status_error", "#ff3b3b"),
-                    hover_color=self._t("tag_error", "#ff3b3b"),
-                ).pack(side="right", padx=4)
-
-                top.protocol("WM_DELETE_WINDOW", _reject)
-            except (RuntimeError, tk.TclError) as exc:
-                logger.warning("approval prompt failed: %s", exc)
-                event.set()
-
-        self.root.after(0, _prompt)
-        # Block worker thread until the user decides (or 60s timeout).
+        self.root.after(0, lambda: self._build_approval_dialog(action, decision, event))
         event.wait(timeout=60)
         return decision["approved"]
+
+    def _build_approval_dialog(
+        self,
+        action: dict[str, Any],
+        decision: dict[str, Any],
+        event: threading.Event,
+    ) -> None:
+        """Build and show the approval dialog on the main thread."""
+        try:
+            top = ctk.CTkToplevel(self.root)
+            top.title("Approve action?")
+            top.geometry("480x220")
+            top.transient(self.root)
+            top.grab_set()
+
+            action_name = action.get("action", "?")
+            params = {k: v for k, v in action.items() if k != "action"}
+
+            ctk.CTkLabel(
+                top, text=f"The agent wants to run: {action_name}",
+                font=("Segoe UI", 13, "bold"),
+            ).pack(anchor="w", padx=16, pady=(16, 4))
+            ctk.CTkLabel(
+                top, text=json.dumps(params, indent=2)[:600],
+                font=("Consolas", 10), justify="left", anchor="w",
+            ).pack(fill="both", expand=True, padx=16, pady=4)
+
+            btn_frame = ctk.CTkFrame(top)
+            btn_frame.pack(fill="x", padx=16, pady=12)
+
+            def _approve() -> None:
+                decision["approved"] = True
+                event.set()
+                top.destroy()
+
+            def _reject() -> None:
+                decision["approved"] = False
+                event.set()
+                top.destroy()
+
+            ctk.CTkButton(
+                btn_frame, text="✓ Approve", command=_approve,
+                fg_color=self._t("status_running", "#95E400"),
+                hover_color=self._t("tag_assistant", "#95E400"),
+            ).pack(side="right", padx=4)
+            ctk.CTkButton(
+                btn_frame, text="✗ Reject", command=_reject,
+                fg_color=self._t("status_error", "#ff3b3b"),
+                hover_color=self._t("tag_error", "#ff3b3b"),
+            ).pack(side="right", padx=4)
+            top.protocol("WM_DELETE_WINDOW", _reject)
+        except (RuntimeError, tk.TclError) as exc:
+            logger.warning("approval prompt failed: %s", exc)
+            event.set()
 
     def _update_screenshot(self, b64_data: str) -> None:
         """Update the screenshot preview."""

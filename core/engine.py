@@ -825,61 +825,44 @@ class AgentEngine:
     ) -> str | None:
         """Process a failed action: consult recovery engine and inject prompts.
 
-        Increments the consecutive failure counter, asks the recovery engine
-        for a suggestion, logs the event, and injects recovery messages into
-        the conversation history.  Also checks failure thresholds and injects
-        a strong recovery prompt when consecutive failures mount.
-
-        Args:
-            action: The action dict that failed.
-            action_name: Short name of the action (e.g. ``"click"``).
-            error_msg: Error output from the executor.
-            messages: Conversation history list (mutated in-place).
-
-        Returns:
-            ``"abort"`` if the run should terminate (max failures reached),
-            ``"recover"`` if a strong recovery prompt was injected, or
-            ``None`` for a normal handled failure.
+        Returns ``"abort"`` if max failures reached, ``"recover"`` if a strong
+        recovery prompt was injected, or ``None`` for a normal handled failure.
         """
         self._consecutive_failures += 1
         logger.warning(
             "Action '%s' failed (consecutive_failures=%d): %s",
-            action_name,
-            self._consecutive_failures,
-            error_msg[:200],
+            action_name, self._consecutive_failures, error_msg[:200],
         )
 
-        # Consult recovery engine
         suggestion = self._recovery_engine.analyze_failure(
-            action,
-            error_msg,
+            action, error_msg,
             {"step": self.step, "consecutive_failures": self._consecutive_failures},
         )
         self.logger.log_event(
             "recovery_suggestion",
             {
-                "pattern": suggestion.pattern,
-                "strategy": suggestion.strategy,
-                "confidence": suggestion.confidence,
-                "action": action_name,
+                "pattern": suggestion.pattern, "strategy": suggestion.strategy,
+                "confidence": suggestion.confidence, "action": action_name,
             },
         )
 
-        # Build recovery message for the LLM
         recovery_msg = f"Action '{action_name}' failed: {error_msg[:300]}."
         if suggestion.recovery_prompt:
             recovery_msg += f"\n\nRecovery hint: {suggestion.recovery_prompt}"
-
         messages.append({"role": "user", "content": recovery_msg})
 
-        # Check failure thresholds
+        return self._check_action_failure_threshold(error_msg, messages)
+
+    def _check_action_failure_threshold(
+        self, error_msg: str, messages: list[dict[str, Any]]
+    ) -> str | None:
+        """Return "abort", "recover", or None based on current consecutive failure count."""
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
-            error_summary = (
-                f"Run terminated after "
-                f"{self._consecutive_failures} consecutive failures. "
+            summary = (
+                f"Run terminated after {self._consecutive_failures} consecutive failures. "
                 f"Last error: {error_msg[:200]}"
             )
-            self.notes.append(error_summary)
+            self.notes.append(summary)
             self.logger.log_event(
                 "abort",
                 {
@@ -914,20 +897,9 @@ class AgentEngine:
         failure_type: str,
         messages: list[dict[str, Any]],
     ) -> str:
-        """Track consecutive failures and inject recovery prompts when needed.
+        """Track consecutive LLM/parse failures and inject recovery prompts.
 
-        Centralizes the duplicated failure-tracking logic from the main agent
-        loop.  Increments ``_consecutive_failures`` and decides whether to
-        inject a recovery/nudge prompt or abort the run.
-
-        Args:
-            failure_type: ``"llm_call"`` when the LLM call itself failed,
-                ``"parse"`` when the response couldn't be parsed as valid JSON.
-            messages: The running conversation list (mutated in-place).
-
-        Returns:
-            ``"abort"`` if ``MAX_CONSECUTIVE_FAILURES`` has been reached,
-            ``"continue"`` otherwise.
+        Returns ``"abort"`` if ``MAX_CONSECUTIVE_FAILURES`` reached, else ``"continue"``.
         """
         self._consecutive_failures += 1
         logger.warning(
@@ -939,51 +911,39 @@ class AgentEngine:
         if failure_type == "parse":
             self.notes.append(f"Step {self.step}: No valid action parsed from LLM response")
             messages.append(
-                {
-                    "role": "user",
-                    "content": "Please respond with a valid JSON action. Only JSON, no other text.",
-                }
+                {"role": "user", "content": "Please respond with a valid JSON action. Only JSON, no other text."}
             )
 
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
-            self.notes.append(
-                f"Terminating: {self._consecutive_failures} consecutive failures"
-            )
+            self.notes.append(f"Terminating: {self._consecutive_failures} consecutive failures")
             self.logger.log_event(
-                "abort",
-                {
-                    "reason": "max_consecutive_failures",
-                    "count": self._consecutive_failures,
-                },
+                "abort", {"reason": "max_consecutive_failures", "count": self._consecutive_failures},
             )
             return "abort"
 
         if self._consecutive_failures >= self.RECOVERY_PROMPT_THRESHOLD:
-            if failure_type == "llm_call":
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            "[SYSTEM] Multiple consecutive failures have occurred. "
-                            "Please take a completely different approach. "
-                            "Re-evaluate the situation from the current screenshot "
-                            "and try an alternative strategy."
-                        ),
-                    }
-                )
-            else:
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            "[SYSTEM] Multiple parse failures. Please return a simple "
-                            '{"action": "finish", "summary": "..."} '
-                            'or {"action": "note", "text": "..."}.'
-                        ),
-                    }
-                )
+            self._inject_llm_recovery_prompt(failure_type, messages)
 
         return "continue"
+
+    def _inject_llm_recovery_prompt(
+        self, failure_type: str, messages: list[dict[str, Any]]
+    ) -> None:
+        """Append a strongly-worded recovery hint for repeated LLM or parse failures."""
+        if failure_type == "llm_call":
+            content = (
+                "[SYSTEM] Multiple consecutive failures have occurred. "
+                "Please take a completely different approach. "
+                "Re-evaluate the situation from the current screenshot "
+                "and try an alternative strategy."
+            )
+        else:
+            content = (
+                "[SYSTEM] Multiple parse failures. Please return a simple "
+                '{"action": "finish", "summary": "..."} '
+                'or {"action": "note", "text": "..."}.'
+            )
+        messages.append({"role": "user", "content": content})
 
     def _try_save_checkpoint(self, goal: str, messages: list[dict[str, Any]]) -> None:
         """Save a checkpoint at the current step if the auto-save interval is due."""
