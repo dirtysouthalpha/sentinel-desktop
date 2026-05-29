@@ -113,42 +113,44 @@ def click_control(
         rect = ctrl.BoundingRectangle
         cx = (rect.left + rect.right) // 2
         cy = (rect.top + rect.bottom) // 2
-
-        # Prefer InvokePattern — fires the control's accessibility action
-        # directly without moving the cursor. Falls back to Click only if
-        # the control doesn't support Invoke (selection items, list items,
-        # etc. expose other patterns we try below).
-        invoked = False
-        try:
-            pattern = ctrl.GetInvokePattern()
-            if pattern is not None:
-                pattern.Invoke()
-                invoked = True
-        except (OSError, AttributeError, RuntimeError) as exc:
-            logger.debug("InvokePattern failed: %s", exc)
-
-        if not invoked:
-            # SelectionItemPattern handles list-box rows, tabs, etc.
-            try:
-                sel = ctrl.GetSelectionItemPattern()
-                if sel is not None:
-                    sel.Select()
-                    invoked = True
-            except (OSError, AttributeError, RuntimeError) as exc:
-                logger.debug("SelectionItemPattern failed: %s", exc)
-
-        if not invoked:
-            # Last resort: physical click, but skip the visual cursor sweep.
-            if button == "right":
-                ctrl.RightClick(simulateMove=False)
-            elif button == "middle":
-                ctrl.MiddleClick(simulateMove=False)
-            else:
-                ctrl.Click(simulateMove=False)
+        _invoke_control(ctrl, button)
         return (cx, cy)
     except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.warning("click_control failed: %s", exc)
         return None
+
+
+def _invoke_control(ctrl: Any, button: str) -> None:
+    """Activate *ctrl* via the best available UIA pattern, then fall back to physical click.
+
+    Tries InvokePattern first (no cursor movement), then SelectionItemPattern
+    (for list-box rows and tabs), then a physical click as last resort.
+    """
+    invoked = False
+    try:
+        pattern = ctrl.GetInvokePattern()
+        if pattern is not None:
+            pattern.Invoke()
+            invoked = True
+    except (OSError, AttributeError, RuntimeError) as exc:
+        logger.debug("InvokePattern failed: %s", exc)
+
+    if not invoked:
+        try:
+            sel = ctrl.GetSelectionItemPattern()
+            if sel is not None:
+                sel.Select()
+                invoked = True
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("SelectionItemPattern failed: %s", exc)
+
+    if not invoked:
+        if button == "right":
+            ctrl.RightClick(simulateMove=False)
+        elif button == "middle":
+            ctrl.MiddleClick(simulateMove=False)
+        else:
+            ctrl.Click(simulateMove=False)
 
 
 def set_text(

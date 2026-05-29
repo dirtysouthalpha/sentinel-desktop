@@ -38,26 +38,41 @@ def brief_system_info() -> str:
     )
 
 
-def system_info() -> dict[str, Any]:
-    """Return full system info as a dict."""
+def _memory_stats() -> tuple[float, float, float]:
+    """Return (total_gb, used_gb, percent) or zeros on failure."""
     try:
         mem = psutil.virtual_memory()
-        mem_total_gb = round(mem.total / (1024**3), 1)
-        mem_used_gb = round(mem.used / (1024**3), 1)
-        mem_percent = mem.percent
+        return round(mem.total / (1024**3), 1), round(mem.used / (1024**3), 1), mem.percent
     except (OSError, RuntimeError) as exc:
-        logger.warning("psutil memory call failed in system_info: %s", exc)
-        mem_total_gb = 0.0
-        mem_used_gb = 0.0
-        mem_percent = 0.0
+        logger.warning("psutil memory call failed: %s", exc)
+        return 0.0, 0.0, 0.0
 
+
+def _cpu_stats() -> tuple[float, int]:
+    """Return (cpu_percent, cpu_count) or zeros on failure."""
     try:
-        cpu_pct = psutil.cpu_percent(interval=0.5)
-        cpu_count = psutil.cpu_count()
+        return psutil.cpu_percent(interval=0.5), psutil.cpu_count() or 0
     except (OSError, RuntimeError) as exc:
-        logger.warning("psutil cpu call failed in system_info: %s", exc)
-        cpu_pct = 0.0
-        cpu_count = 0
+        logger.warning("psutil cpu call failed: %s", exc)
+        return 0.0, 0
+
+
+def _disk_stats() -> tuple[float, float, float]:
+    """Return (total_gb, used_gb, percent) for the system root or zeros on failure."""
+    root = (os.environ.get("SystemDrive", "C:") + "\\") if platform.system() == "Windows" else "/"
+    try:
+        disk = psutil.disk_usage(root)
+        return round(disk.total / (1024**3), 1), round(disk.used / (1024**3), 1), disk.percent
+    except (OSError, RuntimeError) as exc:
+        logger.warning("disk_usage(%s) failed: %s", root, exc)
+        return 0.0, 0.0, 0.0
+
+
+def system_info() -> dict[str, Any]:
+    """Return full system info as a dict."""
+    mem_total_gb, mem_used_gb, mem_percent = _memory_stats()
+    cpu_pct, cpu_count = _cpu_stats()
+    disk_total_gb, disk_used_gb, disk_percent = _disk_stats()
 
     try:
         hostname = socket.gethostname()
@@ -65,22 +80,6 @@ def system_info() -> dict[str, Any]:
         logger.warning("socket.gethostname() failed: %s", exc)
         hostname = "unknown"
 
-    # On Windows, "/" is not a valid drive root — use the system drive instead.
-    if platform.system() == "Windows":
-        root = os.environ.get("SystemDrive", "C:") + "\\"
-    else:
-        root = "/"
-    try:
-        disk = psutil.disk_usage(root)
-    except (OSError, RuntimeError) as exc:
-        logger.warning("disk_usage(%s) failed: %s", root, exc)
-
-        class _ZeroDisk:
-            total = 0
-            used = 0
-            percent = 0.0
-
-        disk = _ZeroDisk()
     return {
         "os": f"{platform.system()} {platform.release()}",
         "hostname": hostname,
@@ -90,9 +89,9 @@ def system_info() -> dict[str, Any]:
         "memory_total_gb": mem_total_gb,
         "memory_used_gb": mem_used_gb,
         "memory_percent": mem_percent,
-        "disk_total_gb": round(disk.total / (1024**3), 1),
-        "disk_used_gb": round(disk.used / (1024**3), 1),
-        "disk_percent": disk.percent,
+        "disk_total_gb": disk_total_gb,
+        "disk_used_gb": disk_used_gb,
+        "disk_percent": disk_percent,
         "screen_resolution": _screen_resolution(),
     }
 
