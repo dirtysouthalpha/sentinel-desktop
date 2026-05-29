@@ -281,3 +281,21 @@ def test_list_processes_limit_cuts():
         result = process_manager.list_processes(limit=5)
 
     assert len(result) == 5
+
+
+def test_start_process_running_process_no_warning():
+    """start_process with a still-running process (poll()=None) should not log a warning."""
+    import subprocess
+
+    mock_proc = MagicMock()
+    mock_proc.pid = 42
+    mock_proc.stderr = MagicMock()
+    mock_proc.stderr.read.return_value = b""
+    mock_proc.poll.return_value = None  # process still running — False branch at line 37
+
+    with patch("core.process_manager.subprocess.Popen", return_value=mock_proc):
+        with patch("core.process_manager.logger") as mock_log:
+            pid = process_manager.start_process("long_running.sh")
+
+    assert pid == 42
+    mock_log.warning.assert_not_called()

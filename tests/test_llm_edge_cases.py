@@ -431,3 +431,101 @@ class TestFriendlyHttpErrorEdgeCases:
     def test_5xx_generic(self) -> None:
         msg = _friendly_http_error(502, "bad gateway")
         assert "Provider error" in msg or "502" in msg
+
+
+# ---------------------------------------------------------------------------
+# Anthropic: malformed tool_use blocks (missing id/name/input)
+# ---------------------------------------------------------------------------
+
+
+class TestAnthropicMalformedToolUse:
+    """tool_use blocks with missing fields should produce empty-string fallbacks."""
+
+    @patch("core.llm_client.time.sleep")
+    @patch("core.llm_client.requests.post")
+    @patch("core.llm_client.get_base_url", return_value="https://api.anthropic.com/v1")
+    def test_tool_use_missing_all_fields(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
+        """A tool_use block with no id/name/input should still parse without error."""
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=MagicMock(
+                return_value={
+                    "content": [
+                        {"type": "tool_use"},  # missing id, name, input
+                    ]
+                }
+            ),
+        )
+        client = LLMClient()
+        result = client.chat(
+            "anthropic",
+            "sk-ant-test",
+            "claude-opus-4-7",
+            [{"role": "user", "content": "do something"}],
+        )
+        parsed = json.loads(result)
+        tc = parsed["tool_calls"][0]
+        assert tc["id"] == ""
+        assert tc["function"]["name"] == ""
+        assert json.loads(tc["function"]["arguments"]) == {}
+
+    @patch("core.llm_client.time.sleep")
+    @patch("core.llm_client.requests.post")
+    @patch("core.llm_client.get_base_url", return_value="https://api.anthropic.com/v1")
+    def test_tool_use_partial_fields(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
+        """A tool_use block with only 'name' fills in defaults for the rest."""
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=MagicMock(
+                return_value={
+                    "content": [
+                        {"type": "tool_use", "name": "click"},  # missing id and input
+                    ]
+                }
+            ),
+        )
+        client = LLMClient()
+        result = client.chat(
+            "anthropic",
+            "sk-ant-test",
+            "claude-opus-4-7",
+            [{"role": "user", "content": "click something"}],
+        )
+        parsed = json.loads(result)
+        tc = parsed["tool_calls"][0]
+        assert tc["function"]["name"] == "click"
+        assert tc["id"] == ""
+
+
+# ---------------------------------------------------------------------------
+# Anthropic path: timeout triggers retry then raises
+# ---------------------------------------------------------------------------
+
+
+class TestAnthropicTimeoutRetry:
+    """Timeout on the Anthropic endpoint should retry and eventually raise LLMError."""
+
+    @patch("core.llm_client.time.sleep")
+    @patch("core.llm_client.requests.post")
+    @patch("core.llm_client.get_base_url", return_value="https://api.anthropic.com/v1")
+    def test_anthropic_timeout_exhausts_retries(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
+        """All retries timing out should raise LLMError mentioning the provider."""
+        import requests as req
+
+        mock_post.side_effect = req.exceptions.Timeout("timed out")
+        client = LLMClient()
+        with pytest.raises(LLMError, match="anthropic"):
+            client.chat(
+                "anthropic",
+                "sk-ant-test",
+                "claude-opus-4-7",
+                [{"role": "user", "content": "hello"}],
+            )
+        # Should have been called max_retries+1 times (default 3 retries = 4 calls)
+        assert mock_post.call_count >= 2

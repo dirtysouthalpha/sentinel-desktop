@@ -78,3 +78,17 @@ class TestOnPanicCallbackStoresCustomCallable:
 
         fl = failsafe.FailsafeListener(on_panic=_cb)
         assert fl._on_panic is _cb
+
+
+class TestStopWithNullHotkeyHandle:
+    """stop() when _hotkey_handle is None skips unhook but still marks stopped."""
+
+    def test_stop_null_handle_sets_stopped(self):
+        fl = failsafe.FailsafeListener(on_panic=lambda: None)
+        fl._started = True
+        fl._stopped = False
+        fl._kb = MagicMock()
+        fl._hotkey_handle = None  # handle never set
+        fl.stop()
+        assert fl._stopped is True
+        fl._kb.unhook.assert_not_called()
