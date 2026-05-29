@@ -307,20 +307,20 @@ class _Win32VirtualDesktop:
         import ctypes
         from ctypes import wintypes
 
-        # Build the command line.
         cmd = f'"{path}"'
         if args:
             cmd = f"{cmd} {args}"
 
-        # STARTUPINFOW structure (68 bytes on 64-bit, 48 on 32-bit — we use
-        # the explicit cb field so it's correct on both).
-        class STARTUPINFOW(ctypes.Structure):
-            """Win32 STARTUPINFOW structure for CreateProcessW calls.
+        desktop_target = self._name if self._handle else None
+        si, pi = self._build_process_structs(ctypes, wintypes, desktop_target)
+        return self._invoke_create_process(ctypes, path, cmd, si, pi, desktop_target)
 
-            Specifies window station, desktop, and appearance settings for
-            a new process. Used internally by ``_launch_app_locked`` to
-            spawn applications on a specific virtual desktop.
-            """
+    @staticmethod
+    def _build_process_structs(
+        ctypes: Any, wintypes: Any, desktop_target: str | None
+    ) -> tuple[Any, Any]:
+        """Define and populate STARTUPINFOW and PROCESS_INFORMATION structs."""
+        class STARTUPINFOW(ctypes.Structure):
             _fields_ = [
                 ("cb", wintypes.DWORD),
                 ("lpReserved", wintypes.LPWSTR),
@@ -343,11 +343,6 @@ class _Win32VirtualDesktop:
             ]
 
         class PROCESS_INFORMATION(ctypes.Structure):
-            """Win32 PROCESS_INFORMATION structure returned by CreateProcessW.
-
-            Contains handles and IDs for the newly created process and its
-            primary thread.
-            """
             _fields_ = [
                 ("hProcess", wintypes.HANDLE),
                 ("hThread", wintypes.HANDLE),
@@ -359,37 +354,21 @@ class _Win32VirtualDesktop:
         si.cb = ctypes.sizeof(STARTUPINFOW)
         si.dwFlags = STARTF_USESHOWWINDOW
         si.wShowWindow = SW_SHOWNORMAL
-
-        # Point the process at our virtual desktop.
-        desktop_target = self._name if self._handle else None
         si.lpDesktop = desktop_target
+        return si, PROCESS_INFORMATION()
 
-        pi = PROCESS_INFORMATION()
-
+    def _invoke_create_process(
+        self, ctypes: Any, path: str, cmd: str, si: Any, pi: Any, desktop_target: str | None
+    ) -> dict[str, Any]:
+        """Call kernel32.CreateProcessW and return a success/failure result dict."""
         kernel32 = _get_kernel32()
-
-        # CreateProcessW signature:
-        #   lpApplicationName, lpCommandLine, lpProcessAttributes,
-        #   lpThreadAttributes, bInheritHandles, dwCreationFlags,
-        #   lpEnvironment, lpCurrentDirectory, lpStartupInfo,
-        #   lpProcessInformation
-        CREATE_NEW_CONSOLE = 0x00000010
-
+        CREATE_NEW_CONSOLE = 0x00000010  # noqa: N806
         cmd_line = ctypes.create_unicode_buffer(cmd)
-
         ok = kernel32.CreateProcessW(
-            None,  # lpApplicationName
-            cmd_line,  # lpCommandLine
-            None,  # lpProcessAttributes
-            None,  # lpThreadAttributes
-            False,  # bInheritHandles
-            CREATE_NEW_CONSOLE,  # dwCreationFlags
-            None,  # lpEnvironment
-            None,  # lpCurrentDirectory
-            ctypes.byref(si),  # lpStartupInfo
-            ctypes.byref(pi),  # lpProcessInformation
+            None, cmd_line, None, None, False,
+            CREATE_NEW_CONSOLE, None, None,
+            ctypes.byref(si), ctypes.byref(pi),
         )
-
         if not ok:
             error = kernel32.GetLastError()
             msg = f"CreateProcessW failed for {path!r} ( GetLastError={error} )"
@@ -398,17 +377,9 @@ class _Win32VirtualDesktop:
 
         pid = pi.dwProcessId
         self._launched_pids.append(pid)
-
-        # Close the handles we don't need.
         kernel32.CloseHandle(pi.hProcess)
         kernel32.CloseHandle(pi.hThread)
-
-        logger.info(
-            "Launched %r on desktop %r (pid=%d)",
-            path,
-            desktop_target or "(current)",
-            pid,
-        )
+        logger.info("Launched %r on desktop %r (pid=%d)", path, desktop_target or "(current)", pid)
         return {
             "success": True,
             "pid": pid,

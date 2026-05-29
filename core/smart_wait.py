@@ -619,19 +619,23 @@ class SmartWait:
             r, g, b = pixel
             tr, tg, tb = target_rgb
             if abs(r - tr) <= tolerance and abs(g - tg) <= tolerance and abs(b - tb) <= tolerance:
-                # Save a slightly larger snapshot for context.
-                try:
-                    snap = capture_region(max(0, x - 50), max(0, y - 50), 100, 100)
-                except (OSError, RuntimeError) as exc:
-                    logger.debug("Color match snapshot capture failed: %s", exc)
-                    snap = None
-                snap_path = _save_snapshot(snap, prefix="color") if snap is not None else None
+                snap_path = self._capture_color_match_snapshot(x, y)
                 return WaitResult(
                     success=True,
                     elapsed=time.monotonic() - start,
                     frames_checked=frames,
                     change_score=1.0,
-                    snapshot_path=snap_path or None,
+                    snapshot_path=snap_path,
                 )
 
             time.sleep(0.1)
+
+    @staticmethod
+    def _capture_color_match_snapshot(x: int, y: int) -> str | None:
+        """Capture a 100×100 context snapshot around a matched pixel. Returns path or None."""
+        try:
+            snap = capture_region(max(0, x - 50), max(0, y - 50), 100, 100)
+        except (OSError, RuntimeError) as exc:
+            logger.debug("Color match snapshot capture failed: %s", exc)
+            return None
+        return _save_snapshot(snap, prefix="color") or None

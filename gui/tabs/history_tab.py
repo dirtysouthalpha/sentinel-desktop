@@ -312,55 +312,46 @@ class HistoryTab(ctk.CTkFrame):
             text_color=status_colors.get(status, "#b9cacb"),
         )
 
-        # Render timeline
+        self._render_session_timeline(session)
+        self._render_session_output(session)
+        self._render_sessions()
+
+    def _render_session_timeline(self, session: dict) -> None:
+        """Rebuild the step timeline widget from session data."""
         for w in self.timeline.winfo_children():
             w.destroy()
-
-        steps = session.get("steps", [])
-        for i, step_data in enumerate(steps):
+        for i, step_data in enumerate(session.get("steps", [])):
             step = step_data.get("step", step_data)
             action = step.get("action", "unknown")
             ok = step_data.get("ok", True)
             ts = step_data.get("timestamp", "")[11:19]
-
-            color = (
-                self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
-            )
+            color = self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
             icon = "✓" if ok else "✗"
-
             row = ctk.CTkFrame(self.timeline, fg_color="transparent", height=28)
             row.pack(fill="x", pady=1)
             row.pack_propagate(False)
-
             ctk.CTkLabel(
-                row,
-                text=f"  {icon} Step {i + 1}: {action}",
-                font=("Consolas", 11),
-                text_color=color,
-                anchor="w",
+                row, text=f"  {icon} Step {i + 1}: {action}",
+                font=("Consolas", 11), text_color=color, anchor="w",
             ).pack(side="left")
-
             ctk.CTkLabel(
-                row,
-                text=ts,
-                font=("Consolas", 9),
-                text_color=self._t("text_secondary", "#b9cacb"),
+                row, text=ts,
+                font=("Consolas", 9), text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(side="right")
 
-        # Output
+    def _render_session_output(self, session: dict) -> None:
+        """Populate the output textbox with session notes and summary."""
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", "end")
-        notes = session.get("notes", [])
         summary = session.get("summary", "")
         if summary:
             self.output_text.insert("end", f"Summary: {summary}\n\n")
+        notes = session.get("notes", [])
         if notes:
             self.output_text.insert("end", "Notes:\n")
             for n in notes:
                 self.output_text.insert("end", f"  • {n}\n")
         self.output_text.configure(state="disabled")
-
-        self._render_sessions()
 
     def _replay_session(self) -> None:
         """Re-run the selected session's goal."""

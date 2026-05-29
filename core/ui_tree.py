@@ -248,6 +248,39 @@ def _walk(
         logger.debug("_walk: failed to get children: %s", exc)
 
 
+def _score_node(
+    node: Any,
+    needle_name: str,
+    needle_id: str,
+    needle_type: str,
+) -> int:
+    """Score a UIA node against search needles; return -1 to reject, ≥0 to accept."""
+    score = 0
+    n = (node.Name or "").lower()
+    a = (getattr(node, "AutomationId", "") or "").lower()
+    t = (node.ControlTypeName or "").lower()
+    if needle_name:
+        if n == needle_name:
+            score += 3
+        elif needle_name in n:
+            score += 2
+        else:
+            return -1
+    if needle_id:
+        if a == needle_id:
+            score += 3
+        elif needle_id in a:
+            score += 2
+        else:
+            return -1
+    if needle_type:
+        if t == needle_type or needle_type in t:
+            score += 1
+        else:
+            return -1
+    return score
+
+
 def _find_control(
     *,
     name: str | None = None,
@@ -270,34 +303,6 @@ def _find_control(
     best = None
     best_score = -1
 
-    def _matches(node: Any) -> int:
-        """Score a UI node against the search criteria; return -1 to reject."""
-        score = 0
-        n = (node.Name or "").lower()
-        a = (getattr(node, "AutomationId", "") or "").lower()
-        t = (node.ControlTypeName or "").lower()
-        if needle_name:
-            if n == needle_name:
-                score += 3
-            elif needle_name in n:
-                score += 2
-            else:
-                return -1
-        if needle_id:
-            if a == needle_id:
-                score += 3
-            elif needle_id in a:
-                score += 2
-            else:
-                return -1
-        if needle_type:
-            if t == needle_type or needle_type in t:
-                score += 1
-            else:
-                return -1
-        return score
-
-    # Breadth-first to prefer shallower (more visible) matches.
     queue: deque = deque([(root, 0)])
     visited = 0
     max_depth = 12
@@ -305,7 +310,7 @@ def _find_control(
         node, depth = queue.popleft()
         visited += 1
         try:
-            score = _matches(node)
+            score = _score_node(node, needle_name, needle_id, needle_type)
         except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Scoring failed for node: %s", exc)
             score = -1

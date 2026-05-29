@@ -187,6 +187,34 @@ def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
         return ""
 
 
+def _extract_confidence_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Summarise Tesseract per-word confidence data into a structured dict."""
+    confidences = []
+    low_conf_words: list[str] = []
+    low_conf_regions: list[dict[str, Any]] = []
+    n = len(data.get("text", []))
+    for i in range(n):
+        word = (data["text"][i] or "").strip()
+        if not word:
+            continue
+        try:
+            conf = float(data["conf"][i])
+        except (TypeError, ValueError):
+            conf = 0.0
+        if conf > 0:
+            confidences.append(conf)
+            if conf < 50:
+                low_conf_words.append(word)
+                low_conf_regions.append({"text": word, "confidence": conf})
+    avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
+    return {
+        "avg_confidence": round(avg_conf, 1),
+        "word_count": len(confidences),
+        "low_confidence_words": low_conf_words,
+        "low_confidence_regions": low_conf_regions,
+    }
+
+
 def _ocr_image_with_confidence(
     img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT
 ) -> tuple[str, dict[str, Any]]:
@@ -225,32 +253,7 @@ def _ocr_image_with_confidence(
             output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
         )
 
-        # Extract confidence scores
-        confidences = []
-        low_conf_words = []
-        low_conf_regions = []
-        n = len(data.get("text", []))
-        for i in range(n):
-            word = (data["text"][i] or "").strip()
-            if not word:
-                continue
-            try:
-                conf = float(data["conf"][i])
-            except (TypeError, ValueError):
-                conf = 0.0
-            if conf > 0:  # Tesseract returns -1 for blocks/paragraphs
-                confidences.append(conf)
-                if conf < 50:
-                    low_conf_words.append(word)
-                    low_conf_regions.append({"text": word, "confidence": conf})
-
-        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
-        conf_data = {
-            "avg_confidence": round(avg_conf, 1),
-            "word_count": len(confidences),
-            "low_confidence_words": low_conf_words,
-            "low_confidence_regions": low_conf_regions,
-        }
+        conf_data = _extract_confidence_data(data)
 
         # Store in cache
         _store_cache(cache_key, text, conf_data)

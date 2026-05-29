@@ -129,7 +129,6 @@ class LLMClient:
         if not provider_config:
             raise ValueError(f"Unknown provider: {provider}")
 
-        # Anthropic has its own wire format.
         if provider_config.get("anthropic_native"):
             return self._chat_anthropic(
                 api_key=api_key,
@@ -144,12 +143,41 @@ class LLMClient:
                 custom_url=custom_url,
             )
 
-        # --- OpenAI-compatible path ------------------------------------
+        return self._chat_openai_compatible(
+            provider_config=provider_config,
+            provider=provider,
+            api_key=api_key,
+            model=model,
+            messages=messages,
+            tools=tools,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            custom_url=custom_url,
+            timeout=timeout,
+            max_retries=max_retries,
+            retry_base_delay=retry_base_delay,
+        )
+
+    def _chat_openai_compatible(
+        self,
+        *,
+        provider_config: dict[str, Any],
+        provider: str,
+        api_key: str,
+        model: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        max_tokens: int,
+        temperature: float,
+        custom_url: str | None,
+        timeout: int,
+        max_retries: int,
+        retry_base_delay: float,
+    ) -> str:
+        """Send a chat request via the OpenAI-compatible endpoint."""
         base_url = get_base_url(provider, custom_url)
         chat_url = f"{base_url}{provider_config['chat_endpoint']}"
-
         headers = self._build_headers(provider_config, api_key)
-
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
@@ -159,25 +187,14 @@ class LLMClient:
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
-
         logger.info(
             "chat → %s/%s (%d msgs, %d tools)",
-            provider,
-            model,
-            len(messages),
-            len(tools or []),
+            provider, model, len(messages), len(tools or []),
         )
-
         data = self._post_with_retry(
-            chat_url,
-            headers,
-            payload,
-            timeout,
-            max_retries=max_retries,
-            base_delay=retry_base_delay,
-            provider_label=provider,
+            chat_url, headers, payload, timeout,
+            max_retries=max_retries, base_delay=retry_base_delay, provider_label=provider,
         )
-
         return self._parse_openai_response(data, provider)
 
     @staticmethod

@@ -99,7 +99,6 @@ class WorkflowsTab(ctk.CTkFrame):
     # ── Right Panel ───────────────────────────────────────────────────
 
     def _build_right_panel(self) -> None:
-        t = self._t
         right = ctk.CTkFrame(self, corner_radius=4)
         right.grid(row=0, column=1, sticky="nsew", padx=(2, 4), pady=4)
         right.grid_columnconfigure(0, weight=1)
@@ -107,74 +106,69 @@ class WorkflowsTab(ctk.CTkFrame):
         right.grid_rowconfigure(4, weight=1)
         right.grid_rowconfigure(5, weight=1)
 
-        # Workflow name + description
+        self._build_workflow_info_labels(right)
+        self._build_workflow_steps_area(right)
+        self._build_workflow_run_button(right)
+        self._build_workflow_variables_section(right)
+        self._build_workflow_output_section(right)
+
+    def _build_workflow_info_labels(self, parent: Any) -> None:
+        """Add name and description labels to the right panel."""
+        t = self._t
         self._name_label = ctk.CTkLabel(
-            right,
-            text="Select a workflow",
-            font=("Segoe UI", 18, "bold"),
-            text_color=t("text_primary", "#e2e2e8"),
+            parent, text="Select a workflow",
+            font=("Segoe UI", 18, "bold"), text_color=t("text_primary", "#e2e2e8"),
         )
         self._name_label.grid(row=0, column=0, sticky="w", padx=12, pady=(10, 0))
-
         self._desc_label = ctk.CTkLabel(
-            right,
-            text="",
-            font=("Segoe UI", 12),
-            text_color=t("text_secondary", "#b9cacb"),
-            wraplength=600,
+            parent, text="",
+            font=("Segoe UI", 12), text_color=t("text_secondary", "#b9cacb"), wraplength=600,
         )
         self._desc_label.grid(row=1, column=0, sticky="w", padx=12, pady=(0, 6))
 
-        # Step flow visualization
+    def _build_workflow_steps_area(self, parent: Any) -> None:
+        """Add the scrollable step-flow visualization frame."""
+        t = self._t
         self._steps_frame = ctk.CTkScrollableFrame(
-            right,
-            corner_radius=4,
-            fg_color=t("bg_secondary", "#0A0C10"),
+            parent, corner_radius=4, fg_color=t("bg_secondary", "#0A0C10"),
         )
         self._steps_frame.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 4))
         self._steps_frame.grid_columnconfigure(0, weight=1)
 
-        # Run button
+    def _build_workflow_run_button(self, parent: Any) -> None:
+        """Add the Run Workflow button."""
+        t = self._t
         self._run_btn = ctk.CTkButton(
-            right,
-            text="▶ Run Workflow",
-            height=36,
+            parent, text="▶ Run Workflow", height=36,
             font=("Segoe UI", 13, "bold"),
             fg_color=t("status_running", "#95E400"),
             hover_color=t("tag_assistant", "#95E400"),
-            text_color="#ffffff",
-            corner_radius=4,
-            command=self.run_selected_workflow,
+            text_color="#ffffff", corner_radius=4, command=self.run_selected_workflow,
         )
         self._run_btn.grid(row=3, column=0, sticky="ew", padx=8, pady=4)
 
-        # Variables section header + frame
+    def _build_workflow_variables_section(self, parent: Any) -> None:
+        """Add the Variables header label and input frame."""
+        t = self._t
         ctk.CTkLabel(
-            right,
-            text="🔧 Variables",
-            font=("Segoe UI", 12, "bold"),
-            text_color=t("text_primary", "#e2e2e8"),
+            parent, text="🔧 Variables",
+            font=("Segoe UI", 12, "bold"), text_color=t("text_primary", "#e2e2e8"),
         ).grid(row=4, column=0, sticky="nw", padx=12, pady=(4, 0))
-        self._vars_frame = ctk.CTkFrame(right, corner_radius=4, fg_color=t("bg_input", "#111418"))
+        self._vars_frame = ctk.CTkFrame(parent, corner_radius=4, fg_color=t("bg_input", "#111418"))
         self._vars_frame.grid(row=4, column=0, sticky="nsew", padx=8, pady=(28, 4))
         self._vars_frame.grid_columnconfigure(1, weight=1)
 
-        # Output area header + textbox
+    def _build_workflow_output_section(self, parent: Any) -> None:
+        """Add the Output header label and textbox."""
+        t = self._t
         ctk.CTkLabel(
-            right,
-            text="📋 Output",
-            font=("Segoe UI", 12, "bold"),
-            text_color=t("text_primary", "#e2e2e8"),
+            parent, text="📋 Output",
+            font=("Segoe UI", 12, "bold"), text_color=t("text_primary", "#e2e2e8"),
         ).grid(row=5, column=0, sticky="nw", padx=12, pady=(4, 0))
         self._output_text = ctk.CTkTextbox(
-            right,
-            height=100,
-            wrap="word",
-            font=("Consolas", 11),
-            state="disabled",
-            corner_radius=4,
-            fg_color=t("bg_input", "#111418"),
-            text_color=t("text_primary", "#e2e2e8"),
+            parent, height=100, wrap="word", font=("Consolas", 11),
+            state="disabled", corner_radius=4,
+            fg_color=t("bg_input", "#111418"), text_color=t("text_primary", "#e2e2e8"),
         )
         self._output_text.grid(row=5, column=0, sticky="nsew", padx=8, pady=(28, 8))
 

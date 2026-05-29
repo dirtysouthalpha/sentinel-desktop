@@ -194,22 +194,9 @@ class ForensicLog:
         step_id = str(uuid.uuid4())
         now = _iso_now()
 
-        # Compute duration since last step
         with self._lock:
-            if self._last_step_time:
-                try:
-                    prev = datetime.fromisoformat(self._last_step_time)
-                    curr = datetime.fromisoformat(now)
-                    duration_ms = int((curr - prev).total_seconds() * 1000)
-                except (ValueError, TypeError):
-                    logger.debug("Failed to compute step duration from timestamps")
-                    duration_ms = 0
-            else:
-                duration_ms = 0
-
-            # Determine event_type from result
+            duration_ms = self._compute_step_duration(now)
             event_type = self._infer_event_type(result)
-
             step: dict[str, Any] = {
                 "step_id": step_id,
                 "run_id": self._run.get("run_id", ""),
@@ -223,20 +210,27 @@ class ForensicLog:
                 "duration_ms": duration_ms,
                 "event_type": event_type,
             }
-
             self._steps.append(step)
             self._last_step_time = now
 
         logger.debug(
             "Step %d %s → %s  target=%r  step_id=%s",
-            step_num,
-            action_type,
-            result,
-            target,
-            step_id[:8],
+            step_num, action_type, result, target, step_id[:8],
         )
         self._auto_save()
         return step_id
+
+    def _compute_step_duration(self, now: str) -> int:
+        """Return milliseconds since last step (must be called under self._lock)."""
+        if not self._last_step_time:
+            return 0
+        try:
+            prev = datetime.fromisoformat(self._last_step_time)
+            curr = datetime.fromisoformat(now)
+            return int((curr - prev).total_seconds() * 1000)
+        except (ValueError, TypeError):
+            logger.debug("Failed to compute step duration from timestamps")
+            return 0
 
     def log_event(self, event_type: str, details: dict[str, Any]) -> None:
         """Record a non-action event (override, pause, error, timeout, etc.).
