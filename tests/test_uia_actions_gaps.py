@@ -1245,3 +1245,191 @@ class TestUiaMenuWalk:
         monkeypatch.setattr(ui_tree_mod, "_find_window", lambda wt=None: root)
         r = pipe._uia_menu_walk(["File", "Export", "Runtime Model"])
         assert r is True
+
+
+# ===========================================================================
+# Missing-branch gap-fill tests
+# ===========================================================================
+
+
+class TestTypeIntoFieldReturnsFalse:
+    """Covers branches where set_text/post_text return False (not raise)."""
+
+    def test_set_text_returns_false_falls_to_postmessage(
+        self, pipe, all_tiers, monkeypatch
+    ):
+        """Branch 211->217: set_text returns False, falls to PostMessage tier."""
+        import core.stealth_input as si
+        import core.ui_tree as ui_tree_mod
+
+        monkeypatch.setattr(ui_tree_mod, "set_text", lambda *a, **kw: False)
+        monkeypatch.setattr(pipe, "_hwnd_for_element", lambda *a, **kw: 99)
+        monkeypatch.setattr(si, "post_text", lambda text, **kw: True)
+        r = pipe.type_into_field("Field", "hello")
+        assert r["success"] is True
+        assert r["method_used"] == "postmessage"
+
+    def test_post_text_returns_false_falls_to_physical(
+        self, pipe, all_tiers, monkeypatch
+    ):
+        """Branch 223->229: post_text returns False, falls to physical tier."""
+        import core.stealth_input as si
+        import core.ui_tree as ui_tree_mod
+
+        monkeypatch.setattr(ui_tree_mod, "set_text", lambda *a, **kw: False)
+        monkeypatch.setattr(pipe, "_hwnd_for_element", lambda *a, **kw: 99)
+        monkeypatch.setattr(si, "post_text", lambda text, **kw: False)
+        monkeypatch.setattr(
+            pipe,
+            "_uia_bounds",
+            lambda *a, **kw: {
+                "center_x": 10,
+                "center_y": 20,
+                "x": 0,
+                "y": 0,
+                "width": 20,
+                "height": 40,
+            },
+        )
+        fake_desktop = FakeDesktop()
+        monkeypatch.setattr(pipe, "_get_physical_desktop", lambda: fake_desktop)
+        r = pipe.type_into_field("Field", "hello")
+        assert r["success"] is True
+        assert r["method_used"] == "physical"
+
+
+class TestSelectMenuItemPostHotkeyReturnsFalse:
+    """Branch 272->280: post_hotkey returns False, falls to physical tier."""
+
+    def test_post_hotkey_false_falls_to_physical(self, pipe, postmsg_only, monkeypatch):
+        import core.stealth_input as si
+
+        monkeypatch.setattr(si, "post_hotkey", lambda keys, **kw: False)
+        fake_desktop = FakeDesktop()
+        monkeypatch.setattr(pipe, "_get_physical_desktop", lambda: fake_desktop)
+        r = pipe.select_menu_item("File")
+        assert r["success"] is True
+        assert r["method_used"] == "physical"
+
+
+class TestClickAtReturnsFalse:
+    """Branch 326->332: post_click returns False, falls to physical."""
+
+    def test_post_click_false_falls_to_physical(self, pipe, postmsg_only, monkeypatch):
+        import core.stealth_input as si
+
+        monkeypatch.setattr(si, "post_click", lambda x, y, **kw: False)
+        fake_desktop = FakeDesktop()
+        monkeypatch.setattr(pipe, "_get_physical_desktop", lambda: fake_desktop)
+        r = pipe.click_at(50, 80)
+        assert r["success"] is True
+        assert r["method_used"] == "physical"
+
+
+class TestTypeTextReturnsFalse:
+    """Branch 357->363: post_text returns False, falls to physical."""
+
+    def test_post_text_false_falls_to_physical(self, pipe, postmsg_only, monkeypatch):
+        import core.stealth_input as si
+
+        monkeypatch.setattr(si, "post_text", lambda text, **kw: False)
+        fake_desktop = FakeDesktop()
+        monkeypatch.setattr(pipe, "_get_physical_desktop", lambda: fake_desktop)
+        r = pipe.type_text("abc")
+        assert r["success"] is True
+        assert r["method_used"] == "physical"
+
+
+class TestPressKeyReturnsFalse:
+    """Branch 385->391: post_named_key returns False, falls to physical."""
+
+    def test_post_named_key_false_falls_to_physical(
+        self, pipe, postmsg_only, monkeypatch
+    ):
+        import core.stealth_input as si
+
+        monkeypatch.setattr(si, "post_named_key", lambda key, **kw: False)
+        fake_desktop = FakeDesktop()
+        monkeypatch.setattr(pipe, "_get_physical_desktop", lambda: fake_desktop)
+        r = pipe.press_key("enter")
+        assert r["success"] is True
+        assert r["method_used"] == "physical"
+
+
+class TestHotkeyReturnsFalse:
+    """Branch 416->422: post_hotkey returns False, falls to physical."""
+
+    def test_post_hotkey_false_falls_to_physical(self, pipe, postmsg_only, monkeypatch):
+        import core.stealth_input as si
+
+        monkeypatch.setattr(si, "post_hotkey", lambda keys, **kw: False)
+        fake_desktop = FakeDesktop()
+        monkeypatch.setattr(pipe, "_get_physical_desktop", lambda: fake_desktop)
+        r = pipe.hotkey(["ctrl", "z"])
+        assert r["success"] is True
+        assert r["method_used"] == "physical"
+
+
+class TestFindElementCtrlNone:
+    """Branch 504->510: _find_control returns None, result is failure."""
+
+    def test_find_control_none_returns_failure(self, pipe, uia_only, monkeypatch):
+        import core.ui_tree as ui_tree_mod
+
+        monkeypatch.setattr(ui_tree_mod, "_find_control", lambda **kw: None)
+        r = pipe.find_element("Ghost")
+        assert r["success"] is False
+        assert "Ghost" in r["output"]
+
+
+class TestInvokeMenuItemPatternNone:
+    """Branch 676->681: GetInvokePattern returns None, falls to Click."""
+
+    def test_invoke_pattern_none_falls_to_click(self, pipe, uia_only, monkeypatch):
+        import core.ui_tree as ui_tree_mod
+
+        class FakeTarget:
+            Name = "Save"
+            ControlTypeName = "MenuItemControl"
+
+            def GetInvokePattern(self):
+                return None  # falsy — covers the `if pattern:` False branch
+
+            def Click(self, simulateMove=False):
+                self.clicked = True
+
+        target = FakeTarget()
+
+        class FakeMenuBar:
+            ControlTypeName = "MenuBarControl"
+
+            def GetChildren(self):
+                return [target]
+
+        class FakeRoot:
+            def GetChildren(self):
+                return [FakeMenuBar()]
+
+        monkeypatch.setattr(mod, "_auto", MagicMock())
+        monkeypatch.setattr(
+            ui_tree_mod, "_find_window", lambda wt=None: FakeRoot()
+        )
+        r = pipe._uia_menu_walk(["Save"])
+        assert r is True
+
+
+class TestFindChildByNameNoSubstringMatch:
+    """Branch 715->712: child Name doesn't match; loop continues to next child."""
+
+    def test_non_matching_child_skipped_matching_child_returned(self):
+        class FakeChild:
+            def __init__(self, name):
+                self.Name = name
+
+        class FakeParent:
+            def GetChildren(self):
+                return [FakeChild("Unrelated"), FakeChild("Save As")]
+
+        result = mod.UIAActionPipeline._find_child_by_name(FakeParent(), "save as")
+        assert result is not None
+        assert result.Name == "Save As"
