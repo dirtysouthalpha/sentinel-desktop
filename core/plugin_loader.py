@@ -298,85 +298,71 @@ class PluginLoader:
         """
         filepath = Path(filepath).resolve()
         module_name = f"sentinel_plugin_{filepath.stem}"
-
         with self._lock:
-            # If already loaded under the same path, unload first.
-            # Snapshot names to avoid mutating dict during iteration.
-            for name in list(self._plugins):
-                if Path(self._plugins[name].filepath) == filepath:
-                    self._unload_unlocked(name)
+            return self._load_plugin_locked(filepath, module_name)
 
-            # --- import the module ---
-            spec = importlib.util.spec_from_file_location(module_name, filepath)
-            if spec is None or spec.loader is None:
-                raise ImportError(f"Cannot create import spec for {filepath}")
+    def _load_plugin_locked(self, filepath: Path, module_name: str) -> dict[str, Any]:
+        """Import, validate, and register a plugin. Caller must hold self._lock."""
+        for name in list(self._plugins):
+            if Path(self._plugins[name].filepath) == filepath:
+                self._unload_unlocked(name)
 
-            module = importlib.util.module_from_spec(spec)
+        module = self._import_plugin_module(filepath, module_name)
+        self._validate_plugin_module(module, filepath, module_name)
 
-            # Stash in sys.modules so relative / absolute imports inside the
-            # plugin can resolve the package name if needed.
-            sys.modules[module_name] = module
+        plugin_name = module.PLUGIN_NAME
+        plugin_version = module.PLUGIN_VERSION
+        plugin_description = module.PLUGIN_DESCRIPTION
 
-            try:
-                spec.loader.exec_module(module)  # type: ignore[union-attr]
-            except (ImportError, SyntaxError, AttributeError, OSError) as exc:
-                logger.debug("Plugin module exec failed for %s: %s", module_name, exc)
-                # Clean up the broken module reference.
-                sys.modules.pop(module_name, None)
-                raise
+        if plugin_name in self._plugins:
+            self._unload_unlocked(plugin_name)
 
-            # --- duck-type validation ---
-            missing = [a for a in REQUIRED_PLUGIN_ATTRS if not hasattr(module, a)]
-            if missing:
-                sys.modules.pop(module_name, None)
-                raise AttributeError(
-                    f"Plugin {filepath.name} is missing required attributes: " + ", ".join(missing)
-                )
+        api = PluginAPI(plugin_name=plugin_name, engine=self._engine, config=self._config)
+        try:
+            module.register(api)
+        except (AttributeError, TypeError, ValueError, RuntimeError) as exc:
+            logger.debug("Plugin register() failed for %s: %s", module_name, exc)
+            sys.modules.pop(module_name, None)
+            raise
 
-            if not hasattr(module, "register") or not callable(module.register):
-                sys.modules.pop(module_name, None)
-                raise AttributeError(f"Plugin {filepath.name} must define a callable register(api)")
+        loaded = _LoadedPlugin(
+            name=plugin_name,
+            version=plugin_version,
+            description=plugin_description,
+            filepath=str(filepath),
+            module=module,
+            api=api,
+        )
+        self._plugins[plugin_name] = loaded
+        logger.info("Loaded plugin %s v%s from %s", plugin_name, plugin_version, filepath.name)
+        return self._plugin_info(loaded, loaded=True)
 
-            plugin_name = module.PLUGIN_NAME
-            plugin_version = module.PLUGIN_VERSION
-            plugin_description = module.PLUGIN_DESCRIPTION
+    def _import_plugin_module(self, filepath: Path, module_name: str) -> object:
+        """Create and exec the plugin module. Raises on failure, cleaning sys.modules."""
+        spec = importlib.util.spec_from_file_location(module_name, filepath)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Cannot create import spec for {filepath}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        try:
+            spec.loader.exec_module(module)  # type: ignore[union-attr]
+        except (ImportError, SyntaxError, AttributeError, OSError) as exc:
+            logger.debug("Plugin module exec failed for %s: %s", module_name, exc)
+            sys.modules.pop(module_name, None)
+            raise
+        return module
 
-            # Check for name collision with an already-loaded plugin
-            if plugin_name in self._plugins:
-                self._unload_unlocked(plugin_name)
-
-            # --- build API & call register() ---
-            api = PluginAPI(
-                plugin_name=plugin_name,
-                engine=self._engine,
-                config=self._config,
+    def _validate_plugin_module(self, module: object, filepath: Path, module_name: str) -> None:
+        """Check required attributes and callable register(). Raises AttributeError on failure."""
+        missing = [a for a in REQUIRED_PLUGIN_ATTRS if not hasattr(module, a)]
+        if missing:
+            sys.modules.pop(module_name, None)
+            raise AttributeError(
+                f"Plugin {filepath.name} is missing required attributes: " + ", ".join(missing)
             )
-
-            try:
-                module.register(api)
-            except (AttributeError, TypeError, ValueError, RuntimeError) as exc:
-                logger.debug("Plugin register() failed for %s: %s", module_name, exc)
-                sys.modules.pop(module_name, None)
-                raise
-
-            loaded = _LoadedPlugin(
-                name=plugin_name,
-                version=plugin_version,
-                description=plugin_description,
-                filepath=str(filepath),
-                module=module,
-                api=api,
-            )
-            self._plugins[plugin_name] = loaded
-
-            logger.info(
-                "Loaded plugin %s v%s from %s",
-                plugin_name,
-                plugin_version,
-                filepath.name,
-            )
-
-            return self._plugin_info(loaded, loaded=True)
+        if not hasattr(module, "register") or not callable(module.register):
+            sys.modules.pop(module_name, None)
+            raise AttributeError(f"Plugin {filepath.name} must define a callable register(api)")
 
     # -- unloading ----------------------------------------------------------
 
