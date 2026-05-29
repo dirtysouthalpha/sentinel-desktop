@@ -238,8 +238,6 @@ def capture_window(title: str) -> Image.Image | None:
 
     # Pre-flight: try to surface the window first.
     wm.restore_window(title)
-    import time
-
     time.sleep(0.15)  # tiny grace period for the window manager to apply.
     rect = wm.get_window_rect(title)
     if rect is None:
