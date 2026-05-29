@@ -87,6 +87,17 @@ class WaitResult:
     snapshot_path: str | None = field(default=None)
 
 
+def _load_ocr_functions() -> tuple[object, object] | None:
+    """Lazily import OCR helpers. Returns (ocr_image_fn, read_screen_fn) or None."""
+    try:
+        from core.ocr import _ocr_image, read_screen_text  # type: ignore[attr-defined]
+
+        return _ocr_image, read_screen_text
+    except ImportError as exc:
+        logger.warning("OCR unavailable — wait_for_text cannot proceed: %s", exc)
+        return None
+
+
 def _fail(elapsed: float, frames: int, change_score: float = 0.0) -> WaitResult:
     """Return a failed WaitResult with no snapshot."""
     return WaitResult(
@@ -481,24 +492,28 @@ class SmartWait:
         """
         self._reset_cancel()
         start = time.monotonic()
-        frames = 0
         needle = text.strip().lower()
         if not needle:
             return _fail(0.0, 0)
 
-        # Lazy import — OCR is optional.
-        try:
-            from core.ocr import _ocr_image, read_screen_text  # type: ignore[attr-defined]
-
-            _ocr_available = True
-        except ImportError as exc:
-            logger.debug("OCR import unavailable: %s", exc)
-            _ocr_available = False
-
-        if not _ocr_available:
-            logger.warning("OCR unavailable — wait_for_text cannot proceed")
+        ocr_fns = _load_ocr_functions()
+        if ocr_fns is None:
             return _fail(0.0, 0)
 
+        return self._poll_for_text(needle, timeout, interval, region, start, *ocr_fns)
+
+    def _poll_for_text(
+        self,
+        needle: str,
+        timeout: float,
+        interval: float,
+        region: tuple[int, int, int, int] | None,
+        start: float,
+        ocr_image_fn: object,
+        read_screen_fn: object,
+    ) -> WaitResult:
+        """Poll until *needle* is found in the OCR output or time runs out."""
+        frames = 0
         while True:
             elapsed = time.monotonic() - start
             if elapsed >= timeout:
@@ -510,9 +525,9 @@ class SmartWait:
             try:
                 if region is not None:
                     img = self._capture(region)
-                    ocr_text = _ocr_image(img).lower()
+                    ocr_text = ocr_image_fn(img).lower()  # type: ignore[operator]
                 else:
-                    ocr_text = read_screen_text().lower()
+                    ocr_text = read_screen_fn().lower()  # type: ignore[operator]
             except (OSError, RuntimeError) as exc:
                 logger.debug("OCR capture failed: %s", exc)
                 ocr_text = ""

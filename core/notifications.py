@@ -249,39 +249,54 @@ class NotificationManager:
         self._total_notifications += 1
 
         for ch in target_channels:
-            handler = self._dispatch_map().get(ch)
-            if handler is None:
-                logger.warning("Unknown channel %r — skipping", ch)
-                continue
-
-            # Per-channel rate limiting.
-            now = time.monotonic()
-            if now - self._last_sent.get(ch, 0) < RATE_LIMIT_SECONDS:
-                logger.debug("Channel %r rate-limited — skipping", ch)
-                continue
-
-            try:
-                ok, detail = handler(title, message, level)
-                self._last_results[ch] = (ok, detail)
-                self._last_sent[ch] = now
-                self._stats[ch]["sent"] += 1
-                if ok:
-                    self._stats[ch]["succeeded"] += 1
-                else:
-                    self._stats[ch]["failed"] += 1
-                    logger.error("Channel %r failed: %s", ch, detail)
-                    all_ok = False
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except Exception as exc:
-                # Graceful degradation — never let one channel kill others.
-                self._last_results[ch] = (False, str(exc))
-                self._stats[ch]["sent"] += 1
-                self._stats[ch]["failed"] += 1
-                logger.exception("Channel %r raised an unexpected exception", ch)
+            result = self._send_to_channel(ch, title, message, level)
+            if result is False:
                 all_ok = False
 
         return all_ok
+
+    def _send_to_channel(
+        self,
+        ch: str,
+        title: str,
+        message: str,
+        level: str,
+    ) -> bool | None:
+        """Dispatch one notification to *ch*, applying rate limiting and stats.
+
+        Returns:
+            True on success, False on failure, None if skipped (unknown
+            channel or rate-limited).
+        """
+        handler = self._dispatch_map().get(ch)
+        if handler is None:
+            logger.warning("Unknown channel %r — skipping", ch)
+            return None
+
+        now = time.monotonic()
+        if now - self._last_sent.get(ch, 0) < RATE_LIMIT_SECONDS:
+            logger.debug("Channel %r rate-limited — skipping", ch)
+            return None
+
+        try:
+            ok, detail = handler(title, message, level)
+            self._last_results[ch] = (ok, detail)
+            self._last_sent[ch] = now
+            self._stats[ch]["sent"] += 1
+            if ok:
+                self._stats[ch]["succeeded"] += 1
+            else:
+                self._stats[ch]["failed"] += 1
+                logger.error("Channel %r failed: %s", ch, detail)
+            return ok
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as exc:
+            self._last_results[ch] = (False, str(exc))
+            self._stats[ch]["sent"] += 1
+            self._stats[ch]["failed"] += 1
+            logger.exception("Channel %r raised an unexpected exception", ch)
+            return False
 
     def notify_batch(
         self,
