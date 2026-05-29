@@ -219,3 +219,19 @@ class TestSettingsTabSaveToDisk:
         _patch_config_path.write_text("{not valid json")
         settings_tab._gather_config = lambda: {"model": "x"}
         settings_tab._save()  # JSONDecodeError is caught, no raise
+
+
+class TestReloadPluginsNoEngine:
+    """Branch 324->326: app.engine is None/falsy → skip load_all, call refresh."""
+
+    def test_reload_plugins_no_engine_calls_refresh(self, settings_tab):
+        settings_tab.app.engine = None
+        settings_tab._refresh_plugin_list = MagicMock()
+        settings_tab._reload_plugins()
+        settings_tab._refresh_plugin_list.assert_called_once()
+
+    def test_reload_plugins_no_engine_attr_calls_refresh(self, settings_tab):
+        del settings_tab.app.engine
+        settings_tab._refresh_plugin_list = MagicMock()
+        settings_tab._reload_plugins()
+        settings_tab._refresh_plugin_list.assert_called_once()

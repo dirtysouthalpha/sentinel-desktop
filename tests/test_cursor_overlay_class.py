@@ -285,3 +285,32 @@ class TestSingleton:
         co._overlay = None
         stop_overlay()  # must not raise
         assert co._overlay is None
+
+
+class TestAnimateActionNoLabel:
+    """Branch 268->272: label is empty → skip label-draw block."""
+
+    def _make_overlay(self):
+        from gui.cursor_overlay import CursorOverlay
+        ov = CursorOverlay()
+        ov._root = MagicMock()
+        ov._canvas = MagicMock()
+        ov._ring_id = "ring"
+        ov._inner_id = "inner"
+        ov._label_id = "label"
+        ov._running = True
+        ov._current_x = 0
+        ov._current_y = 0
+        return ov
+
+    def test_no_label_no_type_skips_label_draw(self):
+        """When action has neither 'label' nor 'type', label is '' → skip."""
+        ov = self._make_overlay()
+        with patch("gui.cursor_overlay.time.sleep"):
+            ov._animate_action({"x": 10, "y": 20})  # no label, no type key
+        # _canvas.itemconfig should NOT have been called with a text value for the label
+        itemconfig_calls = [
+            c for c in ov._canvas.itemconfig.call_args_list
+            if c[0] and c[0][0] == "label"
+        ]
+        assert not itemconfig_calls
