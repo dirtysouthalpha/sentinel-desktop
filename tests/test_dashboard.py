@@ -308,7 +308,7 @@ class TestDashboardOverview:
 
         fake_psutil = _make_psutil()
         with patch.dict(sys.modules, {"psutil": fake_psutil}), \
-             patch("subprocess.run", side_effect=Exception("no nvidia")):
+             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
             result = await dash.dashboard_overview()
         assert "timestamp" in result
         assert "system" in result
@@ -326,7 +326,7 @@ class TestDashboardOverview:
         # Set module start time to 3661 seconds ago
         with patch.dict(sys.modules, {"psutil": fake_psutil}), \
              patch.object(dash, "_start_time", time.time() - 3661), \
-             patch("subprocess.run", side_effect=Exception("no nvidia")):
+             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
             result = await dash.dashboard_overview()
         assert result["system"]["uptime_seconds"] >= 3661
         assert "1h" in result["system"]["uptime"]
@@ -339,7 +339,7 @@ class TestDashboardOverview:
 
         fake_psutil = _make_psutil()
         with patch.dict(sys.modules, {"psutil": fake_psutil}), \
-             patch("subprocess.run", side_effect=Exception("no nvidia")):
+             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
             result = await dash.dashboard_overview()
         assert result["system"]["platform"] == platform.system()
         assert result["system"]["python_version"] == platform.python_version()

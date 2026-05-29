@@ -347,7 +347,8 @@ def _ocr_text(image: Image.Image) -> str:
         processed = preprocess_for_ocr(image)
     except ImportError:
         processed = image
-    except Exception:
+    except (OSError, RuntimeError, ValueError) as exc:
+        logger.debug("PopupHandler preprocess_for_ocr failed: %s", exc)
         processed = image
 
     try:
@@ -371,7 +372,7 @@ def _get_foreground_window_title() -> str:
 
         hwnd = win32gui.GetForegroundWindow()
         return win32gui.GetWindowText(hwnd) or ""
-    except Exception:
+    except (ImportError, OSError, AttributeError):
         pass
     try:
         from core import window_manager as wm
@@ -379,7 +380,7 @@ def _get_foreground_window_title() -> str:
         windows = wm.list_windows()
         if windows:
             return windows[0].get("title", "")
-    except Exception:
+    except (ImportError, OSError, AttributeError):
         pass
     return ""
 
@@ -750,14 +751,14 @@ class PopupHandler:
                 class_name = win32gui.GetClassName(hwnd).lower()
                 if target in text and "button" in class_name:
                     found.append(hwnd)
-            except Exception:
+            except (ImportError, OSError, AttributeError):
                 pass
 
         try:
             import win32gui  # type: ignore
 
             win32gui.EnumChildWindows(parent_hwnd, _enum, None)
-        except Exception:
+        except (ImportError, OSError, AttributeError):
             pass
 
         return found[0] if found else None

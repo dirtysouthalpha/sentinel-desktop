@@ -848,8 +848,8 @@ class SentinelServer:
         dead = []
         for ws in clients:
             try:
-                await ws.send_json(event)
-            except (OSError, RuntimeError, ConnectionError) as exc:
+                await asyncio.wait_for(ws.send_json(event), timeout=5.0)
+            except (OSError, RuntimeError, ConnectionError, asyncio.TimeoutError) as exc:
                 logger.warning("WebSocket send failed, marking dead: %s", exc)
                 dead.append(ws)
         if dead:

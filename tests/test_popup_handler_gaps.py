@@ -158,7 +158,7 @@ class TestGetForegroundWindowTitle:
     def test_falls_back_to_window_manager(self):
         """Falls back to core.window_manager when win32gui fails."""
         mock_wingui = MagicMock()
-        mock_wingui.GetForegroundWindow.side_effect = Exception("nope")
+        mock_wingui.GetForegroundWindow.side_effect = OSError("nope")
         with patch.object(ph, "_IS_WINDOWS", True), \
              patch.dict(sys.modules, {"win32gui": mock_wingui}), \
              patch("core.window_manager.list_windows", return_value=[{"title": "Fallback Window"}], create=True):
@@ -171,7 +171,7 @@ class TestGetForegroundWindowTitle:
     def test_returns_empty_when_all_fail(self):
         """Returns empty when both win32gui and window_manager fail."""
         mock_wingui = MagicMock()
-        mock_wingui.GetForegroundWindow.side_effect = Exception("fail")
+        mock_wingui.GetForegroundWindow.side_effect = OSError("fail")
         with patch.object(ph, "_IS_WINDOWS", True), \
              patch.dict(sys.modules, {"win32gui": mock_wingui}):
             assert ph._get_foreground_window_title() == ""

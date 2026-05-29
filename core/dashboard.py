@@ -5,13 +5,17 @@ Real-time system health metrics endpoint.
 
 from __future__ import annotations
 
+import logging
 import platform
+import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -76,7 +80,6 @@ def _get_gpu_info() -> list[dict[str, Any]]:
     """Get GPU information (Windows only, uses nvidia-smi)."""
     gpus = []
     try:
-        import subprocess
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw",
              "--format=csv,noheader,nounits"],
@@ -94,8 +97,8 @@ def _get_gpu_info() -> list[dict[str, Any]]:
                         "utilization_pct": float(parts[4]),
                         "power_draw_w": float(parts[5]),
                     })
-    except Exception:
-        pass
+    except (FileNotFoundError, OSError, ValueError, subprocess.SubprocessError) as exc:
+        logger.debug("GPU info unavailable: %s", exc)
     return gpus
 
 
@@ -105,8 +108,8 @@ def _count_log_entries() -> dict[str, int]:
         log_dir = Path.home() / ".sentinel" / "logs"
         if log_dir.exists():
             return {"total_logs": len(list(log_dir.glob("*.json")))}
-    except Exception:
-        pass
+    except OSError as exc:
+        logger.debug("Log entry count unavailable: %s", exc)
     return {"total_logs": 0}
 
 
