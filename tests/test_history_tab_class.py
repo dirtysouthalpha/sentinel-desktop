@@ -360,3 +360,54 @@ class TestExportLog:
         log.error.assert_called_once()
         # Nothing written to output area since we returned early.
         tab.output_text.insert.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _finalize_session — called directly with pre-populated goal/start to exercise
+# the False branches of the guard conditions (lines 221->223 and 223->225).
+# Note: branch 190->194 ("if current_session is not None and current_session['steps']"
+# in refresh_history) is structurally dead code — the triggering log entry is
+# always appended to steps before the end-of-loop check, so steps can never be
+# empty there when flog is non-empty; and when flog is empty the outer
+# "if flog:" guard prevents reaching line 190.  We do not attempt to cover it.
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# _finalize_session — False branches of "not session['goal']" and
+# "not session['start']" (lines 221->223 and 223->225)
+# ---------------------------------------------------------------------------
+class TestFinalizeSessionBranches:
+    """Cover _finalize_session when goal and start are already populated."""
+
+    def test_goal_already_set_skips_derivation(self):
+        """When session['goal'] is non-empty, line 221->223 False branch is taken."""
+        tab, _ = _make_tab(with_engine=False)
+        now = datetime.now().isoformat()
+        session = {
+            "goal": "Explicit Goal",   # already set -> False branch at line 221
+            "start": now,              # already set -> False branch at line 223
+            "status": "completed",     # already set -> False branch at line 225
+            "steps": [{"goal": "step goal", "timestamp": "other", "ok": True}],
+        }
+        tab._finalize_session(session)
+        # Goal should be unchanged (not overwritten from step).
+        assert session["goal"] == "Explicit Goal"
+        # Start should be unchanged.
+        assert session["start"] == now
+        # Session appended.
+        assert session in tab.sessions
+
+    def test_start_already_set_skips_timestamp_derivation(self):
+        """When session['start'] is non-empty but goal is empty (line 223->225 False branch)."""
+        tab, _ = _make_tab(with_engine=False)
+        now = datetime.now().isoformat()
+        session = {
+            "goal": "",               # empty -> line 221 True branch (derives goal)
+            "start": now,             # non-empty -> line 223 False branch (kept as-is)
+            "status": "completed",
+            "steps": [{"goal": "derived goal", "timestamp": "other_ts", "ok": True}],
+        }
+        tab._finalize_session(session)
+        assert session["goal"] == "derived goal"
+        assert session["start"] == now  # unchanged

@@ -186,3 +186,35 @@ def test_stop_swallows_errors():
     tray._icon = icon
     tray.stop()  # should not raise
     assert tray._icon is None
+
+
+def test_quit_callback_without_on_quit_still_stops_icon():
+    """_quit with on_quit=None skips the callback but still calls icon.stop (line 89 False branch)."""
+    import gui.tray as tray_mod
+    from gui.tray import SentinelTray
+
+    fake = _fake_pystray()
+    icon_instance = MagicMock()
+    fake.Icon.return_value = icon_instance
+
+    # SentinelTray with no on_quit — _quit should still call icon.stop()
+    tray = SentinelTray(on_show=MagicMock(), on_hide=MagicMock(), on_quit=None)
+    with (
+        patch.object(tray_mod, "_HAS_TRAY", True),
+        patch.object(tray_mod, "pystray", fake, create=True),
+    ):
+        assert tray.run() is True
+        if tray._thread is not None:
+            tray._thread.join(timeout=2)
+
+    # Find the _quit MenuItem callback (4th item, index 3 in the menu)
+    quit_callbacks = [
+        call.args[1]
+        for call in fake.MenuItem.call_args_list
+        if len(call.args) > 1 and callable(call.args[1])
+    ]
+    # Exercise all menu callbacks to hit _quit with on_quit=None
+    for cb in quit_callbacks:
+        cb(icon_instance, None)
+    # icon.stop must have been called (from the finally: block in _quit)
+    assert icon_instance.stop.called

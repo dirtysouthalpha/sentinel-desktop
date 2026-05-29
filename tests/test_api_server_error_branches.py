@@ -666,3 +666,87 @@ class TestHandleWebSocket:
         ws = _FakeWS(incoming=['{"type": "auth"}', "garbage", '{"type": "ping"}'])
         _run(server._handle_ws(ws))
         assert {"type": "pong"} in ws.sent
+
+    def test_non_ping_message_ignored(self, monkeypatch):
+        """Cover branch 898->892: valid JSON with a non-'ping' type is silently ignored.
+
+        auth ok, then a valid JSON message with type != 'ping', then disconnect.
+        The if-condition at line 898 is False so no pong is sent.
+        """
+        monkeypatch.delenv(mod.API_TOKEN_ENV, raising=False)
+        server = _make_server()
+        ws = _FakeWS(incoming=['{"type": "auth"}', '{"type": "heartbeat", "seq": 1}'])
+        _run(server._handle_ws(ws))
+        # No pong should be in sent messages.
+        assert {"type": "pong"} not in ws.sent
+        # ws cleaned up.
+        assert ws not in server._ws_clients
+
+    def test_cleanup_skips_when_ws_already_removed_from_clients(self, monkeypatch):
+        """Cover branch 904->exit: finally block's 'if ws in self._ws_clients' is False.
+
+        If the ws is removed from _ws_clients before the finally block runs
+        (e.g., by _async_broadcast dead-client pruning), the remove is skipped
+        without error.
+        """
+        monkeypatch.delenv(mod.API_TOKEN_ENV, raising=False)
+        server = _make_server()
+
+        class _PreRemovedWS(_FakeWS):
+            """A WS that removes itself from _ws_clients on first receive_text in main loop."""
+
+            def __init__(self, srv, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self._srv = srv
+                self._loop_calls = 0
+
+            async def receive_text(self):
+                if not self._incoming:
+                    # Remove self from clients before raising disconnect.
+                    if self in self._srv._ws_clients:
+                        self._srv._ws_clients.remove(self)
+                    raise WebSocketDisconnect(1000)
+                item = self._incoming.pop(0)
+                if isinstance(item, BaseException):
+                    raise item
+                return item
+
+        ws = _PreRemovedWS(server, incoming=['{"type": "auth"}'])
+        _run(server._handle_ws(ws))
+        # ws was already removed before finally, so still not in clients.
+        assert ws not in server._ws_clients
+
+
+class TestAsyncBroadcastDeadClientNotInList:
+    """Cover branch 860->859: 'if ws in self._ws_clients' is False.
+
+    A self-removing WS raises OSError AND removes itself from _ws_clients during
+    send_json, so when _async_broadcast reaches the cleanup loop, the dead client
+    is already gone — the False branch of 'if ws in self._ws_clients' is taken.
+    """
+
+    def test_dead_client_already_removed_does_not_crash(self):
+        server = _make_server()
+
+        class _SelfRemovingWS(_FakeWS):
+            """Raises on send AND removes itself from server._ws_clients first."""
+
+            def __init__(self, srv):
+                super().__init__(raise_on_send=True)
+                self._srv = srv
+
+            async def send_json(self, data):
+                with self._srv._ws_lock:
+                    if self in self._srv._ws_clients:
+                        self._srv._ws_clients.remove(self)
+                raise OSError("send failed - already removed self")
+
+        bad = _SelfRemovingWS(server)
+        server._ws_clients.append(bad)
+
+        async def _drive():
+            server._loop = asyncio.get_running_loop()
+            await server._async_broadcast({"type": "test"})
+
+        _run(_drive())
+        assert bad not in server._ws_clients

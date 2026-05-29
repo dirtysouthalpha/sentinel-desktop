@@ -492,3 +492,40 @@ class TestReadScreenTextWithConfidence:
             text, conf = ocr.read_screen_text_with_confidence()
         assert text == ""
         assert conf["avg_confidence"] == 0
+
+
+# ---------------------------------------------------------------------------
+# ocr.py:499->492 — _exact_substring_hit when _centroid returns None
+# ---------------------------------------------------------------------------
+
+
+class TestExactSubstringHitCentroidNone:
+    """Cover line 499 False branch: _centroid returns None so the loop continues."""
+
+    def test_centroid_none_skips_result(self):
+        # Build a box set where needle is found but _centroid is patched to return None.
+        boxes = [
+            {"text": "hello", "x": 0, "y": 0, "w": 40, "h": 20, "line_id": (1, 1, 1)},
+            {"text": "world", "x": 50, "y": 0, "w": 40, "h": 20, "line_id": (1, 1, 1)},
+        ]
+        with patch("core.ocr._centroid", return_value=None):
+            result = ocr._exact_substring_hit(boxes, "hello")
+        # Both lines had needle but centroid returned None → function returns None
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# ocr.py:549->551 — _fuzzy_line_hit when _centroid returns None
+# ---------------------------------------------------------------------------
+
+
+class TestFuzzyLineHitCentroidNone:
+    """Cover line 549 False branch: best_words found but _centroid returns None."""
+
+    def test_centroid_none_returns_none(self):
+        boxes = [
+            {"text": "hello", "x": 0, "y": 0, "w": 40, "h": 20, "line_id": (1, 1, 1)},
+        ]
+        with patch("core.ocr._centroid", return_value=None):
+            result = ocr._fuzzy_line_hit(boxes, "hello", min_score=0.0)
+        assert result is None

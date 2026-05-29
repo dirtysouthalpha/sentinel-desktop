@@ -122,3 +122,28 @@ class TestEnsurePluginDir:
         loader = PluginLoader(plugin_dir=blocker / "subdir")
         with pytest.raises(OSError):
             loader._ensure_plugin_dir()
+
+
+class TestGetActionNoMatch:
+    """get_action iterates all actions but finds no match — covers lines 437->436 and 438->437."""
+
+    def test_get_action_no_match_returns_none(self, tmp_path: Path) -> None:
+        """Plugin has actions but none match the requested name."""
+        _write_plugin(tmp_path, "plugin1.py", VALID_PLUGIN)
+        loader = PluginLoader(plugin_dir=tmp_path)
+        loader.load_plugin(tmp_path / "plugin1.py")
+
+        # "greet" is the action name; searching for something else exercises
+        # the `if action.name == name:` False branch and loop completion.
+        result = loader.get_action("nonexistent_action_xyz")
+        assert result is None
+
+    def test_get_action_match_found(self, tmp_path: Path) -> None:
+        """get_action returns the matching action (sanity check)."""
+        _write_plugin(tmp_path, "plugin1.py", VALID_PLUGIN)
+        loader = PluginLoader(plugin_dir=tmp_path)
+        loader.load_plugin(tmp_path / "plugin1.py")
+
+        result = loader.get_action("greet")
+        assert result is not None
+        assert result.name == "greet"

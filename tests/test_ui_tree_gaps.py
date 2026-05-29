@@ -222,3 +222,24 @@ class TestFindControlScoringErrors:
 
             result = _find_control(name="Submit")
         assert result is exact
+
+
+class TestFindControlMaxDepth:
+    """_find_control does not expand children at depth >= max_depth (line 320 False branch)."""
+
+    def test_node_at_max_depth_not_expanded(self):
+        # Build a chain so that Leaf12 sits at depth 12 (max_depth=12).
+        # deep_child is Leaf12's child and should never be enqueued.
+        # root is at depth 0; we need 12 wrappers to place Leaf12 at depth 12.
+        deep_child = _make_node(name="DeepChild")
+        current = _make_node(name="Leaf12", children=[deep_child])
+        for _ in range(12):  # 12 wraps → root at depth 0, Leaf12 at depth 12
+            current = _make_node(name="Inner", children=[current])
+        root = current
+
+        with patch.object(ui_tree, "_find_window", return_value=root):
+            from core.ui_tree import _find_control
+
+            # Search for DeepChild — it should NOT be found (parent at depth 12 stops expansion)
+            result = _find_control(name="DeepChild")
+        assert result is not deep_child

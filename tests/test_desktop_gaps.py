@@ -143,3 +143,29 @@ class TestDesktopEngineAlias:
         from core.desktop import DesktopEngine
 
         assert DesktopEngine is DesktopController
+
+
+class TestFindOnScreenNoMatch:
+    """find_on_screen returns None when max_val < confidence (line 244 False branch)."""
+
+    @patch("core.desktop.pyautogui.screenshot")
+    def test_low_confidence_returns_none(self, mock_ss: MagicMock) -> None:
+        try:
+            import numpy as np
+        except ImportError:
+            pytest.skip("numpy not installed")
+
+        mock_img = MagicMock()
+        mock_ss.return_value = mock_img
+
+        mock_cv2 = MagicMock()
+        mock_cv2.imread.return_value = np.zeros((20, 10), dtype=np.uint8)
+        mock_cv2.cvtColor.return_value = np.zeros((100, 100), dtype=np.uint8)
+        # max_val below confidence threshold → no match
+        mock_cv2.minMaxLoc.return_value = (0.0, 0.3, (0, 0), (0, 0))
+        mock_cv2.TM_CCOEFF_NORMED = 5
+
+        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": np}):
+            ctrl = DesktopController()
+            result = ctrl.find_on_screen("template.png", confidence=0.8)
+        assert result is None

@@ -531,3 +531,106 @@ class TestAgentWorkerFullFlow:
             assert engine_config["virtual_desktop"] is False
         finally:
             pool.shutdown(wait=False)
+
+    def test_worker_vd_is_none_skips_cleanup(self):
+        """Cover the False branch of 'if vd is not None' (line 537->539).
+
+        When _setup_virtual_desktop raises before assigning vd, the finally
+        block finds vd=None and skips _cleanup_virtual_desktop.
+        """
+        pool = AgentPool(max_agents=1, on_session_complete=MagicMock())
+        try:
+            sid = pool.submit("Goal")
+            session = pool._sessions[sid]
+
+            mock_engine = MagicMock()
+            mock_engine.run.return_value = {"steps": 1}
+
+            # Patch _setup_virtual_desktop to raise immediately so vd stays None.
+            with (
+                patch.object(pool, "_setup_virtual_desktop", side_effect=OSError("vd init fail")),
+                patch("core.engine.AgentEngine", return_value=mock_engine),
+                patch.object(pool, "_cleanup_virtual_desktop") as mock_cleanup,
+            ):
+                pool._agent_worker(sid, "SentinelAgent-1")
+
+            # vd was None, so cleanup should NOT have been called.
+            mock_cleanup.assert_not_called()
+            # Session should be in FAILED state (OSError caught by except clause).
+            assert session.status == STATUS_FAILED
+        finally:
+            pool.shutdown(wait=False)
+
+    def test_worker_import_error_session_already_removed(self):
+        """Cover the False branch of 'if session is not None' after ImportError (line 493->495).
+
+        Setting core.engine to None in sys.modules makes 'from core.engine import AgentEngine'
+        raise ImportError. The _SessionsProxy returns None for sid, simulating a race where
+        the session was removed before the cleanup runs.
+        """
+        pool = AgentPool(max_agents=1, on_session_complete=MagicMock())
+        try:
+            sid = pool.submit("Goal")
+
+            class _SessionsProxy(dict):
+                def get(self, key, default=None):
+                    if key == sid:
+                        return None
+                    return super().get(key, default)
+
+            pool._sessions = _SessionsProxy(pool._sessions)
+
+            import sys
+            original = sys.modules.get("core.engine", ...)
+            sys.modules["core.engine"] = None  # makes 'from core.engine import AgentEngine' fail
+            try:
+                with patch("core.agent_pool.logger"):
+                    pool._agent_worker(sid, "SentinelAgent-1")
+            finally:
+                if original is ...:
+                    del sys.modules["core.engine"]
+                else:
+                    sys.modules["core.engine"] = original
+
+            # Should complete without crashing — _mark_session_failed not called.
+        finally:
+            pool.shutdown(wait=False)
+
+
+# ---------------------------------------------------------------------------
+# shutdown(wait=True) — thread exits within timeout (line 330 False branch)
+# ---------------------------------------------------------------------------
+
+
+class TestShutdownWaitThreadExitsQuickly:
+    """Cover the False branch of 'if s.thread.is_alive()' (line 330->328).
+
+    We need a running session whose thread exits within the join timeout so
+    is_alive() returns False and no warning is logged.
+    """
+
+    def test_shutdown_wait_thread_exits_in_time_no_warning(self):
+        """A thread that appears alive then exits during join → is_alive() False → no warning.
+
+        Uses a mock thread whose is_alive() returns True on the first call
+        (list comprehension inclusion) and False on the second call (line 330 check).
+        """
+        pool = AgentPool(max_agents=2)
+        try:
+            sid = pool.submit("Goal")
+            session = pool._sessions[sid]
+            session.status = STATUS_RUNNING
+
+            # Mock thread: alive → included in 'running'; then dead → no warning.
+            mock_thread = MagicMock()
+            mock_thread.is_alive.side_effect = [True, False]
+            session.thread = mock_thread
+
+            with patch("core.agent_pool.logger") as mock_logger:
+                pool.shutdown(wait=True, timeout=2.0)
+                assert not any(
+                    "did not exit within timeout" in str(c)
+                    for c in mock_logger.warning.call_args_list
+                )
+        finally:
+            pool.shutdown(wait=False)

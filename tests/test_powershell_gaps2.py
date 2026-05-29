@@ -116,3 +116,27 @@ class TestRunCommandAllowRawTrue:
         runner = _make_runner(allow_raw=True)
         result = runner.run_command("Get-Date")
         assert result.success is True
+
+
+class TestResolvePs_ExeBothFail:
+    """_resolve_ps_exe falls through all candidates and returns default (line 154 False branch)."""
+
+    @patch("core.powershell._is_windows", return_value=True)
+    @patch("core.powershell.subprocess.run")
+    def test_all_candidates_nonzero_returncode(self, mock_run, mock_iw):
+        # Both candidates return non-zero exit code → the if on line 154 is False each time
+        mock_proc = MagicMock(returncode=1, stdout="", stderr="")
+        mock_run.return_value = mock_proc
+        runner = PowerShellRunner.__new__(PowerShellRunner)
+        result = runner._resolve_ps_exe()
+        assert result == PowerShellRunner.POWERSHELL_EXE
+
+    @patch("core.powershell._is_windows", return_value=True)
+    @patch("core.powershell.subprocess.run")
+    def test_all_candidates_empty_stdout(self, mock_run, mock_iw):
+        # returncode=0 but stdout is empty → stdout.strip() is falsy → if is False
+        mock_proc = MagicMock(returncode=0, stdout="", stderr="")
+        mock_run.return_value = mock_proc
+        runner = PowerShellRunner.__new__(PowerShellRunner)
+        result = runner._resolve_ps_exe()
+        assert result == PowerShellRunner.POWERSHELL_EXE

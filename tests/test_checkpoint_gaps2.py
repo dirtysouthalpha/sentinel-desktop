@@ -93,6 +93,21 @@ class TestDeleteWithTraversal:
         assert result is True
 
 
+class TestLoadLatestNoTimestamp:
+    """load_latest returns record when timestamp is missing (ts is None branch)."""
+
+    def test_no_timestamp_record_returned(self, tmp_path: Path) -> None:
+        # A checkpoint without a 'timestamp' key — _parse_timestamp returns None,
+        # so the age-out check is skipped and the record is returned directly.
+        rec = {"id": "no-ts-id", "goal": "do something", "step_num": 1}
+        (tmp_path / "notimestamp.json").write_text(json.dumps(rec), encoding="utf-8")
+
+        cm = CheckpointManager(str(tmp_path))
+        result = cm.load_latest()
+        assert result is not None
+        assert result["id"] == "no-ts-id"
+
+
 # Helper for patching json.dump to raise
 
 

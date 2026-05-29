@@ -263,3 +263,29 @@ class TestCreateDefaultPalette:
         palette = create_default_palette(mock_app)
         results = palette.search("theme")
         assert len(results) > 0
+
+
+class TestByShortcutNonMatchingBranch:
+    """Cover the False branch of 'if cmd.shortcut.lower() == key.lower()' (line 112->111).
+
+    The palette must have at least one command so the loop body executes, but
+    no command's shortcut should match the query — exercising the continue path.
+    """
+
+    def test_by_shortcut_non_matching_commands_returns_none(self):
+        """With registered commands but no matching shortcut, returns None."""
+        p = CommandPalette()
+        p.register("New Chat", "Ctrl+N", "Chat", lambda: None)
+        p.register("Export Log", "Ctrl+E", "Chat", lambda: None)
+        # Neither "Ctrl+N" nor "Ctrl+E" equals "Ctrl+Z" -> loop body takes False
+        # branch twice, then returns None.
+        result = p.by_shortcut("Ctrl+Z")
+        assert result is None
+
+    def test_by_shortcut_partial_match_not_returned(self):
+        """Partial substring of a shortcut does not count as a match."""
+        p = CommandPalette()
+        p.register("Screenshot", "Ctrl+Shift+S", "Desktop", lambda: None)
+        # "ctrl+s" is a substring but not equal -> False branch, returns None.
+        result = p.by_shortcut("ctrl+s")
+        assert result is None

@@ -414,3 +414,39 @@ class TestRunItScript:
 
             _run_it_script(app, "restore_point_create")
         # Should not crash
+
+
+# ---------------------------------------------------------------------------
+# _start_recording / _stop_recording — no recorder_panel (lines 360->exit, 371->exit)
+# ---------------------------------------------------------------------------
+
+
+class TestStartRecordingNoPanel:
+    """Cover the False branch of 'if hasattr(app, "recorder_panel")' (line 360->exit).
+
+    When app.engine is present but app has no recorder_panel attribute, the
+    try block completes normally without calling _on_record_click.
+    """
+
+    def test_engine_present_no_recorder_panel_does_not_crash(self):
+        """engine is truthy but recorder_panel absent — just records, no UI call."""
+        # spec limits the app to only "engine"; hasattr(app, "recorder_panel") is False.
+        app = MagicMock(spec=["engine"])
+        app.engine = MagicMock()
+        _start_recording(app)
+        app.engine.recorder.start_recording.assert_called_once_with("")
+
+
+class TestStopRecordingNoPanel:
+    """Cover the False branch of 'if hasattr(app, "recorder_panel")' (line 371->exit).
+
+    When app.engine is present but app has no recorder_panel attribute, the
+    try block completes normally without calling _on_stop_click.
+    """
+
+    def test_engine_present_no_recorder_panel_does_not_crash(self):
+        """engine is truthy but recorder_panel absent — just stops, no UI call."""
+        app = MagicMock(spec=["engine"])
+        app.engine = MagicMock()
+        _stop_recording(app)
+        app.engine.recorder.stop_recording.assert_called_once()

@@ -88,3 +88,27 @@ class TestScriptResultDefaults:
         assert r.error is None
         assert r.results == []
         assert r.duration_ms == 0
+
+
+class TestMultipleFailuresFirstErrorPreserved:
+    """When multiple steps fail, first_error is only set once (line 273 False branch)."""
+
+    def test_first_error_not_overwritten_by_second_failure(self):
+        ex = MagicMock()
+        # Both steps fail
+        ex.execute_sync.return_value = {"success": False, "error": "step failed"}
+        ex._dispatch_table = {"click": True}
+        engine = ScriptEngine(ex)
+        # on_error="skip" so both steps run and fail
+        engine._on_error = "skip"
+        script = {
+            "steps": [
+                {"action": "click", "params": {"x": 1}},
+                {"action": "click", "params": {"x": 2}},
+            ]
+        }
+        result = engine.run_script_from_dict(script)
+        assert result.success is False
+        # first_error was set on step 1 and not overwritten by step 2
+        assert result.error is not None
+        assert "Step 1" in result.error

@@ -297,3 +297,59 @@ class TestDetectParameters:
         steps = [{"action": "click"}, {"action": "type"}]
         params = ActionRecorder._detect_parameters(steps)
         assert len(params) == 0
+
+
+# ---------------------------------------------------------------------------
+# recorder.py:187->191 — result already has a "summary" key (False branch)
+# ---------------------------------------------------------------------------
+
+
+class TestCaptureActionWithPresetSummary:
+    """capture_action skips _summarise_result when result already has 'summary' (line 187 False)."""
+
+    def test_preset_summary_not_overwritten(self) -> None:
+        recorder = ActionRecorder()
+        recorder.start_recording("test goal")
+
+        action = {"type": "click", "params": {"x": 10, "y": 20}}
+        # result already has a non-empty "summary" — _summarise_result should not be called
+        result = {"success": True, "summary": "pre-set summary text"}
+        recorder.capture_action(action, result)
+
+        steps = recorder._steps
+        assert len(steps) == 1
+        # capture_action stores result_summary in the step's "result_summary" key
+        assert steps[0].get("result_summary") == "pre-set summary text"
+
+
+# ---------------------------------------------------------------------------
+# recorder.py:402->398 — param_name is empty after sanitization (line 402 False branch)
+# ---------------------------------------------------------------------------
+
+
+class TestDetectParametersEmptyParamName:
+    """_detect_parameters skips entry when param_name is empty after sanitization."""
+
+    def test_all_special_chars_produces_empty_param_name(self) -> None:
+        # A string with >= 2 chars that appears >= 2 times but sanitizes to empty string.
+        # After lower/replace/join-alnum-or-underscore, "!!" → ""
+        steps = [
+            {"params": {"key": "!!"}},
+            {"params": {"key": "!!"}},
+        ]
+        params = ActionRecorder._detect_parameters(steps)
+        # param_name is "" → falsy → the append is skipped
+        assert len(params) == 0
+
+    def test_duplicate_param_name_not_added_twice(self) -> None:
+        # Two different text values that produce the same param_name after sanitization
+        # e.g., "hello world" and "hello_world" both sanitize to "hello_world"
+        steps = [
+            {"params": {"a": "hello world", "b": "hello world"}},
+            {"params": {"a": "hello world"}},
+        ]
+        params = ActionRecorder._detect_parameters(steps)
+        # "hello world" appears 3 times → param_name = "hello_world"
+        # Only added once (the `not any(p["name"] == param_name ...)` guard)
+        names = [p["name"] for p in params]
+        assert names.count("hello_world") == 1

@@ -198,6 +198,19 @@ class TestUpdateStatus:
         ):
             tray.update_status("error")  # must not raise
 
+    def test_updates_icon_without_update_menu(self):
+        """Icon without update_menu attribute takes the hasattr False branch (line 250)."""
+        tray = SystemTrayIcon(MagicMock())
+        # Create a mock icon that does NOT have update_menu
+        icon = MagicMock(spec=["icon", "title"])
+        tray._icon = icon
+        with patch.object(st, "_AVAILABLE", True):
+            tray.update_status("running")
+        assert tray._current_status == "running"
+        assert icon.icon is not None
+        # update_menu was not called (it doesn't exist on the spec)
+        assert not hasattr(icon, "update_menu")
+
 
 # ---------------------------------------------------------------------------
 # show_notification
