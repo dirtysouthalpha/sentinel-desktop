@@ -504,6 +504,37 @@ class TestUiaBounds:
         r = mod.UIAActionPipeline._uia_bounds("Ghost")
         assert r is None
 
+    def test_cache_hit_skips_find_control(self, uia_only, monkeypatch):
+        """Cached bounds are returned without calling _find_control again."""
+        import time
+
+        import core.ui_tree as ui_tree_mod
+
+        call_count = [0]
+
+        class FakeCtrl:
+            class Rect:
+                left = top = 0
+                right = 100
+                bottom = 50
+
+            BoundingRectangle = Rect()
+
+        def counting_find(**kw):
+            call_count[0] += 1
+            return FakeCtrl()
+
+        monkeypatch.setattr(ui_tree_mod, "_find_control", counting_find)
+        # Clear the bounds cache first.
+        mod._bounds_cache.clear()
+        r1 = mod.UIAActionPipeline._uia_bounds("CachedBtn")
+        assert r1 is not None
+        assert call_count[0] == 1
+        # Second call within TTL should hit the cache.
+        r2 = mod.UIAActionPipeline._uia_bounds("CachedBtn")
+        assert r2 == r1
+        assert call_count[0] == 1  # no additional call
+
 
 # ---------------------------------------------------------------------------
 # _hwnd_for_element

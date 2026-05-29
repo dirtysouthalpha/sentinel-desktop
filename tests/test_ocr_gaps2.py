@@ -114,6 +114,21 @@ class TestStoreCachePruning:
         assert "fresh" in ocr._ocr_cache
         assert "new_key" in ocr._ocr_cache
 
+    def test_evicts_oldest_when_cache_overflows(self):
+        """Cover lines 116-118: oldest entries are evicted when cache exceeds _CACHE_MAX_SIZE."""
+        ocr._ocr_cache.clear()
+        # Fill cache just beyond the limit with fresh entries
+        now = time.monotonic()
+        for i in range(ocr._CACHE_MAX_SIZE):
+            ocr._ocr_cache[f"key{i}"] = (f"text{i}", {}, now + i)
+        # The oldest entry is key0 (smallest timestamp).
+        assert "key0" in ocr._ocr_cache
+        # Storing one more should evict key0.
+        ocr._store_cache("overflow_key", "overflow text", {})
+        assert len(ocr._ocr_cache) <= ocr._CACHE_MAX_SIZE
+        assert "key0" not in ocr._ocr_cache
+        assert "overflow_key" in ocr._ocr_cache
+
 
 # ---------------------------------------------------------------------------
 # Lines 130-134: _downsample_if_needed actual resize path
