@@ -277,7 +277,7 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
     if not text or not text.strip():
         return True
     lines = [ln for ln in text.splitlines() if ln.strip()]
-    if not lines:
+    if not lines:  # pragma: no cover  # unreachable: non-empty text.strip() implies a non-empty line
         return True
     total_alnum = sum(c.isalnum() for c in text)
     if total_alnum < 20:

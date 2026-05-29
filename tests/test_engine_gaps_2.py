@@ -1,8 +1,9 @@
 """Gap tests for engine.py remaining uncovered lines.
 
 Lines 792-793: checkpoint save OSError/ValueError
-Line 926: _call_llm_with_retry unreachable return
+Line 926: _call_llm_with_retry unreachable return (pragma: no cover applied)
 Lines 1185-1186: _parse_action markdown JSONDecodeError
+Lines 608, 638: KeyboardInterrupt/SystemExit re-raise guards in _run_inner
 """
 
 from __future__ import annotations
@@ -98,3 +99,28 @@ class TestParseActionMarkdownJsonDecodeError:
         result = eng._parse_action(text)
         # inner is a dict but no "action" key and no "tool_calls" → falls through
         assert result is None
+
+
+class TestSignalReRaise:
+    """Lines 608 and 638: KeyboardInterrupt/SystemExit re-raise guards in _run_inner."""
+
+    @patch("core.engine.failsafe")
+    @patch("core.engine.capture_to_base64", return_value="b64")
+    def test_keyboard_interrupt_from_executor_propagates(self, _mock_cap, _mock_failsafe):
+        eng = _make_bare_engine()
+        eng.llm.chat.return_value = '{"action": "click", "x": 1, "y": 2}'
+        # Make the executor raise KeyboardInterrupt — hits line 608 then 638
+        eng.executor.execute_sync.side_effect = KeyboardInterrupt()
+        import pytest
+        with pytest.raises(KeyboardInterrupt):
+            eng._run_inner("test goal")
+
+    @patch("core.engine.failsafe")
+    @patch("core.engine.capture_to_base64", return_value="b64")
+    def test_system_exit_from_executor_propagates(self, _mock_cap, _mock_failsafe):
+        eng = _make_bare_engine()
+        eng.llm.chat.return_value = '{"action": "click", "x": 1, "y": 2}'
+        eng.executor.execute_sync.side_effect = SystemExit(1)
+        import pytest
+        with pytest.raises(SystemExit):
+            eng._run_inner("test goal")

@@ -1173,7 +1173,7 @@ class AgentEngine:
                         f"(after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
                     )
                     return None
-        return None  # unreachable, but satisfies type checker
+        return None  # pragma: no cover  # unreachable, satisfies type checker
 
     def _generate_report(self, goal: str, elapsed: float) -> dict[str, Any]:
         """Generate a structured run report for MSP work notes.
