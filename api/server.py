@@ -235,7 +235,11 @@ class SentinelServer:
             allow_headers=["*"],
         )
 
-        # Register routes
+        self._register_routes(app)
+        return app
+
+    def _register_routes(self, app: FastAPI) -> None:
+        """Wire all API endpoints onto *app*."""
         app.post("/goal")(self._handle_goal)
         app.post("/command")(self._handle_command)
         app.get("/screenshot")(self._handle_screenshot)
@@ -287,8 +291,6 @@ class SentinelServer:
         app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
         app.websocket("/ws")(self._handle_ws)
-
-        return app
 
     # ── Agent control ───────────────────────────────────────────────
 
