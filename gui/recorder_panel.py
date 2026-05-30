@@ -44,62 +44,58 @@ class RecorderPanel(ctk.CTkFrame):
         self._is_playing = False
         self._build_toolbar()
 
+    def _make_toolbar_btn(
+        self,
+        text: str,
+        width: int,
+        fg: str,
+        hover: str,
+        text_color: str,
+        command: Any,
+        bold: bool = True,
+    ) -> ctk.CTkButton:
+        """Create a standard-height toolbar button."""
+        font = ("Segoe UI", 11, "bold") if bold else ("Segoe UI", 11)
+        btn = ctk.CTkButton(
+            self,
+            text=text,
+            width=width,
+            height=30,
+            font=font,
+            fg_color=fg,
+            hover_color=hover,
+            text_color=text_color,
+            corner_radius=3,
+            command=command,
+        )
+        return btn
+
     def _build_toolbar(self) -> None:
+        """Create Record, Stop, Play, Library buttons and status label."""
         self.pack_propagate(False)
         t = self._t
-        self.btn_record = ctk.CTkButton(
-            self,
-            text="⏺ Record",
-            width=100,
-            height=30,
-            font=("Segoe UI", 11, "bold"),
-            fg_color=t("status_error", "#ff3b3b"),
-            hover_color=t("status_error", "#ff3b3b"),
-            text_color="#ffffff",
-            corner_radius=3,
-            command=self._on_record,
+
+        self.btn_record = self._make_toolbar_btn(
+            "⏺ Record", 100, t("status_error", "#ff3b3b"), t("status_error", "#ff3b3b"),
+            "#ffffff", self._on_record,
         )
         self.btn_record.pack(side="left", padx=(8, 2), pady=4)
 
-        self.btn_stop = ctk.CTkButton(
-            self,
-            text="⏹ Stop",
-            width=80,
-            height=30,
-            font=("Segoe UI", 11, "bold"),
-            fg_color=t("bg_input", "#111418"),
-            hover_color=t("bg_hover", "#333539"),
-            text_color=t("text_primary", "#e2e2e8"),
-            corner_radius=3,
-            command=self._on_stop,
+        self.btn_stop = self._make_toolbar_btn(
+            "⏹ Stop", 80, t("bg_input", "#111418"), t("bg_hover", "#333539"),
+            t("text_primary", "#e2e2e8"), self._on_stop,
         )
         self.btn_stop.pack(side="left", padx=2, pady=4)
 
-        self.btn_play = ctk.CTkButton(
-            self,
-            text="▶ Play",
-            width=80,
-            height=30,
-            font=("Segoe UI", 11, "bold"),
-            fg_color=t("status_running", "#95E400"),
-            hover_color="#6ed400",
-            text_color="#ffffff",
-            corner_radius=3,
-            command=self._on_play,
+        self.btn_play = self._make_toolbar_btn(
+            "▶ Play", 80, t("status_running", "#95E400"), "#6ed400",
+            "#ffffff", self._on_play,
         )
         self.btn_play.pack(side="left", padx=2, pady=4)
 
-        self.btn_library = ctk.CTkButton(
-            self,
-            text="📋 Library",
-            width=100,
-            height=30,
-            font=("Segoe UI", 11),
-            fg_color=t("bg_input", "#111418"),
-            hover_color=t("bg_hover", "#333539"),
-            text_color=t("text_primary", "#e2e2e8"),
-            corner_radius=3,
-            command=self._on_library,
+        self.btn_library = self._make_toolbar_btn(
+            "📋 Library", 100, t("bg_input", "#111418"), t("bg_hover", "#333539"),
+            t("text_primary", "#e2e2e8"), self._on_library, bold=False,
         )
         self.btn_library.pack(side="left", padx=2, pady=4)
 

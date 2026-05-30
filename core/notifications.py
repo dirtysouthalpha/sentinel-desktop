@@ -538,6 +538,36 @@ class NotificationManager:
 
     # -- Email (SMTP) --------------------------------------------------
 
+    @staticmethod
+    def _parse_smtp_address(smtp_server: str) -> tuple[str, int] | tuple[None, str]:
+        """Parse ``host`` or ``host:port`` into ``(host, port)`` or ``(None, error)``.
+
+        Returns:
+            ``(host, port)`` on success, ``(None, error_message)`` on failure.
+        """
+        parts = smtp_server.rsplit(":", 1)
+        host = parts[0]
+        try:
+            port = int(parts[1]) if len(parts) > 1 else 587
+        except (ValueError, IndexError):
+            return None, f"Invalid smtp_server format: {smtp_server!r}"
+        return host, port
+
+    @staticmethod
+    def _build_mime_message(
+        email_from: str,
+        recipients: list[str],
+        subject: str,
+        body: str,
+    ) -> MIMEMultipart:
+        """Assemble a plain-text MIME message."""
+        msg = MIMEMultipart()
+        msg["From"] = email_from
+        msg["To"] = ", ".join(recipients)
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
+        return msg
+
     def _send_email(self, title: str, message: str, level: str) -> tuple[bool, str]:
         """Send a plain-text email via SMTP with optional STARTTLS."""
         smtp_server = self._config.get("smtp_server")
@@ -547,11 +577,11 @@ class NotificationManager:
         if not all([smtp_server, email_from, email_to]):
             return False, "email requires smtp_server, email_from, and email_to"
 
-        # Normalise recipients to a flat list.
-        if isinstance(email_to, str):
-            recipients = [addr.strip() for addr in email_to.split(",")]
-        else:
-            recipients = list(email_to)
+        recipients = (
+            [addr.strip() for addr in email_to.split(",")]
+            if isinstance(email_to, str)
+            else list(email_to)
+        )
 
         subject = f"[Sentinel][{level.upper()}] {title}"
         body = (
@@ -561,32 +591,19 @@ class NotificationManager:
             f"Time:  {datetime.now(timezone.utc).isoformat()}\n\n"
             f"{message}\n"
         )
+        msg = self._build_mime_message(email_from, recipients, subject, body)
 
-        # Build MIME message.
-        msg = MIMEMultipart()
-        msg["From"] = email_from
-        msg["To"] = ", ".join(recipients)
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body, "plain"))
-
-        # Parse host and optional port.
-        parts = smtp_server.rsplit(":", 1)
-        host = parts[0]
-        try:
-            port = int(parts[1]) if len(parts) > 1 else 587
-        except (ValueError, IndexError):
-            return False, f"Invalid smtp_server format: {smtp_server!r}"
+        host, port_or_err = self._parse_smtp_address(smtp_server)
+        if host is None:
+            return False, port_or_err  # type: ignore[return-value]
         use_tls = self._config.get("smtp_use_tls", True)
 
         try:
+            server = smtplib.SMTP(host, port_or_err, timeout=HTTP_TIMEOUT)
             if use_tls:
-                server = smtplib.SMTP(host, port, timeout=HTTP_TIMEOUT)
                 server.ehlo()
                 server.starttls()
                 server.ehlo()
-            else:
-                server = smtplib.SMTP(host, port, timeout=HTTP_TIMEOUT)
-
             server.sendmail(email_from, recipients, msg.as_string())
             server.quit()
             return True, f"email sent to {len(recipients)} recipient(s)"

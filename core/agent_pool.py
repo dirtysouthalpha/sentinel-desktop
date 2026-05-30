@@ -508,43 +508,39 @@ class AgentPool:
             logger.error("Worker: session %s not found", session_id)
             return
 
+        self._run_engine_for_session(session, session_id, desktop_name, AgentEngine)
+
+    def _run_engine_for_session(
+        self,
+        session: AgentSession,
+        session_id: str,
+        desktop_name: str,
+        AgentEngine: type,
+    ) -> None:
+        """Run an AgentEngine inside a virtual desktop and record the result."""
         vd: VirtualDesktop | None = None
         try:
             vd = self._setup_virtual_desktop(session_id, desktop_name)
-
-            # Merge pool-level config with per-session config
             merged_config = dict(session.config or {})
             merged_config["virtual_desktop"] = False  # we handle it ourselves
-
             engine = AgentEngine(config=merged_config)
             result = engine.run(goal=session.goal)
-
-            # Populate session from result
             with self._lock:
                 session.status = STATUS_COMPLETED
                 session.result = result
                 session.end_time = datetime.now(timezone.utc)
                 session.step_count = result.get("steps", 0) if isinstance(result, dict) else 0
-
-            logger.info(
-                "Session %s completed (%d steps)",
-                session_id,
-                session.step_count,
-            )
-
+            logger.info("Session %s completed (%d steps)", session_id, session.step_count)
         except (RuntimeError, OSError, ValueError, ImportError) as exc:
             logger.exception("Session %s failed with exception", session_id)
             self._mark_session_failed(session, str(exc), type(exc).__name__)
         except (TypeError, AttributeError) as exc:
-            # These usually indicate programming bugs — log at error level
             logger.exception("Session %s failed with unexpected error (possible bug)", session_id)
             self._mark_session_failed(session, str(exc), type(exc).__name__)
-
         finally:
             if vd is not None:
                 self._cleanup_virtual_desktop(vd, session_id, desktop_name)
             self._notify_session_complete(session)
-            # Wake dispatcher in case a slot freed up
             self._dispatcher_event.set()
 
     # ------------------------------------------------------------------
