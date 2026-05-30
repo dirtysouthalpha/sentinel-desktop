@@ -105,8 +105,8 @@ def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:
 
 def _store_cache(key: str, text: str, conf_data: dict[str, Any]) -> None:
     """Store an OCR result in the cache, pruning expired and oversized entries."""
-    _ocr_cache[key] = (text, conf_data, time.monotonic())
     now = time.monotonic()
+    _ocr_cache[key] = (text, conf_data, now)
     # Remove expired entries
     expired = [k for k, (_, _, ts) in _ocr_cache.items() if now - ts >= _CACHE_TTL]
     for k in expired:
