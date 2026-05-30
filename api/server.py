@@ -904,14 +904,22 @@ class SentinelServer:
             self._ws_clients.append(ws)
         try:
             while True:
-                data = await ws.receive_text()
+                try:
+                    data = await asyncio.wait_for(ws.receive_text(), timeout=60.0)
+                except asyncio.TimeoutError:
+                    # No message for 60s — send a server-side ping to confirm liveness.
+                    try:
+                        await asyncio.wait_for(ws.send_json({"type": "ping"}), timeout=5.0)
+                    except (OSError, RuntimeError, ConnectionError, asyncio.TimeoutError):
+                        break  # Client is gone; exit the loop so finally cleans up.
+                    continue
                 try:
                     msg = json.loads(data)
                 except json.JSONDecodeError:
                     continue
                 if msg.get("type") == "ping":
-                    await ws.send_json({"type": "pong"})
-        except WebSocketDisconnect:
+                    await asyncio.wait_for(ws.send_json({"type": "pong"}), timeout=5.0)
+        except (WebSocketDisconnect, OSError, RuntimeError, ConnectionError, asyncio.TimeoutError):
             pass
         finally:
             with self._ws_lock:

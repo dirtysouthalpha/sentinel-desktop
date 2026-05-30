@@ -750,3 +750,45 @@ class TestAsyncBroadcastDeadClientNotInList:
 
         _run(_drive())
         assert bad not in server._ws_clients
+
+
+# ---------------------------------------------------------------------------
+# _handle_ws — receive-timeout keepalive / dead-client eviction (new code)
+# ---------------------------------------------------------------------------
+
+
+class TestHandleWebSocketTimeout:
+    """Tests for the receive-timeout + keepalive ping logic added to _handle_ws."""
+
+    def test_timeout_sends_keepalive_ping_then_disconnects(self, monkeypatch):
+        """A TimeoutError from receive_text triggers a server-side ping; if that
+        succeeds the loop continues until the client disconnects normally."""
+        monkeypatch.delenv(mod.API_TOKEN_ENV, raising=False)
+        server = _make_server()
+        # auth ok, then timeout in main loop (simulated), then normal disconnect
+        ws = _FakeWS(incoming=['{"type": "auth"}', asyncio.TimeoutError()])
+        _run(server._handle_ws(ws))
+        assert {"type": "ping"} in ws.sent
+        assert ws not in server._ws_clients
+
+    def test_timeout_with_dead_send_evicts_client(self, monkeypatch):
+        """If the keepalive ping send also fails, the client must be evicted cleanly."""
+        monkeypatch.delenv(mod.API_TOKEN_ENV, raising=False)
+        server = _make_server()
+
+        call_count = [0]
+
+        class _TimeoutThenBadSend(_FakeWS):
+            async def receive_text(self):
+                call_count[0] += 1
+                if call_count[0] == 1:
+                    return '{"type": "auth"}'
+                raise asyncio.TimeoutError()
+
+            async def send_json(self, data):
+                # Any send after auth raises — simulates a dead socket.
+                raise OSError("write failed")
+
+        ws = _TimeoutThenBadSend()
+        _run(server._handle_ws(ws))
+        assert ws not in server._ws_clients
