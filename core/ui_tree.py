@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import platform
+import time
 from collections import deque
 from typing import Any
 
@@ -26,6 +27,13 @@ logger = logging.getLogger(__name__)
 
 _UIA_OK: bool | None = None
 _auto = None  # holds the imported uiautomation module if available
+
+# Short-lived cache for repeated _find_control lookups.
+# UI scans are expensive (BFS over thousands of nodes); caching for 0.5 s
+# avoids redundant scans when the agent calls the same lookup in quick
+# succession (e.g. type-then-read on the same field).
+_FIND_CONTROL_CACHE: dict[tuple[str | None, ...], tuple[Any, float]] = {}
+_FIND_CONTROL_TTL = 0.5  # seconds
 
 
 def _have_uia() -> bool:
@@ -294,9 +302,19 @@ def _find_control(
 
     Scoring: exact match = 3, substring = 2, type match = 1.  Returns the
     highest-scoring match or ``None`` if nothing clears the bar.
+
+    Results are cached for 0.5 s to avoid redundant tree scans when the same
+    lookup is issued multiple times in quick succession.
     """
+    cache_key = (name, automation_id, control_type, window_title)
+    now = time.monotonic()
+    cached = _FIND_CONTROL_CACHE.get(cache_key)
+    if cached is not None and now - cached[1] < _FIND_CONTROL_TTL:
+        return cached[0]
+
     root = _find_window(window_title)
     if root is None:
+        _FIND_CONTROL_CACHE[cache_key] = (None, now)
         return None
     needle_name = (name or "").lower()
     needle_id = (automation_id or "").lower()
@@ -326,4 +344,6 @@ def _find_control(
             except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("_find_best_match: failed to get children: %s", exc)
                 continue
+
+    _FIND_CONTROL_CACHE[cache_key] = (best, now)
     return best

@@ -302,6 +302,39 @@ class TestFindControl:
             result = _find_control(name="OK", control_type="ButtonControl")
         assert result is btn
 
+    def test_cache_returns_same_result_without_rescan(self):
+        """Second call with identical args within TTL hits the cache, not _find_window."""
+        import core.ui_tree as _m
+
+        child = _make_node(name="CachedBtn")
+        root = _make_node(name="Root", children=[child])
+        _m._FIND_CONTROL_CACHE.clear()
+        with patch.object(_m, "_find_window", return_value=root) as mock_fw:
+            from core.ui_tree import _find_control
+
+            r1 = _find_control(name="CachedBtn")
+            r2 = _find_control(name="CachedBtn")
+        assert r1 is child
+        assert r2 is child
+        assert mock_fw.call_count == 1  # only one real scan
+
+    def test_cache_expires_after_ttl(self):
+        """After TTL the cache is stale and _find_window is called again."""
+        import core.ui_tree as _m
+
+        child = _make_node(name="ExpireBtn")
+        root = _make_node(name="Root", children=[child])
+        _m._FIND_CONTROL_CACHE.clear()
+        with patch.object(_m, "_find_window", return_value=root) as mock_fw:
+            # Seed the cache with an expired entry.
+            key = ("ExpireBtn", None, None, None)
+            _m._FIND_CONTROL_CACHE[key] = (child, 0.0)  # ts=0 is always expired
+            from core.ui_tree import _find_control
+
+            result = _find_control(name="ExpireBtn")
+        assert result is child
+        assert mock_fw.call_count == 1  # stale cache → real scan
+
 
 # ---------------------------------------------------------------------------
 # _find_window internal
