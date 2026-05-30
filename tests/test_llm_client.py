@@ -192,3 +192,102 @@ class TestFriendlyErrors:
 
         msg = _friendly_http_error(500, "internal error")
         assert "500" in msg or "Provider error" in msg
+
+
+# ---------------------------------------------------------------------------
+# Edge cases — response parsing
+# ---------------------------------------------------------------------------
+
+
+class TestParseOpenAIResponseEdgeCases:
+    """Edge cases for _parse_openai_response."""
+
+    def test_non_dict_response_raises(self):
+        from core.llm_client import LLMClient, LLMError
+
+        with pytest.raises(LLMError, match="unexpected response type"):
+            LLMClient._parse_openai_response(["not", "a", "dict"], "testprovider")
+
+    def test_error_envelope_without_choices_raises(self):
+        from core.llm_client import LLMClient, LLMError
+
+        data = {"error": {"message": "quota exceeded", "code": "quota_exceeded"}}
+        with pytest.raises(LLMError, match="quota exceeded"):
+            LLMClient._parse_openai_response(data, "testprovider")
+
+    def test_empty_choices_raises(self):
+        from core.llm_client import LLMClient, LLMError
+
+        with pytest.raises(LLMError, match="no 'choices'"):
+            LLMClient._parse_openai_response({"choices": []}, "testprovider")
+
+    def test_multiple_tool_calls_in_response(self):
+        """All tool calls in the response must be preserved in the returned JSON."""
+        from core.llm_client import LLMClient
+
+        tool_calls = [
+            {"id": "call_1", "type": "function", "function": {"name": "click", "arguments": "{}"}},
+            {"id": "call_2", "type": "function", "function": {"name": "type_text", "arguments": '{"text": "hi"}'}},
+        ]
+        data = {"choices": [{"message": {"tool_calls": tool_calls}}]}
+        result = LLMClient._parse_openai_response(data, "testprovider")
+        parsed = json.loads(result)
+        assert len(parsed["tool_calls"]) == 2
+        assert parsed["tool_calls"][0]["id"] == "call_1"
+        assert parsed["tool_calls"][1]["id"] == "call_2"
+
+    def test_content_as_list_of_blocks_joined(self):
+        """Content returned as a list of text blocks should be space-joined."""
+        from core.llm_client import LLMClient
+
+        data = {"choices": [{"message": {"content": [{"text": "hello"}, {"text": "world"}]}}]}
+        result = LLMClient._parse_openai_response(data, "testprovider")
+        assert "hello" in result and "world" in result
+
+    def test_null_message_returns_empty_string(self):
+        """A choice with null/missing message should return empty string, not raise."""
+        from core.llm_client import LLMClient
+
+        data = {"choices": [{"message": None}]}
+        result = LLMClient._parse_openai_response(data, "testprovider")
+        assert result == ""
+
+
+class TestParseAnthropicResponseEdgeCases:
+    """Edge cases for _parse_anthropic_response."""
+
+    def test_multiple_tool_use_blocks_preserved(self):
+        """Multiple tool_use blocks must all appear in the normalised output."""
+        from core.llm_client import LLMClient
+
+        data = {
+            "content": [
+                {"type": "tool_use", "id": "tu_1", "name": "click", "input": {"x": 10, "y": 20}},
+                {"type": "tool_use", "id": "tu_2", "name": "type_text", "input": {"text": "hi"}},
+            ]
+        }
+        result = LLMClient._parse_anthropic_response(data)
+        parsed = json.loads(result)
+        assert len(parsed["tool_calls"]) == 2
+        names = {tc["function"]["name"] for tc in parsed["tool_calls"]}
+        assert names == {"click", "type_text"}
+
+    def test_mixed_text_and_tool_blocks_returns_tool_calls(self):
+        """When tool_use blocks are present, tool calls win over text blocks."""
+        from core.llm_client import LLMClient
+
+        data = {
+            "content": [
+                {"type": "text", "text": "I will click now."},
+                {"type": "tool_use", "id": "tu_1", "name": "click", "input": {}},
+            ]
+        }
+        result = LLMClient._parse_anthropic_response(data)
+        parsed = json.loads(result)
+        assert "tool_calls" in parsed
+
+    def test_empty_content_returns_empty_string(self):
+        from core.llm_client import LLMClient
+
+        result = LLMClient._parse_anthropic_response({"content": []})
+        assert result == ""

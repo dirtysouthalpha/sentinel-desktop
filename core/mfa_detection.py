@@ -373,12 +373,13 @@ def _uia_check() -> DetectionResult | None:
     return None
 
 
-def _scan_window_for_auth(win: Any, title: str) -> DetectionResult | None:
-    """Scan one top-level window's immediate children for auth indicators.
+def _scan_children_for_auth(
+    win: Any,
+) -> tuple[bool, bool, list[str]]:
+    """Scan a window's immediate children for password fields and MFA text patterns.
 
-    Checks for password ``EditControl`` fields and text controls matching
-    known MFA/credential patterns. Returns a :class:`DetectionResult` on
-    match, or ``None``.
+    Returns:
+        ``(found_password, found_auth_text, prompt_text_parts)``
     """
     found_password = False
     found_auth_text = False
@@ -411,6 +412,17 @@ def _scan_window_for_auth(win: Any, title: str) -> DetectionResult | None:
             except (OSError, AttributeError, RuntimeError) as exc:
                 logger.debug("Text pattern matching failed: %s", exc)
 
+    return found_password, found_auth_text, prompt_text_parts
+
+
+def _scan_window_for_auth(win: Any, title: str) -> DetectionResult | None:
+    """Scan one top-level window's immediate children for auth indicators.
+
+    Checks for password ``EditControl`` fields and text controls matching
+    known MFA/credential patterns. Returns a :class:`DetectionResult` on
+    match, or ``None``.
+    """
+    found_password, found_auth_text, prompt_text_parts = _scan_children_for_auth(win)
     if not (found_password or found_auth_text):
         return None
 

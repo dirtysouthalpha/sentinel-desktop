@@ -600,3 +600,65 @@ class TestShouldAutoApply:
     def test_abort_strategy_auto_applies(self):
         s = RecoverySuggestion(strategy="abort", confidence=0.75)
         assert self.engine.should_auto_apply(s) is True
+
+
+# ---------------------------------------------------------------------------
+# Edge cases — action dict mutation and consecutive failures
+# ---------------------------------------------------------------------------
+
+
+class TestRecoveryEdgeCases:
+    """Edge cases for RecoveryEngine and handlers."""
+
+    engine = RecoveryEngine()
+
+    def test_handler_does_not_mutate_original_action(self):
+        """Recovery handlers must not modify the caller's action dict."""
+        original = {"action": "click_text", "text": "Submit", "x": 100, "y": 200}
+        before = dict(original)
+        self.engine.analyze_failure(original, "element not found on screen")
+        assert original == before, "Handler mutated the original action dict"
+
+    def test_consecutive_failures_return_independent_suggestions(self):
+        """Two consecutive calls with different errors must return independent results."""
+        action = {"action": "click"}
+        r1 = self.engine.analyze_failure(action, "element not found on screen")
+        r2 = self.engine.analyze_failure(action, "permission denied")
+        assert r1.pattern == "element_not_found"
+        assert r2.pattern == "permission_denied"
+        assert r1.pattern != r2.pattern
+
+    def test_unicode_error_message_handled(self):
+        """Error messages with Unicode characters must not crash the engine."""
+        action = {"action": "click"}
+        result = self.engine.analyze_failure(action, "Éléments non trouvés — 找不到元素")
+        assert result is not None
+        assert result.strategy in ("retry_same", "retry_alternate", "skip", "abort", "analyze")
+
+    def test_error_message_with_newlines(self):
+        """Error messages containing newlines must match patterns correctly."""
+        action = {"action": "click"}
+        result = self.engine.analyze_failure(action, "Error:\nelement not found\nstack trace here")
+        assert result.pattern == "element_not_found"
+
+    def test_action_with_no_action_key(self):
+        """An action dict missing the 'action' key must not crash handlers."""
+        result = self.engine.analyze_failure({}, "timeout waiting for element")
+        assert result is not None
+        assert result.pattern == "timeout"
+
+    def test_alternate_action_is_independent_from_original(self):
+        """The alternate_action suggestion must not share references with the input dict."""
+        original = {"action": "click_text", "text": "OK"}
+        result = self.engine.analyze_failure(original, "element not found")
+        if result.alternate_action is not None:
+            # Modifying the alternate should not affect the original
+            result.alternate_action["injected"] = True
+            assert "injected" not in original
+
+    def test_high_confidence_retry_same_qualifies_for_auto_apply(self):
+        """A retry_same suggestion with confidence > 0.7 should auto-apply."""
+        action = {"action": "click"}
+        result = self.engine.analyze_failure(action, "stale element reference")
+        if result.strategy == "retry_same" and result.confidence > 0.7:
+            assert self.engine.should_auto_apply(result) is True

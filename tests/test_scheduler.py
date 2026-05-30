@@ -429,3 +429,71 @@ class TestTaskSchedulerPowerShell:
         result = ts.run_task_now(task["id"])
         assert result["success"] is True
         ts.stop()
+
+
+# ---------------------------------------------------------------------------
+# Edge cases — callback exceptions and multi-task ticks
+# ---------------------------------------------------------------------------
+
+
+class TestSchedulerEdgeCases:
+    def test_on_task_complete_exception_does_not_crash_tick(self, tmp_path):
+        """An on_task_complete callback that raises must not propagate out of _tick."""
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        ts.add_task("T", "script", "* * * * *", path="x.py")
+
+        crash_count = [0]
+
+        def bad_callback(result):
+            crash_count[0] += 1
+            raise RuntimeError("callback exploded")
+
+        ts.set_on_task_complete(bad_callback)
+        ts._tick()  # must not raise
+        assert crash_count[0] == 1
+        ts.stop()
+
+    def test_multiple_tasks_in_same_tick_all_run(self, tmp_path):
+        """Multiple due tasks in a single _tick should all execute."""
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        ts.add_task("T1", "script", "* * * * *", path="a.py")
+        ts.add_task("T2", "script", "* * * * *", path="b.py")
+        ts.add_task("T3", "script", "* * * * *", path="c.py")
+
+        ran = []
+        ts.set_on_task_complete(lambda r: ran.append(r))
+        ts._tick()
+        assert len(ran) == 3
+        ts.stop()
+
+    def test_disabled_task_skipped_in_tick(self, tmp_path):
+        """A disabled task must not run even if its cron is due."""
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        task = ts.add_task("Disabled", "script", "* * * * *", path="x.py")
+        ts.update_task(task["id"], enabled=False)
+
+        ran = []
+        ts.set_on_task_complete(lambda r: ran.append(r))
+        ts._tick()
+        assert ran == []
+        ts.stop()
+
+    def test_tick_with_invalid_cron_logs_warning_and_continues(self, tmp_path):
+        """A task with invalid cron must be skipped; the valid task next to it must still run."""
+        path = str(tmp_path / "tasks.json")
+        ts = TaskScheduler(engine=None, tasks_path=path)
+        bad = ts.add_task("BadCron", "script", "* * * * *", path="x.py")
+        good = ts.add_task("GoodCron", "script", "* * * * *", path="y.py")
+
+        # Force the bad task to have an unparseable cron expression
+        with ts._lock:
+            ts._tasks[bad["id"]]["cron_expr"] = "not_a_cron"
+
+        ran = []
+        ts.set_on_task_complete(lambda r: ran.append(r))
+        ts._tick()
+        assert len(ran) == 1  # only the good task ran
+        ts.stop()

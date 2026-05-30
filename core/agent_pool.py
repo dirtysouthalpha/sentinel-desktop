@@ -306,41 +306,37 @@ class AgentPool:
         logger.info("AgentPool shutdown requested")
         with self._lock:
             self._shutdown = True
-            # Cancel all queued sessions
             for _pri, _seq, sid in self._queue:
                 session = self._sessions.get(sid)
                 if session and session.status == STATUS_QUEUED:
                     session.status = STATUS_CANCELLED
                     session.end_time = datetime.now(timezone.utc)
             self._queue.clear()
-
-            # Request cancellation for running sessions
             for session in self._sessions.values():
                 if session.status == STATUS_RUNNING:
                     session._cancel_requested.set()
 
-        # Wake the dispatcher so it exits its loop
         self._dispatcher_event.set()
-
         if wait:
-            # Join dispatcher
-            self._dispatcher_thread.join(timeout=timeout)
-            # Join all running agent threads
-            with self._lock:
-                running = [
-                    s
-                    for s in self._sessions.values()
-                    if s.thread is not None and s.thread.is_alive()
-                ]
-            for s in running:
-                s.thread.join(timeout=timeout)
-                if s.thread.is_alive():
-                    logger.warning(
-                        "Thread for session %s did not exit within timeout",
-                        s.id,
-                    )
-
+            self._join_running_threads(timeout)
         logger.info("AgentPool shutdown complete")
+
+    def _join_running_threads(self, timeout: float) -> None:
+        """Join the dispatcher thread and all live agent threads, warning on stragglers."""
+        self._dispatcher_thread.join(timeout=timeout)
+        with self._lock:
+            running = [
+                s
+                for s in self._sessions.values()
+                if s.thread is not None and s.thread.is_alive()
+            ]
+        for s in running:
+            s.thread.join(timeout=timeout)
+            if s.thread.is_alive():
+                logger.warning(
+                    "Thread for session %s did not exit within timeout",
+                    s.id,
+                )
 
     # Internal: dispatcher
 

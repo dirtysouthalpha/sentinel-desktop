@@ -291,6 +291,39 @@ def _score_node(
     return score
 
 
+def _bfs_best_match(
+    root: Any,
+    needle_name: str,
+    needle_id: str,
+    needle_type: str,
+) -> Any | None:
+    """BFS over the UI tree and return the highest-scoring node (max depth 12, max 2000 nodes)."""
+    best = None
+    best_score = -1
+    queue: deque = deque([(root, 0)])
+    visited = 0
+    max_depth = 12
+    while queue and visited < 2000:
+        node, depth = queue.popleft()
+        visited += 1
+        try:
+            score = _score_node(node, needle_name, needle_id, needle_type)
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("Scoring failed for node: %s", exc)
+            score = -1
+        if score > best_score:
+            best_score = score
+            best = node
+        if depth < max_depth:
+            try:
+                for child in node.GetChildren():
+                    queue.append((child, depth + 1))
+            except (OSError, AttributeError, RuntimeError) as exc:
+                logger.debug("_find_best_match: failed to get children: %s", exc)
+                continue
+    return best
+
+
 def _find_control(
     *,
     name: str | None = None,
@@ -316,34 +349,12 @@ def _find_control(
     if root is None:
         _FIND_CONTROL_CACHE[cache_key] = (None, now)
         return None
-    needle_name = (name or "").lower()
-    needle_id = (automation_id or "").lower()
-    needle_type = (control_type or "").lower()
 
-    best = None
-    best_score = -1
-
-    queue: deque = deque([(root, 0)])
-    visited = 0
-    max_depth = 12
-    while queue and visited < 2000:
-        node, depth = queue.popleft()
-        visited += 1
-        try:
-            score = _score_node(node, needle_name, needle_id, needle_type)
-        except (OSError, AttributeError, RuntimeError) as exc:
-            logger.debug("Scoring failed for node: %s", exc)
-            score = -1
-        if score > best_score:
-            best_score = score
-            best = node
-        if depth < max_depth:
-            try:
-                for child in node.GetChildren():
-                    queue.append((child, depth + 1))
-            except (OSError, AttributeError, RuntimeError) as exc:
-                logger.debug("_find_best_match: failed to get children: %s", exc)
-                continue
-
+    best = _bfs_best_match(
+        root,
+        needle_name=(name or "").lower(),
+        needle_id=(automation_id or "").lower(),
+        needle_type=(control_type or "").lower(),
+    )
     _FIND_CONTROL_CACHE[cache_key] = (best, now)
     return best
