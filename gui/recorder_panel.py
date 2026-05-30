@@ -412,6 +412,26 @@ class RecorderPanel(ctk.CTkFrame):
                 sc = len(json.load(fh).get("steps", []))
         except (OSError, json.JSONDecodeError) as exc:
             logger.debug("Failed to read workflow step count: %s", exc)
+        self._add_script_info_labels(row, info, sc)
+
+        def _run(pp: str = p) -> None:
+            dlg.destroy()
+            self._run_script(pp, {}, {})
+
+        ctk.CTkButton(
+            row, text="▶", width=36, height=36,
+            fg_color=self._t("status_running", "#95E400"),
+            hover_color="#6ed400", text_color="#ffffff", corner_radius=3, command=_run,
+        ).pack(side="right", padx=6, pady=4)
+        menu = tk.Menu(row, tearoff=0)
+        menu.add_command(label="▶ Run", command=_run)
+        menu.add_command(label="🗑 Delete", command=lambda pp=p: self._delete_script(pp, dlg))
+        row.bind("<Button-3>", lambda e, m=menu: m.tk_popup(e.x_root, e.y_root))
+        row.bind("<Double-Button-1>", lambda e, fn=_run: fn())
+        items.append({"data": info, "row": row})
+
+    def _add_script_info_labels(self, row: Any, info: dict[str, Any], sc: int) -> None:
+        """Add icon, name, detail, and optional tag labels to a script row."""
         ctk.CTkLabel(row, text="📜", font=("Segoe UI", 14), width=28).pack(side="left", padx=(8, 4))
         inner = ctk.CTkFrame(row, fg_color="transparent")
         inner.pack(side="left", fill="x", expand=True, padx=4, pady=4)
@@ -431,22 +451,6 @@ class RecorderPanel(ctk.CTkFrame):
                 inner, text=" ".join(f"#{t}" for t in tags),
                 font=("Segoe UI", 9), text_color=self._t("accent", "#00F0FF"),
             ).pack(anchor="w")
-
-        def _run(pp: str = p) -> None:
-            dlg.destroy()
-            self._run_script(pp, {}, {})
-
-        ctk.CTkButton(
-            row, text="▶", width=36, height=36,
-            fg_color=self._t("status_running", "#95E400"),
-            hover_color="#6ed400", text_color="#ffffff", corner_radius=3, command=_run,
-        ).pack(side="right", padx=6, pady=4)
-        menu = tk.Menu(row, tearoff=0)
-        menu.add_command(label="▶ Run", command=_run)
-        menu.add_command(label="🗑 Delete", command=lambda pp=p: self._delete_script(pp, dlg))
-        row.bind("<Button-3>", lambda e, m=menu: m.tk_popup(e.x_root, e.y_root))
-        row.bind("<Double-Button-1>", lambda e, fn=_run: fn())
-        items.append({"data": info, "row": row})
 
     def _delete_script(self, path: str, parent: ctk.CTkToplevel) -> None:
         if messagebox.askyesno("Delete Script", f"Delete {Path(path).name}?"):

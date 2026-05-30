@@ -35,6 +35,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from PIL import Image
 
@@ -205,7 +206,7 @@ def _eval_change_frame(
     current: Image.Image,
     start: float,
     frames: int,
-) -> tuple[Any, "WaitResult | None"]:
+) -> tuple[Any, WaitResult | None]:
     """Downsample *current*, score against baseline and prev; return (new_prev, result_or_None)."""
     current_small = _downsample(current)
     # Check both: cumulative change from baseline AND per-frame change.
@@ -230,7 +231,7 @@ def _build_match_result(
     confidence: float,
     start: float,
     frames: int,
-) -> "WaitResult | None":
+) -> WaitResult | None:
     """Try template matching; return a WaitResult on match or None on miss/error."""
     from core.screenshot import find_template
 
@@ -633,7 +634,7 @@ class SmartWait:
             if pixel is None:
                 time.sleep(0.1)
                 continue
-            if all(abs(a - b) <= tolerance for a, b in zip(pixel, target_rgb)):
+            if all(abs(a - b) <= tolerance for a, b in zip(pixel, target_rgb, strict=False)):
                 snap_path = self._capture_color_match_snapshot(x, y)
                 return WaitResult(
                     success=True,

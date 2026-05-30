@@ -549,33 +549,42 @@ class SentinelApp:
                 font=("Consolas", 10), justify="left", anchor="w",
             ).pack(fill="both", expand=True, padx=16, pady=4)
 
-            btn_frame = ctk.CTkFrame(top)
-            btn_frame.pack(fill="x", padx=16, pady=12)
-
-            def _approve() -> None:
-                decision["approved"] = True
-                event.set()
-                top.destroy()
-
-            def _reject() -> None:
-                decision["approved"] = False
-                event.set()
-                top.destroy()
-
-            ctk.CTkButton(
-                btn_frame, text="✓ Approve", command=_approve,
-                fg_color=self._t("status_running", "#95E400"),
-                hover_color=self._t("tag_assistant", "#95E400"),
-            ).pack(side="right", padx=4)
-            ctk.CTkButton(
-                btn_frame, text="✗ Reject", command=_reject,
-                fg_color=self._t("status_error", "#ff3b3b"),
-                hover_color=self._t("tag_error", "#ff3b3b"),
-            ).pack(side="right", padx=4)
-            top.protocol("WM_DELETE_WINDOW", _reject)
+            self._add_approval_buttons(top, decision, event)
         except (RuntimeError, tk.TclError) as exc:
             logger.warning("approval prompt failed: %s", exc)
             event.set()
+
+    def _add_approval_buttons(
+        self,
+        top: Any,
+        decision: dict[str, Any],
+        event: threading.Event,
+    ) -> None:
+        """Add approve/reject button frame to *top* and bind window-close to reject."""
+        btn_frame = ctk.CTkFrame(top)
+        btn_frame.pack(fill="x", padx=16, pady=12)
+
+        def _approve() -> None:
+            decision["approved"] = True
+            event.set()
+            top.destroy()
+
+        def _reject() -> None:
+            decision["approved"] = False
+            event.set()
+            top.destroy()
+
+        ctk.CTkButton(
+            btn_frame, text="✓ Approve", command=_approve,
+            fg_color=self._t("status_running", "#95E400"),
+            hover_color=self._t("tag_assistant", "#95E400"),
+        ).pack(side="right", padx=4)
+        ctk.CTkButton(
+            btn_frame, text="✗ Reject", command=_reject,
+            fg_color=self._t("status_error", "#ff3b3b"),
+            hover_color=self._t("tag_error", "#ff3b3b"),
+        ).pack(side="right", padx=4)
+        top.protocol("WM_DELETE_WINDOW", _reject)
 
     def _update_screenshot(self, b64_data: str) -> None:
         """Update the screenshot preview."""
