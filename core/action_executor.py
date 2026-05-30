@@ -660,41 +660,55 @@ class ActionExecutor:
         tx = int(to_x) + self.click_offset[0]
         ty = int(to_y) + self.click_offset[1]
         if self.stealth and stealth_input.is_available():
-            # Stealth drag: PostMessage mouse_down at source, move events, mouse_up at dest
-            try:
-                import time as _t
-
-                import win32api
-                import win32con
-                import win32gui
-
-                hwnd = win32gui.WindowFromPoint((sx, sy))
-                cx, cy = win32gui.ScreenToClient(hwnd, (sx, sy))
-                cx2, cy2 = win32gui.ScreenToClient(hwnd, (tx, ty))
-                lparam_down = ((cy & 0xFFFF) << 16) | (cx & 0xFFFF)
-                lparam_up = ((cy2 & 0xFFFF) << 16) | (cx2 & 0xFFFF)
-                mk = win32con.MK_LBUTTON if button == "left" else win32con.MK_RBUTTON
-                win32api.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, mk, lparam_down)
-                # Simulate move events
-                steps = max(1, int(duration / 0.01))
-                for i in range(1, steps + 1):
-                    mx = int(cx + (cx2 - cx) * i / steps)
-                    my = int(cy + (cy2 - cy) * i / steps)
-                    lparam_move = ((my & 0xFFFF) << 16) | (mx & 0xFFFF)
-                    win32api.PostMessage(hwnd, win32con.WM_MOUSEMOVE, mk, lparam_move)
-                    _t.sleep(duration / steps)
-                win32api.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lparam_up)
-                return {
-                    "success": True,
-                    "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y}) — stealth",
-                }
-            except Exception as exc:
-                logger.debug("Stealth drag failed, falling back: %s", exc)
+            result = self._stealth_drag_win32(sx, sy, tx, ty, from_x, from_y, to_x, to_y, duration, button)
+            if result is not None:
+                return result
         try:
             self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
             return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
         except Exception as exc:
             return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
+
+    def _stealth_drag_win32(
+        self,
+        sx: int,
+        sy: int,
+        tx: int,
+        ty: int,
+        from_x: int,
+        from_y: int,
+        to_x: int,
+        to_y: int,
+        duration: float,
+        button: str,
+    ) -> dict | None:
+        """Attempt a stealth drag via Win32 PostMessage; returns result dict or None on failure."""
+        try:
+            import time as _t
+
+            import win32api
+            import win32con
+            import win32gui
+
+            hwnd = win32gui.WindowFromPoint((sx, sy))
+            cx, cy = win32gui.ScreenToClient(hwnd, (sx, sy))
+            cx2, cy2 = win32gui.ScreenToClient(hwnd, (tx, ty))
+            lparam_down = ((cy & 0xFFFF) << 16) | (cx & 0xFFFF)
+            lparam_up = ((cy2 & 0xFFFF) << 16) | (cx2 & 0xFFFF)
+            mk = win32con.MK_LBUTTON if button == "left" else win32con.MK_RBUTTON
+            win32api.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, mk, lparam_down)
+            steps = max(1, int(duration / 0.01))
+            for i in range(1, steps + 1):
+                mx = int(cx + (cx2 - cx) * i / steps)
+                my = int(cy + (cy2 - cy) * i / steps)
+                lparam_move = ((my & 0xFFFF) << 16) | (mx & 0xFFFF)
+                win32api.PostMessage(hwnd, win32con.WM_MOUSEMOVE, mk, lparam_move)
+                _t.sleep(duration / steps)
+            win32api.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lparam_up)
+            return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y}) — stealth"}
+        except Exception as exc:
+            logger.debug("Stealth drag failed, falling back: %s", exc)
+            return None
 
     def _scroll(self, *, amount: int, **_) -> dict:
         """Scroll the mouse wheel by the given amount (positive = up, negative = down)."""
