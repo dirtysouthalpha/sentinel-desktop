@@ -1,1 +1,1 @@
-# Sentinel Desktop v3.0 — GUI tabs package.
+"""Sentinel Desktop v3.0 — GUI tabs package."""
