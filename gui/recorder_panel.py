@@ -157,16 +157,10 @@ class RecorderPanel(ctk.CTkFrame):
             return
         self._show_save_dialog(script)
 
-    def _show_save_dialog(self, script: Any) -> None:
-        dlg = ctk.CTkToplevel(self)
-        dlg.title("Save Recorded Script")
-        dlg.geometry("420x320")
-        dlg.resizable(False, False)
-        dlg.transient(self.winfo_toplevel())
-        dlg.grab_set()
-        pad = dict(padx=12, pady=6, sticky="ew")
-        dlg.grid_columnconfigure(1, weight=1)
-
+    def _build_save_form_fields(
+        self, dlg: Any, script: Any, pad: dict
+    ) -> tuple[Any, Any, Any]:
+        """Add Name/Description/Tags fields to *dlg*. Returns (name_entry, desc_entry, tags_entry)."""
         ctk.CTkLabel(dlg, text="Name:", font=("Segoe UI", 12)).grid(row=0, column=0, **pad)
         name_e = ctk.CTkEntry(dlg, font=("Segoe UI", 12))
         name_e.insert(0, script.name)
@@ -187,6 +181,20 @@ class RecorderPanel(ctk.CTkFrame):
             font=("Segoe UI", 10),
             text_color=self._t("text_secondary", "#b9cacb"),
         ).grid(row=3, column=0, columnspan=2, pady=(8, 2))
+        return name_e, desc_e, tags_e
+
+    def _show_save_dialog(self, script: Any) -> None:
+        """Open a modal dialog to name and save a recorded script."""
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Save Recorded Script")
+        dlg.geometry("420x320")
+        dlg.resizable(False, False)
+        dlg.transient(self.winfo_toplevel())
+        dlg.grab_set()
+        pad: dict = dict(padx=12, pady=6, sticky="ew")
+        dlg.grid_columnconfigure(1, weight=1)
+
+        name_e, desc_e, tags_e = self._build_save_form_fields(dlg, script, pad)
 
         bf = ctk.CTkFrame(dlg, fg_color="transparent")
         bf.grid(row=4, column=0, columnspan=2, pady=10)

@@ -147,56 +147,70 @@ class UIAActionPipeline:
         Tries UIA Invoke / SelectionItem / physical click on the control first,
         then falls back to PostMessage at the control's centre, then pyautogui.
         """
-        # --- Tier 1: UIA ---
-        if self._uia_ok():
-            try:
-                from core.ui_tree import click_control
+        hit = self._click_element_uia(name, control_type, window_title, button)
+        if hit is not None:
+            return hit
+        hit = self._click_element_postmessage(name, control_type, window_title, button)
+        if hit is not None:
+            return hit
+        return self._click_element_physical(name, control_type, window_title, button)
 
-                result = click_control(
-                    name=name,
-                    control_type=control_type,
-                    window_title=window_title,
-                    button=button,
-                )
-                if result is not None:
-                    return _result(True, {"x": result[0], "y": result[1]}, "uia")
-            except (OSError, AttributeError, RuntimeError) as exc:
-                logger.debug("UIA click_element failed: %s", exc)
+    def _click_element_uia(
+        self,
+        name: str,
+        control_type: str | None,
+        window_title: str | None,
+        button: str,
+    ) -> dict[str, Any] | None:
+        """Tier 1: attempt UIA click; return result dict or None on failure/unavailable."""
+        if not self._uia_ok():
+            return None
+        try:
+            from core.ui_tree import click_control
 
-        # --- Tier 2: PostMessage at element centre ---
-        if self._postmessage_ok():
-            try:
-                bounds = self._uia_bounds(name, control_type, window_title)
-                if bounds is not None:
-                    from core.stealth_input import post_click
+            result = click_control(name=name, control_type=control_type, window_title=window_title, button=button)
+            if result is not None:
+                return _result(True, {"x": result[0], "y": result[1]}, "uia")
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("UIA click_element failed: %s", exc)
+        return None
 
-                    ok = post_click(bounds["center_x"], bounds["center_y"], button=button)
-                    if ok:
-                        return _result(
-                            True,
-                            {"x": bounds["center_x"], "y": bounds["center_y"]},
-                            "postmessage",
-                        )
-            except OSError as exc:
-                logger.debug("PostMessage click_element failed: %s", exc)
-
-        # --- Tier 3: pyautogui ---
+    def _click_element_postmessage(
+        self,
+        name: str,
+        control_type: str | None,
+        window_title: str | None,
+        button: str,
+    ) -> dict[str, Any] | None:
+        """Tier 2: attempt PostMessage click; return result dict or None on failure/unavailable."""
+        if not self._postmessage_ok():
+            return None
         try:
             bounds = self._uia_bounds(name, control_type, window_title)
             if bounds is not None:
-                self._get_physical_desktop().click(
-                    bounds["center_x"],
-                    bounds["center_y"],
-                    button=button,
-                )
-                return _result(
-                    True,
-                    {"x": bounds["center_x"], "y": bounds["center_y"]},
-                    "physical",
-                )
+                from core.stealth_input import post_click
+
+                if post_click(bounds["center_x"], bounds["center_y"], button=button):
+                    return _result(True, {"x": bounds["center_x"], "y": bounds["center_y"]}, "postmessage")
+        except OSError as exc:
+            logger.debug("PostMessage click_element failed: %s", exc)
+        return None
+
+    def _click_element_physical(
+        self,
+        name: str,
+        control_type: str | None,
+        window_title: str | None,
+        button: str,
+    ) -> dict[str, Any]:
+        """Tier 3: attempt pyautogui physical click; returns failure result if element not found."""
+        try:
+            bounds = self._uia_bounds(name, control_type, window_title)
+            if bounds is not None:
+                self._get_physical_desktop().click(bounds["center_x"], bounds["center_y"], button=button)
+                return _result(True, {"x": bounds["center_x"], "y": bounds["center_y"]}, "physical")
         except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical click_element failed: %s", exc)
-
         return _result(False, f"Element '{name}' not found or click failed", "physical")
 
     def type_into_field(
@@ -259,40 +273,44 @@ class UIAActionPipeline:
         segments = [s.strip() for s in path.split(">") if s.strip()]
         if not segments:
             return _result(False, "Empty menu path", "uia")
+        if self._uia_ok() and self._select_menu_uia(segments, window_title):
+            return _result(True, path, "uia")
+        self._select_menu_postmessage()
+        return self._select_menu_physical(segments, path)
 
-        # --- Tier 1: UIA menu traversal ---
-        if self._uia_ok():
-            try:
-                result = self._uia_menu_walk(segments, window_title)
-                if result:
-                    return _result(True, path, "uia")
-            except (OSError, AttributeError, RuntimeError) as exc:
-                logger.debug("UIA select_menu_item failed: %s", exc)
+    def _select_menu_uia(
+        self, segments: list[str], window_title: str | None
+    ) -> bool:
+        """Tier 1: UIA menu traversal. Returns True on success."""
+        try:
+            return bool(self._uia_menu_walk(segments, window_title))
+        except (OSError, AttributeError, RuntimeError) as exc:
+            logger.debug("UIA select_menu_item failed: %s", exc)
+            return False
 
-        # --- Tier 2: PostMessage (limited — try to invoke menu via Alt+letter) ---
-        if self._postmessage_ok():
-            try:
-                from core.stealth_input import post_hotkey
+    def _select_menu_postmessage(self) -> None:
+        """Tier 2: press Alt via PostMessage to activate menu bar (best-effort)."""
+        if not self._postmessage_ok():
+            return
+        try:
+            from core.stealth_input import post_hotkey
 
-                # Press Alt to activate menu bar, then arrow down through items.
-                # This is a best-effort approach; PostMessage menus are fragile.
-                if post_hotkey(["alt"], hwnd=None):
-                    time.sleep(0.1)
-                    # We can't reliably navigate menus via PostMessage alone,
-                    # so fall through to physical.
-            except OSError as exc:
-                logger.debug("PostMessage select_menu_item failed: %s", exc)
+            if post_hotkey(["alt"], hwnd=None):
+                time.sleep(0.1)
+        except OSError as exc:
+            logger.debug("PostMessage select_menu_item failed: %s", exc)
 
-        # --- Tier 3: pyautogui fallback ---
+    def _select_menu_physical(
+        self, segments: list[str], path: str
+    ) -> dict[str, Any]:
+        """Tier 3: pyautogui mnemonic navigation; returns failure result if unavailable."""
         try:
             import pyautogui
 
             self._get_physical_desktop()
-            # Press Alt to activate the menu bar, then navigate with arrows.
             pyautogui.press("alt")
             time.sleep(0.1)
             for segment in segments:
-                # Try pressing the first letter of each segment for mnemonic match.
                 first_char = segment[0] if segment else ""
                 if first_char.isalpha():
                     pyautogui.press(first_char.lower())
@@ -305,7 +323,6 @@ class UIAActionPipeline:
             return _result(True, path, "physical")
         except (ImportError, OSError, AttributeError) as exc:
             logger.debug("Physical select_menu_item failed: %s", exc)
-
         return _result(False, f"Menu path '{path}' not found", "physical")
 
     # ------------------------------------------------------------------
