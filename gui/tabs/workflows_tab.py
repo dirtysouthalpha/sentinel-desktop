@@ -180,60 +180,57 @@ class WorkflowsTab(ctk.CTkFrame):
 
     # ── Refresh workflow list ─────────────────────────────────────────
 
+    def _build_workflow_card(self, idx: int, wf: dict[str, Any]) -> None:
+        """Build and grid a single workflow list card."""
+        t = self._t
+        path = wf.get("path", "")
+        card = ctk.CTkFrame(
+            self._list_container,
+            corner_radius=4,
+            height=60,
+            fg_color=t("bg_input", "#111418"),
+            cursor="hand2",
+        )
+        card.grid(row=idx, column=0, sticky="ew", padx=2, pady=2)
+        card.grid_columnconfigure(0, weight=1)
+        name_lbl = ctk.CTkLabel(
+            card,
+            text=wf.get("name", "Untitled"),
+            font=("Segoe UI", 12, "bold"),
+            text_color=t("text_primary", "#e2e2e8"),
+            anchor="w",
+        )
+        name_lbl.grid(row=0, column=0, sticky="w", padx=8, pady=(4, 0))
+        desc = wf.get("description", "")
+        steps = wf.get("steps", 0)
+        sub = ctk.CTkLabel(
+            card,
+            text=f"{desc}  •  {steps} step{'s' if steps != 1 else ''}",
+            font=("Segoe UI", 10),
+            text_color=t("text_secondary", "#b9cacb"),
+            anchor="w",
+        )
+        sub.grid(row=1, column=0, sticky="w", padx=8, pady=(0, 4))
+        for widget in (card, name_lbl, sub):
+            widget.bind("<Button-1>", lambda _e, p=path: self.select_workflow(p))
+        if path == self._selected_path:
+            card.configure(fg_color=t("accent", "#00F0FF"))
+            name_lbl.configure(text_color="#ffffff")
+            sub.configure(text_color="#e0e0e0")
+
     def refresh_workflows(self) -> None:
         """Reload workflow list from disk and rebuild cards."""
-        t = self._t
         query = self._search_var.get().strip().lower()
         self._workflows = WorkflowEngine.list_workflows(WORKFLOWS_DIR)
-
         for w in self._list_container.winfo_children():
             w.destroy()
-
         filtered = [
             w
             for w in self._workflows
             if query in w.get("name", "").lower() or query in w.get("description", "").lower()
         ]
-
         for idx, wf in enumerate(filtered):
-            card = ctk.CTkFrame(
-                self._list_container,
-                corner_radius=4,
-                height=60,
-                fg_color=t("bg_input", "#111418"),
-                cursor="hand2",
-            )
-            card.grid(row=idx, column=0, sticky="ew", padx=2, pady=2)
-            card.grid_columnconfigure(0, weight=1)
-
-            name_lbl = ctk.CTkLabel(
-                card,
-                text=wf.get("name", "Untitled"),
-                font=("Segoe UI", 12, "bold"),
-                text_color=t("text_primary", "#e2e2e8"),
-                anchor="w",
-            )
-            name_lbl.grid(row=0, column=0, sticky="w", padx=8, pady=(4, 0))
-
-            desc = wf.get("description", "")
-            steps = wf.get("steps", 0)
-            sub = ctk.CTkLabel(
-                card,
-                text=f"{desc}  •  {steps} step{'s' if steps != 1 else ''}",
-                font=("Segoe UI", 10),
-                text_color=t("text_secondary", "#b9cacb"),
-                anchor="w",
-            )
-            sub.grid(row=1, column=0, sticky="w", padx=8, pady=(0, 4))
-
-            path = wf.get("path", "")
-            for widget in (card, name_lbl, sub):
-                widget.bind("<Button-1>", lambda _e, p=path: self.select_workflow(p))
-
-            if path == self._selected_path:
-                card.configure(fg_color=t("accent", "#00F0FF"))
-                name_lbl.configure(text_color="#ffffff")
-                sub.configure(text_color="#e0e0e0")
+            self._build_workflow_card(idx, wf)
 
     # ── Select & display workflow ─────────────────────────────────────
 
@@ -257,67 +254,71 @@ class WorkflowsTab(ctk.CTkFrame):
         self._render_variables(wf.get("variables", {}))
         self.refresh_workflows()
 
+    def _render_step_card(self, idx: int, step: dict[str, Any]) -> None:
+        """Render a single step card and its connector into the steps frame."""
+        t = self._t
+        sid = step.get("id", f"s{idx + 1}")
+        stype = step.get("type", "action")
+        icon = STEP_ICONS.get(stype, "❓")
+        summary = self._step_summary(step)
+
+        card = ctk.CTkFrame(
+            self._steps_frame, corner_radius=3, fg_color=t("bg_input", "#111418")
+        )
+        card.grid(row=idx * 2, column=0, sticky="ew", padx=4, pady=(4, 0))
+        card.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(
+            card,
+            text=f"{icon} {sid}",
+            font=("Segoe UI", 11, "bold"),
+            text_color=t("accent", "#00F0FF"),
+            width=120,
+            anchor="w",
+        ).grid(row=0, column=0, padx=(8, 4), pady=4)
+        ctk.CTkLabel(
+            card,
+            text=summary,
+            font=("Segoe UI", 11),
+            text_color=t("text_primary", "#e2e2e8"),
+            anchor="w",
+        ).grid(row=0, column=1, sticky="ew", padx=4, pady=4)
+        return stype
+
+    def _render_step_connector(self, idx: int, step: dict[str, Any], stype: str, last: bool) -> None:
+        """Render the connector row below a step card (branch arrows or pipe)."""
+        t = self._t
+        if stype == "condition":
+            bf = ctk.CTkFrame(self._steps_frame, fg_color="transparent", height=24)
+            bf.grid(row=idx * 2 + 1, column=0, sticky="ew", padx=4)
+            ctk.CTkLabel(
+                bf,
+                text=f"   ├─ ✅ true → {step.get('true_next', '—')}",
+                font=("Consolas", 10),
+                text_color=t("status_running", "#95E400"),
+                anchor="w",
+            ).pack(anchor="w")
+            ctk.CTkLabel(
+                bf,
+                text=f"   └─ ❌ false → {step.get('false_next', '—')}",
+                font=("Consolas", 10),
+                text_color=t("status_error", "#ff3b3b"),
+                anchor="w",
+            ).pack(anchor="w")
+        elif not last:
+            ctk.CTkLabel(
+                self._steps_frame,
+                text="│",
+                font=("Consolas", 12),
+                text_color=t("text_secondary", "#b9cacb"),
+            ).grid(row=idx * 2 + 1, column=0, sticky="w", padx=18)
+
     def _render_steps(self, steps: list[dict[str, Any]]) -> None:
         """Build step-flow cards inside the steps scrollable frame."""
-        t = self._t
         for w in self._steps_frame.winfo_children():
             w.destroy()
-
         for idx, step in enumerate(steps):
-            sid = step.get("id", f"s{idx + 1}")
-            stype = step.get("type", "action")
-            icon = STEP_ICONS.get(stype, "❓")
-            summary = self._step_summary(step)
-
-            card = ctk.CTkFrame(
-                self._steps_frame, corner_radius=3, fg_color=t("bg_input", "#111418")
-            )
-            card.grid(row=idx * 2, column=0, sticky="ew", padx=4, pady=(4, 0))
-            card.grid_columnconfigure(1, weight=1)
-
-            ctk.CTkLabel(
-                card,
-                text=f"{icon} {sid}",
-                font=("Segoe UI", 11, "bold"),
-                text_color=t("accent", "#00F0FF"),
-                width=120,
-                anchor="w",
-            ).grid(row=0, column=0, padx=(8, 4), pady=4)
-
-            ctk.CTkLabel(
-                card,
-                text=summary,
-                font=("Segoe UI", 11),
-                text_color=t("text_primary", "#e2e2e8"),
-                anchor="w",
-            ).grid(row=0, column=1, sticky="ew", padx=4, pady=4)
-
-            # Condition branch arrows
-            if stype == "condition":
-                bf = ctk.CTkFrame(self._steps_frame, fg_color="transparent", height=24)
-                bf.grid(row=idx * 2 + 1, column=0, sticky="ew", padx=4)
-                ctk.CTkLabel(
-                    bf,
-                    text=f"   ├─ ✅ true → {step.get('true_next', '—')}",
-                    font=("Consolas", 10),
-                    text_color=t("status_running", "#95E400"),
-                    anchor="w",
-                ).pack(anchor="w")
-                ctk.CTkLabel(
-                    bf,
-                    text=f"   └─ ❌ false → {step.get('false_next', '—')}",
-                    font=("Consolas", 10),
-                    text_color=t("status_error", "#ff3b3b"),
-                    anchor="w",
-                ).pack(anchor="w")
-            elif idx < len(steps) - 1:
-                # Connector line between steps
-                ctk.CTkLabel(
-                    self._steps_frame,
-                    text="│",
-                    font=("Consolas", 12),
-                    text_color=t("text_secondary", "#b9cacb"),
-                ).grid(row=idx * 2 + 1, column=0, sticky="w", padx=18)
+            stype = self._render_step_card(idx, step)
+            self._render_step_connector(idx, step, stype, last=(idx == len(steps) - 1))
 
     @staticmethod
     def _step_summary(step: dict[str, Any]) -> str:

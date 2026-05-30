@@ -366,13 +366,9 @@ class AuditExporter:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _html_preamble() -> str:
-        """Return the HTML boilerplate and CSS for the dark-themed audit report."""
+    def _html_css() -> str:
+        """Return the CSS block for the dark-themed audit report."""
         return (
-            '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
-            '<meta charset="UTF-8">\n'
-            '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-            "<title>Sentinel Desktop — Audit Report</title>\n"
             "<style>\n"
             "  /* ---- Dark Sentinel Theme ---- */\n"
             "  :root {\n"
@@ -462,7 +458,18 @@ class AuditExporter:
             "    .summary-card .num { color: #1a1a2e; }\n"
             "  }\n"
             "</style>\n"
-            "</head>\n<body>\n"
+        )
+
+    @staticmethod
+    def _html_preamble() -> str:
+        """Return the HTML boilerplate and CSS for the dark-themed audit report."""
+        return (
+            '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+            '<meta charset="UTF-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+            "<title>Sentinel Desktop — Audit Report</title>\n"
+            + AuditExporter._html_css()
+            + "</head>\n<body>\n"
             "<h1>Sentinel Desktop — Audit Report</h1>\n"
         )
 

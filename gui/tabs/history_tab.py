@@ -95,8 +95,20 @@ class HistoryTab(ctk.CTkFrame):
         right.grid(row=0, column=1, sticky="nsew", padx=(2, 4), pady=4)
         right.grid_columnconfigure(0, weight=1)
         right.grid_rowconfigure(2, weight=1)
+        self._build_right_header(right)
+        self._build_right_actions(right)
+        self.timeline = ctk.CTkScrollableFrame(right, fg_color="transparent")
+        self.timeline.grid(row=2, column=0, sticky="nsew", padx=8, pady=4)
+        self.output_text = ctk.CTkTextbox(
+            right,
+            height=120,
+            font=("Consolas", 11),
+            fg_color=self._t("bg_primary", "#050608"),
+            text_color=self._t("text_secondary", "#b9cacb"),
+        )
+        self.output_text.grid(row=3, column=0, sticky="ew", padx=12, pady=(4, 12))
 
-        # Header
+    def _build_right_header(self, right: ctk.CTkFrame) -> None:
         header = ctk.CTkFrame(right, fg_color="transparent")
         header.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 4))
         self.goal_label = ctk.CTkLabel(
@@ -109,16 +121,11 @@ class HistoryTab(ctk.CTkFrame):
         )
         self.goal_label.pack(side="left", fill="x", expand=True)
 
-        # Status + actions
+    def _build_right_actions(self, right: ctk.CTkFrame) -> None:
         actions = ctk.CTkFrame(right, fg_color="transparent")
         actions.grid(row=1, column=0, sticky="ew", padx=12, pady=4)
-        self.status_badge = ctk.CTkLabel(
-            actions,
-            text="",
-            font=("Segoe UI", 11),
-        )
+        self.status_badge = ctk.CTkLabel(actions, text="", font=("Segoe UI", 11))
         self.status_badge.pack(side="left")
-
         self.replay_btn = ctk.CTkButton(
             actions,
             text="🔄 Replay",
@@ -129,7 +136,6 @@ class HistoryTab(ctk.CTkFrame):
             command=self._replay_session,
         )
         self.replay_btn.pack(side="right", padx=4)
-
         self.export_btn = ctk.CTkButton(
             actions,
             text="📋 Export Log",
@@ -142,21 +148,35 @@ class HistoryTab(ctk.CTkFrame):
         )
         self.export_btn.pack(side="right", padx=4)
 
-        # Timeline
-        self.timeline = ctk.CTkScrollableFrame(right, fg_color="transparent")
-        self.timeline.grid(row=2, column=0, sticky="nsew", padx=8, pady=4)
-
-        # Output area
-        self.output_text = ctk.CTkTextbox(
-            right,
-            height=120,
-            font=("Consolas", 11),
-            fg_color=self._t("bg_primary", "#050608"),
-            text_color=self._t("text_secondary", "#b9cacb"),
-        )
-        self.output_text.grid(row=3, column=0, sticky="ew", padx=12, pady=(4, 12))
-
     # ── Data ──────────────────────────────────────────────────────────
+
+    def _parse_forensic_log(self, flog: list[dict[str, Any]]) -> None:
+        """Group forensic log entries into sessions and append to self.sessions."""
+        current_session: dict[str, Any] | None = None
+        current_goal: str = ""
+        for entry in flog:
+            step = entry.get("step", {})
+            action = step.get("action", "")
+            entry_goal = entry.get("goal", "")
+
+            # A new session starts when a "start" action appears or the goal changes.
+            if action == "start" or (entry_goal and entry_goal != current_goal):
+                if current_session is not None and current_session["steps"]:
+                    self._finalize_session(current_session)
+                current_session = {"steps": [], "goal": "", "start": "", "status": ""}
+                current_goal = entry_goal
+
+            if current_session is None:
+                current_session = {"steps": [], "goal": "", "start": "", "status": ""}
+                current_goal = entry_goal
+
+            if action == "finish":
+                current_session["status"] = "completed"
+                current_session["summary"] = step.get("summary", "")
+            current_session["steps"].append(entry)
+
+        if current_session is not None and current_session["steps"]:
+            self._finalize_session(current_session)
 
     def refresh_history(self) -> None:
         """Reload session history from forensic log."""
@@ -165,38 +185,8 @@ class HistoryTab(ctk.CTkFrame):
         if hasattr(self.app, "engine") and self.app.engine:
             flog = getattr(self.app.engine, "forensic_log", [])
             if flog:
-                # Group forensic log entries into sessions by detecting boundaries.
-                # A new session starts when a "start" action appears or when the
-                # goal text changes between entries.
-                current_session: dict[str, Any] | None = None
-                current_goal: str = ""
-                for entry in flog:
-                    step = entry.get("step", {})
-                    action = step.get("action", "")
-                    entry_goal = entry.get("goal", "")
+                self._parse_forensic_log(flog)
 
-                    # Detect session boundaries: "start" action or goal change
-                    if action == "start" or (entry_goal and entry_goal != current_goal):
-                        # Flush the previous session
-                        if current_session is not None and current_session["steps"]:
-                            self._finalize_session(current_session)
-                        current_session = {"steps": [], "goal": "", "start": "", "status": ""}
-                        current_goal = entry_goal
-
-                    if current_session is None:
-                        current_session = {"steps": [], "goal": "", "start": "", "status": ""}
-                        current_goal = entry_goal
-
-                    if action == "finish":
-                        current_session["status"] = "completed"
-                        current_session["summary"] = step.get("summary", "")
-                    current_session["steps"].append(entry)
-
-                # Flush the last session
-                if current_session is not None and current_session["steps"]:
-                    self._finalize_session(current_session)
-
-            # Also check notes
             notes = getattr(self.app.engine, "notes", [])
             if notes and not self.sessions:
                 self.sessions.append(

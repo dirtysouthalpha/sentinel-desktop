@@ -87,6 +87,61 @@ class SettingsTab:
 
         return content
 
+    def _make_field_widget(
+        self,
+        parent: Any,
+        var_name: str,
+        default: str,
+        field_type: str,
+        values: list[str] | None,
+    ) -> Any:
+        """Create and register the control widget for a settings field; return it."""
+        if field_type == "entry":
+            var: Any = ctk.StringVar(value=default)
+            widget = ctk.CTkEntry(
+                parent,
+                textvariable=var,
+                fg_color=self._t("bg_input", "#111418"),
+                text_color=self._t("text_primary", "#e2e2e8"),
+                corner_radius=3,
+                width=300,
+            )
+        elif field_type == "dropdown":
+            var = ctk.StringVar(value=default)
+            widget = ctk.CTkOptionMenu(
+                parent,
+                variable=var,
+                values=values or [default],
+                fg_color=self._t("bg_input", "#111418"),
+                text_color=self._t("text_primary", "#e2e2e8"),
+                button_color=self._t("accent", "#00F0FF"),
+                width=300,
+            )
+        elif field_type == "slider":
+            var = ctk.DoubleVar(value=float(default))
+            widget = ctk.CTkSlider(
+                parent,
+                variable=var,
+                from_=values[0] if values else 0,
+                to=values[1] if values else 1,
+                number_of_steps=values[2] if values and len(values) > 2 else 100,
+                button_color=self._t("accent", "#00F0FF"),
+                width=300,
+            )
+        elif field_type == "checkbox":
+            var = ctk.BooleanVar(value=default.lower() in ("true", "1", "yes"))
+            widget = ctk.CTkCheckBox(
+                parent,
+                text="",
+                variable=var,
+                fg_color=self._t("accent", "#00F0FF"),
+                checkmark_color=self._t("bg_primary", "#050608"),
+            )
+        else:
+            return None
+        self._vars[var_name] = var
+        return widget
+
     def _add_field(
         self,
         parent: Any,
@@ -104,55 +159,9 @@ class SettingsTab:
             text_color=self._t("text_secondary", "#b9cacb"),
             font=ctk.CTkFont(size=12),
         ).grid(row=row, column=0, sticky="w", padx=(0, 10), pady=3)
-
-        if field_type == "entry":
-            var = ctk.StringVar(value=default)
-            widget = ctk.CTkEntry(
-                parent,
-                textvariable=var,
-                fg_color=self._t("bg_input", "#111418"),
-                text_color=self._t("text_primary", "#e2e2e8"),
-                corner_radius=3,
-                width=300,
-            )
-            self._vars[var_name] = var
-        elif field_type == "dropdown":
-            var = ctk.StringVar(value=default)
-            widget = ctk.CTkOptionMenu(
-                parent,
-                variable=var,
-                values=values or [default],
-                fg_color=self._t("bg_input", "#111418"),
-                text_color=self._t("text_primary", "#e2e2e8"),
-                button_color=self._t("accent", "#00F0FF"),
-                width=300,
-            )
-            self._vars[var_name] = var
-        elif field_type == "slider":
-            var = ctk.DoubleVar(value=float(default))
-            widget = ctk.CTkSlider(
-                parent,
-                variable=var,
-                from_=values[0] if values else 0,
-                to=values[1] if values else 1,
-                number_of_steps=values[2] if values and len(values) > 2 else 100,
-                button_color=self._t("accent", "#00F0FF"),
-                width=300,
-            )
-            self._vars[var_name] = var
-        elif field_type == "checkbox":
-            var = ctk.BooleanVar(value=default.lower() in ("true", "1", "yes"))
-            widget = ctk.CTkCheckBox(
-                parent,
-                text="",
-                variable=var,
-                fg_color=self._t("accent", "#00F0FF"),
-                checkmark_color=self._t("bg_primary", "#050608"),
-            )
-            self._vars[var_name] = var
-        else:
+        widget = self._make_field_widget(parent, var_name, default, field_type, values)
+        if widget is None:
             return
-
         widget.grid(row=row, column=1, sticky="w", pady=3)
         parent.grid_columnconfigure(1, weight=1)
 

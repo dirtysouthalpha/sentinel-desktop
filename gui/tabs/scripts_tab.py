@@ -54,30 +54,9 @@ class ScriptsTab:
 
     # ── Left panel ────────────────────────────────────────────────────
 
-    def _build_left_panel(self) -> None:
-        left = ctk.CTkFrame(
-            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
-        )
-        left.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 4))
-        left.grid_columnconfigure(0, weight=1)
-        left.grid_rowconfigure(3, weight=1)
-
-        # Search bar
-        self._search_var = ctk.StringVar()
-        self._search_var.trace_add("write", lambda *_: self._apply_filter())
-        ctk.CTkEntry(
-            left,
-            placeholder_text="🔍 Search scripts…",
-            textvariable=self._search_var,
-            height=36,
-            font=("Segoe UI", 12),
-            fg_color=self._t("bg_input", "#111418"),
-            border_color=self._t("bg_hover", "#333539"),
-            text_color=self._t("text_primary", "#e2e2e8"),
-        ).grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
-
-        # Category filter chips
-        chips = ctk.CTkFrame(left, fg_color="transparent")
+    def _build_category_chips(self, parent: ctk.CTkFrame) -> None:
+        """Build and grid the category filter chip buttons."""
+        chips = ctk.CTkFrame(parent, fg_color="transparent")
         chips.grid(row=1, column=0, sticky="ew", padx=8, pady=2)
         self._chip_btns: list[ctk.CTkButton] = []
         for cat in _CATEGORIES:
@@ -97,7 +76,29 @@ class ScriptsTab:
             self._chip_btns.append(btn)
         self._highlight_chip(0)
 
-        # Script count
+    def _build_left_panel(self) -> None:
+        left = ctk.CTkFrame(
+            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
+        )
+        left.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 4))
+        left.grid_columnconfigure(0, weight=1)
+        left.grid_rowconfigure(3, weight=1)
+
+        self._search_var = ctk.StringVar()
+        self._search_var.trace_add("write", lambda *_: self._apply_filter())
+        ctk.CTkEntry(
+            left,
+            placeholder_text="🔍 Search scripts…",
+            textvariable=self._search_var,
+            height=36,
+            font=("Segoe UI", 12),
+            fg_color=self._t("bg_input", "#111418"),
+            border_color=self._t("bg_hover", "#333539"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+        ).grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
+
+        self._build_category_chips(left)
+
         self._count_label = ctk.CTkLabel(
             left,
             text="0 scripts",
@@ -106,7 +107,6 @@ class ScriptsTab:
         )
         self._count_label.grid(row=2, column=0, sticky="w", padx=12, pady=(4, 0))
 
-        # Scrollable script list
         self._list_frame = ctk.CTkScrollableFrame(left, fg_color="transparent", corner_radius=0)
         self._list_frame.grid(row=3, column=0, sticky="nsew", padx=4, pady=(4, 8))
         self._list_frame.grid_columnconfigure(0, weight=1)
