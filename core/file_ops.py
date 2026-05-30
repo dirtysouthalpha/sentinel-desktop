@@ -81,9 +81,7 @@ def write_file(path: str, content: str, encoding: str = "utf-8") -> bool:
         logger.exception("write_file(%s) blocked", path)
         return False
     try:
-        parent = safe.parent
-        if str(parent):
-            parent.mkdir(parents=True, exist_ok=True)
+        safe.parent.mkdir(parents=True, exist_ok=True)
         with open(safe, "w", encoding=encoding) as f:
             f.write(content)
         return True

@@ -131,21 +131,20 @@ class WorkflowEngine:
             # Step output reference: step.s1.output.field or step.s1.success
             if ref.startswith("step."):
                 parts = ref.split(".", 2)
-                if len(parts) >= 2:
-                    step_id = parts[1]
-                    step_data = step_outputs.get(step_id, {})
-                    if len(parts) >= 3:
-                        # Navigate nested keys
-                        keys = parts[2].split(".")
-                        val = step_data
-                        for k in keys:
-                            if isinstance(val, dict):
-                                val = val.get(k, "")
-                            else:
-                                val = ""
-                                break
-                        return str(val) if val is not None else ""
-                    return str(step_data)
+                step_id = parts[1]
+                step_data = step_outputs.get(step_id, {})
+                if len(parts) >= 3:
+                    # Navigate nested keys
+                    keys = parts[2].split(".")
+                    val = step_data
+                    for k in keys:
+                        if isinstance(val, dict):
+                            val = val.get(k, "")
+                        else:
+                            val = ""
+                            break
+                    return str(val) if val is not None else ""
+                return str(step_data)
 
             # Simple variable
             val = variables.get(ref, "")
@@ -193,7 +192,7 @@ class WorkflowEngine:
                     except ValueError:
                         logger.debug("Non-numeric comparison '%s' >= '%s'", left, right)
                         return False
-                elif op == "<=":
+                else:  # op == "<="
                     try:
                         return float(left) <= float(right)
                     except ValueError:

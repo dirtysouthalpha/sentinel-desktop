@@ -119,6 +119,13 @@ class TestRefreshHistory:
         tab.refresh_history()
         assert any("notes" in s for s in tab.sessions)
 
+    def test_parse_forensic_log_empty_is_noop(self):
+        """_parse_forensic_log([]) should not append any sessions (False branch at end)."""
+        tab, _ = _make_tab(with_engine=False)
+        tab.sessions.clear()
+        tab._parse_forensic_log([])
+        assert tab.sessions == []
+
 
 # ---------------------------------------------------------------------------
 # _apply_filter
