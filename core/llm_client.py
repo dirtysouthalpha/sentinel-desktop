@@ -29,7 +29,7 @@ import json
 import logging
 import random
 import time
-from typing import Any
+from typing import Any, NoReturn
 
 import requests
 
@@ -462,16 +462,8 @@ class LLMClient:
                 requests.exceptions.RequestException,
             ) as exc:
                 last_exc = exc
-                logger.warning(
-                    "%s: %s (attempt %d/%d): %s",
-                    provider_label,
-                    type(exc).__name__,
-                    attempt + 1,
-                    max_retries + 1,
-                    exc,
-                )
+                self._log_request_exc(provider_label, exc, attempt, max_retries)
             else:
-                # Success — return immediately.
                 if resp.status_code < 400:
                     return self._parse_response_json(resp, provider_label)
                 last_status, last_body = self._classify_error_response(
@@ -485,6 +477,31 @@ class LLMClient:
             time.sleep(delay)
             attempt += 1
 
+        self._raise_retry_exhausted(last_status, last_body, last_exc, provider_label, max_retries)
+
+    @staticmethod
+    def _log_request_exc(
+        provider_label: str, exc: Exception, attempt: int, max_retries: int
+    ) -> None:
+        """Log a network-level request failure with attempt context."""
+        logger.warning(
+            "%s: %s (attempt %d/%d): %s",
+            provider_label,
+            type(exc).__name__,
+            attempt + 1,
+            max_retries + 1,
+            exc,
+        )
+
+    @staticmethod
+    def _raise_retry_exhausted(
+        last_status: int | None,
+        last_body: str,
+        last_exc: Exception | None,
+        provider_label: str,
+        max_retries: int,
+    ) -> NoReturn:
+        """Raise an LLMError summarising why all retry attempts failed."""
         if last_status is not None:
             raise LLMError(_friendly_http_error(last_status, last_body))
         if last_exc is not None:

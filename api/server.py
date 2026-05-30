@@ -874,30 +874,34 @@ class SentinelServer:
                     if ws in self._ws_clients:
                         self._ws_clients.remove(ws)
 
-    async def _handle_ws(self, ws: WebSocket) -> None:
-        await ws.accept()
-        # Require authentication via first message: {"type": "auth", "token": "..."}
+    async def _authenticate_ws(self, ws: WebSocket) -> bool:
+        """Perform the initial auth handshake on *ws*. Returns True if auth passed."""
         try:
             auth_msg = await asyncio.wait_for(ws.receive_text(), timeout=10)
             auth_data = json.loads(auth_msg)
             auth_token = auth_data.get("token", "")
-            # Validate the token.
             api_token = os.environ.get(API_TOKEN_ENV)
             if api_token and auth_token != api_token:
                 await ws.send_json({"type": "auth_error", "message": "Invalid token"})
                 await ws.close()
-                return
+                return False
         except asyncio.TimeoutError:
             logger.warning("WebSocket auth timed out — closing connection")
             await ws.close()
-            return
+            return False
         except json.JSONDecodeError:
             logger.warning("WebSocket auth message was not valid JSON — closing connection")
             await ws.close()
-            return
+            return False
         except (ConnectionError, RuntimeError):
             logger.exception("Unexpected error during WebSocket auth handshake")
             await ws.close()
+            return False
+        return True
+
+    async def _handle_ws(self, ws: WebSocket) -> None:
+        await ws.accept()
+        if not await self._authenticate_ws(ws):
             return
 
         with self._ws_lock:
