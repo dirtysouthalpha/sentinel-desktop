@@ -199,6 +199,63 @@ def _save_snapshot(img: Image.Image, prefix: str = "smart_wait") -> str:
     return str(path)
 
 
+def _eval_change_frame(
+    baseline_small: Any,
+    prev_small: Any,
+    current: Image.Image,
+    start: float,
+    frames: int,
+) -> tuple[Any, "WaitResult | None"]:
+    """Downsample *current*, score against baseline and prev; return (new_prev, result_or_None)."""
+    current_small = _downsample(current)
+    # Check both: cumulative change from baseline AND per-frame change.
+    # This catches both sudden jumps and gradual drifts.
+    cumulative_score = _compute_change_score(baseline_small, current_small)
+    frame_score = _compute_change_score(prev_small, current_small)
+    score = max(cumulative_score, frame_score)
+    if score > 0.0:
+        snap_path = _save_snapshot(current, prefix="change")
+        return current_small, WaitResult(
+            success=True,
+            elapsed=time.monotonic() - start,
+            frames_checked=frames,
+            change_score=score,
+            snapshot_path=snap_path or None,
+        )
+    return current_small, None
+
+
+def _build_match_result(
+    template_path: str,
+    confidence: float,
+    start: float,
+    frames: int,
+) -> "WaitResult | None":
+    """Try template matching; return a WaitResult on match or None on miss/error."""
+    from core.screenshot import find_template
+
+    try:
+        pos = find_template(template_path, confidence)
+    except (OSError, RuntimeError, ValueError) as exc:
+        logger.warning("Template matching failed: %s", exc)
+        pos = None
+    if pos is None:
+        return None
+    try:
+        current = capture_screen()
+    except (OSError, RuntimeError) as exc:
+        logger.warning("Capture for match snapshot failed: %s", exc)
+        current = None
+    snap_path = _save_snapshot(current, prefix="match") if current is not None else None
+    return WaitResult(
+        success=True,
+        elapsed=time.monotonic() - start,
+        frames_checked=frames,
+        change_score=confidence,
+        snapshot_path=snap_path or None,
+    )
+
+
 # ---------------------------------------------------------------------------
 # SmartWait
 # ---------------------------------------------------------------------------
@@ -303,7 +360,6 @@ class SmartWait:
         start = time.monotonic()
         frames = 0
 
-        # Capture the initial baseline and track cumulative change from it.
         baseline = self._capture(region)
         if baseline is None:
             return _fail(time.monotonic() - start, frames)
@@ -315,30 +371,14 @@ class SmartWait:
             abort = self._loop_check(start, timeout, frames)
             if abort is not None:
                 return abort
-
             time.sleep(interval)
             current = self._capture(region)
             if current is None:
                 continue
-            current_small = _downsample(current)
             frames += 1
-
-            # Check both: cumulative change from baseline AND per-frame change.
-            # This catches both sudden jumps and gradual drifts.
-            cumulative_score = _compute_change_score(baseline_small, current_small)
-            frame_score = _compute_change_score(prev_small, current_small)
-            prev_small = current_small
-
-            score = max(cumulative_score, frame_score)
-            if score > 0.0:
-                snap_path = _save_snapshot(current, prefix="change")
-                return WaitResult(
-                    success=True,
-                    elapsed=time.monotonic() - start,
-                    frames_checked=frames,
-                    change_score=score,
-                    snapshot_path=snap_path or None,
-                )
+            prev_small, result = _eval_change_frame(baseline_small, prev_small, current, start, frames)
+            if result is not None:
+                return result
 
     # ------------------------------------------------------------------
     # wait_for_stable
@@ -457,35 +497,14 @@ class SmartWait:
         start = time.monotonic()
         frames = 0
 
-        # Import here to avoid hard dependency at module level.
-        from core.screenshot import find_template
-
         while True:
             abort = self._loop_check(start, timeout, frames)
             if abort is not None:
                 return abort
-
             frames += 1
-            try:
-                pos = find_template(template_path, confidence)
-            except (OSError, RuntimeError, ValueError) as exc:
-                logger.warning("Template matching failed: %s", exc)
-                pos = None
-            if pos is not None:
-                try:
-                    current = capture_screen()
-                except (OSError, RuntimeError) as exc:
-                    logger.warning("Capture for match snapshot failed: %s", exc)
-                    current = None
-                snap_path = _save_snapshot(current, prefix="match") if current is not None else None
-                return WaitResult(
-                    success=True,
-                    elapsed=time.monotonic() - start,
-                    frames_checked=frames,
-                    change_score=confidence,
-                    snapshot_path=snap_path or None,
-                )
-
+            result = _build_match_result(template_path, confidence, start, frames)
+            if result is not None:
+                return result
             time.sleep(interval)
 
     # ------------------------------------------------------------------
@@ -605,28 +624,16 @@ class SmartWait:
         self._reset_cancel()
         start = time.monotonic()
         frames = 0
-
-        # We use a tiny 1×1 capture via capture_region for efficiency.
         while True:
             abort = self._loop_check(start, timeout, frames)
             if abort is not None:
                 return abort
-
             frames += 1
-            try:
-                # Capture a 1×1 region at (x, y).  We add a small
-                # margin (e.g. 2×2) and sample the centre pixel because
-                # some backends don't support truly 1×1 captures well.
-                sample = capture_region(x, y, 2, 2)
-                pixel = sample.getpixel((0, 0))[:3]
-            except (OSError, RuntimeError) as exc:
-                logger.debug("Pixel capture failed at (%d, %d): %s", x, y, exc)
+            pixel = self._sample_pixel(x, y)
+            if pixel is None:
                 time.sleep(0.1)
                 continue
-
-            r, g, b = pixel
-            tr, tg, tb = target_rgb
-            if abs(r - tr) <= tolerance and abs(g - tg) <= tolerance and abs(b - tb) <= tolerance:
+            if all(abs(a - b) <= tolerance for a, b in zip(pixel, target_rgb)):
                 snap_path = self._capture_color_match_snapshot(x, y)
                 return WaitResult(
                     success=True,
@@ -635,8 +642,20 @@ class SmartWait:
                     change_score=1.0,
                     snapshot_path=snap_path,
                 )
-
             time.sleep(0.1)
+
+    @staticmethod
+    def _sample_pixel(x: int, y: int) -> tuple[int, int, int] | None:
+        """Capture a 2×2 region at (x, y) and return the top-left RGB, or None on error.
+
+        Uses a 2×2 margin because some backends don't support truly 1×1 captures.
+        """
+        try:
+            sample = capture_region(x, y, 2, 2)
+            return sample.getpixel((0, 0))[:3]
+        except (OSError, RuntimeError) as exc:
+            logger.debug("Pixel capture failed at (%d, %d): %s", x, y, exc)
+            return None
 
     @staticmethod
     def _capture_color_match_snapshot(x: int, y: int) -> str | None:
