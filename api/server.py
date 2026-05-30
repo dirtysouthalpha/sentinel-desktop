@@ -246,6 +246,12 @@ class SentinelServer:
 
     def _register_routes(self, app: FastAPI) -> None:
         """Wire all API endpoints onto *app*."""
+        self._register_core_routes(app)
+        self._register_v3_routes(app)
+        self._register_v31_routes(app)
+
+    def _register_core_routes(self, app: FastAPI) -> None:
+        """Register core v1 + v3.0 script/recorder/workflow/scheduler routes."""
         app.post("/goal")(self._handle_goal)
         app.post("/command")(self._handle_command)
         app.get("/screenshot")(self._handle_screenshot)
@@ -257,13 +263,14 @@ class SentinelServer:
         app.put("/config")(self._handle_put_config)
         app.get("/log")(self._handle_log)
         app.post("/stop")(self._handle_stop)
-        # v3.0 — Script Recorder, Script Engine, PowerShell
         app.get("/scripts")(self._handle_scripts_list)
         app.post("/scripts/run")(self._handle_script_run)
         app.post("/powershell")(self._handle_powershell)
         app.post("/recorder/start")(self._handle_recorder_start)
         app.post("/recorder/stop")(self._handle_recorder_stop)
-        # v3.0 Phase 2 — Workflow, Scheduler, Notifications, Plugins
+
+    def _register_v3_routes(self, app: FastAPI) -> None:
+        """Register v3.0 Phase 2-4 routes: workflow, scheduler, auth, agents, vault."""
         app.get("/workflows")(self._handle_workflows_list)
         app.post("/workflows/run")(self._handle_workflow_run)
         app.get("/schedule")(self._handle_schedule_list)
@@ -273,7 +280,6 @@ class SentinelServer:
         app.post("/notify")(self._handle_notify)
         app.get("/plugins")(self._handle_plugins_list)
         app.post("/plugins/reload")(self._handle_plugins_reload)
-        # v3.0 Phase 3+4 — Agent Pool, Auth, Audit, Vault
         app.get("/agents")(self._handle_agents_list)
         app.post("/agents/submit")(self._handle_agents_submit)
         app.post("/agents/cancel")(self._handle_agents_cancel)
@@ -283,7 +289,9 @@ class SentinelServer:
         app.get("/auth/users")(self._handle_auth_users)
         app.get("/audit/export")(self._handle_audit_export)
         app.get("/vault/keys")(self._handle_vault_keys)
-        # v3.1 — System Dashboard, Workflow Builder
+
+    def _register_v31_routes(self, app: FastAPI) -> None:
+        """Register v3.1 dashboard router and workflow builder endpoints."""
         from core.dashboard import router as dashboard_router
         app.include_router(dashboard_router)
         from core.workflow_builder import TEMPLATES, workflow_store

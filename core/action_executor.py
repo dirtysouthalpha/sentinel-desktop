@@ -123,69 +123,59 @@ class ActionExecutor:
         action_type = action.get("action", "").lower()
         params = {k: v for k, v in action.items() if k != "action"}
 
-        # Approval gate
         if self.approval_callback:
             approved = await self.approval_callback(action)
             if not approved:
-                result = {
-                    "success": False,
-                    "output": "Action rejected by user",
-                    "error": "rejected",
-                }
+                result = {"success": False, "output": "Action rejected by user", "error": "rejected"}
                 self._log_entry(action_type, params, result)
                 return result
 
-        # Pre-action hook (overlay etc.).
+        self._fire_pre_action_hook(action)
+
+        if self.dry_run and action_type in STATE_CHANGING_ACTIONS:
+            result = _dry_run_result(action_type, params)
+            self._log_entry(action_type, params, result)
+            return result
+
+        result = await self._dispatch_action_async(action_type, params)
+        self._log_entry(action_type, params, result)
+        return result
+
+    def _fire_pre_action_hook(self, action: dict[str, Any]) -> None:
+        """Invoke pre_action_callback if set, swallowing any exceptions."""
         if self.pre_action_callback is not None:
             try:
                 self.pre_action_callback(action)
             except Exception as exc:
                 logger.debug("pre_action_callback failed: %s", exc)
 
-        # Dry-run short-circuit
-        if self.dry_run and action_type in STATE_CHANGING_ACTIONS:
-            result = _dry_run_result(action_type, params)
-            self._log_entry(action_type, params, result)
-            return result
-
-        # Dispatch
+    async def _dispatch_action_async(
+        self, action_type: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Dispatch *action_type* to its handler with a 60-second timeout."""
         handler = self._dispatch_table.get(action_type)
-        if handler:
-            try:
-                if asyncio.iscoroutinefunction(handler):
-                    result = await asyncio.wait_for(handler(self, **params), timeout=60.0)
-                else:
-                    loop = asyncio.get_event_loop()
-                    result = await asyncio.wait_for(
-                        loop.run_in_executor(None, lambda: handler(self, **params)),
-                        timeout=60.0,
-                    )
-            except asyncio.TimeoutError:
-                result = {"success": False, "output": f"Action '{action_type}' timed out", "error": "timeout"}
-            except Exception as exc:
-                logger.exception("Action '%s' failed", action_type)
-                result = {"success": False, "output": str(exc), "error": type(exc).__name__}
-        else:
-            result = {
-                "success": False,
-                "output": f"Unknown action: {action_type}",
-                "error": "unknown_action",
-            }
-
-        self._log_entry(action_type, params, result)
-        return result
+        if not handler:
+            return {"success": False, "output": f"Unknown action: {action_type}", "error": "unknown_action"}
+        try:
+            if asyncio.iscoroutinefunction(handler):
+                return await asyncio.wait_for(handler(self, **params), timeout=60.0)
+            loop = asyncio.get_event_loop()
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: handler(self, **params)),
+                timeout=60.0,
+            )
+        except asyncio.TimeoutError:
+            return {"success": False, "output": f"Action '{action_type}' timed out", "error": "timeout"}
+        except Exception as exc:
+            logger.exception("Action '%s' failed", action_type)
+            return {"success": False, "output": str(exc), "error": type(exc).__name__}
 
     def execute_sync(self, action: dict[str, Any]) -> dict[str, Any]:
         """Synchronous wrapper — executes action directly (no event loop needed)."""
         action_type = action.get("action", "").lower()
         params = {k: v for k, v in action.items() if k != "action"}
 
-        # Pre-action hook (overlay etc.). Never let UI failures block the agent.
-        if self.pre_action_callback is not None:
-            try:
-                self.pre_action_callback(action)
-            except Exception as exc:
-                logger.debug("pre_action_callback failed: %s", exc)
+        self._fire_pre_action_hook(action)
 
         # Dry-run short-circuit
         if self.dry_run and action_type in STATE_CHANGING_ACTIONS:
