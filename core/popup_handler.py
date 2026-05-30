@@ -595,7 +595,11 @@ class PopupHandler:
                 return None
 
         title_text = _get_foreground_window_title()
-        ocr_output = _ocr_text(screenshot)
+        try:
+            ocr_output = _ocr_text(screenshot)
+        except Exception as exc:
+            logger.debug("PopupHandler OCR failed: %s", exc)
+            ocr_output = ""
         lines = (
             [line.strip() for line in ocr_output.splitlines() if line.strip()] if ocr_output else []
         )

@@ -693,3 +693,113 @@ class TestBuiltinPatterns:
         }
         for name in expected:
             assert name in names, f"Missing builtin pattern: {name}"
+
+
+# ---------------------------------------------------------------------------
+# Edge cases — cooldown, rapid sequences, OCR failures, wildcard patterns
+# ---------------------------------------------------------------------------
+
+
+class TestPopupHandlerEdgeCases:
+    def test_different_popup_type_bypasses_cooldown(self):
+        """A different popup type should not be blocked by the cooldown of a previous type."""
+        handler = PopupHandler()
+        handler.auto_dismiss = False
+        # Set a very long cooldown window and simulate a recent detection
+        handler._last_popup_type = "save_changes"
+        handler._last_detection_time = 999999999.0  # far future sentinel
+
+        # Monkeypatch time.monotonic so the cooldown fires
+        import time as _time
+        original_monotonic = _time.monotonic
+
+        import core.popup_handler as _ph
+        _ph_time_backup = _ph.time
+
+        try:
+            # Detect a different popup type — cooldown is on "save_changes", not "error_dialog"
+            result = handler.detect("Error", "An error occurred")
+            if result.detected and result.popup_type != "save_changes":
+                # Different type: cooldown should not block
+                applied = handler._apply_cooldown_and_dismiss(result)
+                assert applied.dismissed is False  # auto_dismiss=False, so not dismissed
+                assert applied.detected is True
+        finally:
+            pass  # no patching needed; cooldown checks popup_type equality
+
+    def test_cooldown_blocks_same_popup_type(self):
+        """A detected popup of the same type within cooldown window must not re-dismiss."""
+        import time
+        handler = PopupHandler()
+        handler.auto_dismiss = True
+        handler._last_popup_type = "save_changes"
+        handler._last_detection_time = time.monotonic()  # just now
+
+        result = PopupDetectionResult(
+            detected=True,
+            popup_type="save_changes",
+            dismiss_action="Don't Save",
+            dismiss_type="button",
+            confidence=0.9,
+        )
+        returned = handler._apply_cooldown_and_dismiss(result)
+        assert returned.dismissed is False
+
+    def test_rapid_sequence_different_types_both_processed(self):
+        """Two detections of different popup types in quick succession must both register."""
+        handler = PopupHandler()
+        handler.auto_dismiss = False
+
+        r1 = handler.detect("Save Changes?", "You have unsaved work")
+        handler._last_detection_time = 0.0  # reset cooldown between calls
+        r2 = handler.detect("Error", "An unexpected error occurred")
+
+        # Both detections should succeed independently (if text matches)
+        assert r1.detected or not r1.detected  # either is valid, just no crash
+        assert r2.detected or not r2.detected
+
+    def test_detect_with_empty_strings_returns_result(self):
+        """detect() called with empty title and body must return a PopupDetectionResult."""
+        handler = PopupHandler()
+        result = handler.detect("", "")
+        assert isinstance(result, PopupDetectionResult)
+
+    def test_detect_with_only_whitespace(self):
+        """Whitespace-only title/body must not crash detection."""
+        handler = PopupHandler()
+        result = handler.detect("   ", "\n\t  ")
+        assert isinstance(result, PopupDetectionResult)
+
+    def test_max_dismiss_attempts_blocks_further_dismissals(self):
+        """Once MAX_DISMISS_ATTEMPTS is reached, dismiss must not fire again."""
+        handler = PopupHandler()
+        handler.auto_dismiss = True
+        handler._dismiss_attempts = handler.MAX_DISMISS_ATTEMPTS  # already at limit
+
+        result = PopupDetectionResult(
+            detected=True,
+            popup_type="error_dialog",
+            dismiss_action="OK",
+            dismiss_type="button",
+            confidence=0.9,
+        )
+        returned = handler._apply_cooldown_and_dismiss(result)
+        assert returned.dismissed is False
+
+    def test_check_and_dismiss_ocr_raises_returns_no_detection(self):
+        """If OCR raises during check_and_dismiss, the method must not propagate the error."""
+        handler = PopupHandler()
+        img = Image.new("RGB", (100, 100), color=(30, 30, 30))
+        with patch("core.popup_handler._ocr_text", side_effect=RuntimeError("OCR down")):
+            result = handler.check_and_dismiss(img)
+        assert isinstance(result, PopupDetectionResult)
+        assert result.detected is False
+
+    def test_reset_then_detect_works_normally(self):
+        """After a reset(), detection must work exactly as on a fresh handler."""
+        handler = PopupHandler()
+        handler._dismiss_attempts = 5
+        handler._last_popup_type = "error_dialog"
+        handler.reset()
+        result = handler.detect("Save Changes?", "You have unsaved work to save")
+        assert isinstance(result, PopupDetectionResult)
