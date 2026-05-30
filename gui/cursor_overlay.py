@@ -98,61 +98,9 @@ class CursorOverlay:
         """Background Tk mainloop."""
         import tkinter as tk
 
-        self._root = tk.Tk()
-        self._root.overrideredirect(True)
-        self._root.attributes("-topmost", True)
-        self._root.attributes("-alpha", 0.0)  # Start invisible
-
-        # Make click-through on Windows
-        try:
-            self._root.wm_attributes("-transparentcolor", "white")
-        except (RuntimeError, tk.TclError) as exc:
-            logger.debug("Transparent color attribute not supported: %s", exc)
-
-        # Create canvas covering the full screen
-        screen_w = self._root.winfo_screenwidth()
-        screen_h = self._root.winfo_screenheight()
-        self._root.geometry(f"{screen_w}x{screen_h}+0+0")
-
-        self._canvas = tk.Canvas(
-            self._root,
-            width=screen_w,
-            height=screen_h,
-            bg="white",
-            highlightthickness=0,
-        )
-        self._canvas.pack()
-
-        # Create ring elements (initially off-screen)
-        self._ring_id = self._canvas.create_oval(
-            -100,
-            -100,
-            -100,
-            -100,
-            outline=self._accent,
-            width=3,
-        )
-        self._inner_id = self._canvas.create_oval(
-            -100,
-            -100,
-            -100,
-            -100,
-            fill=self._accent,
-            outline="",
-        )
-        self._label_id = self._canvas.create_text(
-            -100,
-            -100,
-            text="",
-            fill="white",
-            font=("Segoe UI", 9, "bold"),
-            anchor="s",
-        )
-
-        # Make window click-through on Windows via ctypes
+        screen_w, screen_h = self._setup_tk_window(tk)
+        self._create_canvas_and_rings(tk, screen_w, screen_h)
         self._make_click_through()
-
-        # Start processing queue
         self._root.after(50, self._process_queue)
 
         try:
@@ -161,6 +109,45 @@ class CursorOverlay:
             logger.debug("Cursor overlay mainloop exited: %s", exc)
         finally:
             self._running = False
+
+    def _setup_tk_window(self, tk: Any) -> tuple[int, int]:
+        """Create the Tk root as a transparent full-screen overlay.
+
+        Returns:
+            (screen_width, screen_height) in pixels.
+        """
+        self._root = tk.Tk()
+        self._root.overrideredirect(True)
+        self._root.attributes("-topmost", True)
+        self._root.attributes("-alpha", 0.0)
+        try:
+            self._root.wm_attributes("-transparentcolor", "white")
+        except (RuntimeError, tk.TclError) as exc:
+            logger.debug("Transparent color attribute not supported: %s", exc)
+        screen_w = self._root.winfo_screenwidth()
+        screen_h = self._root.winfo_screenheight()
+        self._root.geometry(f"{screen_w}x{screen_h}+0+0")
+        return screen_w, screen_h
+
+    def _create_canvas_and_rings(self, tk: Any, screen_w: int, screen_h: int) -> None:
+        """Create the full-screen canvas and the three ring canvas items."""
+        self._canvas = tk.Canvas(
+            self._root,
+            width=screen_w,
+            height=screen_h,
+            bg="white",
+            highlightthickness=0,
+        )
+        self._canvas.pack()
+        self._ring_id = self._canvas.create_oval(
+            -100, -100, -100, -100, outline=self._accent, width=3
+        )
+        self._inner_id = self._canvas.create_oval(
+            -100, -100, -100, -100, fill=self._accent, outline=""
+        )
+        self._label_id = self._canvas.create_text(
+            -100, -100, text="", fill="white", font=("Segoe UI", 9, "bold"), anchor="s"
+        )
 
     def _make_click_through(self) -> None:
         """Set WS_EX_TRANSPARENT | WS_EX_LAYERED on Windows for click-through."""

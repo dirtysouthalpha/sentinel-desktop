@@ -445,48 +445,9 @@ class SentinelApp:
         """Thread target: run the agent and update the UI when done."""
         try:
             result = self.engine.run(goal)
-            steps = result.get("steps", 0)
-            notes = result.get("notes") or []
-            summary = result.get("finish_summary") or ""
-
-            if result.get("error"):
-                for n in notes:
-                    self._add_chat(f"❌ {n}", "error")
-            elif steps == 0 and notes and not summary:
-                for n in notes:
-                    self._add_chat(f"⚠ {n}", "error")
-            else:
-                self._add_chat(
-                    f"✅ Completed in {steps} step{'' if steps == 1 else 's'}."
-                    + (f"\n{summary}" if summary else ""),
-                    "assistant",
-                )
-                if self.tray:
-                    try:
-                        self.tray.notify(
-                            "Sentinel Desktop",
-                            f"Finished in {steps} steps. " + (summary[:120] if summary else ""),
-                        )
-                    except (OSError, RuntimeError) as exc:
-                        logger.debug("Tray notification failed: %s", exc)
+            self._handle_agent_result(result)
         except (OSError, RuntimeError, ValueError) as e:
-            import traceback
-
-            tb = traceback.format_exc()
-            self._add_chat(f"❌ {type(e).__name__}: {e}", "error")
-            log_path = (
-                Path(os.environ.get("APPDATA", str(Path.home())))
-                / "SentinelDesktop"
-                / "last_error.log"
-            )
-            try:
-                log_path.parent.mkdir(parents=True, exist_ok=True)
-                with log_path.open("w", encoding="utf-8") as f:
-                    f.write(f"Goal: {goal}\n\n{tb}\n")
-                self._add_chat(f"   Full traceback saved to: {log_path}", "system")
-            except (OSError, RuntimeError) as exc2:
-                logger.debug("Failed to write error log: %s", exc2)
-            logger.exception("Agent run crashed")
+            self._handle_agent_error(e, goal)
         finally:
             if self.engine:
                 self.engine.running = False
@@ -497,6 +458,53 @@ class SentinelApp:
                     text_color=self._t("status_idle", "#849495"),
                 ),
             )
+
+    def _handle_agent_result(self, result: dict) -> None:
+        """Process a completed agent result and update the chat UI."""
+        steps = result.get("steps", 0)
+        notes = result.get("notes") or []
+        summary = result.get("finish_summary") or ""
+
+        if result.get("error"):
+            for n in notes:
+                self._add_chat(f"❌ {n}", "error")
+        elif steps == 0 and notes and not summary:
+            for n in notes:
+                self._add_chat(f"⚠ {n}", "error")
+        else:
+            self._add_chat(
+                f"✅ Completed in {steps} step{'' if steps == 1 else 's'}."
+                + (f"\n{summary}" if summary else ""),
+                "assistant",
+            )
+            if self.tray:
+                try:
+                    self.tray.notify(
+                        "Sentinel Desktop",
+                        f"Finished in {steps} steps. " + (summary[:120] if summary else ""),
+                    )
+                except (OSError, RuntimeError) as exc:
+                    logger.debug("Tray notification failed: %s", exc)
+
+    def _handle_agent_error(self, exc: Exception, goal: str) -> None:
+        """Log a crashed agent run and write a traceback file."""
+        import traceback
+
+        tb = traceback.format_exc()
+        self._add_chat(f"❌ {type(exc).__name__}: {exc}", "error")
+        log_path = (
+            Path(os.environ.get("APPDATA", str(Path.home())))
+            / "SentinelDesktop"
+            / "last_error.log"
+        )
+        try:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with log_path.open("w", encoding="utf-8") as f:
+                f.write(f"Goal: {goal}\n\n{tb}\n")
+            self._add_chat(f"   Full traceback saved to: {log_path}", "system")
+        except (OSError, RuntimeError) as exc2:
+            logger.debug("Failed to write error log: %s", exc2)
+        logger.exception("Agent run crashed")
 
     def _update_step_labels(self, step: int) -> None:
         """Main-thread helper for updating the step/notes labels."""
