@@ -177,9 +177,8 @@ class TestOcrImageCacheHit:
         ocr._TESSERACT_OK = True
         ocr._pytesseract = MagicMock()
         img = Image.new("RGB", (10, 10))
-        # Pre-populate the cache with a known key
-        preprocessed = ocr.preprocess_for_ocr(img)
-        cache_key = ocr._image_cache_key(preprocessed)
+        # Pre-populate using the raw-image key (cache key is now computed before preprocessing)
+        cache_key = ocr._image_cache_key(img, preprocess=True)
         ocr._ocr_cache[cache_key] = ("cached result", {}, time.monotonic())
         # _ocr_image should return the cached text without calling tesseract
         result = ocr._ocr_image(img, preprocess=True)
@@ -310,8 +309,8 @@ class TestOcrImageWithConfidence:
         ocr._TESSERACT_OK = True
         ocr._pytesseract = MagicMock()
         img = Image.new("RGB", (10, 10))
-        preprocessed = ocr.preprocess_for_ocr(img)
-        cache_key = ocr._image_cache_key(preprocessed)
+        # Pre-populate using the raw-image key (cache key is now computed before preprocessing)
+        cache_key = ocr._image_cache_key(img, preprocess=True)
         cached_conf = {
             "avg_confidence": 85.0,
             "word_count": 3,

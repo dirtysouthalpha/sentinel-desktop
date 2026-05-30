@@ -78,17 +78,17 @@ def _have_tesseract() -> bool:
     return _TESSERACT_OK
 
 
-def _image_cache_key(img: Image.Image) -> str:
-    """Lightweight cache key: dimensions + mode + 4×4 sampled pixel grid."""
+def _image_cache_key(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
+    """Lightweight cache key: dimensions + mode + 4×4 sampled pixel grid + preprocess flag."""
     w, h = img.size
     try:
         # 16-point grid sample reduces false cache-hit probability
         xs = [w * i // 5 for i in range(1, 5)]
         ys = [h * i // 5 for i in range(1, 5)]
         samples = [img.getpixel((x, y)) for x in xs for y in ys]
-        fingerprint = f"{w}x{h}:{img.mode}:{samples}"
+        fingerprint = f"{w}x{h}:{img.mode}:{samples}:{preprocess}"
     except (IndexError, OSError):
-        fingerprint = f"{w}x{h}:{img.mode}"
+        fingerprint = f"{w}x{h}:{img.mode}:{preprocess}"
     return hashlib.md5(fingerprint.encode()).hexdigest()  # noqa: S324
 
 
@@ -166,21 +166,16 @@ def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
     if not _have_tesseract():
         return ""
     try:
-        # Downsample if resolution is too high
         img = _downsample_if_needed(img)
-        target = preprocess_for_ocr(img) if preprocess else img
-
-        # Check cache
-        cache_key = _image_cache_key(target)
+        # Key on the downsampled raw image so preprocessing is skipped on cache hits.
+        cache_key = _image_cache_key(img, preprocess)
         cached = _check_cache(cache_key)
         if cached is not None:
             return cached[0]
 
+        target = preprocess_for_ocr(img) if preprocess else img
         result = _pytesseract.image_to_string(target)  # type: ignore[union-attr]
-
-        # Store in cache
         _store_cache(cache_key, result, {})
-
         return result
     except (OSError, RuntimeError) as exc:
         logger.warning("Tesseract failed: %s", exc)
@@ -236,28 +231,21 @@ def _ocr_image_with_confidence(
     if not _have_tesseract():
         return ("", empty_conf)
     try:
-        # Downsample if resolution is too high
         img = _downsample_if_needed(img)
-        target = preprocess_for_ocr(img) if preprocess else img
-
-        # Check cache
-        cache_key = _image_cache_key(target)
+        # Key on the downsampled raw image so preprocessing is skipped on cache hits.
+        cache_key = _image_cache_key(img, preprocess)
         cached = _check_cache(cache_key)
         if cached is not None:
             return cached
 
-        # Get both text and detailed data for confidence scoring
+        target = preprocess_for_ocr(img) if preprocess else img
         text = _pytesseract.image_to_string(target)  # type: ignore[union-attr]
         data = _pytesseract.image_to_data(  # type: ignore[union-attr]
             target,
             output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
         )
-
         conf_data = _extract_confidence_data(data)
-
-        # Store in cache
         _store_cache(cache_key, text, conf_data)
-
         return (text, conf_data)
     except (OSError, RuntimeError) as exc:
         logger.warning("Tesseract (with confidence) failed: %s", exc)
