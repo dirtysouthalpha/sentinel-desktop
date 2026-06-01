@@ -602,7 +602,8 @@ class SentinelServer:
 
         wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
         try:
-            result = wf.run_workflow(req.path, req.variables)
+            # run_workflow() replays multi-step workflows with delays; offload to thread.
+            result = await asyncio.to_thread(wf.run_workflow, req.path, req.variables)
         except (OSError, ValueError) as exc:
             logger.exception("Workflow execution failed")
             raise HTTPException(500, f"Workflow execution failed: {exc}") from exc
