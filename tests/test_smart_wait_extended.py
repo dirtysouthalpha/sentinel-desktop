@@ -375,14 +375,10 @@ class TestWaitForText:
     @patch("core.smart_wait._save_snapshot", return_value="/tmp/snap.png")
     @patch("core.ocr.read_screen_text", return_value="Hello World")
     def test_text_found_immediately(self, mock_ocr, mock_snap, mock_cap, sw):
-        # Need to patch the import inside the method
-        with patch.dict("sys.modules", {"core.ocr": MagicMock(
-            read_screen_text=mock_ocr, _ocr_image=MagicMock()
-        )}):
-            # Since OCR import happens inside the method, mock it
-            pass
-        # Alternative: just test the empty/whitespace path which doesn't need OCR
-        # Already covered above
+        # Test OCR text detection with mocked OCR response
+        result = sw.wait_for_text(text="Hello World", timeout=2)
+        assert result.success is True
+        assert result.frames_checked == 1
 
     def test_whitespace_only_returns_failure(self, sw):
         result = sw.wait_for_text(text="\t\n ", timeout=2)
