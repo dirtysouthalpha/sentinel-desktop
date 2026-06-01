@@ -32,6 +32,14 @@ SENSITIVE_FIELDS = [
     "pin",
 ]
 
+# Click constants
+DOUBLE_CLICK_COUNT = 2
+
+# Preview/sanitization length limits
+MAX_PREVIEW_LENGTH = 200
+MAX_STRING_VALUE_LENGTH = 200
+MAX_COLLECTION_STRING_LENGTH = 500
+
 # Actions that *change state* on the user's machine. In dry-run mode these
 # are logged instead of executed. Read-only actions (screenshot, find_image,
 # list_*, system_info, read_file, clipboard_read, note) still run for real
@@ -245,13 +253,13 @@ class ActionExecutor:
             # In stealth mode, try the no-cursor-move path first.
             if self.stealth and stealth_input.is_available():
                 if stealth_input.post_click(sx, sy, button=button):
-                    desc = f"{'Double-clicked' if clicks == 2 else 'Right-clicked' if button == 'right' else 'Clicked'}"
+                    desc = f"{'Double-clicked' if clicks == DOUBLE_CLICK_COUNT else 'Right-clicked' if button == 'right' else 'Clicked'}"
                     return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
                 # PostMessage failed; fall through to physical click.
             self._desktop.click(sx, sy, button=button, clicks=clicks)
             desc = (
                 "Double-clicked"
-                if clicks == 2
+                if clicks == DOUBLE_CLICK_COUNT
                 else "Right-clicked"
                 if button == "right"
                 else "Clicked"
@@ -1234,8 +1242,8 @@ class ActionExecutor:
 def _dry_run_result(action_type: str, params: dict) -> dict:
     """Return a synthetic success result for a state-changing action in dry-run mode."""
     preview = ", ".join(f"{k}={v!r}" for k, v in list(params.items())[:4])
-    if len(preview) > 200:
-        preview = preview[:200] + "…"
+    if len(preview) > MAX_PREVIEW_LENGTH:
+        preview = preview[:MAX_PREVIEW_LENGTH] + "…"
     msg = f"[DRY-RUN] would have run {action_type}({preview})"
     logger.info(msg)
     return {"success": True, "output": msg, "dry_run": True}
@@ -1257,9 +1265,9 @@ def _sanitize_params(params: dict) -> dict:
     """Remove potentially large data from params for logging."""
     sanitized = {}
     for k, v in params.items():
-        if isinstance(v, str) and len(v) > 200:
-            sanitized[k] = v[:200] + "..."
-        elif isinstance(v, (list, dict)) and len(str(v)) > 500:
+        if isinstance(v, str) and len(v) > MAX_STRING_VALUE_LENGTH:
+            sanitized[k] = v[:MAX_STRING_VALUE_LENGTH] + "..."
+        elif isinstance(v, (list, dict)) and len(str(v)) > MAX_COLLECTION_STRING_LENGTH:
             sanitized[k] = f"<{type(v).__name__} len={len(v)}>"
         else:
             sanitized[k] = v
