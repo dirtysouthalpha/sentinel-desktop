@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Command palette (Ctrl+K).
+"""Sentinel Desktop v2 — Command palette (Ctrl+K).
 
 Fuzzy-searchable command palette matching Sentinel Override's ⌘K UX.
 Provides quick access to: New Chat, Export Log, Clear Chat, Toggle Theme,
@@ -42,6 +41,7 @@ class Command:
             category: Category label for grouping (e.g. ``"Agent"``).
             handler: Callable invoked when the command is executed.
             keywords: Additional search terms for fuzzy matching.
+
         """
         self.name = name
         self.shortcut = shortcut
@@ -82,8 +82,7 @@ class Command:
 
 
 class CommandPalette:
-    """
-    Manages the command registry and search logic.
+    """Manages the command registry and search logic.
     The actual popup UI is rendered by the GUI layer.
     """
 
@@ -343,8 +342,7 @@ def _register_it_quick_actions(p: CommandPalette, app: SentinelApp) -> None:
 
 
 def create_default_palette(app: SentinelApp) -> CommandPalette:
-    """
-    Create and register all default commands for the Sentinel Desktop app.
+    """Create and register all default commands for the Sentinel Desktop app.
     `app` is the SentinelApp instance (gui/app.py).
     """
     p = CommandPalette()

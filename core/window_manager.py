@@ -303,7 +303,8 @@ def restore_window_hwnd(hwnd: int) -> bool:
 
 def restore_window(title: str) -> bool:
     """Restore a window by partial title match. Returns True if a match was
-    found and the restore call was issued."""
+    found and the restore call was issued.
+    """
     if not title:
         return False
     needle = title.lower()

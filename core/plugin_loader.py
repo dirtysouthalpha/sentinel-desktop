@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Plugin Loader.
+"""Sentinel Desktop v2 — Plugin Loader.
 
 Discovers, loads, and manages .py plugin files from a configurable plugin
 directory.  Each plugin is a regular Python module that exposes four module-
@@ -88,6 +87,7 @@ class PluginAPI:
         Commands registered by the owning plugin.
     settings : list[PluginSetting]
         Settings registered by the owning plugin.
+
     """
 
     def __init__(
@@ -105,6 +105,7 @@ class PluginAPI:
             config: Global configuration dict forwarded from the loader.
             log_callback: Optional callable for plugin-level log messages.
                 Defaults to the module logger.
+
         """
         self._plugin_name = plugin_name
         self._engine = engine
@@ -131,6 +132,7 @@ class PluginAPI:
             must return a dict with at least ``{"success": bool}``.
         description : str
             Human-readable description shown in the action catalogue.
+
         """
         if not callable(handler):
             raise TypeError(f"handler for action '{name}' must be callable")
@@ -156,6 +158,7 @@ class PluginAPI:
             ``handler(text: str) -> dict``
         keywords : list[str]
             Words/phrases that trigger this command.
+
         """
         if not callable(handler):
             raise TypeError(f"handler for command '{name}' must be callable")
@@ -179,6 +182,7 @@ class PluginAPI:
             Default value when the user hasn't configured one.
         label : str
             Human-readable label for the settings UI.
+
         """
         self.settings.append(
             PluginSetting(
@@ -240,6 +244,7 @@ class PluginLoader:
         :meth:`PluginAPI.get_engine`.
     config : dict, optional
         Global configuration dict forwarded to plugins.
+
     """
 
     def __init__(
@@ -254,6 +259,7 @@ class PluginLoader:
             plugin_dir: Directory scanned for plugin packages.
             engine: The :class:`AgentEngine` instance forwarded to each plugin.
             config: Global configuration dict forwarded to each plugin.
+
         """
         self._plugin_dir = Path(plugin_dir)
         self._engine = engine

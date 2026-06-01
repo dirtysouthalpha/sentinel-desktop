@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Sound notifications.
+"""Sentinel Desktop v2 — Sound notifications.
 
 Plays audio alerts when the agent finishes a run (success or error),
 when MFA is detected, or on other significant events. Uses winsound on
@@ -18,8 +17,7 @@ _IS_WINDOWS = platform.system() == "Windows"
 
 
 def play_sound(sound_type: str = "complete", blocking: bool = False) -> None:
-    """
-    Play a notification sound.
+    """Play a notification sound.
 
     sound_type: "complete" | "error" | "mfa" | "approval" | "click"
     blocking: if True, wait for sound to finish

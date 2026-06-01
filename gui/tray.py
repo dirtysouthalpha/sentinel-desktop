@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — System tray integration (legacy).
+"""Sentinel Desktop v2 — System tray integration (legacy).
 
 .. deprecated:: 3.1.0
     This module is superseded by :mod:`gui.system_tray` which provides a
@@ -78,6 +77,7 @@ class SentinelTray:
             on_hide: Called when the user clicks "Hide Window".
             on_stop_agent: Called when the user clicks "Stop Agent".
             on_quit: Called when the user clicks "Quit".
+
         """
         self._on_show = on_show
         self._on_hide = on_hide
@@ -88,7 +88,8 @@ class SentinelTray:
 
     def run(self) -> bool:
         """Start the tray icon. Returns True if it's running; False if pystray
-        isn't available."""
+        isn't available.
+        """
         if not _HAS_TRAY:
             return False
 

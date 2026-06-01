@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Action Recorder
+"""Sentinel Desktop v3.0 — Action Recorder
 
 Records user / agent actions into replayable Script objects that can be
 serialized to JSON, parameterized, and shared.
@@ -53,6 +52,7 @@ class Script:
             tags: Optional list of categorisation tags.
             parameters: Optional list of user-fillable parameter dicts.
             steps: Optional pre-populated list of action step dicts.
+
         """
         self.name = name
         self.description = description
@@ -122,8 +122,7 @@ class Script:
 
 
 class ActionRecorder:
-    """
-    Hooks into the agent loop to capture each action + result into a
+    """Hooks into the agent loop to capture each action + result into a
     replayable Script.
 
     Usage::
@@ -154,14 +153,14 @@ class ActionRecorder:
             return self._recording
 
     def start_recording(self, goal_description: str = "") -> None:
-        """
-        Begin a new recording session.
+        """Begin a new recording session.
 
         Parameters
         ----------
         goal_description:
             Optional human-readable goal (e.g. "Submit an expense report").
             Used to auto-generate the script name / description later.
+
         """
         with self._lock:
             if self._recording:
@@ -173,8 +172,7 @@ class ActionRecorder:
             self._last_action_time = self._start_time
 
     def capture_action(self, action: dict[str, Any], result: dict[str, Any]) -> None:
-        """
-        Record a single action + its result captured from the agent loop.
+        """Record a single action + its result captured from the agent loop.
 
         Parameters
         ----------
@@ -184,6 +182,7 @@ class ActionRecorder:
         result:
             Dict with result metadata.  May contain ``"screenshot"`` (raw
             bytes or base64 string), ``"summary"``, etc.
+
         """
         now = time.monotonic()
         with self._lock:
@@ -218,8 +217,7 @@ class ActionRecorder:
             self._steps.append(step)
 
     def stop_recording(self) -> Script:
-        """
-        Stop recording and return a fully-populated :class:`Script`.
+        """Stop recording and return a fully-populated :class:`Script`.
 
         The method auto-detects repeated text values across steps and
         promotes them to script parameters, and generates a natural
@@ -258,8 +256,7 @@ class ActionRecorder:
 
     @staticmethod
     def list_scripts(directory: str) -> list[dict[str, Any]]:
-        """
-        Scan *directory* for ``.json`` files and return a list of dicts
+        """Scan *directory* for ``.json`` files and return a list of dicts
         ``{"name": ..., "description": ..., "tags": [...], "path": ...}``.
         """
         results: list[dict[str, Any]] = []
@@ -287,8 +284,7 @@ class ActionRecorder:
 
     @staticmethod
     def generate_description(steps: list[dict[str, Any]]) -> str:
-        """
-        Auto-generate a natural-language description from recorded steps.
+        """Auto-generate a natural-language description from recorded steps.
 
         Produces a single sentence or short paragraph such as:
         "Automates 5 steps: click on 'File' menu, type 'budget.xlsx' into
@@ -396,8 +392,7 @@ class ActionRecorder:
 
     @staticmethod
     def _detect_parameters(steps: list[dict[str, Any]]) -> list[dict[str, str]]:
-        """
-        Auto-detect repeated text values across steps and suggest
+        """Auto-detect repeated text values across steps and suggest
         parameterizing them.
 
         If the same string appears in two or more steps (inside ``params``
@@ -427,8 +422,7 @@ class ActionRecorder:
 
     @staticmethod
     def _finalise_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """
-        Strip internal-only fields so the serialized JSON matches the
+        """Strip internal-only fields so the serialized JSON matches the
         canonical schema (``action``, ``params``, ``description``,
         ``wait_after_ms``, ``screenshot_hash``).
         """

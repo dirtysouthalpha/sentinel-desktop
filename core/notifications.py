@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Multi-Channel Notification System.
+"""Sentinel Desktop v3.0 — Multi-Channel Notification System.
 
 Provides desktop and remote notifications for task completion, errors,
 and status updates across five channels:
@@ -173,6 +172,7 @@ class NotificationManager:
         ``discord_webhook``  str | None   Discord webhook URL
         ``toast_enabled``    bool         Enable Windows toast (default auto)
         =================== ============= ===================================
+
     """
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -181,6 +181,7 @@ class NotificationManager:
         Args:
             config: Mapping of config keys to values. See class docstring for
                 recognised keys (``webhook_url``, ``email_to``, etc.).
+
         """
         self._config: dict[str, Any] = {
             "enabled_channels": ["log"],
@@ -239,6 +240,7 @@ class NotificationManager:
         bool
             ``True`` if **every** requested channel succeeded.  ``False``
             means at least one channel failed (log always succeeds).
+
         """
         if level not in VALID_LEVELS:
             logger.warning(
@@ -270,6 +272,7 @@ class NotificationManager:
         Returns:
             True on success, False on failure, None if skipped (unknown
             channel or rate-limited).
+
         """
         handler = self._dispatch_map().get(ch)
         if handler is None:
@@ -332,6 +335,7 @@ class NotificationManager:
         ------
         ValueError
             If *channel* is not a recognised channel name.
+
         """
         handler = self._dispatch_map().get(channel)
         if handler is None:
@@ -545,6 +549,7 @@ class NotificationManager:
 
         Returns:
             ``(host, port)`` on success, ``(None, error_message)`` on failure.
+
         """
         parts = smtp_server.rsplit(":", 1)
         host = parts[0]

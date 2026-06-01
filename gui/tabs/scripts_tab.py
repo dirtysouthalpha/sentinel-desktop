@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Script Library tab.
+"""Sentinel Desktop v3.0 — Script Library tab.
 
 Two-panel layout: browseable/searchable script list on the left,
 script detail + parameter entry + run controls on the right.
@@ -34,6 +33,7 @@ class ScriptsTab:
         Args:
             parent_frame: Parent frame to embed the tab into.
             app: Main :class:`SentinelApp` instance for theme and callbacks.
+
         """
         self.app = app
         self._t = app._t

@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.1 -- Self-healing Recovery Engine.
+"""Sentinel Desktop v3.1 -- Self-healing Recovery Engine.
 
 Analyzes action failures and suggests recovery strategies so the agent
 loop can keep making progress instead of terminating on every error.
@@ -332,6 +331,7 @@ class RecoveryEngine:
 
         Returns:
             A :class:`RecoverySuggestion` with the best recovery strategy.
+
         """
         context = context or {}
         error_msg = str(error)

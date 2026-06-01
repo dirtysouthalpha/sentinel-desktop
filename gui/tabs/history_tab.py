@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — History Tab
+"""Sentinel Desktop v3.0 — History Tab
 Run history browser with session replay and log export.
 """
 
@@ -23,6 +22,7 @@ class HistoryTab(ctk.CTkFrame):
         Args:
             parent: Parent frame to embed this tab in.
             app: Main :class:`SentinelApp` instance for theme access.
+
         """
         super().__init__(parent, fg_color="transparent")
         self.app = app

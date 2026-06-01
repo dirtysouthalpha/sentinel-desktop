@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Main GUI Application.
+"""Sentinel Desktop v2 — Main GUI Application.
 
 Dark-themed customtkinter interface with chat, live screenshot, and settings.
 """
@@ -35,6 +34,7 @@ class SentinelApp:
         Args:
             config: Application :class:`Config` instance used to load and
                 persist runtime settings.
+
         """
         self.config = config
         self.cfg = config.load()
@@ -894,6 +894,7 @@ class SettingsWindow:
             config: Application :class:`Config` used to load and save settings.
             on_save: Optional callback invoked after the user saves changes.
             app: Reference to the main :class:`SentinelApp` (for live reload).
+
         """
         self.config = config
         self.cfg = config.load()

@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop — Virtual Desktop isolation layer.
+"""Sentinel Desktop — Virtual Desktop isolation layer.
 
 Creates a separate Windows desktop object via the Win32 API so the agent can
 operate applications on its own desktop without interfering with the user's
@@ -157,6 +156,7 @@ class _Win32VirtualDesktop:
 
         Args:
             name: Logical name used when creating the Win32 desktop object.
+
         """
         self._name = name
         self._handle: int | None = None
@@ -601,6 +601,7 @@ class _StubVirtualDesktop:
 
         Args:
             name: Logical name (stored for introspection; not used by Win32).
+
         """
         self._name = name
         logger.warning(
@@ -732,6 +733,7 @@ class VirtualDesktop:
 
         Args:
             name: Logical name for the virtual desktop object.
+
         """
         self._name = name
         self._impl: Any | None = None
@@ -786,6 +788,7 @@ class VirtualDesktop:
 
         Returns:
             Dict with ``success``, ``pid``, ``output`` keys.
+
         """
         return self._impl.launch_app(path, args)
 

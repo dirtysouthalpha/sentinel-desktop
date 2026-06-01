@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop — Multi-Agent Parallel Execution Pool.
+"""Sentinel Desktop — Multi-Agent Parallel Execution Pool.
 
 Manages multiple concurrent agent sessions, each running in its own thread
 with a dedicated AgentEngine and isolated VirtualDesktop.  A dispatcher
@@ -129,6 +128,7 @@ class AgentPool:
     on_session_complete:
         Optional callback ``f(session_dict)`` invoked (from the agent thread)
         when a session finishes — either successfully or with an error.
+
     """
 
     def __init__(
@@ -142,6 +142,7 @@ class AgentPool:
             max_agents: Maximum number of agent sessions that may run concurrently.
             on_session_complete: Optional callback invoked (from the agent thread)
                 when a session finishes — either successfully or with an error.
+
         """
         if max_agents < 1:
             raise ValueError("max_agents must be >= 1")
@@ -194,6 +195,7 @@ class AgentPool:
             ``provider``, ``api_key``, ``model``, ``max_steps``, etc.
         priority:
             One of ``"urgent"``, ``"normal"``, ``"background"``.
+
         """
         if priority not in _VALID_PRIORITIES:
             raise ValueError(f"Invalid priority {priority!r}; choose from {_VALID_PRIORITIES}")
@@ -302,6 +304,7 @@ class AgentPool:
         timeout:
             Maximum seconds to wait for each running thread when *wait* is
             ``True``.
+
         """
         logger.info("AgentPool shutdown requested")
         with self._lock:
@@ -573,6 +576,7 @@ class AgentPool:
         -------
         int
             Number of sessions removed.
+
         """
         removed = 0
         with self._lock:

@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop — System Dashboard API.
+"""Sentinel Desktop — System Dashboard API.
 Real-time system health metrics endpoint.
 """
 

@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Recorder Panel
+"""Sentinel Desktop v3.0 — Recorder Panel
 
 Horizontal toolbar providing record / stop / play controls for the
 action recorder and script engine.  Sits at the top of the input area
@@ -35,6 +34,7 @@ class RecorderPanel(ctk.CTkFrame):
         Args:
             parent: Parent frame to attach this panel to.
             app: Main :class:`SentinelApp` instance (for callbacks and theme).
+
         """
         super().__init__(parent, height=40, corner_radius=4)
         self.app = app

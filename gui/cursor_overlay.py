@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Animated cursor overlay.
+"""Sentinel Desktop v2 — Animated cursor overlay.
 
 Renders a transparent, click-through, always-on-top ring that glides to
 the location of every agent action. This is the desktop equivalent of
@@ -35,8 +34,7 @@ def _ease_out(t: float) -> float:
 
 
 class CursorOverlay:
-    """
-    Owns a hidden Tk root on a background thread and renders an animated
+    """Owns a hidden Tk root on a background thread and renders an animated
     cursor overlay. Thread-safe — call show_action() from any thread.
     """
 
@@ -45,6 +43,7 @@ class CursorOverlay:
 
         Args:
             accent_color: Hex color string for the cursor ring and label.
+
         """
         self._accent = accent_color
         self._thread: threading.Thread | None = None
@@ -115,6 +114,7 @@ class CursorOverlay:
 
         Returns:
             (screen_width, screen_height) in pixels.
+
         """
         self._root = tk.Tk()
         self._root.overrideredirect(True)

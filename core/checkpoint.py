@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Checkpoint save/restore for the agent loop.
+"""Sentinel Desktop v2 — Checkpoint save/restore for the agent loop.
 
 Provides crash-resume capability: if the app crashes, the user closes it,
 or the agent times out, they can resume exactly where they left off. This
@@ -110,6 +109,7 @@ class CheckpointManager:
         Args:
             checkpoint_dir: Directory for checkpoint files. Defaults to
                 ``config/checkpoints``.
+
         """
         self._lock = threading.Lock()
         self._dir = Path(checkpoint_dir) if checkpoint_dir else _CHECKPOINT_DIR
@@ -148,6 +148,7 @@ class CheckpointManager:
 
         Returns:
             The checkpoint ``id`` (UUID string).
+
         """
         if status not in _VALID_STATUSES:
             logger.warning("Invalid checkpoint status %r — defaulting to 'running'", status)

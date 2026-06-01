@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.1 — OCR (text-on-screen) utilities.
+"""Sentinel Desktop v3.1 — OCR (text-on-screen) utilities.
 
 Uses ``pytesseract`` when Tesseract is installed on the host.  With Tesseract
 the agent gains:
@@ -257,6 +256,7 @@ def _ocr_image_with_confidence(
         - word_count: number of words detected
         - low_confidence_words: list of words with confidence < 50
         - low_confidence_regions: list of (text, confidence) for low-confidence words
+
     """
     empty_conf = {
         "avg_confidence": 0.0,
@@ -306,6 +306,7 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
         text: The OCR text output.
         confidence_data: Optional dict from _ocr_image_with_confidence with
             avg_confidence, low_confidence_words, etc.
+
     """
     if not text or not text.strip():
         return True
@@ -393,7 +394,8 @@ def read_focused_window_text() -> str:
 
 def read_focused_window_text_with_title() -> tuple[str, str]:
     """Return (text, title) of the OCR'd window so callers can surface what
-    window was actually read. Useful for debugging multi-monitor confusion."""
+    window was actually read. Useful for debugging multi-monitor confusion.
+    """
     if not _have_tesseract():
         return ("", "")
     try:
@@ -461,6 +463,7 @@ def find_text(
         fuzzy: Whether to attempt fuzzy matching after exact search fails.
         min_score: Minimum SequenceMatcher ratio for fuzzy matches (0.0–1.0).
         monitor: Pass-through to ``capture_screen``.
+
     """
     if not query or not _have_tesseract():
         return None

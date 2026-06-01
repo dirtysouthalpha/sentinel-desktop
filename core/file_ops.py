@@ -46,6 +46,7 @@ def _resolve_safe(path: str) -> Path:
     Raises:
         PermissionError: when a sandbox is active and *path* resolves
             outside it (after ``..`` and symlink resolution).
+
     """
     resolved = Path(path).expanduser().resolve(strict=False)
     root = _get_lockdown_root()

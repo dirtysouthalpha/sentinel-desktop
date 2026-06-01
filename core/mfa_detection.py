@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — MFA / UAC / credential prompt detector.
+"""Sentinel Desktop v2 — MFA / UAC / credential prompt detector.
 
 Detects multi-factor authentication, User Account Control, and credential
 dialogs on the Windows desktop and signals the agent to pause until the user
@@ -163,6 +162,7 @@ class DetectionResult:
         confidence: Detection confidence in ``[0, 1]``.
         action: Recommended action — ``"pause_agent"`` | ``"notify_user"``
                 | ``"none"``.
+
     """
 
     detected: bool = False
@@ -380,6 +380,7 @@ def _scan_children_for_auth(
 
     Returns:
         ``(found_password, found_auth_text, prompt_text_parts)``
+
     """
     found_password = False
     found_auth_text = False
@@ -493,6 +494,7 @@ class MFADetector:
         Args:
             cooldown_seconds: Minimum seconds between repeated detections of
                 the same prompt (prevents notification spam).
+
         """
         self._lock = threading.Lock()
         self._last_detection: DetectionResult | None = None
@@ -521,6 +523,7 @@ class MFADetector:
 
         Returns:
             A :class:`DetectionResult` describing what was found.
+
         """
         if not _IS_WINDOWS:
             return _empty_result()
@@ -556,6 +559,7 @@ class MFADetector:
 
         Returns:
             A :class:`DetectionResult`. This method does not perform OCR.
+
         """
         if not _IS_WINDOWS:
             return _empty_result()
@@ -591,6 +595,7 @@ class MFADetector:
             callback: ``callback(type_str, prompt_text)`` — called from
                 the monitor thread when a prompt is detected.
             interval: Polling interval in seconds (default 2.0).
+
         """
         self.stop_monitoring()
 
@@ -693,6 +698,7 @@ class MFADetector:
 
         Returns:
             A :class:`DetectionResult`.
+
         """
         # Tier 1: Window title
         result = self.check_window_titles()

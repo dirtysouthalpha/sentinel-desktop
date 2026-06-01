@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Visual-diff-based waiting.
+"""Sentinel Desktop v2 — Visual-diff-based waiting.
 
 Instead of fixed ``time.sleep(3)`` or ``wait(3)``, this module captures
 screenshots and waits until the screen **actually** changes (or stops
@@ -79,6 +78,7 @@ class WaitResult:
             comparison before stability was confirmed.
         snapshot_path: Path to a PNG saved at the moment the condition was
             met, or ``None`` if the wait failed or snapshotting was skipped.
+
     """
 
     success: bool
@@ -356,6 +356,7 @@ class SmartWait:
 
         Returns:
             A :class:`WaitResult` indicating whether change was detected.
+
         """
         self._reset_cancel()
         start = time.monotonic()
@@ -408,6 +409,7 @@ class SmartWait:
         Returns:
             A :class:`WaitResult`.  ``change_score`` is the score of the
             last comparison before stability was confirmed.
+
         """
         self._reset_cancel()
         start = time.monotonic()
@@ -517,6 +519,7 @@ class SmartWait:
         Returns:
             A :class:`WaitResult`.  ``change_score`` is set to the match
             confidence on success.
+
         """
         self._reset_cancel()
         start = time.monotonic()
@@ -557,6 +560,7 @@ class SmartWait:
 
         Returns:
             A :class:`WaitResult`.
+
         """
         self._reset_cancel()
         start = time.monotonic()
@@ -645,6 +649,7 @@ class SmartWait:
         Returns:
             A :class:`WaitResult`.  ``change_score`` is set to ``1.0``
             on success.
+
         """
         self._reset_cancel()
         start = time.monotonic()

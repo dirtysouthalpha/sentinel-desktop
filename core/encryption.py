@@ -1,5 +1,4 @@
-"""
-DPAPI Credential Vault for Sentinel Desktop.
+"""DPAPI Credential Vault for Sentinel Desktop.
 
 Provides encrypted storage of sensitive credentials (API keys, tokens, etc.)
 using Windows DPAPI (Data Protection API) with automatic fallback to
@@ -108,6 +107,7 @@ class CredentialVault:
     vault_path:
         Filesystem path to the JSON vault file.  Parent directories are
         created automatically when the first key is stored.
+
     """
 
     def __init__(self, vault_path: str = "config/vault.json") -> None:
@@ -115,6 +115,7 @@ class CredentialVault:
 
         Args:
             vault_path: Path to the JSON file that stores encrypted keys.
+
         """
         self._path = Path(vault_path)
         self._lock = threading.RLock()
@@ -211,6 +212,7 @@ class CredentialVault:
         -------
         int
             Number of keys successfully imported.
+
         """
         if not isinstance(config, dict):
             logger.error("import_from_config(): config must be a dict")

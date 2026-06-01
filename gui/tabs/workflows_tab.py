@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Workflows Tab
+"""Sentinel Desktop v3.0 — Workflows Tab
 
 Workflow management tab with left-panel list and right-panel detail view.
 """
@@ -38,6 +37,7 @@ class WorkflowsTab(ctk.CTkFrame):
         Args:
             parent_frame: Parent frame to embed this tab into.
             app: Main :class:`SentinelApp` instance for theme and callbacks.
+
         """
         super().__init__(parent_frame, corner_radius=0)
         self.app = app

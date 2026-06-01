@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Cron-like Task Scheduler.
+"""Sentinel Desktop v3.0 — Cron-like Task Scheduler.
 
 Runs tasks on a time-based schedule using a background thread that checks
 every 30 seconds. Supports preset schedules and standard 5-field cron
@@ -141,6 +140,7 @@ class TaskScheduler:
     tasks_path:
         File path for JSON persistence. Defaults to
         ``config/scheduled_tasks.json``.
+
     """
 
     def __init__(
@@ -155,6 +155,7 @@ class TaskScheduler:
                 tasks. Pass ``None`` for task storage only.
             tasks_path: Path to the JSON persistence file. Defaults to
                 ``config/scheduled_tasks.json``.
+
         """
         self.engine = engine
         self._tasks_path = Path(tasks_path) if tasks_path else DEFAULT_TASKS_PATH

@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Forensic run log.
+"""Sentinel Desktop v2 — Forensic run log.
 
 Provides a structured, per-step forensic audit trail — the desktop equivalent
 of Sentinel Override's forensic log. Every agent step is recorded with full
@@ -117,6 +116,7 @@ class ForensicLog:
         Args:
             log_dir: Directory for persisted run logs. Defaults to
                 ``logs/forensic``.
+
         """
         self._lock = threading.Lock()
         self._log_dir = log_dir or _default_log_dir()
@@ -195,6 +195,7 @@ class ForensicLog:
             result: "success" or "fail", possibly with output text.
             screenshot_path: Optional path to a screenshot taken during
                 this step.
+
         """
         step_id = str(uuid.uuid4())
         now = _iso_now()
@@ -244,6 +245,7 @@ class ForensicLog:
             event_type: One of "override", "pause", "resume", "error",
                 "timeout", or any custom event string.
             details: Arbitrary metadata about the event.
+
         """
         now = _iso_now()
 

@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Windows UIAutomation wrapper.
+"""Sentinel Desktop v2 — Windows UIAutomation wrapper.
 
 Uses the ``uiautomation`` package to introspect and drive native Windows
 controls by their accessibility metadata. This is the desktop equivalent of
@@ -80,6 +79,7 @@ def list_controls(
     Returns:
         List of ``{name, control_type, automation_id, class_name, x, y,
         width, height, is_enabled, is_offscreen}`` dicts.
+
     """
     if not _have_uia():
         return []

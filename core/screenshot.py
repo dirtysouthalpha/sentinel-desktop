@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Screenshot capture and analysis utilities.
+"""Sentinel Desktop v2 — Screenshot capture and analysis utilities.
 
 Multi-monitor support: when the optional ``mss`` library is installed, callers
 can pick which monitor to capture or capture the union of all monitors. mss is
@@ -153,6 +152,7 @@ def capture_screen(monitor: int | str | None = None) -> Image.Image:
             monitor, ``1`` captures the primary monitor, ``2+`` captures
             secondary monitors, ``"auto"`` picks the monitor containing the
             foreground window (recommended default).
+
     """
     monitor = resolve_monitor(monitor)
     if monitor is not None and _HAS_MSS:

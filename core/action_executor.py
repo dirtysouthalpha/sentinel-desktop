@@ -109,6 +109,7 @@ class ActionExecutor:
         Returns:
             List of dicts, one per executed action, containing action name,
             result, and timing information.
+
         """
         return list(self._log)
 
@@ -125,6 +126,7 @@ class ActionExecutor:
 
         Returns:
             Result dict: {success, output, error}
+
         """
         try:
             return await asyncio.wait_for(self._execute_with_logging(action), timeout=65.0)
@@ -323,6 +325,7 @@ class ActionExecutor:
                 entire screen / virtual desktop.
             window: When provided, OCR a specific window by partial title
                 match (overrides ``scope``).
+
         """
         try:
             if window:
@@ -1244,7 +1247,8 @@ def _dry_run_result(action_type: str, params: dict) -> dict:
 
 def _contains_sensitive(text: str) -> bool:
     """Check if text looks like it contains sensitive data.
-    Used to prevent accidental typing of secrets."""
+    Used to prevent accidental typing of secrets.
+    """
     lower = text.lower()
     for keyword in SENSITIVE_FIELDS:
         if keyword in lower:

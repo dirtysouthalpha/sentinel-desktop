@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Script replay engine.
+"""Sentinel Desktop v3.0 — Script replay engine.
 
 Loads recorded script files (JSON), performs parameter substitution,
 validates required parameters and action types, then replays each step
@@ -150,6 +149,7 @@ class ScriptEngine:
     ----------
     action_executor:
         An ``ActionExecutor`` instance used to dispatch each step.
+
     """
 
     def __init__(self, action_executor: Any) -> None:
@@ -158,6 +158,7 @@ class ScriptEngine:
         Args:
             action_executor: An :class:`ActionExecutor` instance used to
                 dispatch each script step.
+
         """
         self._executor = action_executor
         self._progress_callback: Callable[[int, int, str, dict[str, Any]], None] | None = None
@@ -251,6 +252,7 @@ class ScriptEngine:
 
         Returns:
             (steps_completed, results, first_error, overall_success)
+
         """
         total = len(steps)
         results: list[dict[str, Any]] = []

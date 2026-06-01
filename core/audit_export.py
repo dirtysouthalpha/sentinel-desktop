@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop — Audit Log Export Module
+"""Sentinel Desktop — Audit Log Export Module
 
 Generates professional audit reports in HTML, text, CSV, and JSON formats.
 Each report includes session metadata, a step timeline, and summary statistics.
@@ -181,6 +180,7 @@ class AuditExporter:
     ----------
     output_dir : str
         Directory where report files are written.  Created on first use.
+
     """
 
     def __init__(self, output_dir: str = "reports") -> None:
@@ -188,6 +188,7 @@ class AuditExporter:
 
         Args:
             output_dir: Directory where generated report files are written.
+
         """
         self.output_dir = output_dir
         self._dir_ready = False
@@ -227,6 +228,7 @@ class AuditExporter:
         -------
         str
             Absolute path to the generated report file.
+
         """
         # Support both `fmt` and `format` keyword args for backwards compat
         if format is not None:

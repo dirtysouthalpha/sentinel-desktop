@@ -42,6 +42,7 @@ class ClickAction(_ActionBase):
     or ``right_click``.  A model validator auto-sets ``button``/``clicks``
     so the LLM doesn't have to be explicit about both.
     """
+
     action: Literal["click", "double_click", "right_click"]
     x: _PixelCoord
     y: _PixelCoord
@@ -60,12 +61,14 @@ class ClickAction(_ActionBase):
 
 class TypeTextAction(_ActionBase):
     """Type a text string at the current cursor position."""
+
     action: Literal["type_text"]
     text: str
 
 
 class PressKeyAction(_ActionBase):
     """Press a single keyboard key (e.g. 'enter', 'tab', 'escape')."""
+
     action: Literal["press_key"]
     key: _NonEmptyStr
 
@@ -75,12 +78,14 @@ class HotkeyAction(_ActionBase):
 
     Accepts 1–8 key names in the ``keys`` list.
     """
+
     action: Literal["hotkey"]
     keys: list[_NonEmptyStr] = Field(min_length=1, max_length=8)
 
 
 class ScrollAction(_ActionBase):
     """Scroll the mouse wheel. Positive = up, negative = down."""
+
     action: Literal["scroll"]
     amount: Annotated[int, Field(ge=-50, le=50)]
 
@@ -94,6 +99,7 @@ class WaitAction(_ActionBase):
 
 class WriteFileAction(_ActionBase):
     """Write content to a file on disk. Creates the file if it doesn't exist."""
+
     action: Literal["write_file"]
     path: _NonEmptyStr
     content: str = ""
@@ -101,12 +107,14 @@ class WriteFileAction(_ActionBase):
 
 class ReadFileAction(_ActionBase):
     """Read the contents of a file from disk."""
+
     action: Literal["read_file"]
     path: _NonEmptyStr
 
 
 class KillProcessAction(_ActionBase):
     """Terminate a running process by PID or name (at least one required)."""
+
     action: Literal["kill_process"]
     pid: Annotated[int, Field(ge=1)] | None = None
     name: str | None = None

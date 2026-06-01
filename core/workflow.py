@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Workflow Engine
+"""Sentinel Desktop v3.0 — Workflow Engine
 Multi-step workflow execution with conditions, loops, and variables.
 
 Chain scripts, actions, and sub-workflows with control flow.
@@ -96,6 +95,7 @@ class WorkflowEngine:
                 only evaluates workflow logic.
             script_engine: Optional :class:`ScriptEngine` for script-type
                 workflow steps.
+
         """
         self.executor = action_executor
         self.script_engine = script_engine

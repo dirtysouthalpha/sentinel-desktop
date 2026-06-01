@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop — Workflow Builder.
+"""Sentinel Desktop — Workflow Builder.
 Chain actions into reusable, ordered workflows.
 """
 
@@ -61,6 +60,7 @@ class WorkflowStep:
         Returns:
             Dict containing step id, name, action, params, timeout,
             max_retries, condition, on_failure policy, status, and error.
+
         """
         return {
             "id": self.id,
@@ -113,6 +113,7 @@ class Workflow:
 
         Returns:
             The newly created and appended WorkflowStep.
+
         """
         step = WorkflowStep(
             name=name or action,
@@ -135,6 +136,7 @@ class Workflow:
 
         Returns:
             The newly created and inserted WorkflowStep.
+
         """
         step = WorkflowStep(name=name or action, action=action, **kwargs)
         self.steps.insert(index, step)
@@ -149,6 +151,7 @@ class Workflow:
 
         Returns:
             True if a step was removed, False if no matching step was found.
+
         """
         before = len(self.steps)
         self.steps = [s for s in self.steps if s.id != step_id]
@@ -165,6 +168,7 @@ class Workflow:
 
         Args:
             step_ids: Desired step ordering as a list of step UUIDs.
+
         """
         step_map = {s.id: s for s in self.steps}
         self.steps = [step_map[sid] for sid in step_ids if sid in step_map]
@@ -176,6 +180,7 @@ class Workflow:
         Returns:
             Dict with workflow metadata, serialized step list, variables,
             timestamps, and run statistics.
+
         """
         return {
             "id": self.id,
@@ -208,6 +213,7 @@ class WorkflowStore:
 
         Returns:
             The newly created Workflow (status set to ACTIVE).
+
         """
         wf = Workflow(name=name, description=description, status=WorkflowStatus.ACTIVE)
         self._workflows[wf.id] = wf
@@ -221,6 +227,7 @@ class WorkflowStore:
 
         Returns:
             The matching Workflow, or None if not found.
+
         """
         return self._workflows.get(workflow_id)
 
@@ -229,6 +236,7 @@ class WorkflowStore:
 
         Returns:
             List of all registered Workflow instances.
+
         """
         return list(self._workflows.values())
 
@@ -240,6 +248,7 @@ class WorkflowStore:
 
         Returns:
             True if the workflow was found and deleted, False otherwise.
+
         """
         if workflow_id in self._workflows:
             del self._workflows[workflow_id]
@@ -256,6 +265,7 @@ class WorkflowStore:
 
         Returns:
             The newly created duplicate, or None if the source was not found.
+
         """
         source = self._workflows.get(workflow_id)
         if not source:

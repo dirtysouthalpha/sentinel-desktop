@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.1 -- Automatic Popup Dialog Detection and Dismissal.
+"""Sentinel Desktop v3.1 -- Automatic Popup Dialog Detection and Dismissal.
 
 Detects and dismisses common popup dialogs that block desktop automation.
 Uses screenshot + OCR to identify popup text and matches against a library
@@ -62,6 +61,7 @@ class PopupPattern:
         dismiss_type: ``"button"`` or ``"key"``.
         confidence_base: Base confidence when this pattern matches (0-1).
         description: Short human-readable description.
+
     """
 
     name: str
@@ -295,6 +295,7 @@ class PopupDetectionResult:
         body_text: Extracted body text (truncated).
         dismissed: Whether the popup was successfully dismissed.
         pattern_description: Human-readable description of the matched pattern.
+
     """
 
     detected: bool = False
@@ -432,6 +433,7 @@ class PopupHandler:
                 :data:`BUILTIN_PATTERNS`.
             auto_dismiss: If ``True``, :meth:`check_and_dismiss` will
                 attempt to dismiss popups automatically.
+
         """
         self._patterns = patterns if patterns is not None else list(BUILTIN_PATTERNS)
         self.auto_dismiss = auto_dismiss
@@ -478,6 +480,7 @@ class PopupHandler:
         Returns:
             The best-matching :class:`PopupDetectionResult`, or an
             undetected result if nothing matches above threshold.
+
         """
         best_score = 0.0
         best_pattern: PopupPattern | None = None
@@ -521,6 +524,7 @@ class PopupHandler:
 
         Returns:
             A :class:`PopupDetectionResult`.
+
         """
         ocr_output = _ocr_text(screenshot)
         if not ocr_output or not ocr_output.strip():
@@ -564,6 +568,7 @@ class PopupHandler:
         Returns:
             A :class:`PopupDetectionResult` with detection and dismissal
             status.
+
         """
         inputs = self._prepare_detection_inputs(screenshot)
         if inputs is None:
@@ -584,6 +589,7 @@ class PopupHandler:
 
         Returns:
             (title_text, body_text) on success, or None if screenshot capture fails.
+
         """
         if screenshot is None:
             try:
@@ -646,6 +652,7 @@ class PopupHandler:
 
         Returns:
             The same result with ``dismissed`` set to ``True`` on success.
+
         """
         if not result.detected:
             return result

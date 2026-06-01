@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop — PowerShell Script Execution Module
+"""Sentinel Desktop — PowerShell Script Execution Module
 
 Provides PowerShellRunner for executing PowerShell scripts, commands,
 and inline snippets on Windows with JSON output parsing, timeout
@@ -100,6 +99,7 @@ class PowerShellRunner:
         run_as_admin: If True, launch with UAC elevation.
         working_dir: Working directory for spawned processes.
         env_vars: Extra environment variables for the child process.
+
     """
 
     POWERSHELL_EXE = "powershell.exe"
@@ -129,6 +129,7 @@ class PowerShellRunner:
                 ``False`` whenever the input may have come from an LLM
                 tool call or unauthenticated API user; built-in helpers
                 like :meth:`get_service_status` continue to work.
+
         """
         self.timeout = timeout
         self.run_as_admin = run_as_admin

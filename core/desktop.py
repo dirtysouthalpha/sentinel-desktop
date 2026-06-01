@@ -33,6 +33,7 @@ class DesktopController:
         Returns:
             PIL.Image: A full-screen RGB screenshot. Returns a blank
             placeholder image on capture failure.
+
         """
         try:
             return pyautogui.screenshot()
@@ -48,6 +49,7 @@ class DesktopController:
 
         Returns:
             str: Base64-encoded image string, or empty string on failure.
+
         """
         try:
             img = self.screenshot()
@@ -69,6 +71,7 @@ class DesktopController:
 
         Returns:
             PIL.Image: RGB image of the region, or a blank placeholder on failure.
+
         """
         try:
             return pyautogui.screenshot(region=(x, y, w, h))
@@ -81,6 +84,7 @@ class DesktopController:
 
         Returns:
             tuple[int, int]: Screen width and height in pixels.
+
         """
         return self._screen_size
 
@@ -92,6 +96,7 @@ class DesktopController:
             y: Y coordinate in pixels.
             button: Mouse button to click (``"left"``, ``"right"``, ``"middle"``).
             clicks: Number of times to click (1 for single, 2 for double-click).
+
         """
         try:
             pyautogui.click(x=x, y=y, button=button, clicks=clicks)
@@ -104,6 +109,7 @@ class DesktopController:
         Args:
             x: X coordinate in pixels.
             y: Y coordinate in pixels.
+
         """
         try:
             pyautogui.doubleClick(x=x, y=y)
@@ -116,6 +122,7 @@ class DesktopController:
         Args:
             x: X coordinate in pixels.
             y: Y coordinate in pixels.
+
         """
         try:
             pyautogui.rightClick(x=x, y=y)
@@ -129,6 +136,7 @@ class DesktopController:
             x: Target X coordinate in pixels.
             y: Target Y coordinate in pixels.
             duration: Time in seconds to animate the movement.
+
         """
         try:
             pyautogui.moveTo(x=x, y=y, duration=duration)
@@ -153,6 +161,7 @@ class DesktopController:
             to_y: Destination Y coordinate in pixels.
             duration: Time in seconds for the drag movement.
             button: Mouse button to hold during drag (``"left"`` or ``"right"``).
+
         """
         try:
             pyautogui.moveTo(from_x, from_y)
@@ -167,6 +176,7 @@ class DesktopController:
             amount: Number of scroll clicks. Positive scrolls up, negative scrolls down.
             x: X coordinate to position the cursor before scrolling, or None.
             y: Y coordinate to position the cursor before scrolling, or None.
+
         """
         try:
             pyautogui.scroll(amount, x=x, y=y)
@@ -178,6 +188,7 @@ class DesktopController:
 
         Returns:
             tuple[int, int]: Current (x, y) cursor position, or (0, 0) on failure.
+
         """
         try:
             return pyautogui.position()
@@ -191,6 +202,7 @@ class DesktopController:
         Args:
             text: The string to type.
             interval: Seconds between each keystroke.
+
         """
         try:
             pyautogui.write(text, interval=interval)
@@ -202,6 +214,7 @@ class DesktopController:
 
         Args:
             key: Key name as accepted by pyautogui (e.g. ``"enter"``, ``"escape"``, ``"tab"``).
+
         """
         try:
             pyautogui.press(key)
@@ -227,6 +240,7 @@ class DesktopController:
         Returns:
             tuple[int, int] | None: Centre (x, y) coordinates of the match,
             or None if the template is not found or opencv is unavailable.
+
         """
         try:
             import cv2
@@ -263,6 +277,7 @@ class DesktopController:
         Returns:
             tuple[int, int] | None: Centre (x, y) of the found template,
             or None if not found within the timeout.
+
         """
         start = time.time()
         while time.time() - start < timeout:
@@ -287,6 +302,7 @@ class DesktopController:
 
         Returns:
             bool: True if the template was found and clicked, False otherwise.
+
         """
         pos = self.find_on_screen(template_path, confidence)
         if not pos:
@@ -316,6 +332,7 @@ def screenshot() -> Image.Image:
 
     Returns:
         PIL.Image: A full-screen RGB screenshot.
+
     """
     return _get_controller().screenshot()
 
@@ -325,6 +342,7 @@ def screenshot_base64() -> str:
 
     Returns:
         str: Base64-encoded PNG image string.
+
     """
     return _get_controller().screenshot_base64()
 
@@ -337,6 +355,7 @@ def click(x: int, y: int, button: str = "left", clicks: int = 1) -> None:
         y: Y coordinate in pixels.
         button: Mouse button (``"left"``, ``"right"``, ``"middle"``).
         clicks: Number of times to click.
+
     """
     _get_controller().click(x, y, button=button, clicks=clicks)
 
@@ -347,6 +366,7 @@ def type_text(text: str, interval: float = 0.02) -> None:
     Args:
         text: The string to type.
         interval: Seconds between each keystroke.
+
     """
     _get_controller().type_text(text, interval=interval)
 
@@ -356,6 +376,7 @@ def press_key(key: str) -> None:
 
     Args:
         key: Key name as accepted by pyautogui (e.g. ``"enter"``, ``"escape"``).
+
     """
     _get_controller().press_key(key)
 
@@ -372,5 +393,6 @@ def scroll(amount: int, x: int | None = None, y: int | None = None) -> None:
         amount: Number of scroll clicks. Positive scrolls up, negative down.
         x: X coordinate to scroll at, or None for current position.
         y: Y coordinate to scroll at, or None for current position.
+
     """
     _get_controller().scroll(amount, x=x, y=y)

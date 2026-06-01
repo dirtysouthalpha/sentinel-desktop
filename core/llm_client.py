@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — LLM Client.
+"""Sentinel Desktop v2 — LLM Client.
 
 Unified chat client supporting 16+ providers via the OpenAI-compatible
 API pattern.  Supports:
@@ -127,6 +126,7 @@ class LLMClient:
         Raises:
             ValueError: If *provider* is not in the catalog.
             requests.RequestException: On network / HTTP errors.
+
         """
         provider_config = PROVIDERS.get(provider)
         if not provider_config:
@@ -217,6 +217,7 @@ class LLMClient:
 
         Raises:
             LLMError: On malformed or error responses.
+
         """
         # Defensively unwrap the OpenAI-shaped response. Some providers (e.g.
         # Z.ai's coding plan) occasionally return error envelopes without a
@@ -288,6 +289,7 @@ class LLMClient:
 
         Returns:
             Assistant message content (plain text).
+
         """
         provider_config = PROVIDERS.get(provider, {})
 
@@ -449,6 +451,7 @@ class LLMClient:
         Raises:
             LLMError: With a human-readable message after retries are exhausted
                 or on a non-retriable error.
+
         """
         attempt = 0
         last_exc: Exception | None = None

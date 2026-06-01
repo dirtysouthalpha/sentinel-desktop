@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Stealth input.
+"""Sentinel Desktop v2 — Stealth input.
 
 Backbone of the optional "stealth" mode that lets the agent click and type
 WITHOUT hijacking the user's real mouse and keyboard.

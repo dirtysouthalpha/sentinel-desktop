@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Action overlay.
+"""Sentinel Desktop v2 — Action overlay.
 
 Pops a transparent, click-through, always-on-top window for ~400ms at the
 location of every state-changing action. Visible feedback during automation
@@ -37,6 +36,7 @@ class ActionOverlay:
         Args:
             master: Parent Tk widget used to schedule ``after()`` calls on
                 the main thread.
+
         """
         self.master = master
         self._lock = threading.Lock()
@@ -90,6 +90,7 @@ class _Indicator:
             y: Screen Y coordinate for the indicator centre.
             label: Action description shown below the ring.
             kind: Action type string used to select the ring colour.
+
         """
         import tkinter as tk
 

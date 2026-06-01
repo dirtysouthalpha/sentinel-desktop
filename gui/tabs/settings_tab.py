@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — Settings Tab
+"""Sentinel Desktop v3.0 — Settings Tab
 Full settings panel with sections for all configuration.
 """
 
@@ -35,6 +34,7 @@ class SettingsTab:
         Args:
             parent: Parent frame to embed the settings form into.
             app: Main :class:`SentinelApp` instance for config and theme access.
+
         """
         self.app = app
         self.root = parent

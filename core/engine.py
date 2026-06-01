@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Agent Engine.
+"""Sentinel Desktop v2 — Agent Engine.
 
 The main agent loop: user provides a goal, the engine takes screenshots,
 sends them to the LLM, receives action decisions, executes them, and
@@ -275,6 +274,7 @@ class AgentEngine:
                 active.  Return ``True`` to approve, ``False`` to reject.
             pre_action_callback: Called just before each action is dispatched
                 (e.g. to update the cursor overlay).
+
         """
         self.config = config or {}
         self.llm = LLMClient()
@@ -1019,6 +1019,7 @@ class AgentEngine:
 
         Returns:
             Updated screenshot_b64 (may be new or None).
+
         """
         log_result = self._record_step_outcome(action, action_name, result, goal, messages)
 

@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Approval gate for agent actions.
+"""Sentinel Desktop v2 — Approval gate for agent actions.
 
 When approval mode is enabled, the agent pauses before executing each
 action and presents a preview card to the user. The user can approve,
@@ -39,6 +38,7 @@ class ApprovalRequest:
         Args:
             action: The action dict awaiting user approval.
             step_num: The agent step number that generated this request.
+
         """
         self.action = action
         self.step_num = step_num
@@ -65,8 +65,7 @@ class ApprovalRequest:
 
 
 class ApprovalGate:
-    """
-    Gate that intercepts actions before execution when approval mode is on.
+    """Gate that intercepts actions before execution when approval mode is on.
 
     Usage:
         gate = ApprovalGate(enabled=True)
@@ -83,6 +82,7 @@ class ApprovalGate:
         Args:
             enabled: When ``True`` the gate will block and request user approval
                 before each action. When ``False`` all actions pass through.
+
         """
         self.enabled = enabled
         self._callback: Callable[[ApprovalRequest], None] | None = None
@@ -96,8 +96,7 @@ class ApprovalGate:
     def evaluate(
         self, action: dict[str, Any], step_num: int
     ) -> tuple[ApprovalDecision, dict[str, Any] | None]:
-        """
-        Evaluate an action through the approval gate.
+        """Evaluate an action through the approval gate.
 
         Returns (decision, action_to_execute).
         If approval mode is off, returns (APPROVE, original_action).

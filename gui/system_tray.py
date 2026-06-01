@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v3.0 — System Tray Icon.
+"""Sentinel Desktop v3.0 — System Tray Icon.
 
 Manages a persistent system tray icon with a rich context menu for quick
 access to common actions: starting tasks, recording, running scripts, and
@@ -152,6 +151,7 @@ class SystemTrayIcon:
     ----------
     app : SentinelApp
         Reference to the main application instance.
+
     """
 
     # Status strings accepted by *update_status*.
@@ -162,6 +162,7 @@ class SystemTrayIcon:
 
         Args:
             app: The main :class:`SentinelApp` whose state drives tray status.
+
         """
         self._app = app
         self._icon: pystray.Icon | None = None

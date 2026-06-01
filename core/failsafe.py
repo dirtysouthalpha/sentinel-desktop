@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Global failsafe hotkey.
+"""Sentinel Desktop v2 — Global failsafe hotkey.
 
 Listens for three rapid Esc presses (within ~1.5 seconds) and invokes a
 shutdown callback. pyautogui's move-mouse-to-corner failsafe doesn't always
@@ -35,6 +34,7 @@ class FailsafeListener:
         Args:
             on_panic: Zero-argument callable invoked when the panic sequence
                 (three rapid Esc presses) is detected.
+
         """
         self._on_panic = on_panic
         self._presses: deque = deque(maxlen=PANIC_PRESS_COUNT)

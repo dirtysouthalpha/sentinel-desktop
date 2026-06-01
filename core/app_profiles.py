@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Application profiles.
+"""Sentinel Desktop v2 — Application profiles.
 
 Pre-configured strategies for common desktop applications. Each profile tells
 the agent the best approach for interacting with a specific app — which UIA

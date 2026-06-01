@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop — Smart app launcher.
+"""Sentinel Desktop — Smart app launcher.
 
 ``smart_open(name)`` is what the agent should call instead of ``open_app``
 99% of the time:

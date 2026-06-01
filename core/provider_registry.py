@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — LLM provider catalog with auto-detection of available models.
+"""Sentinel Desktop v2 — LLM provider catalog with auto-detection of available models.
 
 Defines 24 providers (cloud & local) with their base URLs, authentication
 headers, and model-discovery endpoints.  Most providers follow the
@@ -448,6 +447,7 @@ def fetch_models(
 
     Returns:
         Sorted list of model ID strings.
+
     """
     provider = PROVIDERS.get(provider_key)
     if not provider:
