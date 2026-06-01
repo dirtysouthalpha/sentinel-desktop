@@ -442,3 +442,77 @@ class TestMetrics:
         assert result["cpu_percent"] == 42.0
         assert result["memory_percent"] == 55.0
         assert result["memory_used_gb"] > 0
+
+    @pytest.mark.asyncio
+    async def test_metrics_timeout_returns_zeros(self):
+        """Test that metrics endpoint returns zero values on timeout."""
+        import asyncio
+        import core.dashboard as dash
+
+        fake_psutil = _make_psutil()
+        with patch.dict(sys.modules, {"psutil": fake_psutil}):
+            # Patch asyncio.gather to raise TimeoutError
+            original_gather = asyncio.gather
+
+            async def _timeout_gather(*args, **kwargs):
+                raise asyncio.TimeoutError("simulated timeout")
+
+            with patch("asyncio.gather", side_effect=_timeout_gather):
+                result = await dash.metrics()
+            assert result["cpu_percent"] == 0
+            assert result["memory_percent"] == 0
+
+
+# ── Tests: timeout handlers ────────────────────────────────────────────────
+
+
+class TestTimeoutHandlers:
+    """Tests for timeout exception handlers in dashboard endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_overview_timeout_returns_partial_data(self):
+        """Test that dashboard_overview returns partial data on timeout."""
+        import asyncio
+        import core.dashboard as dash
+
+        fake_psutil = _make_psutil()
+        with patch.dict(sys.modules, {"psutil": fake_psutil}), \
+             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
+            # Patch asyncio.gather to raise TimeoutError
+            original_gather = asyncio.gather
+
+            async def _timeout_gather(*args, **kwargs):
+                raise asyncio.TimeoutError("simulated timeout")
+
+            with patch("asyncio.gather", side_effect=_timeout_gather):
+                result = await dash.dashboard_overview()
+            assert result["cpu"]["percent"] == 0
+            assert result["cpu"]["cores"] == 0
+            assert result["memory"]["percent"] == 0
+            assert result["memory"]["used_gb"] == 0
+            assert result["memory"]["total_gb"] == 0
+            assert result["disks"] == []
+            assert result["gpus"] == []
+            assert result["logs"]["total"] == 0
+            assert "timestamp" in result
+
+    @pytest.mark.asyncio
+    async def test_health_check_timeout_returns_healthy_status(self):
+        """Test that health_check returns healthy status on timeout (zero values)."""
+        import asyncio
+        import core.dashboard as dash
+
+        fake_psutil = _make_psutil()
+        with patch.dict(sys.modules, {"psutil": fake_psutil}):
+            # Patch asyncio.gather to raise TimeoutError
+            original_gather = asyncio.gather
+
+            async def _timeout_gather(*args, **kwargs):
+                raise asyncio.TimeoutError("simulated timeout")
+
+            with patch("asyncio.gather", side_effect=_timeout_gather):
+                result = await dash.health_check()
+            # With zero CPU/memory, status should be "healthy"
+            assert result["status"] == "healthy"
+            assert result["issues"] == []
+            assert "timestamp" in result

@@ -1061,3 +1061,37 @@ class TestPressKeyStealthReturnsFalse:
         result = ex._press_key(key="enter")
         assert result["success"] is True
         assert any(c[0] == "press_key" for c in ex._desktop.calls)
+
+
+class TestDispatchActionAsyncTimeout:
+    """Branch 179: _dispatch_action_async handler timeout."""
+
+    def test_dispatch_action_async_timeout(self, fake_executor, monkeypatch):
+        """Test that _dispatch_action_async returns timeout error when handler times out."""
+        import asyncio as asyncio_mod
+        import core.action_executor as ae_mod
+
+        ex = fake_executor()
+
+        # Create a slow async handler
+        async def _slow_handler(self_ref, **_):
+            await asyncio_mod.sleep(10)  # Sleep longer than the timeout
+            return {"success": True, "output": "should not reach here"}
+
+        ex._dispatch_table = dict(ex._dispatch_table)
+        ex._dispatch_table["click"] = _slow_handler
+
+        # Patch asyncio.wait_for to timeout immediately
+        original_wait_for = asyncio_mod.wait_for
+
+        async def _immediate_timeout(coro, timeout):
+            return await original_wait_for(coro, timeout=0.001)
+
+        monkeypatch.setattr(ae_mod.asyncio, "wait_for", _immediate_timeout)
+
+        # Call _dispatch_action_async directly to avoid outer execute() timeout handler
+        result = asyncio_mod.run(ex._dispatch_action_async("click", {"x": 1, "y": 1}))
+
+        assert result["success"] is False
+        assert result["error"] == "timeout"
+        assert "timed out" in result["output"]
