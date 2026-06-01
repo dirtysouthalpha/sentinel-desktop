@@ -1813,3 +1813,37 @@ class TestPruneOldScreenshotsMissingBranches:
         assert isinstance(pruned, str)
         assert "screenshot at step 1 omitted" in pruned
         assert not pruned.startswith("\n")
+
+
+class TestTryParseJsonGap:
+    """Test _try_parse_json function for line 1611 coverage.
+
+    Covers the case when JSON parses successfully but returns None because:
+    - The result is not a dict (e.g., a list, string, number)
+    - The result is a dict but doesn't contain the expected key
+    """
+
+    def test_valid_json_list_returns_none(self):
+        """Covers 1611: valid JSON list instead of dict."""
+        from core.engine import _try_parse_json
+
+        # Valid JSON but not a dict → line 1611
+        result = _try_parse_json('["item1", "item2"]', "action")
+        assert result is None
+
+    def test_valid_json_dict_without_key_returns_none(self):
+        """Covers 1611: valid JSON dict without expected key."""
+        from core.engine import _try_parse_json
+
+        # Valid JSON dict but doesn't contain the key → line 1611
+        result = _try_parse_json('{"other_key": "value"}', "action")
+        assert result is None
+
+    def test_valid_json_dict_with_key_returns_dict(self):
+        """Verifies line 1610: valid JSON dict with expected key succeeds."""
+        from core.engine import _try_parse_json
+
+        # Valid JSON dict with the key → line 1610
+        result = _try_parse_json('{"action": "click"}', "action")
+        assert result is not None
+        assert result == {"action": "click"}

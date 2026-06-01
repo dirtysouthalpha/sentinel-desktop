@@ -309,3 +309,28 @@ class TestSaveWorkflowOSError:
         with patch.object(Path, "open", side_effect=OSError("disk full")):
             with pytest.raises(OSError, match="disk full"):
                 WorkflowEngine.save_workflow(str(target), {"steps": []})
+
+
+class TestEvaluateComparisonUnknownOperator:
+    """Test evaluate_condition with valid numeric values but unsupported operator.
+
+    Covers line 199 in workflow.py — when numeric conversion succeeds but
+    the operator is not one of the supported operators.
+    """
+
+    def test_unknown_operator_with_numeric_values(self) -> None:
+        """Covers line 199: numeric values with unsupported operator.
+
+        Directly calls _evaluate_comparison with an unsupported operator
+        that successfully converts to numbers but is not handled.
+        """
+        # Valid numeric values but unsupported operator → line 199
+        # Call _evaluate_comparison directly with unsupported operator
+        result = WorkflowEngine._evaluate_comparison("modulo", "5", "10")
+        assert result is False
+
+    def test_unknown_operator_with_valid_numbers(self) -> None:
+        """Another unsupported operator case with floats."""
+        result = WorkflowEngine._evaluate_comparison("xor", "3.14", "2.71")
+        assert result is False
+        assert result is False
