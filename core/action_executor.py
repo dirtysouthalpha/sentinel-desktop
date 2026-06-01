@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — Action executor.
+"""Sentinel Desktop v2 — Action executor.
 
 Takes structured action dicts from the LLM and dispatches them to
 the appropriate desktop, file, window, or process functions.
@@ -72,7 +71,8 @@ class ActionExecutor:
         monitor: int | None = None,
         stealth: bool = False,
     ):
-        """
+        """Initialize the action executor.
+
         Args:
             approval_callback: Async callable(action_dict) → bool.
                 If provided, actions are sent for approval before execution.
@@ -89,6 +89,7 @@ class ActionExecutor:
             stealth: If True, uses stealth input methods (PostMessage/UIA)
                 instead of physical mouse/keyboard movements. Falls back to
                 physical input on stealth mode failures.
+
         """
         self.approval_callback = approval_callback
         self.dry_run = dry_run

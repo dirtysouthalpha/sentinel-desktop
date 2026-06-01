@@ -1,6 +1,5 @@
-"""
-Sentinel Desktop — RBAC Authentication Module
-=============================================
+"""Sentinel Desktop — RBAC Authentication Module.
+
 Role-Based Access Control with session management, API key auth,
 and password hashing for the Sentinel Desktop FastAPI server.
 """
@@ -96,6 +95,7 @@ class User:
 
         Returns:
             dict[str, Any]: Dictionary containing all user fields.
+
         """
         return {
             "username": self.username,
@@ -116,6 +116,7 @@ class User:
 
         Returns:
             User: Reconstructed User instance.
+
         """
         return cls(
             username=data["username"],
@@ -159,7 +160,7 @@ def _hash_password_bcrypt(password: str) -> str:
 
 
 def _is_bcrypt_hash(stored_hash: str) -> bool:
-    """``True`` for bcrypt-format hashes (``$2a$``, ``$2b$``, ``$2y$``)."""
+    """Check if a stored hash is a bcrypt-format hash (``$2a$``, ``$2b$``, ``$2y$``)."""
     return stored_hash.startswith(("$2a$", "$2b$", "$2y$"))
 
 
@@ -186,6 +187,7 @@ def is_default_password(password: str) -> bool:
 
     Returns:
         bool: True if the password matches the default admin password.
+
     """
     return secrets.compare_digest(password, DEFAULT_ADMIN_PASSWORD)
 
@@ -196,8 +198,7 @@ def is_default_password(password: str) -> bool:
 
 
 class AuthManager:
-    """
-    Central authentication and authorisation manager for Sentinel Desktop.
+    """Central authentication and authorisation manager for Sentinel Desktop.
 
     Features
     --------
@@ -215,6 +216,7 @@ class AuthManager:
         Args:
             config_path: Path to the JSON file storing user records. Created
                 automatically if it does not exist.
+
         """
         self.config_path: Path = Path(config_path)
         self._users: dict[str, User] = {}  # username → User
@@ -300,6 +302,7 @@ class AuthManager:
 
         Raises:
             ValueError: If *username* already exists.
+
         """
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
@@ -327,6 +330,7 @@ class AuthManager:
 
         Returns:
             bool: True if the user existed and was removed, False otherwise.
+
         """
         user = self._users.pop(username, None)
         if user is None:
@@ -366,6 +370,7 @@ class AuthManager:
 
         Returns:
             User | None: The updated ``User``, or ``None`` if not found.
+
         """
         user = self._users.get(username)
         if user is None:
@@ -392,6 +397,7 @@ class AuthManager:
 
         Returns:
             list[User]: All user accounts.
+
         """
         return list(self._users.values())
 
@@ -403,6 +409,7 @@ class AuthManager:
 
         Returns:
             User | None: The matching User, or None if not found.
+
         """
         return self._users.get(username)
 
@@ -424,6 +431,7 @@ class AuthManager:
         If the user authenticates with ``DEFAULT_ADMIN_PASSWORD``, a warning
         is logged and the caller should check
         ``AuthManager.requires_password_rotation`` to enforce rotation.
+
         """
         user = self._users.get(username)
         if user is None:
@@ -462,6 +470,7 @@ class AuthManager:
 
         Returns:
             User | None: The ``User`` or ``None`` if the key is unknown.
+
         """
         username = self._api_key_index.get(key)
         if username is None:
@@ -469,8 +478,7 @@ class AuthManager:
         return self._users.get(username)
 
     def requires_password_rotation(self, username: str) -> bool:
-        """Return ``True`` if *username*'s current password matches
-        ``DEFAULT_ADMIN_PASSWORD``.
+        """Return ``True`` if *username*'s current password matches ``DEFAULT_ADMIN_PASSWORD``.
 
         This can be used by the API server to refuse startup or force a
         password change redirect before allowing normal operation.
@@ -480,6 +488,7 @@ class AuthManager:
 
         Returns:
             bool: True if the user's password matches the default.
+
         """
         user = self._users.get(username)
         if user is None:
@@ -491,6 +500,7 @@ class AuthManager:
 
         Returns:
             list[User]: Users requiring password rotation.
+
         """
         return [
             u for u in self._users.values()
@@ -516,6 +526,7 @@ class AuthManager:
 
         Returns:
             bool: ``True`` if the action is permitted.
+
         """
         method = method.upper()
         role = Role(user.role)
@@ -550,6 +561,7 @@ class AuthManager:
 
         Returns:
             str: An opaque session token string.
+
         """
         token = secrets.token_urlsafe(48)
         now = time.time()
@@ -571,6 +583,7 @@ class AuthManager:
         Returns:
             User | None: The associated User, or None if the token is
             missing, expired, or revoked. Expired sessions are cleaned up.
+
         """
         session = self._sessions.get(token)
         if session is None:

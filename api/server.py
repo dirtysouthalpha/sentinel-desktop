@@ -1,5 +1,4 @@
-"""
-Sentinel Desktop v2 — FastAPI Headless Control Server.
+"""Sentinel Desktop v2 — FastAPI Headless Control Server.
 
 Run with: python main.py --api
 Endpoints:
@@ -181,6 +180,7 @@ class SentinelServer:
         Args:
             config: Application :class:`Config` used to load provider settings
                 and API token configuration.
+
         """
         self.config = config
         self.engine: AgentEngine | None = None
