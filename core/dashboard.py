@@ -5,6 +5,7 @@ Real-time system health metrics endpoint.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import platform
 import subprocess
@@ -125,6 +126,17 @@ async def dashboard_overview() -> dict[str, Any]:
     hours, remainder = divmod(uptime_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
 
+    # Run potentially blocking I/O helpers in the thread pool so the event
+    # loop stays responsive. _get_gpu_info() spawns nvidia-smi (up to 5s);
+    # disk/memory calls are typically fast but still use blocking syscalls.
+    cpu, memory, disks, gpus, logs = await asyncio.gather(
+        asyncio.to_thread(_get_cpu_info),
+        asyncio.to_thread(_get_memory_info),
+        asyncio.to_thread(_get_disk_info),
+        asyncio.to_thread(_get_gpu_info),
+        asyncio.to_thread(_count_log_entries),
+    )
+
     return {
         "timestamp": iso_now(),
         "system": {
@@ -135,11 +147,11 @@ async def dashboard_overview() -> dict[str, Any]:
             "uptime": f"{hours}h {minutes}m {seconds}s",
             "uptime_seconds": uptime_seconds,
         },
-        "cpu": _get_cpu_info(),
-        "memory": _get_memory_info(),
-        "disks": _get_disk_info(),
-        "gpus": _get_gpu_info(),
-        "logs": _count_log_entries(),
+        "cpu": cpu,
+        "memory": memory,
+        "disks": disks,
+        "gpus": gpus,
+        "logs": logs,
         "health_checks": _health_checks[-20:],
     }
 
