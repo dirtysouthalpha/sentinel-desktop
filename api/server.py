@@ -367,7 +367,8 @@ class SentinelServer:
             payload = {"action": "note", "text": text}
 
         try:
-            return engine.executor.execute_sync(payload)
+            # execute_sync() is blocking (may run desktop actions); offload to thread.
+            return await asyncio.to_thread(engine.executor.execute_sync, payload)
         except (ValueError, KeyError) as exc:
             raise HTTPException(400, f"Invalid action payload: {exc}") from exc
         except OSError as exc:
