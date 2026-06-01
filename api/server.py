@@ -500,7 +500,9 @@ class SentinelServer:
 
         engine = ScriptEngine(self.engine.executor)
         try:
-            result = engine.run_script(req.path, req.params)
+            # run_script() replays multi-step scripts with sleep() delays;
+            # run in thread pool so the event loop stays responsive.
+            result = await asyncio.to_thread(engine.run_script, req.path, req.params)
         except (OSError, ValueError) as exc:
             logger.exception("Script execution failed")
             raise HTTPException(500, f"Script execution failed: {exc}") from exc
