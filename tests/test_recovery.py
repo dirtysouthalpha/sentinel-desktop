@@ -662,3 +662,113 @@ class TestRecoveryEdgeCases:
         result = self.engine.analyze_failure(action, "stale element reference")
         if result.strategy == "retry_same" and result.confidence > 0.7:
             assert self.engine.should_auto_apply(result) is True
+
+    def test_popup_handler_interruption(self):
+        """Recovery from popup handler interruptions during actions."""
+        action = {"action": "click_text", "text": "Submit"}
+        error = "Unexpected popup appeared during click operation"
+        result = self.engine.analyze_failure(action, error)
+        # Should suggest some recovery strategy
+        assert result is not None
+        assert result.strategy in ["retry_same", "skip", "abort", "retry_alternate"]
+        # Popup interruptions usually merit a retry (even with low confidence for generic errors)
+        assert result.strategy == "retry_same" or result.strategy == "abort"
+
+    def test_network_timeout_error(self):
+        """Recovery from network timeout errors."""
+        action = {"action": "http_request", "url": "https://example.com"}
+        error = "Network timeout after 30 seconds"
+        result = self.engine.analyze_failure(action, error)
+        # Should handle timeout errors
+        assert result is not None
+        # Network timeouts often suggest retry with longer timeout
+        if result.strategy == "retry_same":
+            assert result.confidence >= 0.6
+
+    def test_connection_refused_error(self):
+        """Recovery from connection refused errors."""
+        action = {"action": "http_request", "url": "https://example.com"}
+        error = "Connection refused by server"
+        result = self.engine.analyze_failure(action, error)
+        # Connection refused is typically not retryable immediately
+        assert result is not None
+        # Should suggest abort or different approach
+        assert result.strategy in ["abort", "retry_alternate", "retry_same"]
+
+    def test_llm_response_timeout(self):
+        """Recovery from LLM response timeout."""
+        action = {"action": "llm_generate", "prompt": "Test prompt"}
+        error = "LLM response timeout after 60 seconds"
+        result = self.engine.analyze_failure(action, error)
+        # Should handle LLM timeouts
+        assert result is not None
+        # LLM timeouts might suggest retry with different params
+        if result.strategy == "retry_alternate":
+            assert result.alternate_action is not None
+
+    def test_llm_malformed_response(self):
+        """Recovery from malformed LLM responses."""
+        action = {"action": "llm_generate", "prompt": "Test prompt"}
+        error = "Malformed JSON in LLM response"
+        result = self.engine.analyze_failure(action, error)
+        # Should handle malformed response errors
+        assert result is not None
+        # Might suggest retry with validation or different model
+        assert result.strategy in ["retry_same", "retry_alternate", "abort"]
+
+    def test_llm_rate_limit_error(self):
+        """Recovery from LLM rate limit errors."""
+        action = {"action": "llm_generate", "prompt": "Test prompt"}
+        error = "Rate limit exceeded: 429"
+        result = self.engine.analyze_failure(action, error)
+        # Rate limits typically need retry with backoff
+        assert result is not None
+        # Should suggest retry (potentially with backoff)
+        assert result.strategy in ["retry_same", "abort"]
+
+    def test_concurrent_failure_scenario_1(self):
+        """Test recovery handling with concurrent failures."""
+        action = {"action": "click_text", "text": "Button"}
+        error = "Element not found: concurrent modification detected"
+        result = self.engine.analyze_failure(action, error)
+        # Should handle concurrent modification scenarios
+        assert result is not None
+        # Concurrent issues often merit retry
+        assert result.strategy in ["retry_same", "retry_alternate", "skip"]
+
+    def test_concurrent_failure_scenario_2(self):
+        """Test recovery with resource locked errors."""
+        action = {"action": "write_file", "path": "/tmp/test.txt"}
+        error = "Resource temporarily locked: file in use by another process"
+        result = self.engine.analyze_failure(action, error)
+        # Should handle resource locking scenarios
+        assert result is not None
+        # Locked resources typically suggest retry or abort
+        assert result.strategy in ["retry_same", "abort"]
+
+    def test_multiple_consecutive_failures(self):
+        """Test recovery engine behavior with multiple consecutive failures."""
+        action = {"action": "click_text", "text": "Button"}
+        # Simulate consecutive failures
+        failures = [
+            "Element not found",
+            "Element not found (retry 1)",
+            "Element not found (retry 2)",
+        ]
+        results = [self.engine.analyze_failure(action, error) for error in failures]
+        # All should return valid suggestions
+        assert all(r is not None for r in results)
+        # Confidence should decrease or stay same for repeated failures
+        confidences = [r.confidence for r in results]
+        assert confidences[0] >= confidences[-1]  # Non-increasing confidence
+
+    def test_context_aware_recovery(self):
+        """Test recovery with context-aware suggestions."""
+        action = {"action": "click_text", "text": "Submit"}
+        context = {"previous_action": "fill_form", "form_data": {"name": "Test"}}
+        error = "Element not found after form submission"
+        result = self.engine.analyze_failure(action, error, context)
+        # Should provide context-aware recovery
+        assert result is not None
+        # Context might affect strategy choice
+        assert result.strategy in ["retry_same", "retry_alternate", "skip", "abort"]
