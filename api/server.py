@@ -883,7 +883,10 @@ class SentinelServer:
             auth_token = auth_data.get("token", "")
             api_token = os.environ.get(API_TOKEN_ENV)
             if api_token and auth_token != api_token:
-                await ws.send_json({"type": "auth_error", "message": "Invalid token"})
+                await asyncio.wait_for(
+                    ws.send_json({"type": "auth_error", "message": "Invalid token"}),
+                    timeout=5.0,
+                )
                 await ws.close()
                 return False
         except asyncio.TimeoutError:
