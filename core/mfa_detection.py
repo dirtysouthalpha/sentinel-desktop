@@ -386,33 +386,53 @@ def _scan_children_for_auth(
     prompt_text_parts: list[str] = []
 
     for ctrl in win.GetChildren():
-        try:
-            ctrl_type = ctrl.ControlTypeName
-        except (OSError, AttributeError, RuntimeError) as exc:
-            logger.debug("Failed to read control type: %s", exc)
+        ctrl_type = _get_control_type(ctrl)
+        if ctrl_type is None:
             continue
-
         if ctrl_type == "EditControl":
-            try:
-                if getattr(ctrl, "IsPassword", False):
-                    found_password = True
-            except (OSError, AttributeError, RuntimeError) as exc:
-                logger.debug("IsPassword check failed: %s", exc)
-
+            if _check_password_control(ctrl):
+                found_password = True
         if ctrl_type in ("TextControl", "StaticControl"):
-            try:
-                text = (ctrl.Name or "").strip()
-                if text:
-                    tl_text = text.lower()
-                    for pattern, _det_type in MFA_PATTERNS:
-                        if pattern.lower() in tl_text:
-                            found_auth_text = True
-                            prompt_text_parts.append(text[:120])
-                            break
-            except (OSError, AttributeError, RuntimeError) as exc:
-                logger.debug("Text pattern matching failed: %s", exc)
+            auth_found, text_part = _check_text_control_for_auth(ctrl)
+            if auth_found:
+                found_auth_text = True
+                prompt_text_parts.append(text_part)
 
     return found_password, found_auth_text, prompt_text_parts
+
+
+def _get_control_type(ctrl: Any) -> str | None:
+    """Get the control type, handling exceptions."""
+    try:
+        return ctrl.ControlTypeName
+    except (OSError, AttributeError, RuntimeError) as exc:
+        logger.debug("Failed to read control type: %s", exc)
+        return None
+
+
+def _check_password_control(ctrl: Any) -> bool:
+    """Check if a control is a password field."""
+    try:
+        return getattr(ctrl, "IsPassword", False)
+    except (OSError, AttributeError, RuntimeError) as exc:
+        logger.debug("IsPassword check failed: %s", exc)
+        return False
+
+
+def _check_text_control_for_auth(ctrl: Any) -> tuple[bool, str]:
+    """Check if a text control contains auth-related text."""
+    try:
+        text = (ctrl.Name or "").strip()
+        if not text:
+            return False, ""
+        tl_text = text.lower()
+        for pattern, _det_type in MFA_PATTERNS:
+            if pattern.lower() in tl_text:
+                return True, text[:120]
+        return False, ""
+    except (OSError, AttributeError, RuntimeError) as exc:
+        logger.debug("Text pattern matching failed: %s", exc)
+        return False, ""
 
 
 def _scan_window_for_auth(win: Any, title: str) -> DetectionResult | None:
