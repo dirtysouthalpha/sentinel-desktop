@@ -88,43 +88,59 @@ def focus_window(title: str) -> bool:
     workaround that lets a non-foreground process raise another window).
     """
     if HAS_WIN32:
-        needle = title.lower()
-        target = None
-        for w in list_windows():
-            if needle in (w.get("title") or "").lower():
-                target = w
-                break
-        if target is None:
-            return False
-        hwnd = target.get("hwnd")
-        if not hwnd:
-            return False
-        try:
-            # Restore if minimized.
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            # The Alt-tap trick: some Windows versions block SetForegroundWindow
-            # unless the calling thread has recent input. Sending a key press
-            # primes the input state.
-            try:
-                import ctypes
-
-                ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)  # Alt down
-                ctypes.windll.user32.keybd_event(0x12, 0, 0x0002, 0)  # Alt up
-            except OSError as exc:
-                logger.debug("Alt-tap trick failed: %s", exc)
-            win32gui.SetForegroundWindow(hwnd)
-            return True
-        except _Win32Error as exc:
-            logger.warning("focus_window(%s) failed: %s", title, exc)
-            return False
+        return _focus_window_win32(title)
     elif HAS_PGW:
-        try:
-            wins = pgw.getWindowsWithTitle(title)
-            if wins:
-                wins[0].activate()
-                return True
-        except (OSError, RuntimeError) as exc:
-            logger.debug("pgw focus_window(%s) failed: %s", title, exc)
+        return _focus_window_pgw(title)
+    return False
+
+
+def _focus_window_win32(title: str) -> bool:
+    """Focus a window using Win32 API."""
+    target = _find_window_by_title(title)
+    if target is None:
+        return False
+    hwnd = target.get("hwnd")
+    if not hwnd:
+        return False
+    try:
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        _alt_tap_trick()
+        win32gui.SetForegroundWindow(hwnd)
+        return True
+    except _Win32Error as exc:
+        logger.warning("focus_window(%s) failed: %s", title, exc)
+        return False
+
+
+def _find_window_by_title(title: str) -> dict[str, Any] | None:
+    """Find a window by partial title match."""
+    needle = title.lower()
+    for w in list_windows():
+        if needle in (w.get("title") or "").lower():
+            return w
+    return None
+
+
+def _alt_tap_trick() -> None:
+    """Perform Alt-tap trick to bypass SetForegroundWindow restrictions."""
+    try:
+        import ctypes
+
+        ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)  # Alt down
+        ctypes.windll.user32.keybd_event(0x12, 0, 0x0002, 0)  # Alt up
+    except OSError as exc:
+        logger.debug("Alt-tap trick failed: %s", exc)
+
+
+def _focus_window_pgw(title: str) -> bool:
+    """Focus a window using PyGetWindow."""
+    try:
+        wins = pgw.getWindowsWithTitle(title)
+        if wins:
+            wins[0].activate()
+            return True
+    except (OSError, RuntimeError) as exc:
+        logger.debug("pgw focus_window(%s) failed: %s", title, exc)
     return False
 
 
@@ -176,6 +192,15 @@ def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
     In that case we fall back to the most recent *other* visible window.
     Returns None if no suitable window exists.
     """
+    focused_title, focused_rect = _get_foreground_window_info()
+    if focused_rect and not _is_self_window(focused_title):
+        if focused_rect[2] > 0 and focused_rect[3] > 0:
+            return (*focused_rect, focused_title)
+    return _find_best_candidate_window()
+
+
+def _get_foreground_window_info() -> tuple[str, tuple[int, int, int, int] | None]:
+    """Get the foreground window title and rect."""
     focused_title = ""
     focused_rect = None
     if HAS_WIN32:
@@ -187,12 +212,21 @@ def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
                 focused_rect = (r[0], r[1], r[2] - r[0], r[3] - r[1])
         except _Win32Error as exc:
             logger.debug("get_target_window_rect foreground lookup failed: %s", exc)
-    # If the foreground IS another app, use it.
-    if focused_rect and not _is_self_window(focused_title):
-        if focused_rect[2] > 0 and focused_rect[3] > 0:
-            return (*focused_rect, focused_title)
+    return focused_title, focused_rect
 
-    # Otherwise scan visible windows for the next-best candidate.
+
+def _find_best_candidate_window() -> tuple[int, int, int, int, str] | None:
+    """Find the best candidate window from visible windows."""
+    candidates = _collect_candidate_windows()
+    candidates.sort(key=lambda w: (0 if w.get("is_focused") else 1, -w.get("width", 0)))
+    if candidates:
+        c = candidates[0]
+        return (c["x"], c["y"], c["width"], c["height"], c["title"])
+    return None
+
+
+def _collect_candidate_windows() -> list[dict[str, Any]]:
+    """Collect visible windows that are valid candidates."""
     candidates = []
     try:
         for w in list_windows():
@@ -200,18 +234,11 @@ def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
             if not title or _is_self_window(title):
                 continue
             if w.get("width", 0) <= 200 or w.get("height", 0) <= 200:
-                # Skip tiny utility windows (tray notifications etc.).
                 continue
             candidates.append(w)
     except (OSError, RuntimeError) as exc:
         logger.debug("get_target_window_rect candidate scan failed: %s", exc)
-
-    # Prefer a candidate that was focused; failing that, the first.
-    candidates.sort(key=lambda w: (0 if w.get("is_focused") else 1, -w.get("width", 0)))
-    if candidates:
-        c = candidates[0]
-        return (c["x"], c["y"], c["width"], c["height"], c["title"])
-    return None
+    return candidates
 
 
 def get_window_rect(title: str) -> tuple[int, int, int, int] | None:
