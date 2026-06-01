@@ -985,9 +985,15 @@ class SentinelServer:
         authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
+        # Validate and sanitize workflow name
+        workflow_name = (name or "New Workflow").strip()
+        if len(workflow_name) > 100:
+            workflow_name = workflow_name[:100]  # Prevent unreasonably long names
+        if not workflow_name:
+            workflow_name = "New Workflow"
         wf = self._workflow_store.create(
-            name=name or "New Workflow",
-            description=description,
+            name=workflow_name,
+            description=description[:500] if description else "",  # Limit description length
         )
         return wf.to_dict()
 
@@ -1009,7 +1015,15 @@ class SentinelServer:
         wf = self._workflow_store.get(wf_id)
         if not wf:
             raise HTTPException(404, "Workflow not found")
-        step = wf.add_step(action=action, name=name, params=params or {})
+        # Validate and sanitize step inputs
+        step_action = (action or "").strip()
+        step_name = (name or "").strip()[:100]  # Limit step name length
+        step_params = params or {}
+
+        if not step_action:
+            raise HTTPException(400, "Action type is required")
+
+        step = wf.add_step(action=step_action, name=step_name, params=step_params)
         return {"step": step.to_dict(), "workflow": wf.to_dict()}
 
     async def _handle_workflow_remove_step(
