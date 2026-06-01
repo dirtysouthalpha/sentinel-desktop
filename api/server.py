@@ -18,6 +18,7 @@ Endpoints:
 """
 
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -196,7 +197,7 @@ class SentinelServer:
         if not token:
             return  # auth disabled
         expected = f"Bearer {token}"
-        if not authorization or authorization != expected:
+        if not authorization or not hmac.compare_digest(authorization, expected):
             raise HTTPException(401, "Missing or invalid Authorization header")
 
     def create_app(self) -> FastAPI:
