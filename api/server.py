@@ -656,7 +656,8 @@ class SentinelServer:
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         try:
-            return self.engine.scheduler.run_task_now(req.task_id)
+            # run_task_now() can invoke scripts/goals/powershell — offload to thread.
+            return await asyncio.to_thread(self.engine.scheduler.run_task_now, req.task_id)
         except (OSError, ValueError, RuntimeError, KeyError) as exc:
             raise HTTPException(500, f"Failed to run task: {exc}") from exc
 
@@ -827,8 +828,12 @@ class SentinelServer:
             raise HTTPException(500, "Engine not initialized")
         try:
             log = self.engine.forensic_log if hasattr(self.engine, "forensic_log") else []
-            path = self.engine.audit_exporter.generate_report(
-                log, metadata={"goal": "audit"}, format=format
+            # generate_report() writes a file — offload to thread pool.
+            path = await asyncio.to_thread(
+                self.engine.audit_exporter.generate_report,
+                log,
+                {"goal": "audit"},
+                format,
             )
             return {"path": path, "format": format}
         except (OSError, ValueError, RuntimeError) as exc:
