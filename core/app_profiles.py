@@ -341,7 +341,7 @@ def list_profiles() -> list[AppProfile]:
 
 
 def get_timing_for_app(window_title: str) -> dict[str, float]:
-    """Convenience: get timing defaults for the app matching the window title."""
+    """Get timing defaults for the app matching the window title."""
     profile = detect_profile(window_title)
     if profile:
         return profile.timing

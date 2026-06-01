@@ -190,7 +190,7 @@ class ActionExecutor:
             return {"success": False, "output": str(exc), "error": type(exc).__name__}
 
     def execute_sync(self, action: dict[str, Any]) -> dict[str, Any]:
-        """Synchronous wrapper — executes action directly (no event loop needed)."""
+        """Execute action directly without event loop (synchronous wrapper)."""
         action_type = action.get("action", "").lower()
         params = {k: v for k, v in action.items() if k != "action"}
 
@@ -1247,6 +1247,7 @@ def _dry_run_result(action_type: str, params: dict) -> dict:
 
 def _contains_sensitive(text: str) -> bool:
     """Check if text looks like it contains sensitive data.
+
     Used to prevent accidental typing of secrets.
     """
     lower = text.lower()

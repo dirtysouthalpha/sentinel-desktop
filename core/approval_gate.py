@@ -53,7 +53,7 @@ class ApprovalRequest:
     def respond(
         self, decision: ApprovalDecision, modified_action: dict[str, Any] | None = None
     ) -> None:
-        """Called by the UI/API to submit the user's decision."""
+        """Submit the user's decision (called by UI/API)."""
         self.decision = decision
         self.modified_action = modified_action
         self._event.set()

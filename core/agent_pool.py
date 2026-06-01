@@ -597,6 +597,7 @@ class AgentPool:
         return removed
 
     def __repr__(self) -> str:
+        """Return string representation of AgentPool state."""
         return (
             f"AgentPool(max_agents={self._max_agents}, "
             f"active={self.active_count}, queued={self.queued_count}, "
