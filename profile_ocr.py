@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Profile OCR pipeline to identify bottlenecks and optimization opportunities."""
-import time
 import hashlib
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageDraw, ImageFont
+import time
+
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
 
 def create_test_image(width=1920, height=1080, text="Test"):
     """Create a test image for OCR profiling."""
@@ -12,7 +14,7 @@ def create_test_image(width=1920, height=1080, text="Test"):
     # Try to use a default font, otherwise use basic text
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
-    except:
+    except OSError:
         font = ImageFont.load_default()
 
     # Draw some text
@@ -77,13 +79,13 @@ def profile_ocr_functions():
     print(f"   1080p preprocessing: {preprocess_time:.3f}s")
 
     start = time.time()
-    preprocessed_large = preprocess_for_ocr(large_img)
+    preprocessed_large = preprocess_for_ocr(large_img)  # noqa: F841
     preprocess_large_time = time.time() - start
     results['preprocess_1440p'] = preprocess_large_time
     print(f"   1440p preprocessing: {preprocess_large_time:.3f}s")
 
     start = time.time()
-    preprocessed_xk = preprocess_for_ocr(xk_img)
+    preprocessed_xk = preprocess_for_ocr(xk_img)  # noqa: F841
     preprocess_xk_time = time.time() - start
     results['preprocess_2160p'] = preprocess_xk_time
     print(f"   2160p (4K) preprocessing: {preprocess_xk_time:.3f}s")
@@ -97,7 +99,7 @@ def profile_ocr_functions():
     print(f"   2K → 1080p downsampling: {downsample_time:.3f}s")
 
     start = time.time()
-    downsampled_xk = _downsample_if_needed(xk_img)
+    downsampled_xk = _downsample_if_needed(xk_img)  # noqa: F841
     downsample_xk_time = time.time() - start
     results['downsample_4K_to_1080p'] = downsample_xk_time
     print(f"   4K → 1080p downsampling: {downsample_xk_time:.3f}s")
@@ -105,7 +107,7 @@ def profile_ocr_functions():
     # Profile cache operations
     print("\n3. Profiling cache operations...")
     start = time.time()
-    key = _image_cache_key(test_img, preprocess=True)
+    key = _image_cache_key(test_img, preprocess=True)  # noqa: F841
     cache_key_time = time.time() - start
     results['cache_key_generation'] = cache_key_time
     print(f"   Cache key generation: {cache_key_time:.6f}s")
@@ -120,7 +122,7 @@ def profile_ocr_functions():
     print(f"   4K downsample + preprocess: {combined_time:.3f}s")
 
     start = time.time()
-    preprocessed = preprocess_for_ocr(test_img)
+    preprocessed = preprocess_for_ocr(test_img)  # noqa: F841
     direct_time = time.time() - start
     results['direct_preprocess_1080p'] = direct_time
     print(f"   1080p direct preprocess: {direct_time:.3f}s")
@@ -209,7 +211,7 @@ def main():
     identify_bottlenecks(results)
     suggest_optimizations(results)
 
-    print(f"\n=== PROFILING COMPLETE ===")
+    print("\n=== PROFILING COMPLETE ===")
     print(f"Total operations profiled: {len(results)}")
     print(f"Total time measured: {sum(results.values()):.3f}s")
 
