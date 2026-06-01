@@ -45,6 +45,7 @@ def _make_bare_engine(**overrides):
     eng.gate.enabled = False
     eng.mfa_detector = MagicMock()
     eng.mfa_detector.check_window_titles.return_value = MagicMock(detected=False)
+    eng.mfa_detector.check_screen.return_value = MagicMock(detected=False)
     eng.smart_waiter = MagicMock()
     eng._recovery_engine = MagicMock()
     eng._recorder = MagicMock()

@@ -594,14 +594,13 @@ class TestWin32ScreenshotPaths:
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
         win_vd._handle = 100
 
-        # Pre-acquire the lock so screenshot can't get it (timeout=5s)
-        win_vd._lock.acquire()
+        # Replace the lock with a mock whose acquire returns False immediately,
+        # avoiding the real 5-second timeout wait.
+        mock_lock = MagicMock()
+        mock_lock.acquire.return_value = False
+        win_vd._lock = mock_lock
 
-        try:
-            result = win_vd.screenshot()
-        finally:
-            win_vd._lock.release()
-
+        result = win_vd.screenshot()
         assert result is None
 
     def test_screenshot_switches_to_and_back(self):
@@ -969,15 +968,15 @@ class TestWin32ListWindowsWin32:
         """list_windows returns empty list when lock can't be acquired."""
         win_vd, user32 = self._make_vd_for_enum(is_active=False)
 
-        # Pre-acquire the lock
-        win_vd._lock.acquire()
+        # Replace the lock with a mock whose acquire returns False immediately,
+        # avoiding the real 5-second timeout wait.
+        mock_lock = MagicMock()
+        mock_lock.acquire.return_value = False
+        win_vd._lock = mock_lock
 
-        try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32):
-                result = win_vd.list_windows()
-        finally:
-            win_vd._lock.release()
+        with patch.object(vd, "_IS_WINDOWS", True), \
+             patch.object(vd, "_get_user32", return_value=user32):
+            result = win_vd.list_windows()
 
         assert result == []
 
