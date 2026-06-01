@@ -15,10 +15,10 @@ from core.mfa_detection import (
     _get_window_titles,
     _uia_check,
 )
-from core.utils import have_tesseract as _have_tesseract
+import core.utils as utils
 
 # -----------------------------------------------------------------------
-# Lines 119-120: _have_tesseract() success path
+# Lines 119-120: utils.have_tesseract() success path
 # -----------------------------------------------------------------------
 
 
@@ -26,14 +26,14 @@ class TestHaveTesseractSuccess:
     """_have_tesseract sets _pytesseract and _TESSERACT_OK on successful import."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = None
-        m._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_success_path_sets_globals(self):
         """Lines 119-120: import + get_tesseract_version succeed -> _pytesseract and _TESSERACT_OK."""
-        import core.mfa_detection as m
+        # Old import pattern removed
 
         fake_pytesseract = MagicMock()
         fake_pytesseract.get_tesseract_version.return_value = "5.0.0"
@@ -44,11 +44,11 @@ class TestHaveTesseractSuccess:
             return __import__(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=fake_import):
-            result = _have_tesseract()
+            result = utils.have_tesseract()
 
         assert result is True
-        assert m._TESSERACT_OK is True
-        assert m._pytesseract is fake_pytesseract
+        assert utils._TESSERACT_OK is True
+        assert utils._pytesseract is fake_pytesseract
         fake_pytesseract.get_tesseract_version.assert_called_once()
 
 
@@ -97,18 +97,18 @@ class TestUiaCheckWindowNameException:
     """Lines 356-358: _uia_check catches exception on win.Name."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def test_window_name_exception_sets_empty_title(self):
         """When win.Name raises, title is set to '' and window is still processed."""
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         # Use a property-like mock: Name raises on access
         bad_win = MagicMock()
@@ -136,18 +136,18 @@ class TestUiaCheckControlTypeException:
     """Lines 375-377: _uia_check catches exception on ctrl.ControlTypeName."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def test_control_type_exception_skips_control(self):
         """When ctrl.ControlTypeName raises, control is skipped."""
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         bad_ctrl = MagicMock()
         type(bad_ctrl).ControlTypeName = property(
@@ -176,18 +176,18 @@ class TestUiaCheckIsPasswordException:
     """Lines 384-385: _uia_check catches exception on IsPassword getattr."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def test_is_password_exception_continues(self):
         """When IsPassword access raises, the control is skipped gracefully."""
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         # EditControl whose IsPassword raises
         edit_ctrl = MagicMock()
@@ -220,18 +220,18 @@ class TestUiaCheckTextPatternException:
     """Lines 398-399: _uia_check catches exception during text pattern matching."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def test_text_pattern_exception_continues(self):
         """When ctrl.Name raises during text pattern matching, control is skipped."""
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         text_ctrl = MagicMock()
         text_ctrl.ControlTypeName = "TextControl"

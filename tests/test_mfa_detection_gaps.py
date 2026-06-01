@@ -17,76 +17,65 @@ from core.mfa_detection import (
     _ocr_check,
     _uia_check,
 )
-from core.utils import have_tesseract as _have_tesseract, have_uia as _have_uia
+import core.utils as utils
 
 
 class TestHaveTesseractProbe:
-    """_have_tesseract lazy probe."""
+    """have_tesseract lazy probe."""
 
     def setup_method(self):
-        import core.mfa_detection as m
-
-        m._TESSERACT_OK = None
-        m._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_cached_true(self):
-        import core.mfa_detection as m
-
-        m._TESSERACT_OK = True
-        assert _have_tesseract() is True
+        utils._TESSERACT_OK = True
+        assert utils.have_tesseract() is True
 
     def test_cached_false(self):
-        import core.mfa_detection as m
-
-        m._TESSERACT_OK = False
-        assert _have_tesseract() is False
+        utils._TESSERACT_OK = False
+        assert utils.have_tesseract() is False
 
     def test_import_failure(self):
-        import core.mfa_detection as m
-
         with patch("builtins.__import__", side_effect=ImportError("nope")):
-            assert _have_tesseract() is False
-        assert m._TESSERACT_OK is False
+            assert utils.have_tesseract() is False
+        assert utils._TESSERACT_OK is False
 
 
 class TestHaveUiaProbe:
-    """_have_uia lazy probe."""
+    """have_uia lazy probe."""
 
     def setup_method(self):
-        import core.mfa_detection as m
-
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def test_cached_true(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
-        assert _have_uia() is True
+        utils._UIA_OK = True
+        assert utils.have_uia() is True
 
     def test_cached_false(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = False
-        assert _have_uia() is False
+        utils._UIA_OK = False
+        assert utils.have_uia() is False
 
     def test_import_failure(self):
         with patch("builtins.__import__", side_effect=ImportError("nope")):
-            assert _have_uia() is False
+            assert utils.have_uia() is False
 
     def test_import_success_sets_auto(self):
         """Lines 139-140: a successful uiautomation import caches the module."""
-        import core.mfa_detection as m
-
         fake_uia = MagicMock()
         try:
-            with patch.dict(sys.modules, {"uiautomation": fake_uia}):
-                assert _have_uia() is True
-            assert m._auto is fake_uia
-            assert m._UIA_AVAILABLE is True
+            with patch.dict(sys.modules, {"uiautomation": fake_uia}), \
+                 patch("core.utils.platform.system", return_value="Windows"):
+                assert utils.have_uia() is True
+            assert utils._auto is fake_uia
+            assert utils._UIA_OK is True
         finally:
-            m._UIA_AVAILABLE = None
-            m._auto = None
+            utils._UIA_OK = None
+            utils._auto = None
 
 
 class TestGetWindowTitles:
@@ -127,43 +116,43 @@ class TestOcrCheck:
     """_ocr_check with tesseract and without."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = None
-        m._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_no_tesseract_returns_none(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = False
+        utils._TESSERACT_OK = False
         assert _ocr_check(Image.new("RGB", (10, 10))) is None
 
     def test_tesseract_exception_returns_none(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = True
-        m._pytesseract = MagicMock()
-        m._pytesseract.image_to_string.side_effect = RuntimeError("ocr fail")
+        utils._TESSERACT_OK = True
+        utils._pytesseract = MagicMock()
+        utils._pytesseract.image_to_string.side_effect = RuntimeError("ocr fail")
         with patch("core.ocr.preprocess_for_ocr", return_value=Image.new("RGB", (10, 10))):
             result = _ocr_check(Image.new("RGB", (10, 10)))
         assert result is None
 
     def test_tesseract_empty_text_returns_none(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = True
-        m._pytesseract = MagicMock()
-        m._pytesseract.image_to_string.return_value = ""
+        utils._TESSERACT_OK = True
+        utils._pytesseract = MagicMock()
+        utils._pytesseract.image_to_string.return_value = ""
         with patch("core.ocr.preprocess_for_ocr", return_value=Image.new("RGB", (10, 10))):
             result = _ocr_check(Image.new("RGB", (10, 10)))
         assert result is None
 
     def test_tesseract_mfa_pattern_detected(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = True
-        m._pytesseract = MagicMock()
-        m._pytesseract.image_to_string.return_value = "Please verify your identity to continue"
+        utils._TESSERACT_OK = True
+        utils._pytesseract = MagicMock()
+        utils._pytesseract.image_to_string.return_value = "Please verify your identity to continue"
         with patch("core.ocr.preprocess_for_ocr", return_value=Image.new("RGB", (10, 10))):
             result = _ocr_check(Image.new("RGB", (10, 10)))
         assert result is not None
@@ -171,11 +160,11 @@ class TestOcrCheck:
         assert result.type == "mfa"
 
     def test_tesseract_uac_pattern_boosted(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = True
-        m._pytesseract = MagicMock()
-        m._pytesseract.image_to_string.return_value = "User Account Control: Do you want to allow"
+        utils._TESSERACT_OK = True
+        utils._pytesseract = MagicMock()
+        utils._pytesseract.image_to_string.return_value = "User Account Control: Do you want to allow"
         with patch("core.ocr.preprocess_for_ocr", return_value=Image.new("RGB", (10, 10))):
             result = _ocr_check(Image.new("RGB", (10, 10)))
         assert result is not None
@@ -183,22 +172,22 @@ class TestOcrCheck:
         assert result.confidence >= 0.85
 
     def test_tesseract_credential_pattern(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = True
-        m._pytesseract = MagicMock()
-        m._pytesseract.image_to_string.return_value = "Please enter your password"
+        utils._TESSERACT_OK = True
+        utils._pytesseract = MagicMock()
+        utils._pytesseract.image_to_string.return_value = "Please enter your password"
         with patch("core.ocr.preprocess_for_ocr", return_value=Image.new("RGB", (10, 10))):
             result = _ocr_check(Image.new("RGB", (10, 10)))
         assert result is not None
         assert result.type == "credential"
 
     def test_tesseract_no_match_returns_none(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = True
-        m._pytesseract = MagicMock()
-        m._pytesseract.image_to_string.return_value = "Just normal text nothing special"
+        utils._TESSERACT_OK = True
+        utils._pytesseract = MagicMock()
+        utils._pytesseract.image_to_string.return_value = "Just normal text nothing special"
         with patch("core.ocr.preprocess_for_ocr", return_value=Image.new("RGB", (10, 10))):
             result = _ocr_check(Image.new("RGB", (10, 10)))
         assert result is None
@@ -208,41 +197,41 @@ class TestUiaCheck:
     """_uia_check without UIA or on non-Windows."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def test_no_uia_returns_none(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = False
+        utils._UIA_OK = False
         assert _uia_check() is None
 
     def test_non_windows_returns_none(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         with patch("core.mfa_detection._IS_WINDOWS", False):
             assert _uia_check() is None
 
     def test_uia_exception_returns_none(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
         mock_auto.GetRootControl.side_effect = RuntimeError("COM dead")
-        m._auto = mock_auto
+        utils._auto = mock_auto
         with patch("core.mfa_detection._IS_WINDOWS", True):
             result = _uia_check()
         assert result is None
 
     def test_uia_password_edit_detected(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         password_edit = MagicMock()
         password_edit.ControlTypeName = "EditControl"
@@ -264,11 +253,11 @@ class TestUiaCheck:
         assert result.confidence == 0.8
 
     def test_uia_auth_text_detected(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         text_ctrl = MagicMock()
         text_ctrl.ControlTypeName = "TextControl"
@@ -290,11 +279,11 @@ class TestUiaCheck:
         assert result.confidence == 0.7
 
     def test_uia_window_name_exception_skips(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         bad_win = MagicMock()
         bad_win.Name = MagicMock(side_effect=RuntimeError("COM fail"))
@@ -309,11 +298,11 @@ class TestUiaCheck:
         assert result is None
 
     def test_uia_already_matched_title_skips(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         password_edit = MagicMock()
         password_edit.ControlTypeName = "EditControl"
@@ -332,11 +321,11 @@ class TestUiaCheck:
         assert result is None  # skipped because title already matched
 
     def test_uia_control_type_exception_skips(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
 
         bad_ctrl = MagicMock()
         bad_ctrl.ControlTypeName = MagicMock(side_effect=RuntimeError("COM"))
@@ -358,12 +347,12 @@ class TestCheckScreenTiers:
     """check_screen with OCR and UIA tiers on Windows."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._TESSERACT_OK = None
-        m._pytesseract = None
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     @patch("core.mfa_detection._match_window_title")
     @patch("core.mfa_detection._get_window_titles")
@@ -689,23 +678,23 @@ class TestUiaCheckChildScanBranches:
     """Branches in _uia_check's child-control scan: 376-378, 383->389, 392->373, 399-400."""
 
     def setup_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def teardown_method(self):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = None
-        m._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     def _run(self, children, win_name="ZZZ Unmatched Window 98765"):
-        import core.mfa_detection as m
+        # Old import pattern removed
 
-        m._UIA_AVAILABLE = True
+        utils._UIA_OK = True
         mock_auto = MagicMock()
-        m._auto = mock_auto
+        utils._auto = mock_auto
         win = MagicMock()
         win.Name = win_name
         win.GetChildren.return_value = children

@@ -512,25 +512,24 @@ class TestUiTreeHaveUiaSuccess:
 
     def test_have_uia_returns_true_with_fake_module(self):
         import platform
-
-        import core.ui_tree as mod
+        import core.utils as utils
 
         fake_auto = types.ModuleType("uiautomation")
-        original_ok = mod._UIA_OK
-        original_auto = mod._auto
+        original_ok = utils._UIA_OK
+        original_auto = utils._auto
         try:
-            mod._UIA_OK = None
-            mod._auto = None
+            utils._UIA_OK = None
+            utils._auto = None
             with (
                 patch.dict("sys.modules", {"uiautomation": fake_auto}),
                 patch.object(platform, "system", return_value="Windows"),
             ):
-                result = mod._have_uia()
+                result = utils.have_uia()
             assert result is True
-            assert mod._auto is fake_auto
+            assert utils._auto is fake_auto
         finally:
-            mod._UIA_OK = original_ok
-            mod._auto = original_auto
+            utils._UIA_OK = original_ok
+            utils._auto = original_auto
 
 
 class TestUiTreeScoringException:
