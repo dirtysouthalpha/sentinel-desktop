@@ -19,6 +19,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.utils import iso_now
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -55,7 +57,7 @@ class Script:
         self.name = name
         self.description = description
         self.author = author
-        self.created = created or datetime.now(timezone.utc).isoformat()
+        self.created = created or iso_now()
         self.version = version
         self.tags: list[str] = tags or []
         self.parameters: list[dict[str, str]] = parameters or []
@@ -193,7 +195,7 @@ class ActionRecorder:
 
             action_type = action.get("type", "unknown")
             params = action.get("params", {})
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = iso_now()
 
             # Derive a short human-friendly summary of the result
             result_summary = result.get("summary", "")

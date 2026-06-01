@@ -9,11 +9,12 @@ import logging
 import platform
 import subprocess
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
+
+from core.utils import iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,7 @@ async def dashboard_overview() -> dict[str, Any]:
     minutes, seconds = divmod(remainder, 60)
 
     return {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": iso_now(),
         "system": {
             "platform": platform.system(),
             "platform_release": platform.release(),
@@ -159,7 +160,7 @@ async def health_check() -> dict[str, Any]:
 
     result = {
         "status": status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": iso_now(),
         "issues": issues,
     }
 

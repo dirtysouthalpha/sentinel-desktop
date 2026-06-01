@@ -54,7 +54,7 @@ import logging
 import smtplib
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any
@@ -62,6 +62,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from core.utils import is_windows as _is_windows
+from core.utils import iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -513,7 +514,7 @@ class NotificationManager:
             "message": message,
             "level": level,
             "source": "sentinel-desktop",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": iso_now(),
         }
         return _send_http(url, payload)
 
@@ -531,7 +532,7 @@ class NotificationManager:
             "description": message,
             "color": colour,
             "footer": {"text": "Sentinel Desktop v3.0"},
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": iso_now(),
         }
         payload = {"embeds": [embed]}
         return _send_http(url, payload)
@@ -588,7 +589,7 @@ class NotificationManager:
             f"Sentinel Desktop Notification\n"
             f"{'=' * 40}\n"
             f"Level: {level.upper()}\n"
-            f"Time:  {datetime.now(timezone.utc).isoformat()}\n\n"
+            f"Time:  {iso_now()}\n\n"
             f"{message}\n"
         )
         msg = self._build_mime_message(email_from, recipients, subject, body)
