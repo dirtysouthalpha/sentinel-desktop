@@ -1,0 +1,31 @@
+{
+  "name": "Flush DNS Cache",
+  "description": "Flushes the DNS resolver cache to resolve stale or incorrect DNS lookups. Useful after DNS changes, network migrations, or when users report intermittent connectivity issues.",
+  "author": "sentinel-desktop",
+  "created": "2026-06-01T00:00:00",
+  "version": "3.0",
+  "tags": ["dns", "network", "cache", "troubleshooting"],
+  "category": "network",
+  "icon": "🔄",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": { "command": "cmd", "args": "/c ipconfig /flushdns && ipconfig /registerdns && echo DNS_FLUSH_COMPLETE" },
+      "description": "Flush DNS resolver cache and re-register DNS entries",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "start_process",
+      "params": { "command": "cmd", "args": "/c nbtstat -R && nbtstat -RR && echo NETBIOS_RESET_COMPLETE" },
+      "description": "Reset NetBIOS cache and re-register NetBIOS names",
+      "wait_after_ms": 2000
+    },
+    {
+      "action": "start_process",
+      "params": { "command": "cmd", "args": "/c netsh winsock reset && echo WINSOCK_RESET_COMPLETE" },
+      "description": "Reset Winsock catalog for full network stack refresh",
+      "wait_after_ms": 2000
+    }
+  ]
+}

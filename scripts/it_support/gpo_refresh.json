@@ -1,0 +1,19 @@
+{
+  "name": "Force Group Policy Refresh",
+  "description": "Forces an immediate Group Policy refresh on the local machine. Use when users are not receiving policy updates, after policy changes, or to troubleshoot GPO application issues.",
+  "author": "sentinel-desktop",
+  "created": "2026-06-01T00:00:00",
+  "version": "3.0",
+  "tags": ["gpo", "group-policy", "active-directory", "admin"],
+  "category": "system_admin",
+  "icon": "🔄",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": { "command": "cmd", "args": "/c gpupdate /force && echo GPO_REFRESH_COMPLETE" },
+      "description": "Force synchronous Group Policy update for user and computer",
+      "wait_after_ms": 30000
+    }
+  ]
+}
