@@ -24,9 +24,10 @@ import json
 import logging
 import platform
 import threading
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from core.utils import iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,7 @@ class CredentialVault:
         with self._lock:
             self._data.setdefault("keys", {})[key] = {
                 "encrypted": base64.b64encode(encrypted).decode("ascii"),
-                "created": datetime.now(timezone.utc).isoformat(),
+                "created": iso_now(),
             }
             return self._save()
 
