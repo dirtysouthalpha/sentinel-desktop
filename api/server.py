@@ -57,6 +57,16 @@ class GoalRequest(BaseModel):
     max_steps: int | None = None
     approval_mode: bool | None = None
 
+    def validate_goal(self) -> str:
+        """Validate and sanitize goal input."""
+        # Remove excessive whitespace and limit length
+        clean_goal = " ".join(self.goal.split())  # Normalize whitespace
+        if len(clean_goal) > 2000:  # Prevent unreasonably long goals
+            clean_goal = clean_goal[:2000]
+        if not clean_goal.strip():
+            raise ValueError("Goal cannot be empty")
+        return clean_goal
+
 
 class CommandRequest(BaseModel):
     """Request body for POST /command — execute a single desktop command."""
@@ -331,13 +341,19 @@ class SentinelServer:
         if req.approval_mode is not None:
             cfg["approval_mode"] = req.approval_mode
 
+        # Validate and sanitize the goal
+        try:
+            safe_goal = req.validate_goal()
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
         self.engine = AgentEngine(cfg)
         # Bridge engine step events to all connected WebSocket clients.
         self.engine.on_step_callback = self._broadcast_step
 
         def _run() -> None:
             try:
-                result = self.engine.run(req.goal)
+                result = self.engine.run(safe_goal)
                 logger.info("Agent finished: %d steps", result.get("steps", 0))
                 self._broadcast_event(
                     {
