@@ -80,6 +80,15 @@ class ScriptRunRequest(BaseModel):
     path: str
     params: dict[str, Any] | None = None
 
+    def validate_path(self) -> str:
+        """Validate and sanitize script path to prevent directory traversal."""
+        # Remove any directory traversal attempts
+        clean_path = self.path.replace("..", "").replace("~", "").strip()
+        # Ensure path starts with scripts/ directory
+        if not clean_path.startswith("scripts/"):
+            clean_path = f"scripts/{clean_path}"
+        return clean_path
+
 
 class PowerShellRequest(BaseModel):
     """Request body for POST /powershell — run a PowerShell command."""
@@ -499,11 +508,14 @@ class SentinelServer:
             raise HTTPException(500, "Engine not initialized")
         from core.script_engine import ScriptEngine
 
+        # Validate and sanitize the script path
+        safe_path = req.validate_path()
+
         engine = ScriptEngine(self.engine.executor)
         try:
             # run_script() replays multi-step scripts with sleep() delays;
             # run in thread pool so the event loop stays responsive.
-            result = await asyncio.to_thread(engine.run_script, req.path, req.params)
+            result = await asyncio.to_thread(engine.run_script, safe_path, req.params)
         except (OSError, ValueError) as exc:
             logger.exception("Script execution failed")
             raise HTTPException(500, f"Script execution failed: {exc}") from exc
