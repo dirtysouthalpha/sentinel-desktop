@@ -1,5 +1,5 @@
 """Gap tests for ocr.py — round 2: covers lines 68-70, 95-96, 103-107, 118,
-130-134, 177, 202-261, 281, 287, 291-308, 319."""
+130-134, 161, 177, 202-261, 281, 287, 291-308, 319."""
 
 from __future__ import annotations
 
@@ -161,6 +161,18 @@ class TestDownsampleIfNeeded:
         w, h = result.size
         assert h <= 1080
         assert w <= 1920
+
+    def test_downsamples_medium_resolution_image(self):
+        # Image between 1080p and 2K (e.g., 2000x1200)
+        # Should use standard 1080p target, not aggressive 720p
+        medium = Image.new("RGB", (2000, 1200), "white")
+        result = ocr._downsample_if_needed(medium)
+        w, h = result.size
+        # Should be downsampled to 1080p target
+        assert w <= 1920
+        assert h <= 1080
+        # Should maintain aspect ratio
+        assert abs(w / h - 2000 / 1200) < 0.01
 
 
 # ---------------------------------------------------------------------------
