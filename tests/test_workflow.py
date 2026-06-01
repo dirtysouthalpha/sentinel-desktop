@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from core.workflow import (
     ErrorPolicy,
@@ -375,7 +375,8 @@ class TestWorkflowEngine:
         wf = tmp_path / "retry.json"
         wf.write_text(json.dumps(wf_data), encoding="utf-8")
         engine = WorkflowEngine(action_executor=executor)
-        result = engine.run_workflow(str(wf))
+        with patch("core.workflow.time.sleep"):
+            result = engine.run_workflow(str(wf))
         assert result.success is False
         assert "retries" in result.error
 
@@ -405,7 +406,8 @@ class TestWorkflowEngine:
         wf = tmp_path / "retry_ok.json"
         wf.write_text(json.dumps(wf_data), encoding="utf-8")
         engine = WorkflowEngine(action_executor=executor)
-        result = engine.run_workflow(str(wf))
+        with patch("core.workflow.time.sleep"):
+            result = engine.run_workflow(str(wf))
         assert result.success is True
 
     def test_fire_callbacks_during_workflow(self, tmp_path):

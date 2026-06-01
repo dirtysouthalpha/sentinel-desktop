@@ -88,8 +88,9 @@ class TestFocusWindowPartialMatch:
 class TestWaitForStableFallback:
     """When SmartWait raises, fallback to 3s sleep."""
 
+    @patch("time.sleep")
     @patch("core.action_executor.SmartWait", create=True)
-    def test_import_fails_returns_fallback(self, mock_sw_cls):
+    def test_import_fails_returns_fallback(self, mock_sw_cls, _mock_sleep):
         with patch.dict("sys.modules", {"core.smart_wait": None}):
             ex = ActionExecutor()
             result = ex._wait_for_stable(timeout=5, stable_time=1)
