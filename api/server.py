@@ -669,10 +669,10 @@ class SentinelServer:
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
         try:
-            success = self.engine.notifications.notify(
-                title=req.title,
-                message=req.message,
-                level=req.level,
+            # notify() may make HTTP webhook calls; offload to thread pool.
+            nm = self.engine.notifications
+            success = await asyncio.to_thread(
+                lambda: nm.notify(title=req.title, message=req.message, level=req.level)
             )
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Notification failed: {exc}") from exc
