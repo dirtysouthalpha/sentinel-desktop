@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from core import ui_tree
+from core import utils
 
 
 def _make_node(
@@ -39,33 +40,33 @@ def _make_node(
 
 
 class TestHaveUia:
-    """_have_uia lazy probe covers caching and platform guard."""
+    """have_uia lazy probe covers caching and platform guard."""
 
     def setup_method(self):
-        ui_tree._UIA_OK = None
-        ui_tree._auto = None
+        utils._UIA_OK = None
+        utils._auto = None
 
     @patch("core.ui_tree.platform.system", return_value="Linux")
     def test_non_windows_returns_false(self, mock_sys):
-        assert ui_tree._have_uia() is False
-        assert ui_tree._UIA_OK is False
+        assert utils.have_uia() is False
+        assert utils._UIA_OK is False
 
     @patch("core.ui_tree.platform.system", return_value="Windows")
     def test_import_failure_returns_false(self, mock_sys):
         with patch.dict("sys.modules", {"uiautomation": None}):
             with patch("builtins.__import__", side_effect=ImportError("nope")):
-                assert ui_tree._have_uia() is False
+                assert utils.have_uia() is False
 
     @patch("core.ui_tree.platform.system", return_value="Windows")
     def test_cached_true_skips_reprobe(self, mock_sys):
-        ui_tree._UIA_OK = True
-        assert ui_tree._have_uia() is True
+        utils._UIA_OK = True
+        assert utils.have_uia() is True
         mock_sys.assert_not_called()
 
     @patch("core.ui_tree.platform.system", return_value="Windows")
     def test_cached_false_skips_reprobe(self, mock_sys):
-        ui_tree._UIA_OK = False
-        assert ui_tree._have_uia() is False
+        utils._UIA_OK = False
+        assert utils.have_uia() is False
         mock_sys.assert_not_called()
 
 
@@ -75,7 +76,7 @@ class TestListControlsWalkException:
     def test_walk_oserror_returns_empty(self):
         node = _make_node()
         with (
-            patch.object(ui_tree, "_have_uia", return_value=True),
+            patch.object(ui_tree, "have_uia", return_value=True),
             patch.object(ui_tree, "_find_window", return_value=node),
             patch.object(ui_tree, "_walk", side_effect=OSError("COM failed")),
         ):
@@ -84,7 +85,7 @@ class TestListControlsWalkException:
     def test_walk_runtime_error_returns_empty(self):
         node = _make_node()
         with (
-            patch.object(ui_tree, "_have_uia", return_value=True),
+            patch.object(ui_tree, "have_uia", return_value=True),
             patch.object(ui_tree, "_find_window", return_value=node),
             patch.object(ui_tree, "_walk", side_effect=RuntimeError("dead")),
         ):
@@ -99,7 +100,7 @@ class TestClickControlMiddleButton:
         ctrl.GetInvokePattern.return_value = None
         ctrl.GetSelectionItemPattern.return_value = None
         with (
-            patch.object(ui_tree, "_have_uia", return_value=True),
+            patch.object(ui_tree, "have_uia", return_value=True),
             patch.object(ui_tree, "_find_control", return_value=ctrl),
         ):
             result = ui_tree.click_control(name="btn", button="middle")
@@ -115,9 +116,9 @@ class TestSetTextFailure:
         ctrl.GetValuePattern.side_effect = AttributeError("no pattern")
         ctrl.SetFocus.side_effect = AttributeError("no focus")
         with (
-            patch.object(ui_tree, "_have_uia", return_value=True),
+            patch.object(ui_tree, "have_uia", return_value=True),
             patch.object(ui_tree, "_find_control", return_value=ctrl),
-            patch.object(ui_tree, "_auto", MagicMock()),
+            patch.object(ui_tree, "get_uia_auto", MagicMock()),
         ):
             assert ui_tree.set_text("hello", name="field") is False
 
@@ -126,9 +127,9 @@ class TestSetTextFailure:
         ctrl.GetValuePattern.side_effect = AttributeError("no pattern")
         ctrl.SetFocus.side_effect = OSError("COM fail")
         with (
-            patch.object(ui_tree, "_have_uia", return_value=True),
+            patch.object(ui_tree, "have_uia", return_value=True),
             patch.object(ui_tree, "_find_control", return_value=ctrl),
-            patch.object(ui_tree, "_auto", MagicMock()),
+            patch.object(ui_tree, "get_uia_auto", MagicMock()),
         ):
             assert ui_tree.set_text("hello", name="field") is False
 
@@ -139,26 +140,18 @@ class TestFindWindowErrors:
     def test_exception_returns_none(self):
         mock_auto = MagicMock()
         mock_auto.GetRootControl.side_effect = RuntimeError("COM dead")
-        original = ui_tree._auto
-        ui_tree._auto = mock_auto
-        try:
+        with patch.object(ui_tree, "get_uia_auto", return_value=mock_auto):
             from core.ui_tree import _find_window
 
             assert _find_window("test") is None
-        finally:
-            ui_tree._auto = original
 
     def test_foreground_exception_returns_none(self):
         mock_auto = MagicMock()
         mock_auto.GetForegroundControl.side_effect = AttributeError("no fg")
-        original = ui_tree._auto
-        ui_tree._auto = mock_auto
-        try:
+        with patch.object(ui_tree, "get_uia_auto", return_value=mock_auto):
             from core.ui_tree import _find_window
 
             assert _find_window(None) is None
-        finally:
-            ui_tree._auto = original
 
 
 class TestWalkGetChildrenError:
@@ -169,7 +162,7 @@ class TestWalkGetChildrenError:
         child.GetChildren.side_effect = RuntimeError("COM error")
         root = _make_node(name="Root", children=[child])
         with (
-            patch.object(ui_tree, "_have_uia", return_value=True),
+            patch.object(ui_tree, "have_uia", return_value=True),
             patch.object(ui_tree, "_find_window", return_value=root),
         ):
             result = ui_tree.list_controls()

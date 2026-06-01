@@ -33,6 +33,8 @@ from dataclasses import dataclass
 
 from PIL import Image
 
+from core.utils import get_tesseract, have_tesseract
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -310,30 +312,6 @@ class PopupDetectionResult:
 
 
 # ---------------------------------------------------------------------------
-# Optional-dependency probes
-# ---------------------------------------------------------------------------
-
-_TESSERACT_OK: bool | None = None
-_pytesseract = None  # type: ignore[assignment]
-
-
-def _have_tesseract() -> bool:
-    """Lazily probe for pytesseract + Tesseract binary."""
-    global _TESSERACT_OK, _pytesseract
-    if _TESSERACT_OK is not None:
-        return _TESSERACT_OK
-    try:
-        import pytesseract  # type: ignore
-
-        pytesseract.get_tesseract_version()
-        _pytesseract = pytesseract
-        _TESSERACT_OK = True
-    except Exception as exc:
-        logger.debug("PopupHandler OCR disabled -- pytesseract unavailable (%s)", exc)
-        _TESSERACT_OK = False
-    return _TESSERACT_OK
-
-
 # ---------------------------------------------------------------------------
 # OCR helper
 # ---------------------------------------------------------------------------
@@ -341,7 +319,7 @@ def _have_tesseract() -> bool:
 
 def _ocr_text(image: Image.Image) -> str:
     """OCR an image and return extracted text. Returns empty string on failure."""
-    if not _have_tesseract():
+    if not have_tesseract():
         return ""
     try:
         from core.ocr import preprocess_for_ocr
@@ -354,7 +332,7 @@ def _ocr_text(image: Image.Image) -> str:
         processed = image
 
     try:
-        return _pytesseract.image_to_string(processed)  # type: ignore[union-attr]
+        return get_tesseract().image_to_string(processed)  # type: ignore[union-attr]
     except Exception as exc:
         logger.debug("PopupHandler OCR failed: %s", exc)
         return ""

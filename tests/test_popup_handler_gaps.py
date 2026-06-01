@@ -11,9 +11,10 @@ from unittest.mock import MagicMock, patch
 from PIL import Image
 
 import core.popup_handler as ph
+import core.utils as utils
 
 # ---------------------------------------------------------------------------
-# _have_tesseract
+# have_tesseract
 # ---------------------------------------------------------------------------
 
 
@@ -22,35 +23,35 @@ class TestHaveTesseract:
 
     def setup_method(self):
         # Reset the global cache before each test
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_returns_false_when_import_fails(self):
         """When pytesseract is not installed, returns False."""
         with patch.dict(sys.modules, {"pytesseract": None}):
             # Force import to fail
             with patch("builtins.__import__", side_effect=ImportError("nope")):
-                assert ph._have_tesseract() is False
+                assert utils.have_tesseract() is False
 
     def test_caches_result_true(self):
         """Second call returns cached True without re-probing."""
         mock_ts = MagicMock()
         mock_ts.get_tesseract_version.return_value = "5.0"
-        ph._TESSERACT_OK = True
-        ph._pytesseract = mock_ts
-        assert ph._have_tesseract() is True
+        utils._TESSERACT_OK = True
+        utils._pytesseract = mock_ts
+        assert utils.have_tesseract() is True
 
     def test_caches_result_false(self):
         """Second call returns cached False without re-probing."""
-        ph._TESSERACT_OK = False
-        assert ph._have_tesseract() is False
+        utils._TESSERACT_OK = False
+        assert utils.have_tesseract() is False
 
     def test_returns_true_when_available(self):
         """When pytesseract imports and get_tesseract_version succeeds."""
         mock_ts = MagicMock()
         mock_ts.get_tesseract_version.return_value = "5.0"
         with patch.dict(sys.modules, {"pytesseract": mock_ts}):
-            result = ph._have_tesseract()
+            result = utils.have_tesseract()
         assert result is True
 
 
@@ -63,12 +64,12 @@ class TestOcrText:
     """Test the OCR helper function."""
 
     def setup_method(self):
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_returns_empty_when_tesseract_unavailable(self):
         """Returns empty string when tesseract is not available."""
-        ph._TESSERACT_OK = False
+        utils._TESSERACT_OK = False
         img = Image.new("RGB", (100, 50))
         assert ph._ocr_text(img) == ""
 
@@ -76,8 +77,8 @@ class TestOcrText:
         """Returns OCR output when tesseract works."""
         mock_ts = MagicMock()
         mock_ts.image_to_string.return_value = "Hello World"
-        ph._TESSERACT_OK = True
-        ph._pytesseract = mock_ts
+        utils._TESSERACT_OK = True
+        utils._pytesseract = mock_ts
         img = Image.new("RGB", (100, 50))
         result = ph._ocr_text(img)
         assert result == "Hello World"
@@ -86,8 +87,8 @@ class TestOcrText:
         """Returns empty string when OCR raises."""
         mock_ts = MagicMock()
         mock_ts.image_to_string.side_effect = RuntimeError("OCR fail")
-        ph._TESSERACT_OK = True
-        ph._pytesseract = mock_ts
+        utils._TESSERACT_OK = True
+        utils._pytesseract = mock_ts
         img = Image.new("RGB", (100, 50))
         result = ph._ocr_text(img)
         assert result == ""
@@ -96,8 +97,8 @@ class TestOcrText:
         """When core.ocr.preprocess_for_ocr is importable, it's used."""
         mock_ts = MagicMock()
         mock_ts.image_to_string.return_value = "processed text"
-        ph._TESSERACT_OK = True
-        ph._pytesseract = mock_ts
+        utils._TESSERACT_OK = True
+        utils._pytesseract = mock_ts
 
         processed_img = Image.new("L", (100, 50))
         with patch("core.popup_handler.preprocess_for_ocr", create=True) as mock_pp:
@@ -114,8 +115,8 @@ class TestOcrText:
         """When preprocess_for_ocr raises, falls back to raw image."""
         mock_ts = MagicMock()
         mock_ts.image_to_string.return_value = "fallback text"
-        ph._TESSERACT_OK = True
-        ph._pytesseract = mock_ts
+        utils._TESSERACT_OK = True
+        utils._pytesseract = mock_ts
         img = Image.new("RGB", (100, 50))
 
         # Force the import to raise
@@ -186,12 +187,12 @@ class TestDetectFromScreenshot:
     """Test the detect_from_screenshot method edge cases."""
 
     def setup_method(self):
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_returns_empty_when_ocr_empty(self):
         """Returns empty result when OCR produces no output."""
-        ph._TESSERACT_OK = False
+        utils._TESSERACT_OK = False
         handler = ph.PopupHandler()
         img = Image.new("RGB", (100, 50))
         result = handler.detect_from_screenshot(img)
@@ -201,8 +202,8 @@ class TestDetectFromScreenshot:
         """Returns empty result when OCR returns only whitespace."""
         mock_ts = MagicMock()
         mock_ts.image_to_string.return_value = "   \n  \n  "
-        ph._TESSERACT_OK = True
-        ph._pytesseract = mock_ts
+        utils._TESSERACT_OK = True
+        utils._pytesseract = mock_ts
         handler = ph.PopupHandler()
         img = Image.new("RGB", (100, 50))
         result = handler.detect_from_screenshot(img)
@@ -218,8 +219,8 @@ class TestCheckAndDismiss:
     """Test the check_and_dismiss integration method."""
 
     def setup_method(self):
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_returns_empty_when_screenshot_capture_fails(self):
         """Returns empty result when screenshot capture fails."""

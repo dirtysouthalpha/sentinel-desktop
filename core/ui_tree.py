@@ -22,10 +22,9 @@ import time
 from collections import deque
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from core.utils import get_uia_auto, have_uia
 
-_UIA_OK: bool | None = None
-_auto = None  # holds the imported uiautomation module if available
+logger = logging.getLogger(__name__)
 
 # Short-lived cache for repeated _find_control lookups.
 # UI scans are expensive (BFS over thousands of nodes); caching for 0.5 s
@@ -33,29 +32,6 @@ _auto = None  # holds the imported uiautomation module if available
 # succession (e.g. type-then-read on the same field).
 _FIND_CONTROL_CACHE: dict[tuple[str | None, ...], tuple[Any, float]] = {}
 _FIND_CONTROL_TTL = 0.5  # seconds
-
-
-def _have_uia() -> bool:
-    """Lazily probe for the uiautomation package and COM availability."""
-    global _UIA_OK, _auto
-    if _UIA_OK is not None:
-        return _UIA_OK
-    if platform.system() != "Windows":
-        _UIA_OK = False
-        return False
-    try:
-        import uiautomation as auto  # type: ignore
-
-        _auto = auto
-        _UIA_OK = True
-    except (ImportError, ModuleNotFoundError, OSError) as exc:
-        logger.info(
-            "UIAutomation disabled — install 'uiautomation' to enable "
-            "click_control / list_controls / set_text (%s)",
-            exc,
-        )
-        _UIA_OK = False
-    return _UIA_OK
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +57,7 @@ def list_controls(
         width, height, is_enabled, is_offscreen}`` dicts.
 
     """
-    if not _have_uia():
+    if not have_uia():
         return []
     root = _find_window(window_title)
     if root is None:
@@ -107,7 +83,7 @@ def click_control(
     Returns the (x, y) it clicked, or ``None`` if no match was found.
     Matching is AND across the provided keys (all provided must match).
     """
-    if not _have_uia():
+    if not have_uia():
         return None
     ctrl = _find_control(
         name=name,
@@ -172,7 +148,7 @@ def set_text(
 
     Uses the ValuePattern when available; falls back to focus-then-type.
     """
-    if not _have_uia():
+    if not have_uia():
         return False
     ctrl = _find_control(
         name=name,
@@ -196,7 +172,7 @@ def set_text(
             logger.debug("ValuePattern failed, falling back to SendKeys: %s", exc)
         ctrl.SetFocus()
         # SendKeys with curly-brace escaping for safety.
-        _auto.SendKeys(text, waitTime=0.02)  # type: ignore[union-attr]
+        get_uia_auto().SendKeys(text, waitTime=0.02)  # type: ignore[union-attr]
         return True
     except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.warning("set_text failed: %s", exc)
@@ -210,17 +186,17 @@ def set_text(
 
 def _find_window(window_title: str | None) -> Any | None:
     """Return the root control for either the named window or the foreground."""
-    if _auto is None:
+    if get_uia_auto() is None:
         return None
     try:
         if window_title:
             # WindowControl(searchDepth=1, Name=...) matches partial via 'searchFromControl'
-            for w in _auto.GetRootControl().GetChildren():
+            for w in get_uia_auto().GetRootControl().GetChildren():
                 title = (w.Name or "").lower()
                 if window_title.lower() in title:
                     return w
             return None
-        return _auto.GetForegroundControl()
+        return get_uia_auto().GetForegroundControl()
     except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.debug("_find_window failed: %s", exc)
         return None

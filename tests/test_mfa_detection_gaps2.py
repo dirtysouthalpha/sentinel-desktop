@@ -13,9 +13,9 @@ from core.mfa_detection import (
     MFADetector,
     _empty_result,
     _get_window_titles,
-    _have_tesseract,
     _uia_check,
 )
+from core.utils import have_tesseract as _have_tesseract
 
 # -----------------------------------------------------------------------
 # Lines 119-120: _have_tesseract() success path

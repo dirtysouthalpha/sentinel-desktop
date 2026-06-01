@@ -28,6 +28,8 @@ from typing import Any
 
 from PIL import Image
 
+from core.utils import get_tesseract, have_tesseract, have_uia
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -100,50 +102,6 @@ UAC_KEYWORDS: list[str] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Optional-dependency probes
-# ---------------------------------------------------------------------------
-
-_TESSERACT_OK: bool | None = None
-_pytesseract = None  # type: ignore[assignment]
-
-
-def _have_tesseract() -> bool:
-    """Lazily probe for pytesseract + Tesseract binary."""
-    global _TESSERACT_OK, _pytesseract
-    if _TESSERACT_OK is not None:
-        return _TESSERACT_OK
-    try:
-        import pytesseract  # type: ignore
-
-        pytesseract.get_tesseract_version()
-        _pytesseract = pytesseract
-        _TESSERACT_OK = True
-    except (ImportError, ModuleNotFoundError, OSError) as exc:
-        logger.debug("MFA OCR tier disabled — pytesseract unavailable (%s)", exc)
-        _TESSERACT_OK = False
-    return _TESSERACT_OK
-
-
-_UIA_AVAILABLE: bool | None = None
-_auto = None  # uiautomation module ref
-
-
-def _have_uia() -> bool:
-    """Lazily probe for the *uiautomation* package."""
-    global _UIA_AVAILABLE, _auto
-    if _UIA_AVAILABLE is not None:
-        return _UIA_AVAILABLE
-    try:
-        import uiautomation as auto  # type: ignore
-
-        _auto = auto
-        _UIA_AVAILABLE = True
-    except (ImportError, ModuleNotFoundError, OSError) as exc:
-        logger.debug("MFA UIA tier disabled — uiautomation unavailable (%s)", exc)
-        _UIA_AVAILABLE = False
-    return _UIA_AVAILABLE
-
-
 # ---------------------------------------------------------------------------
 # DetectionResult
 # ---------------------------------------------------------------------------
@@ -274,14 +232,14 @@ def _ocr_check(screenshot: Image.Image) -> DetectionResult | None:
 
     Returns a :class:`DetectionResult` on the first match, or ``None``.
     """
-    if not _have_tesseract():
+    if not have_tesseract():
         return None
 
     try:
         from core.ocr import preprocess_for_ocr
 
         processed = preprocess_for_ocr(screenshot)
-        text = _pytesseract.image_to_string(processed)  # type: ignore[union-attr]
+        text = get_tesseract().image_to_string(processed)  # type: ignore[union-attr]
     except (OSError, RuntimeError, ValueError) as exc:
         logger.debug("MFA OCR scan failed: %s", exc)
         return None
@@ -344,7 +302,7 @@ def _uia_check() -> DetectionResult | None:
     Returns a :class:`DetectionResult` if an auth prompt is identified,
     or ``None``.
     """
-    if not _have_uia() or not _IS_WINDOWS:
+    if not have_uia() or not _IS_WINDOWS:
         return None
 
     try:

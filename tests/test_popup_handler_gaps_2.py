@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 from PIL import Image
 
 import core.popup_handler as ph
+import core.utils as utils
 
 
 class TestOcrImportError:
@@ -22,8 +23,8 @@ class TestOcrImportError:
 
         with patch.dict("sys.modules", {"pytesseract": mock_tesseract}):
             # Reset tesseract state
-            ph._TESSERACT_OK = None
-            ph._pytesseract = None
+            utils._TESSERACT_OK = None
+            utils._pytesseract = None
 
             # Make preprocess_for_ocr import fail
             with patch.dict("sys.modules", {"core.ocr": None}):
@@ -32,8 +33,8 @@ class TestOcrImportError:
             assert result == "Hello World"
 
         # Cleanup
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
 
 class TestForegroundWindowTitleFallback:
@@ -81,25 +82,25 @@ class TestDetectFromScreenshotEmptyLines:
         mock_tesseract.get_tesseract_version.return_value = "5.0"
 
         with patch.dict("sys.modules", {"pytesseract": mock_tesseract}):
-            ph._TESSERACT_OK = None
-            ph._pytesseract = None
+            utils._TESSERACT_OK = None
+            utils._pytesseract = None
             handler = ph.PopupHandler()
             result = handler.detect_from_screenshot(Image.new("RGB", (100, 100)))
         assert result.detected is False
 
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
     def test_no_tesseract_returns_undetected(self):
         """When tesseract is unavailable, returns undetected."""
-        ph._TESSERACT_OK = False
-        ph._pytesseract = None
+        utils._TESSERACT_OK = False
+        utils._pytesseract = None
         handler = ph.PopupHandler()
         result = handler.detect_from_screenshot(Image.new("RGB", (100, 100)))
         assert result.detected is False
 
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None
 
 
 class TestClickButtonWin32:
@@ -355,5 +356,5 @@ class TestCheckAndDismiss:
         # Should not have attempted to dismiss
         assert handler._dismiss_attempts == handler.MAX_DISMISS_ATTEMPTS
 
-        ph._TESSERACT_OK = None
-        ph._pytesseract = None
+        utils._TESSERACT_OK = None
+        utils._pytesseract = None

@@ -14,11 +14,10 @@ from core.mfa_detection import (
     _empty_result,
     _extract_excerpt,
     _get_window_titles,
-    _have_tesseract,
-    _have_uia,
     _ocr_check,
     _uia_check,
 )
+from core.utils import have_tesseract as _have_tesseract, have_uia as _have_uia
 
 
 class TestHaveTesseractProbe:

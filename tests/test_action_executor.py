@@ -93,9 +93,9 @@ def test_pre_action_callback_failure_does_not_break_dispatch(fake_executor):
 def test_click_text_handler_returns_text_not_found_without_ocr(fake_executor, monkeypatch):
     # When Tesseract isn't available, find_text returns None and the
     # handler must report a clean error rather than crashing.
-    from core import ocr
+    from core import utils
 
-    monkeypatch.setattr(ocr, "_have_tesseract", lambda: False)
+    monkeypatch.setattr(utils, "have_tesseract", lambda: False)
     ex = fake_executor()
     out = ex.execute_sync({"action": "click_text", "text": "Send"})
     assert out["success"] is False

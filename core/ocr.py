@@ -29,6 +29,7 @@ from core.screenshot import (
     capture_window,
     get_capture_offset,
 )
+from core.utils import have_tesseract
 
 # Set to False (via config) to OCR the raw screenshot. Default-on because
 # Tesseract is noticeably more accurate on preprocessed UI text.
@@ -59,30 +60,6 @@ _CACHE_MAX_SIZE = 50  # evict oldest when cache exceeds this
 _boxes_cache: dict[str, tuple[list[dict[str, Any]], float]] = {}
 
 logger = logging.getLogger(__name__)
-
-_TESSERACT_OK: bool | None = None  # None = not yet probed
-_pytesseract = None
-
-
-def _have_tesseract() -> bool:
-    """Lazily probe for pytesseract + the Tesseract binary."""
-    global _TESSERACT_OK, _pytesseract
-    if _TESSERACT_OK is not None:
-        return _TESSERACT_OK
-    try:
-        import pytesseract  # type: ignore
-
-        # Touch the binary to confirm it's reachable.
-        pytesseract.get_tesseract_version()
-        _pytesseract = pytesseract
-        _TESSERACT_OK = True
-    except (ImportError, OSError) as exc:
-        logger.info(
-            "OCR disabled — install Tesseract + pytesseract to enable click_text / read_text (%s)",
-            exc,
-        )
-        _TESSERACT_OK = False
-    return _TESSERACT_OK
 
 
 def _image_cache_key(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
@@ -198,7 +175,7 @@ def preprocess_for_ocr(img: Image.Image) -> Image.Image:
 
 def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
     """OCR a PIL Image with optional preprocessing."""
-    if not _have_tesseract():
+    if not have_tesseract():
         return ""
     try:
         img = _downsample_if_needed(img)
@@ -264,7 +241,7 @@ def _ocr_image_with_confidence(
         "low_confidence_words": [],
         "low_confidence_regions": [],
     }
-    if not _have_tesseract():
+    if not have_tesseract():
         return ("", empty_conf)
     try:
         img = _downsample_if_needed(img)
@@ -346,7 +323,7 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
 
 def read_screen_text(monitor: int | None = None, preprocess: bool = PREPROCESS_DEFAULT) -> str:
     """OCR the screen and return the raw text. Empty string if OCR is unavailable."""
-    if not _have_tesseract():
+    if not have_tesseract():
         return ""
     try:
         img = capture_screen(monitor=monitor)
@@ -360,7 +337,7 @@ def read_screen_text_with_confidence(
     monitor: int | None = None, preprocess: bool = PREPROCESS_DEFAULT
 ) -> tuple[str, dict[str, Any]]:
     """OCR the screen and return text + confidence data."""
-    if not _have_tesseract():
+    if not have_tesseract():
         return (
             "",
             {
@@ -396,7 +373,7 @@ def read_focused_window_text_with_title() -> tuple[str, str]:
     """Return (text, title) of the OCR'd window so callers can surface what
     window was actually read. Useful for debugging multi-monitor confusion.
     """
-    if not _have_tesseract():
+    if not have_tesseract():
         return ("", "")
     try:
         pair = capture_focused_window_with_title()
@@ -411,7 +388,7 @@ def read_focused_window_text_with_title() -> tuple[str, str]:
 
 def read_window_text(title: str) -> str:
     """OCR a window whose title contains *title*. Returns '' if not found."""
-    if not title or not _have_tesseract():
+    if not title or not have_tesseract():
         return ""
     try:
         img = capture_window(title)
@@ -465,7 +442,7 @@ def find_text(
         monitor: Pass-through to ``capture_screen``.
 
     """
-    if not query or not _have_tesseract():
+    if not query or not have_tesseract():
         return None
     needle = re.sub(r"\s+", " ", query).strip().lower()
     if not needle:
