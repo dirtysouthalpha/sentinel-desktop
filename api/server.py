@@ -702,7 +702,8 @@ class SentinelServer:
             raise HTTPException(500, "Engine not initialized")
         name = req.name
         try:
-            success = self.engine.plugin_loader.reload_plugin(name)
+            # reload_plugin() imports Python modules from disk; offload to thread.
+            success = await asyncio.to_thread(self.engine.plugin_loader.reload_plugin, name)
         except (OSError, ValueError, RuntimeError, ImportError) as exc:
             raise HTTPException(500, f"Failed to reload plugin: {exc}") from exc
         return {"success": success, "name": name}
