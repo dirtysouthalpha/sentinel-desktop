@@ -31,7 +31,8 @@ def _get_cpu_info() -> dict[str, Any]:
     try:
         import psutil
         return {
-            "percent": psutil.cpu_percent(interval=0.5),
+            # interval=None is non-blocking; returns usage since last call (0.0 on first call).
+            "percent": psutil.cpu_percent(interval=None),
             "count_physical": psutil.cpu_count(logical=False),
             "count_logical": psutil.cpu_count(logical=True),
             "freq_current": round(psutil.cpu_freq().current, 0) if psutil.cpu_freq() else None,
