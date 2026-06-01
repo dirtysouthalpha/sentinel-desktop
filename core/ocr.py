@@ -398,6 +398,28 @@ def read_window_text(title: str) -> str:
         return ""
 
 
+def _get_screen_boxes(monitor: int | None) -> list[dict[str, Any]] | None:
+    """Capture the screen and return OCR word-boxes, using _boxes_cache."""
+    try:
+        img = capture_screen(monitor=monitor)
+        img_small = _downsample_if_needed(img)
+        cache_key = _image_cache_key(img_small)
+        now = time.monotonic()
+        entry = _boxes_cache.get(cache_key)
+        if entry is not None and now - entry[1] < _CACHE_TTL:
+            return entry[0]
+        data: dict[str, list[Any]] = _pytesseract.image_to_data(  # type: ignore[union-attr]
+            img_small,
+            output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
+        )
+        boxes = _boxes_from_data(data)
+        _boxes_cache[cache_key] = (boxes, now)
+        return boxes
+    except (OSError, RuntimeError) as exc:
+        logger.warning("OCR find_text failed: %s", exc)
+        return None
+
+
 def find_text(
     query: str,
     *,
@@ -422,33 +444,13 @@ def find_text(
     needle = re.sub(r"\s+", " ", query).strip().lower()
     if not needle:
         return None
-
-    try:
-        img = capture_screen(monitor=monitor)
-        img_small = _downsample_if_needed(img)
-        cache_key = _image_cache_key(img_small)
-        now = time.monotonic()
-        cached_boxes = _boxes_cache.get(cache_key)
-        if cached_boxes is not None and now - cached_boxes[1] < _CACHE_TTL:
-            boxes = cached_boxes[0]
-        else:
-            data: dict[str, list[Any]] = _pytesseract.image_to_data(  # type: ignore[union-attr]
-                img_small,
-                output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
-            )
-            boxes = _boxes_from_data(data)
-            _boxes_cache[cache_key] = (boxes, now)
-    except (OSError, RuntimeError) as exc:
-        logger.warning("OCR find_text failed: %s", exc)
+    boxes = _get_screen_boxes(monitor)
+    if boxes is None:
         return None
     offset_x, offset_y = get_capture_offset(monitor)
-
-    # 1) Exact substring on the joined line text.
     hit = _exact_substring_hit(boxes, needle)
     if hit is not None:
         return (hit[0] + offset_x, hit[1] + offset_y)
-
-    # 2) Fuzzy on each line.
     if fuzzy:
         hit = _fuzzy_line_hit(boxes, needle, min_score)
         if hit is not None:
