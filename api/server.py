@@ -783,7 +783,10 @@ class SentinelServer:
         attempts.append(now)
 
         try:
-            user = self.engine.auth_manager.authenticate(req.username, req.password)
+            # authenticate() runs bcrypt verification (CPU-intensive); offload to thread.
+            user = await asyncio.to_thread(
+                self.engine.auth_manager.authenticate, req.username, req.password
+            )
         except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Authentication error: {exc}") from exc
         if not user:
