@@ -392,7 +392,7 @@ class SentinelServer:
     ) -> dict[str, str]:
         self._check_auth(authorization)
         try:
-            b64 = capture_to_base64()
+            b64 = await asyncio.to_thread(capture_to_base64)
         except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Screen capture failed: {exc}") from exc
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
@@ -415,7 +415,7 @@ class SentinelServer:
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
-            windows = wm.list_windows()
+            windows = await asyncio.to_thread(wm.list_windows)
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to list windows: {exc}") from exc
         return {"windows": windows}
@@ -425,7 +425,7 @@ class SentinelServer:
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
-            processes = pm.list_processes(limit=100)
+            processes = await asyncio.to_thread(pm.list_processes, 100)
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to list processes: {exc}") from exc
         return {"processes": processes}
@@ -435,7 +435,7 @@ class SentinelServer:
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
-            info = sysinfo.system_info()
+            info = await asyncio.to_thread(sysinfo.system_info)
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to get system info: {exc}") from exc
         return {"system": info}
@@ -520,7 +520,9 @@ class SentinelServer:
             from core.powershell import get_default_runner
 
             runner = get_default_runner()
-            ps_result = runner.run_command(req.command)
+            # run_command() is blocking (up to the runner's 300 s timeout);
+            # offload to thread pool so the event loop stays responsive.
+            ps_result = await asyncio.to_thread(runner.run_command, req.command)
             return {
                 "success": ps_result.success,
                 "stdout": ps_result.stdout[:5000],
