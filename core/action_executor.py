@@ -680,7 +680,7 @@ class ActionExecutor:
         tx = int(to_x) + self.click_offset[0]
         ty = int(to_y) + self.click_offset[1]
         if self.stealth and stealth_input.is_available():
-            result = self._stealth_drag_win32(sx, sy, tx, ty, from_x, from_y, to_x, to_y, duration, button)
+            result = self._stealth_drag_win32(sx, sy, tx, ty, duration, button)
             if result is not None:
                 return result
         try:
@@ -695,10 +695,6 @@ class ActionExecutor:
         sy: int,
         tx: int,
         ty: int,
-        from_x: int,
-        from_y: int,
-        to_x: int,
-        to_y: int,
         duration: float,
         button: str,
     ) -> dict | None:
@@ -725,7 +721,7 @@ class ActionExecutor:
                 win32api.PostMessage(hwnd, win32con.WM_MOUSEMOVE, mk, lparam_move)
                 _t.sleep(duration / steps)
             win32api.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lparam_up)
-            return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y}) — stealth"}
+            return {"success": True, "output": f"Dragged ({sx},{sy})→({tx},{ty}) — stealth"}
         except Exception as exc:
             logger.debug("Stealth drag failed, falling back: %s", exc)
             return None
