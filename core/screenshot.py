@@ -176,6 +176,24 @@ def capture_screen(monitor: int | str | None = None) -> Image.Image:
         raise OSError(f"All screen capture methods failed: {exc}") from exc
 
 
+def _resolve_target_window_rect() -> tuple[int, int, int, int, str] | None:
+    """Return ``(x, y, w, h, title)`` for the best target window, or None.
+
+    Prefers the non-self foreground window; falls back to the raw focused
+    window as a last resort.
+    """
+    from core import window_manager as wm
+
+    target = wm.get_target_window_rect()
+    if target is not None:
+        return target  # already (x, y, w, h, title)
+    rect = wm.get_focused_window_rect()
+    if rect is None:
+        return None
+    x, y, w, h = rect
+    return x, y, w, h, ""
+
+
 def capture_focused_window() -> Image.Image | None:
     """Capture the *target* window's pixels — the foreground window, unless
     that's the Sentinel Desktop GUI itself (in which case fall back to the
@@ -183,17 +201,10 @@ def capture_focused_window() -> Image.Image | None:
 
     Returns None only when no suitable window can be found.
     """
-    from core import window_manager as wm
-
-    target = wm.get_target_window_rect()
-    if target is None:
-        # Last-resort fallback: try the raw focused window even if it's self.
-        rect = wm.get_focused_window_rect()
-        if rect is None:
-            return None
-        x, y, w, h = rect
-    else:
-        x, y, w, h, _title = target
+    resolved = _resolve_target_window_rect()
+    if resolved is None:
+        return None
+    x, y, w, h, _title = resolved
     if w <= 0 or h <= 0:
         return None
     try:
@@ -208,17 +219,10 @@ def capture_focused_window_with_title() -> tuple[Image.Image, str] | None:
 
     Returns (PIL.Image, title) or None.
     """
-    from core import window_manager as wm
-
-    target = wm.get_target_window_rect()
-    if target is None:
-        rect = wm.get_focused_window_rect()
-        if rect is None:
-            return None
-        x, y, w, h = rect
-        title = ""
-    else:
-        x, y, w, h, title = target
+    resolved = _resolve_target_window_rect()
+    if resolved is None:
+        return None
+    x, y, w, h, title = resolved
     if w <= 0 or h <= 0:
         return None
     try:

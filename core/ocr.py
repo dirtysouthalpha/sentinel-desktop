@@ -51,6 +51,11 @@ _ocr_cache: dict[str, tuple[str, dict[str, Any], float]] = {}
 _CACHE_TTL = 3.0  # seconds
 _CACHE_MAX_SIZE = 50  # evict oldest when cache exceeds this
 
+# Boxes cache for find_text(): (cache_key) → (boxes, timestamp)
+# Stores the parsed word-box list from image_to_data so consecutive find_text()
+# calls on the same screen state skip the expensive Tesseract scan.
+_boxes_cache: dict[str, tuple[list[dict[str, Any]], float]] = {}
+
 logger = logging.getLogger(__name__)
 
 _TESSERACT_OK: bool | None = None  # None = not yet probed
@@ -420,15 +425,22 @@ def find_text(
 
     try:
         img = capture_screen(monitor=monitor)
-        data: dict[str, list[Any]] = _pytesseract.image_to_data(  # type: ignore[union-attr]
-            img,
-            output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
-        )
+        img_small = _downsample_if_needed(img)
+        cache_key = _image_cache_key(img_small)
+        now = time.monotonic()
+        cached_boxes = _boxes_cache.get(cache_key)
+        if cached_boxes is not None and now - cached_boxes[1] < _CACHE_TTL:
+            boxes = cached_boxes[0]
+        else:
+            data: dict[str, list[Any]] = _pytesseract.image_to_data(  # type: ignore[union-attr]
+                img_small,
+                output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
+            )
+            boxes = _boxes_from_data(data)
+            _boxes_cache[cache_key] = (boxes, now)
     except (OSError, RuntimeError) as exc:
         logger.warning("OCR find_text failed: %s", exc)
         return None
-
-    boxes = _boxes_from_data(data)
     offset_x, offset_y = get_capture_offset(monitor)
 
     # 1) Exact substring on the joined line text.

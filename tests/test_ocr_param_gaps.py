@@ -38,6 +38,10 @@ class TestOcrImageNoPreprocess:
 class TestFindTextFuzzyFalse:
     """find_text with fuzzy=False skips fuzzy matching."""
 
+    def setup_method(self):
+        ocr._ocr_cache.clear()
+        ocr._boxes_cache.clear()
+
     def test_fuzzy_false_skips_fuzzy_matching(self):
         ocr._TESSERACT_OK = True
         ocr._pytesseract = MagicMock()
@@ -92,6 +96,10 @@ class TestFindTextFuzzyFalse:
 
 class TestFindTextMonitorOffset:
     """find_text passes monitor parameter to capture_screen."""
+
+    def setup_method(self):
+        ocr._ocr_cache.clear()
+        ocr._boxes_cache.clear()
 
     def test_monitor_param_passed_to_capture(self):
         ocr._TESSERACT_OK = True

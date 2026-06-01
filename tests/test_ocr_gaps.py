@@ -161,6 +161,10 @@ class TestReadWindowText:
 class TestFindText:
     """find_text paths."""
 
+    def setup_method(self):
+        ocr._ocr_cache.clear()
+        ocr._boxes_cache.clear()
+
     def test_empty_query_returns_none(self):
         assert ocr.find_text("") is None
 
