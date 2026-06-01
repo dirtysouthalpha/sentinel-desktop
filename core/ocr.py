@@ -272,7 +272,7 @@ def _ocr_image_with_confidence(
 
 
 def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = None) -> bool:
-    """Heuristic: does this OCR output look like garbled junk?
+    """Heuristic: does this OCR output look like garbled junk?.
 
     Returns True for strings that are mostly punctuation, special symbols,
     have very few alphanumeric characters per line, or have low average

@@ -1,4 +1,4 @@
-"""Sentinel Desktop — PowerShell Script Execution Module
+"""Sentinel Desktop — PowerShell Script Execution Module.
 
 Provides PowerShellRunner for executing PowerShell scripts, commands,
 and inline snippets on Windows with JSON output parsing, timeout

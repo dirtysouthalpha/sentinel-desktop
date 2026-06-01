@@ -1,4 +1,4 @@
-"""Sentinel Desktop — Audit Log Export Module
+"""Sentinel Desktop — Audit Log Export Module.
 
 Generates professional audit reports in HTML, text, CSV, and JSON formats.
 Each report includes session metadata, a step timeline, and summary statistics.

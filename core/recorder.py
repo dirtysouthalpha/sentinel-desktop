@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Action Recorder
+"""Sentinel Desktop v3.0 — Action Recorder.
 
 Records user / agent actions into replayable Script objects that can be
 serialized to JSON, parameterized, and shared.
