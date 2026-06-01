@@ -162,42 +162,39 @@ class WorkflowEngine:
         if expr in ("false", "no", "0", "failed"):
             return False
 
-        # Comparison operators
         for op in ("!=", "==", ">=", "<=", ">", "<", "contains"):
             if op in expr:
                 parts = expr.split(op, 1)
                 left = parts[0].strip()
                 right = parts[1].strip()
-                if op == "==":
-                    return left == right
-                elif op == "!=":
-                    return left != right
-                elif op == "contains":
-                    return right in left
-                elif op == ">":
-                    try:
-                        return float(left) > float(right)
-                    except ValueError:
-                        logger.debug("Non-numeric comparison '%s' > '%s'", left, right)
-                        return False
-                elif op == "<":
-                    try:
-                        return float(left) < float(right)
-                    except ValueError:
-                        logger.debug("Non-numeric comparison '%s' < '%s'", left, right)
-                        return False
-                elif op == ">=":
-                    try:
-                        return float(left) >= float(right)
-                    except ValueError:
-                        logger.debug("Non-numeric comparison '%s' >= '%s'", left, right)
-                        return False
-                else:  # op == "<="
-                    try:
-                        return float(left) <= float(right)
-                    except ValueError:
-                        logger.debug("Non-numeric comparison '%s' <= '%s'", left, right)
-                        return False
+                return WorkflowEngine._evaluate_comparison(op, left, right)
+
+        return False
+
+    @staticmethod
+    def _evaluate_comparison(op: str, left: str, right: str) -> bool:
+        """Evaluate a single comparison operation."""
+        if op == "==":
+            return left == right
+        if op == "!=":
+            return left != right
+        if op == "contains":
+            return right in left
+
+        try:
+            left_num = float(left)
+            right_num = float(right)
+            if op == ">":
+                return left_num > right_num
+            if op == "<":
+                return left_num < right_num
+            if op == ">=":
+                return left_num >= right_num
+            if op == "<=":
+                return left_num <= right_num
+        except ValueError:
+            logger.debug("Non-numeric comparison '%s' %s '%s'", left, op, right)
+            return False
 
         return False
 
