@@ -1325,38 +1325,45 @@ class AgentEngine:
     def _build_app_context(self) -> str:
         """Build app-profile context for the system prompt."""
         try:
-            windows = wm.list_windows()
-            focused_title = ""
-            for w in windows:
-                if w.get("is_focused"):
-                    focused_title = w.get("title", "")
-                    break
+            focused_title = self._get_focused_window_title()
             if not focused_title:
                 return ""
             profile = detect_profile(focused_title)
             if not profile:
                 return ""
-            lines = [
-                f"## Active App: {profile.display_name}",
-                f"- Stealth compatibility: {profile.stealth_compatible}",
-                f"- Preferred input method: {profile.preferred_input}",
-            ]
-            if profile.quirks:
-                lines.append("- Quirks:")
-                for q in profile.quirks:
-                    lines.append(f"  - {q}")
-            if profile.strategies:
-                lines.append("- Suggested strategies:")
-                for task, strategy in profile.strategies.items():
-                    lines.append(f"  - {task}: {strategy}")
-            if profile.menu_paths:
-                lines.append("- Known menu paths:")
-                for action, path in profile.menu_paths.items():
-                    lines.append(f"  - {action}: {' → '.join(path)}")
-            return "\n".join(lines)
+            return self._format_app_profile(profile)
         except Exception as exc:
             logger.warning("Failed to build app profile context: %s", exc)
             return ""
+
+    def _get_focused_window_title(self) -> str:
+        """Get the title of the currently focused window."""
+        windows = wm.list_windows()
+        for w in windows:
+            if w.get("is_focused"):
+                return w.get("title", "")
+        return ""
+
+    def _format_app_profile(self, profile) -> str:
+        """Format an app profile into a markdown string."""
+        lines = [
+            f"## Active App: {profile.display_name}",
+            f"- Stealth compatibility: {profile.stealth_compatible}",
+            f"- Preferred input method: {profile.preferred_input}",
+        ]
+        if profile.quirks:
+            lines.append("- Quirks:")
+            for q in profile.quirks:
+                lines.append(f"  - {q}")
+        if profile.strategies:
+            lines.append("- Suggested strategies:")
+            for task, strategy in profile.strategies.items():
+                lines.append(f"  - {task}: {strategy}")
+        if profile.menu_paths:
+            lines.append("- Known menu paths:")
+            for action, path in profile.menu_paths.items():
+                lines.append(f"  - {action}: {' → '.join(path)}")
+        return "\n".join(lines)
 
     def _add_vision_message(
         self, messages: list[dict[str, Any]], screenshot_b64: str, text: str
@@ -1552,19 +1559,10 @@ def _find_balanced_json_with_key(text: str, key: str) -> dict[str, Any] | None:
     needle = f'"{key}"'
     depth = 0
     start = -1
-    in_string = False
-    escape = False
+    scanner = _StringEscapeTracker()
     for i, ch in enumerate(text):
-        if in_string:
-            if escape:
-                escape = False
-            elif ch == "\\":
-                escape = True
-            elif ch == '"':
-                in_string = False
-            continue
-        if ch == '"':
-            in_string = True
+        scanner.process_char(ch)
+        if scanner.in_string:
             continue
         if ch == "{":
             if depth == 0:
@@ -1575,13 +1573,41 @@ def _find_balanced_json_with_key(text: str, key: str) -> dict[str, Any] | None:
             if depth == 0 and start >= 0:
                 candidate = text[start : i + 1]
                 if needle in candidate:
-                    try:
-                        obj = json.loads(candidate)
-                    except json.JSONDecodeError:
-                        obj = None
-                    if isinstance(obj, dict) and key in obj:
-                        return obj
+                    result = _try_parse_json(candidate, key)
+                    if result is not None:
+                        return result
                 start = -1
+    return None
+
+
+class _StringEscapeTracker:
+    """Track string and escape state during JSON scanning."""
+
+    def __init__(self) -> None:
+        self.in_string = False
+        self.escape = False
+
+    def process_char(self, ch: str) -> None:
+        """Update state based on current character."""
+        if self.in_string:
+            if self.escape:
+                self.escape = False
+            elif ch == "\\":
+                self.escape = True
+            elif ch == '"':
+                self.in_string = False
+        elif ch == '"':
+            self.in_string = True
+
+
+def _try_parse_json(text: str, key: str) -> dict[str, Any] | None:
+    """Try to parse text as JSON and verify it contains the key."""
+    try:
+        obj = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(obj, dict) and key in obj:
+        return obj
     return None
 
 
