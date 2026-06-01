@@ -174,7 +174,16 @@ def _recover_timeout(
     """Increase wait, check for loading indicators."""
     # Suggest a longer wait
     current_wait = action.get("duration", action.get("wait", 1.0))
-    new_wait = min(current_wait * 2, 15.0)
+
+    # Validate duration is numeric and positive
+    try:
+        current_wait_float = float(current_wait)
+        if current_wait_float <= 0:
+            current_wait_float = 1.0  # Default to 1 second for invalid values
+    except (ValueError, TypeError):
+        current_wait_float = 1.0  # Default to 1 second for invalid types
+
+    new_wait = min(current_wait_float * 2, 15.0)
     alt = dict(action)  # shallow copy
     if "duration" in alt:
         alt["duration"] = new_wait
