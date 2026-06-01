@@ -92,8 +92,11 @@ def _image_cache_key(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) ->
     return hashlib.md5(fingerprint.encode()).hexdigest()  # noqa: S324
 
 
-def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:
-    """Return cached OCR result if still valid, else None."""
+def _check_cache(key: str) -> tuple[str, dict[str, Any] | None] | None:
+    """Return cached OCR result if still valid, else None.
+
+    The second element may be ``None`` when stored by the text-only path.
+    """
     if key in _ocr_cache:
         text, conf_data, ts = _ocr_cache[key]
         if time.monotonic() - ts < _CACHE_TTL:
@@ -103,8 +106,13 @@ def _check_cache(key: str) -> tuple[str, dict[str, Any]] | None:
     return None
 
 
-def _store_cache(key: str, text: str, conf_data: dict[str, Any]) -> None:
-    """Store an OCR result in the cache, pruning expired and oversized entries."""
+def _store_cache(key: str, text: str, conf_data: dict[str, Any] | None) -> None:
+    """Store an OCR result in the cache, pruning expired and oversized entries.
+
+    Pass ``conf_data=None`` when only the text was computed (fast path).
+    ``_ocr_image_with_confidence`` will recompute the confidence data on a
+    cache miss for the confidence layer rather than returning empty data.
+    """
     now = time.monotonic()
     _ocr_cache[key] = (text, conf_data, now)
     # Remove expired entries
@@ -175,7 +183,7 @@ def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
 
         target = preprocess_for_ocr(img) if preprocess else img
         result = _pytesseract.image_to_string(target)  # type: ignore[union-attr]
-        _store_cache(cache_key, result, {})
+        _store_cache(cache_key, result, None)
         return result
     except (OSError, RuntimeError) as exc:
         logger.warning("Tesseract failed: %s", exc)
@@ -235,11 +243,14 @@ def _ocr_image_with_confidence(
         # Key on the downsampled raw image so preprocessing is skipped on cache hits.
         cache_key = _image_cache_key(img, preprocess)
         cached = _check_cache(cache_key)
-        if cached is not None:
+        # Only use the cache when conf_data was computed (not None, which means
+        # the entry was stored by the text-only _ocr_image fast path).
+        if cached is not None and cached[1] is not None:
             return cached
 
         target = preprocess_for_ocr(img) if preprocess else img
-        text = _pytesseract.image_to_string(target)  # type: ignore[union-attr]
+        # Reuse cached text when available to skip image_to_string.
+        text = cached[0] if cached is not None else _pytesseract.image_to_string(target)  # type: ignore[union-attr]
         data = _pytesseract.image_to_data(  # type: ignore[union-attr]
             target,
             output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]

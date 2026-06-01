@@ -43,6 +43,9 @@ class TestPreprocessException:
 class TestOcrImage:
     """_ocr_image without tesseract returns empty."""
 
+    def setup_method(self) -> None:
+        ocr._ocr_cache.clear()
+
     def test_no_tesseract_returns_empty(self):
         ocr._TESSERACT_OK = False
         img = Image.new("RGB", (10, 10))

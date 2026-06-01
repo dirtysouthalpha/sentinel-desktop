@@ -543,3 +543,76 @@ class TestFuzzyLineHitCentroidNone:
         with patch("core.ocr._centroid", return_value=None):
             result = ocr._fuzzy_line_hit(boxes, "hello", min_score=0.0)
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Cross-function cache interaction: _ocr_image stores None conf_data, so
+# _ocr_image_with_confidence must recompute confidence on such cache hits.
+# ---------------------------------------------------------------------------
+
+
+class TestOcrCacheCrossFunction:
+    """_ocr_image stores None for conf_data; _ocr_image_with_confidence must
+    not return that cache entry as its confidence layer — it recomputes."""
+
+    def setup_method(self) -> None:
+        ocr._ocr_cache.clear()
+
+    def teardown_method(self) -> None:
+        ocr._ocr_cache.clear()
+
+    def _make_data(self, word: str = "hello", conf_val: int = 90) -> dict:
+        return {
+            "text": [word],
+            "conf": [conf_val],
+            "left": [0],
+            "top": [0],
+            "width": [40],
+            "height": [20],
+            "block_num": [1],
+            "par_num": [1],
+            "line_num": [1],
+        }
+
+    def test_text_only_cache_not_used_for_confidence(self):
+        """_ocr_image_with_confidence recomputes conf when cache has conf_data=None."""
+        ocr._TESSERACT_OK = True
+        ocr._pytesseract = MagicMock()
+        img = Image.new("RGB", (10, 10))
+        cache_key = ocr._image_cache_key(img, preprocess=True)
+        # Simulate a cache entry left by the text-only _ocr_image path.
+        ocr._ocr_cache[cache_key] = ("hello from text-only", None, time.monotonic())
+        ocr._pytesseract.Output.DICT = "dict"
+        ocr._pytesseract.image_to_data.return_value = self._make_data("hello", 90)
+
+        text, conf = ocr._ocr_image_with_confidence(img, preprocess=True)
+
+        # image_to_string should NOT be called (text reused from cache).
+        ocr._pytesseract.image_to_string.assert_not_called()
+        # image_to_data MUST be called to compute confidence.
+        ocr._pytesseract.image_to_data.assert_called_once()
+        # Text comes from the cache entry.
+        assert text == "hello from text-only"
+        # Confidence data is freshly computed.
+        assert conf["avg_confidence"] > 0
+
+    def test_full_cache_hit_skips_both_calls(self):
+        """When cache has real conf_data, neither image_to_string nor image_to_data fires."""
+        ocr._TESSERACT_OK = True
+        ocr._pytesseract = MagicMock()
+        img = Image.new("RGB", (10, 10))
+        cache_key = ocr._image_cache_key(img, preprocess=True)
+        full_conf = {
+            "avg_confidence": 75.0,
+            "word_count": 2,
+            "low_confidence_words": [],
+            "low_confidence_regions": [],
+        }
+        ocr._ocr_cache[cache_key] = ("cached text", full_conf, time.monotonic())
+
+        text, conf = ocr._ocr_image_with_confidence(img, preprocess=True)
+
+        ocr._pytesseract.image_to_string.assert_not_called()
+        ocr._pytesseract.image_to_data.assert_not_called()
+        assert text == "cached text"
+        assert conf["avg_confidence"] == 75.0
