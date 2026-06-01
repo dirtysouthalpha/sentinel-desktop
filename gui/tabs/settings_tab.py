@@ -96,51 +96,79 @@ class SettingsTab:
         values: list[str] | None,
     ) -> Any:
         """Create and register the control widget for a settings field; return it."""
-        if field_type == "entry":
-            var: Any = ctk.StringVar(value=default)
-            widget = ctk.CTkEntry(
-                parent,
-                textvariable=var,
-                fg_color=self._t("bg_input", "#111418"),
-                text_color=self._t("text_primary", "#e2e2e8"),
-                corner_radius=3,
-                width=300,
-            )
-        elif field_type == "dropdown":
-            var = ctk.StringVar(value=default)
-            widget = ctk.CTkOptionMenu(
-                parent,
-                variable=var,
-                values=values or [default],
-                fg_color=self._t("bg_input", "#111418"),
-                text_color=self._t("text_primary", "#e2e2e8"),
-                button_color=self._t("accent", "#00F0FF"),
-                width=300,
-            )
-        elif field_type == "slider":
-            var = ctk.DoubleVar(value=float(default))
-            widget = ctk.CTkSlider(
-                parent,
-                variable=var,
-                from_=values[0] if values else 0,
-                to=values[1] if values else 1,
-                number_of_steps=values[2] if values and len(values) > 2 else 100,
-                button_color=self._t("accent", "#00F0FF"),
-                width=300,
-            )
-        elif field_type == "checkbox":
-            var = ctk.BooleanVar(value=default.lower() in ("true", "1", "yes"))
-            widget = ctk.CTkCheckBox(
-                parent,
-                text="",
-                variable=var,
-                fg_color=self._t("accent", "#00F0FF"),
-                checkmark_color=self._t("bg_primary", "#050608"),
-            )
-        else:
+        makers = {
+            "entry": self._make_entry_widget,
+            "dropdown": self._make_dropdown_widget,
+            "slider": self._make_slider_widget,
+            "checkbox": self._make_checkbox_widget,
+        }
+        maker = makers.get(field_type)
+        if maker is None:
             return None
+        var, widget = maker(parent, default, values)
         self._vars[var_name] = var
         return widget
+
+    def _make_entry_widget(
+        self, parent: Any, default: str, _values: Any
+    ) -> tuple[Any, Any]:
+        """Create a text-entry widget and its StringVar."""
+        var: Any = ctk.StringVar(value=default)
+        widget = ctk.CTkEntry(
+            parent,
+            textvariable=var,
+            fg_color=self._t("bg_input", "#111418"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            corner_radius=3,
+            width=300,
+        )
+        return var, widget
+
+    def _make_dropdown_widget(
+        self, parent: Any, default: str, values: list[str] | None
+    ) -> tuple[Any, Any]:
+        """Create a dropdown option-menu widget and its StringVar."""
+        var: Any = ctk.StringVar(value=default)
+        widget = ctk.CTkOptionMenu(
+            parent,
+            variable=var,
+            values=values or [default],
+            fg_color=self._t("bg_input", "#111418"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            button_color=self._t("accent", "#00F0FF"),
+            width=300,
+        )
+        return var, widget
+
+    def _make_slider_widget(
+        self, parent: Any, default: str, values: list[str] | None
+    ) -> tuple[Any, Any]:
+        """Create a slider widget and its DoubleVar."""
+        var: Any = ctk.DoubleVar(value=float(default))
+        widget = ctk.CTkSlider(
+            parent,
+            variable=var,
+            from_=values[0] if values else 0,
+            to=values[1] if values else 1,
+            number_of_steps=values[2] if values and len(values) > 2 else 100,
+            button_color=self._t("accent", "#00F0FF"),
+            width=300,
+        )
+        return var, widget
+
+    def _make_checkbox_widget(
+        self, parent: Any, default: str, _values: Any
+    ) -> tuple[Any, Any]:
+        """Create a checkbox widget and its BooleanVar."""
+        var: Any = ctk.BooleanVar(value=default.lower() in ("true", "1", "yes"))
+        widget = ctk.CTkCheckBox(
+            parent,
+            text="",
+            variable=var,
+            fg_color=self._t("accent", "#00F0FF"),
+            checkmark_color=self._t("bg_primary", "#050608"),
+        )
+        return var, widget
 
     def _add_field(
         self,
