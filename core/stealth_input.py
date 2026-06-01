@@ -40,7 +40,7 @@ except ImportError:
 
 
 def is_available() -> bool:
-    """True if the stealth transports can actually be used on this OS."""
+    """Check if the stealth transports can actually be used on this OS."""
     return _HAS_WIN32
 
 

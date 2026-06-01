@@ -30,7 +30,7 @@ def play_sound(sound_type: str = "complete", blocking: bool = False) -> None:
 
 
 def _play(sound_type: str) -> None:
-    """Internal: produce the sound."""
+    """Produce the sound internally."""
     try:
         if _IS_WINDOWS:
             import winsound

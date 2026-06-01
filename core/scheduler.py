@@ -529,7 +529,7 @@ class TaskScheduler:
     # ── Scheduler loop (background thread) ──────────────────────────────
 
     def _scheduler_loop(self) -> None:
-        """Main loop: wake every CHECK_INTERVAL and run due tasks."""
+        """Run main loop: wake every CHECK_INTERVAL and run due tasks."""
         logger.debug("Scheduler loop entered.")
         while not self._stop_event.is_set():
             try:

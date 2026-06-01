@@ -420,7 +420,7 @@ class SentinelApp:
         self.engine_thread.start()
 
     def _on_engine_step(self, **kwargs: Any) -> None:
-        """Callback from engine on each step. Runs on worker thread."""
+        """Handle callback from engine on each step. Runs on worker thread."""
         step = kwargs.get("step", 0)
         action = kwargs.get("action", {})
         result = kwargs.get("result", {})

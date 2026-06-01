@@ -443,7 +443,7 @@ class SmartWait:
         interval: float,
         region: tuple[int, int, int, int] | None,
     ) -> WaitResult:
-        """Main loop for detecting screen stability."""
+        """Detect screen stability in main loop."""
         frames = initial_frames
 
         while True:

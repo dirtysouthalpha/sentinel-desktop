@@ -468,7 +468,7 @@ class RecorderPanel(ctk.CTkFrame):
         self.status_label.configure(text="Ready", text_color=self._t("text_secondary", "#b9cacb"))
 
     def update_step_count(self, count: int) -> None:
-        """Called from the agent loop to refresh the 'Recording… (N steps)' label."""
+        """Refresh the 'Recording… (N steps)' label from the agent loop."""
         recorder = getattr(self.app, "recorder", None)
         if recorder and recorder.is_recording:
             self.status_label.configure(text=f"Recording… ({count} steps)")

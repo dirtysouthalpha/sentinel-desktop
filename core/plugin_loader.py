@@ -402,7 +402,7 @@ class PluginLoader:
             return True
 
     def _unload_unlocked(self, name: str) -> None:
-        """Internal unload — caller must hold ``self._lock``."""
+        """Unload plugin internally — caller must hold ``self._lock``."""
         loaded = self._plugins.pop(name, None)
         if loaded is None:
             return
