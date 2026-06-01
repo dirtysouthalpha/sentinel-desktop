@@ -152,26 +152,28 @@ def preprocess_for_ocr(img: Image.Image) -> Image.Image:
     """Apply a cheap, robust pipeline to make UI text easier for Tesseract.
 
     Steps:
-      1. Upscale 2x via LANCZOS — Tesseract works much better at >300 DPI.
-      2. Convert to grayscale.
+      1. Convert to grayscale first — reduces data to 1 channel so the
+         subsequent resize operates on 3-4x less pixel data.
+      2. Upscale 2x via LANCZOS — Tesseract works much better at >300 DPI.
       3. Auto-contrast (stretch the histogram so faint text pops).
       4. Mild unsharp-mask to crisp up anti-aliased glyph edges.
 
     Skipped on tiny images (already small enough to be problematic).
     """
+    original = img
     try:
+        img = img.convert("L")  # grayscale first — cheaper resize below
         w, h = img.size
         # Don't upscale anything already huge — Tesseract will choke.
         if w * h < 4_000_000:  # roughly <2000x2000
             img = img.resize((w * 2, h * 2), Image.LANCZOS)
-        img = img.convert("L")  # grayscale
         img = ImageOps.autocontrast(img, cutoff=2)
         img = img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=140, threshold=2))
         # Light contrast boost — too aggressive blows out hairline strokes.
         return ImageEnhance.Contrast(img).enhance(1.25)
     except (OSError, ValueError) as exc:
         logger.debug("preprocess_for_ocr failed (falling back to raw): %s", exc)
-        return img
+        return original
 
 
 def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
