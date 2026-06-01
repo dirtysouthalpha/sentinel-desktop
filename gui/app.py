@@ -38,50 +38,53 @@ class SentinelApp:
         """
         self.config = config
         self.cfg = config.load()
+        self._setup_theme()
+        self._setup_window()
+        self._initialize_state()
+        self._setup_overlay_and_tray()
+        self._build_ui()
+        self._setup_keyboard_shortcuts()
 
-        # Theme
+    def _setup_theme(self) -> None:
+        """Load and apply the selected theme."""
         theme_name = self.cfg.get("theme", "sentinel")
         self.current_theme = get_theme(theme_name)
         apply_theme(theme_name)
-
-        # Theme color helper
         self._t = lambda key, fb="": self.current_theme.get(key, fb)
 
-        # Window
+    def _setup_window(self) -> None:
+        """Create and configure the main window."""
         self.root = ctk.CTk()
         self.root.title("SENTINEL DESKTOP v3.0")
         self.root.geometry("1200x800")
         self.root.minsize(900, 600)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close_window)
 
-        # State
+    def _initialize_state(self) -> None:
+        """Initialize application state variables."""
         self.engine: Any = None
         self.engine_thread: threading.Thread | None = None
         self._approval_event = threading.Event()
-
-        # Widget refs for live theme switching
         self._stop_btn: Any = None
         self._run_btn: Any = None
         self._chip_btns: list[Any] = []
         self._autonomous_chip = None
         self._stealth_chip = None
 
-        # Visible-action overlay (transparent click ring over each action).
+    def _setup_overlay_and_tray(self) -> None:
+        """Initialize overlay and system tray components."""
         self.overlay = ActionOverlay(self.root)
-
-        # Optional system-tray icon — populated lazily in run() if available.
         self.tray: SentinelTray = None  # type: ignore[assignment]
 
-        # Intercept the window close button so it minimizes-to-tray when
-        # the user has opted in.
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close_window)
-
-        # Build UI
+    def _build_ui(self) -> None:
+        """Build all UI components."""
         self._build_header()
         self._build_tabs()
         self._build_recorder_panel()
         self._build_input()
 
-        # Command palette
+    def _setup_keyboard_shortcuts(self) -> None:
+        """Register keyboard shortcuts."""
         self.root.bind("<Control-k>", self._show_command_palette)
 
     # ── Header ──────────────────────────────────────────────────────────

@@ -411,15 +411,38 @@ class SmartWait:
         """
         self._reset_cancel()
         start = time.monotonic()
-        frames = 0
         last_change_time = time.monotonic()
         last_score = 0.0
 
+        # Capture initial frame
+        prev_small = self._capture_initial_frame(region)
+        if prev_small is None:
+            return _fail(time.monotonic() - start, 0, last_score)
+
+        frames = 1
+        return self._stability_loop(start, frames, prev_small, last_change_time, last_score, timeout, stable_time, interval, region)
+
+    def _capture_initial_frame(self, region: tuple[int, int, int, int] | None) -> Image.Image | None:
+        """Capture and downsample the initial frame for stability detection."""
         prev = self._capture(region)
         if prev is None:
-            return _fail(time.monotonic() - start, frames, last_score)
-        prev_small = _downsample(prev)
-        frames += 1
+            return None
+        return _downsample(prev)
+
+    def _stability_loop(
+        self,
+        start: float,
+        initial_frames: int,
+        prev_small: Image.Image,
+        last_change_time: float,
+        last_score: float,
+        timeout: float,
+        stable_time: float,
+        interval: float,
+        region: tuple[int, int, int, int] | None,
+    ) -> WaitResult:
+        """Main loop for detecting screen stability."""
+        frames = initial_frames
 
         while True:
             abort = self._loop_check(start, timeout, frames, last_score)
@@ -430,6 +453,7 @@ class SmartWait:
             current = self._capture(region)
             if current is None:
                 continue
+
             current_small = _downsample(current)
             frames += 1
 

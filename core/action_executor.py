@@ -120,6 +120,17 @@ class ActionExecutor:
         Returns:
             Result dict: {success, output, error}
         """
+        try:
+            return await asyncio.wait_for(self._execute_with_logging(action), timeout=65.0)
+        except asyncio.TimeoutError:
+            action_type = action.get("action", "").lower()
+            params = {k: v for k, v in action.items() if k != "action"}
+            result = {"success": False, "output": f"Action '{action_type}' timed out", "error": "timeout"}
+            self._log_entry(action_type, params, result)
+            return result
+
+    async def _execute_with_logging(self, action: dict[str, Any]) -> dict[str, Any]:
+        """Execute action with approval checks and logging."""
         action_type = action.get("action", "").lower()
         params = {k: v for k, v in action.items() if k != "action"}
 

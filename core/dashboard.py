@@ -129,13 +129,26 @@ async def dashboard_overview() -> dict[str, Any]:
     # Run potentially blocking I/O helpers in the thread pool so the event
     # loop stays responsive. _get_gpu_info() spawns nvidia-smi (up to 5s);
     # disk/memory calls are typically fast but still use blocking syscalls.
-    cpu, memory, disks, gpus, logs = await asyncio.gather(
-        asyncio.to_thread(_get_cpu_info),
-        asyncio.to_thread(_get_memory_info),
-        asyncio.to_thread(_get_disk_info),
-        asyncio.to_thread(_get_gpu_info),
-        asyncio.to_thread(_count_log_entries),
-    )
+    # Use timeout=10 to ensure the API remains responsive.
+    try:
+        cpu, memory, disks, gpus, logs = await asyncio.wait_for(
+            asyncio.gather(
+                asyncio.to_thread(_get_cpu_info),
+                asyncio.to_thread(_get_memory_info),
+                asyncio.to_thread(_get_disk_info),
+                asyncio.to_thread(_get_gpu_info),
+                asyncio.to_thread(_count_log_entries),
+            ),
+            timeout=10.0,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Dashboard overview timed out after 10 seconds")
+        # Return partial data with default values
+        cpu = {"percent": 0, "cores": 0}
+        memory = {"percent": 0, "used_gb": 0, "total_gb": 0}
+        disks = []
+        gpus = []
+        logs = {"total": 0}
 
     return {
         "timestamp": iso_now(),
@@ -159,8 +172,19 @@ async def dashboard_overview() -> dict[str, Any]:
 @router.get("/health")
 async def health_check() -> dict[str, Any]:
     """No-auth health check for monitoring."""
-    mem = _get_memory_info()
-    cpu = _get_cpu_info()
+    try:
+        mem, cpu = await asyncio.wait_for(
+            asyncio.gather(
+                asyncio.to_thread(_get_memory_info),
+                asyncio.to_thread(_get_cpu_info),
+            ),
+            timeout=5.0,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Health check timed out after 5 seconds")
+        mem = {"percent": 0}
+        cpu = {"percent": 0}
+
     status = "healthy"
     issues = []
 
@@ -187,8 +211,19 @@ async def health_check() -> dict[str, Any]:
 @router.get("/metrics")
 async def metrics() -> dict[str, Any]:
     """Lightweight metrics for monitoring dashboards."""
-    mem = _get_memory_info()
-    cpu = _get_cpu_info()
+    try:
+        mem, cpu = await asyncio.wait_for(
+            asyncio.gather(
+                asyncio.to_thread(_get_memory_info),
+                asyncio.to_thread(_get_cpu_info),
+            ),
+            timeout=3.0,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Metrics endpoint timed out after 3 seconds")
+        mem = {"percent": 0, "used_gb": 0}
+        cpu = {"percent": 0}
+
     return {
         "cpu_percent": cpu.get("percent", 0),
         "memory_percent": mem.get("percent", 0),
