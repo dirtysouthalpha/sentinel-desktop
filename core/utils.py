@@ -1,5 +1,4 @@
-"""Sentinel Desktop — Shared utility functions used across multiple core modules.
-"""
+"""Sentinel Desktop — Shared utility functions used across multiple core modules."""
 
 import logging
 import platform

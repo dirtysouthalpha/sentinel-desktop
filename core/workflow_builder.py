@@ -1,4 +1,5 @@
 """Sentinel Desktop — Workflow Builder.
+
 Chain actions into reusable, ordered workflows.
 """
 

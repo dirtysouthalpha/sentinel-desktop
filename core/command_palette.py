@@ -83,6 +83,7 @@ class Command:
 
 class CommandPalette:
     """Manages the command registry and search logic.
+
     The actual popup UI is rendered by the GUI layer.
     """
 
@@ -343,6 +344,7 @@ def _register_it_quick_actions(p: CommandPalette, app: SentinelApp) -> None:
 
 def create_default_palette(app: SentinelApp) -> CommandPalette:
     """Create and register all default commands for the Sentinel Desktop app.
+
     `app` is the SentinelApp instance (gui/app.py).
     """
     p = CommandPalette()
