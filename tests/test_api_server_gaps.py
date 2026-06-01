@@ -553,12 +553,18 @@ class TestWorkflowBuilderList:
     def test_list_empty(self):
         server = _make_server()
         app = server.create_app()
+        # Clear any existing workflows for this test
+        for wf in server._workflow_store.list_all():
+            server._workflow_store.delete(wf.id)
         result = _run(server._handle_workflow_builder_list(authorization=None))
         assert result["workflows"] == []
 
     def test_list_returns_dicts(self):
         server = _make_server()
         app = server.create_app()
+        # Clear any existing workflows for this test
+        for wf in server._workflow_store.list_all():
+            server._workflow_store.delete(wf.id)
         # Create a workflow first
         wf = server._workflow_store.create(name="Test WF")
         result = _run(server._handle_workflow_builder_list(authorization=None))

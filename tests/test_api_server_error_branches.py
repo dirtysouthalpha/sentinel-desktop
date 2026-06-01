@@ -792,3 +792,153 @@ class TestHandleWebSocketTimeout:
         ws = _TimeoutThenBadSend()
         _run(server._handle_ws(ws))
         assert ws not in server._ws_clients
+
+
+# ---------------------------------------------------------------------------
+# GoalRequest.validate_goal — validation branches (lines 65, 67)
+# ---------------------------------------------------------------------------
+
+
+class TestGoalRequestValidation:
+    def test_validate_goal_truncates_excessively_long_goals(self):
+        """Cover line 65: goal longer than 2000 chars is truncated."""
+        # Create a goal that exceeds 2000 characters
+        long_goal = "a" * 2500
+        req = mod.GoalRequest(goal=long_goal)
+        result = req.validate_goal()
+        assert len(result) == 2000
+        assert result == "a" * 2000
+
+    def test_validate_goal_raises_on_empty_goal(self):
+        """Cover line 67: empty/whitespace-only goal raises ValueError."""
+        req = mod.GoalRequest(goal="   ")
+        with pytest.raises(ValueError) as exc:
+            req.validate_goal()
+        assert "cannot be empty" in str(exc.value)
+
+    def test_validate_goal_raises_on_whitespace_only_goal(self):
+        """Cover line 67: goal with only whitespace raises ValueError."""
+        req = mod.GoalRequest(goal="\t\n\r  ")
+        with pytest.raises(ValueError) as exc:
+            req.validate_goal()
+        assert "cannot be empty" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# _handle_goal — validation error handling (lines 347-348)
+# ---------------------------------------------------------------------------
+
+
+class TestGoalValidationError:
+    def test_empty_goal_raises_400(self, monkeypatch):
+        """Cover lines 347-348: POST /agent with empty goal raises 400."""
+        server = _make_server()
+
+        class DummyEngine:
+            running = False
+            on_step_callback = None
+
+            def __init__(self, cfg=None):
+                pass
+
+        monkeypatch.setattr(mod, "AgentEngine", DummyEngine)
+        server.config.load = lambda: {}
+
+        # Create a request with empty goal (will fail validation)
+        req = mod.GoalRequest(goal="   ")
+        with pytest.raises(HTTPException) as exc:
+            _run(server._handle_goal(req, authorization=None))
+        assert exc.value.status_code == 400
+        assert "cannot be empty" in exc.value.detail
+
+
+# ---------------------------------------------------------------------------
+# _handle_workflow_create — name validation branches (lines 1019, 1021)
+# ---------------------------------------------------------------------------
+
+
+class TestWorkflowCreationNameValidation:
+    def test_workflow_name_truncated_if_over_100_chars(self):
+        """Cover line 1019: workflow name longer than 100 chars is truncated."""
+        server = _make_server()
+        app = server.create_app()
+        long_name = "a" * 150
+        result = _run(
+            server._handle_workflow_builder_create(
+                name=long_name, description="Test workflow", authorization=None
+            )
+        )
+        assert len(result["name"]) == 100
+        assert result["name"] == "a" * 100
+
+    def test_empty_workflow_name_defaults_to_new_workflow(self):
+        """Cover line 1021: empty workflow name defaults to 'New Workflow'."""
+        server = _make_server()
+        app = server.create_app()
+        result = _run(
+            server._handle_workflow_builder_create(
+                name="   ", description="Test workflow", authorization=None
+            )
+        )
+        assert result["name"] == "New Workflow"
+
+    def test_none_workflow_name_defaults_to_new_workflow(self):
+        """Cover line 1021: None workflow name defaults to 'New Workflow'."""
+        server = _make_server()
+        app = server.create_app()
+        result = _run(
+            server._handle_workflow_builder_create(
+                name=None, description="Test workflow", authorization=None
+            )
+        )
+        assert result["name"] == "New Workflow"
+
+
+# ---------------------------------------------------------------------------
+# _handle_workflow_add_step — action type validation (line 1052)
+# ---------------------------------------------------------------------------
+
+
+class TestWorkflowAddStepValidation:
+    def test_add_step_raises_400_when_action_missing(self):
+        """Cover line 1052: missing action type raises HTTPException 400."""
+        server = _make_server()
+        app = server.create_app()
+        wf = server._workflow_store.create(name="WF")
+
+        with pytest.raises(HTTPException) as exc:
+            _run(
+                server._handle_workflow_add_step(
+                    wf.id, action="", name="Step without action", authorization=None
+                )
+            )
+        assert exc.value.status_code == 400
+        assert "Action type is required" in exc.value.detail
+
+    def test_add_step_raises_400_when_action_is_whitespace_only(self):
+        """Cover line 1052: whitespace-only action raises HTTPException 400."""
+        server = _make_server()
+        app = server.create_app()
+        wf = server._workflow_store.create(name="WF")
+
+        with pytest.raises(HTTPException) as exc:
+            _run(
+                server._handle_workflow_add_step(
+                    wf.id, action="   ", name="Step with whitespace action", authorization=None
+                )
+            )
+        assert exc.value.status_code == 400
+        assert "Action type is required" in exc.value.detail
+
+    def test_add_step_accepts_valid_action(self):
+        """Verify that valid actions are still accepted after validation."""
+        server = _make_server()
+        app = server.create_app()
+        wf = server._workflow_store.create(name="WF")
+        result = _run(
+            server._handle_workflow_add_step(
+                wf.id, action="click", name="Valid step", authorization=None
+            )
+        )
+        assert result["step"]["action"] == "click"
+        server._workflow_store.delete(wf.id)
