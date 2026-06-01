@@ -29,7 +29,7 @@ from core.screenshot import (
     capture_window,
     get_capture_offset,
 )
-from core.utils import have_tesseract
+from core.utils import get_tesseract, have_tesseract
 
 # Set to False (via config) to OCR the raw screenshot. Default-on because
 # Tesseract is noticeably more accurate on preprocessed UI text.
@@ -186,7 +186,7 @@ def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
             return cached[0]
 
         target = preprocess_for_ocr(img) if preprocess else img
-        result = _pytesseract.image_to_string(target)  # type: ignore[union-attr]
+        result = get_tesseract().image_to_string(target)  # type: ignore[union-attr]
         _store_cache(cache_key, result, None)
         return result
     except (OSError, RuntimeError) as exc:
@@ -256,10 +256,10 @@ def _ocr_image_with_confidence(
         target = preprocess_for_ocr(img) if preprocess else img
         # Reuse cached text when available to skip image_to_string.
         cached_text = cached[0] if cached is not None else None
-        text = cached_text if cached_text is not None else _pytesseract.image_to_string(target)  # type: ignore[union-attr]
-        data = _pytesseract.image_to_data(  # type: ignore[union-attr]
+        text = cached_text if cached_text is not None else get_tesseract().image_to_string(target)  # type: ignore[union-attr]
+        data = get_tesseract().image_to_data(  # type: ignore[union-attr]
             target,
-            output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
+            output_type=get_tesseract().Output.DICT,  # type: ignore[union-attr]
         )
         conf_data = _extract_confidence_data(data)
         _store_cache(cache_key, text, conf_data)
@@ -410,9 +410,9 @@ def _get_screen_boxes(monitor: int | None) -> list[dict[str, Any]] | None:
         entry = _boxes_cache.get(cache_key)
         if entry is not None and now - entry[1] < _CACHE_TTL:
             return entry[0]
-        data: dict[str, list[Any]] = _pytesseract.image_to_data(  # type: ignore[union-attr]
+        data: dict[str, list[Any]] = get_tesseract().image_to_data(  # type: ignore[union-attr]
             img_small,
-            output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
+            output_type=get_tesseract().Output.DICT,  # type: ignore[union-attr]
         )
         boxes = _boxes_from_data(data)
         _boxes_cache[cache_key] = (boxes, now)

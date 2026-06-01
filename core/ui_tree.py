@@ -17,7 +17,6 @@ That lets the agent run anywhere without crashing, and lets users opt in by
 from __future__ import annotations
 
 import logging
-import platform
 import time
 from collections import deque
 from typing import Any

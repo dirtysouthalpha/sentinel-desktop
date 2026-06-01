@@ -28,7 +28,7 @@ from typing import Any
 
 from PIL import Image
 
-from core.utils import get_tesseract, have_tesseract, have_uia
+from core.utils import get_tesseract, get_uia_auto, have_tesseract, have_uia
 
 logger = logging.getLogger(__name__)
 
@@ -306,7 +306,7 @@ def _uia_check() -> DetectionResult | None:
         return None
 
     try:
-        auto = _auto  # type: ignore[union-attr]
+        auto = get_uia_auto()  # type: ignore[union-attr]
         root = auto.GetRootControl()
         for win in root.GetChildren():
             try:
