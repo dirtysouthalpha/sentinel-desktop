@@ -250,7 +250,7 @@ def _recover_app_not_found(
 def _recover_click_failed(
     action: dict[str, Any], error: str, context: dict[str, Any]
 ) -> RecoverySuggestion:
-    """Generic click failure -- suggest re-screenshot and retry."""
+    """Recover from generic click failure by suggesting re-screenshot and retry."""
     prompt = (
         "A click action failed. Take a fresh screenshot to get updated "
         "coordinates, verify the target is still visible, and retry."

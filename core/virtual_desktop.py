@@ -1,4 +1,4 @@
-"""Sentinel Desktop — Virtual Desktop isolation layer.
+r"""Sentinel Desktop — Virtual Desktop isolation layer.
 
 Creates a separate Windows desktop object via the Win32 API so the agent can
 operate applications on its own desktop without interfering with the user's
@@ -700,7 +700,7 @@ def _raise_last_error(api_name: str) -> NoReturn:
 
 
 class VirtualDesktop:
-    """Create and manage an isolated Windows desktop for agent operations.
+    r"""Create and manage an isolated Windows desktop for agent operations.
 
     On Windows this creates a real desktop object via ``CreateDesktopW``.
     On every other platform (or if creation fails) it falls back to operating

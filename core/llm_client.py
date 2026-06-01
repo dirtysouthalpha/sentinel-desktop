@@ -330,7 +330,7 @@ class LLMClient:
         api_key: str = "",
         custom_url: str | None = None,
     ) -> list[str]:
-        """Convenience wrapper around :func:`fetch_models`.
+        """Wrap :func:`fetch_models` for convenience.
 
         Returns a sorted list of model ID strings for the given provider.
         """

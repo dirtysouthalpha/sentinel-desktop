@@ -246,12 +246,12 @@ class ActionRecorder:
 
     @staticmethod
     def save_script(script: Script, path: str) -> None:
-        """Convenience: save *script* to *path*."""
+        """Save *script* to *path* for convenience."""
         script.save(path)
 
     @staticmethod
     def load_script(path: str) -> Script:
-        """Convenience: load a Script from *path*."""
+        """Load a Script from *path* for convenience."""
         return Script.load(path)
 
     @staticmethod
