@@ -99,7 +99,7 @@ def test_start_process_with_args():
     mock_popen.assert_called_once_with(
         ["cmd.exe", "/c", "dir"],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
     )
 
 
