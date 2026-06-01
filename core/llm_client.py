@@ -116,6 +116,8 @@ class LLMClient:
             temperature: Sampling temperature.
             custom_url: Override base URL (for ``"custom"`` provider).
             timeout:    HTTP timeout in seconds.
+            max_retries: Maximum number of retry attempts for transient failures.
+            retry_base_delay: Base delay in seconds for exponential backoff.
 
         Returns:
             Assistant message content (plain text), or a JSON-encoded

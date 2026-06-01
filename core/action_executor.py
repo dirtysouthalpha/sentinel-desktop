@@ -84,6 +84,11 @@ class ActionExecutor:
             click_offset: (x, y) screen-coord offset of the captured image's
                 origin. Required for multi-monitor mode where the virtual
                 desktop top-left may have negative coords. Defaults to (0, 0).
+            monitor: Monitor index for multi-monitor setups. When None,
+                uses the primary monitor.
+            stealth: If True, uses stealth input methods (PostMessage/UIA)
+                instead of physical mouse/keyboard movements. Falls back to
+                physical input on stealth mode failures.
         """
         self.approval_callback = approval_callback
         self.dry_run = dry_run

@@ -220,6 +220,8 @@ class AuditExporter:
             Session info with keys: goal, start_time, end_time, total_steps, status.
         fmt : str
             One of ``html``, ``text``, ``csv``, ``json``.
+        format : str, optional
+            Alternative keyword for ``fmt`` for backwards compatibility.
 
         Returns
         -------

@@ -356,6 +356,9 @@ class AuthManager:
     ) -> User | None:
         """Update mutable fields of an existing user.
 
+        Args:
+            username: Username of the user to update.
+
         Keyword Args:
             password: New plain-text password (will be bcrypt-hashed).
             role: New role to assign.
