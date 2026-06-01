@@ -15,7 +15,7 @@ def brief_system_info() -> str:
     """Return a concise system summary string for the agent prompt."""
     try:
         mem = psutil.virtual_memory()
-        cpu_pct = psutil.cpu_percent(interval=0.5)
+        cpu_pct = psutil.cpu_percent(interval=None)  # non-blocking
         cpu_count = psutil.cpu_count()
         ram_line = (
             f"RAM: {mem.used / (1024**3):.1f}/{mem.total / (1024**3):.1f} GB ({mem.percent}%)"
@@ -51,7 +51,7 @@ def _memory_stats() -> tuple[float, float, float]:
 def _cpu_stats() -> tuple[float, int]:
     """Return (cpu_percent, cpu_count) or zeros on failure."""
     try:
-        return psutil.cpu_percent(interval=0.5), psutil.cpu_count() or 0
+        return psutil.cpu_percent(interval=None), psutil.cpu_count() or 0
     except (OSError, RuntimeError) as exc:
         logger.warning("psutil cpu call failed: %s", exc)
         return 0.0, 0
