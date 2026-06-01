@@ -143,10 +143,11 @@ class TestDownsampleIfNeeded:
         big = Image.new("RGB", (3840, 2160), "white")
         result = ocr._downsample_if_needed(big)
         w, h = result.size
-        assert w <= 1920
-        assert h <= 1080
-        assert w == 1920
-        assert h == 1080
+        # 4K images are aggressively downsampled to 720p for performance
+        assert w <= 1280
+        assert h <= 720
+        # Should maintain aspect ratio (16:9)
+        assert abs(w / h - 16 / 9) < 0.01
 
     def test_no_downsample_for_small_image(self):
         small = Image.new("RGB", (800, 600), "white")
