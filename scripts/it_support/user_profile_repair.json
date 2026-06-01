@@ -1,0 +1,48 @@
+{
+  "name": "User Profile Repair",
+  "description": "Exports the list of local user profiles to a text file for review. Useful for diagnosing corrupted profile issues, orphaned profiles, or when a user cannot log in. Run as administrator.",
+  "author": "sentinel-desktop",
+  "created": "2026-06-01T00:00:00",
+  "version": "3.0",
+  "tags": ["user-profile", "login", "troubleshooting", "registry"],
+  "category": "user_management",
+  "icon": "👤",
+  "parameters": [
+    {
+      "name": "username",
+      "type": "string",
+      "label": "Username",
+      "description": "The Windows username whose profile needs repair (for reference in the report)",
+      "default": "",
+      "required": false
+    },
+    {
+      "name": "output_path",
+      "type": "string",
+      "label": "Output Path",
+      "description": "Path to save the profile list report",
+      "default": "C:\\Temp\\profile_report.txt",
+      "required": false
+    }
+  ],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": { "command": "cmd", "args": "/c wmic UserAccount list brief > \"{{output_path}}\" && echo PROFILE_LIST_EXPORTED" },
+      "description": "Export local user account list to file",
+      "wait_after_ms": 3000
+    },
+    {
+      "action": "start_process",
+      "params": { "command": "cmd", "args": "/c dir /b \"%SystemDrive%\\Users\" >> \"{{output_path}}\" && echo PROFILE_DIRS_APPENDED" },
+      "description": "Append user profile directory listing to report",
+      "wait_after_ms": 2000
+    },
+    {
+      "action": "start_process",
+      "params": { "command": "notepad", "args": "{{output_path}}" },
+      "description": "Open the profile report in Notepad for review",
+      "wait_after_ms": 2000
+    }
+  ]
+}
