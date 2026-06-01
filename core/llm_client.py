@@ -47,6 +47,23 @@ DEFAULT_RETRY_BASE_DELAY = 1.0  # seconds — multiplied by 2^attempt with jitte
 # HTTP status codes we consider transient and worth retrying.
 RETRY_STATUSES = {408, 425, 429, 500, 502, 503, 504, 522, 524}
 
+# Common HTTP status codes
+HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_NO_CONTENT = 204
+HTTP_BAD_REQUEST = 400
+HTTP_UNAUTHORIZED = 401
+HTTP_FORBIDDEN = 403
+HTTP_NOT_FOUND = 404
+HTTP_TOO_MANY_REQUESTS = 429
+HTTP_INTERNAL_SERVER_ERROR = 500
+HTTP_SERVICE_UNAVAILABLE = 503
+HTTP_TIMEOUT = 408
+HTTP_SERVER_ERROR_MAX = 600
+
+# Error message truncation length
+MAX_ERROR_SNIPPET_LENGTH = 240
+
 
 class LLMError(Exception):
     """Raised for unrecoverable LLM errors with a human-friendly message."""
@@ -55,17 +72,17 @@ class LLMError(Exception):
 def _friendly_http_error(status: int, body: str) -> str:
     """Map an HTTP status code to an actionable message for the GUI."""
     snippet = body.strip()
-    if len(snippet) > 240:
-        snippet = snippet[:240] + "…"
-    if status == 401:
+    if len(snippet) > MAX_ERROR_SNIPPET_LENGTH:
+        snippet = snippet[:MAX_ERROR_SNIPPET_LENGTH] + "…"
+    if status == HTTP_UNAUTHORIZED:
         return "Invalid API key — check Settings."
-    if status == 403:
+    if status == HTTP_FORBIDDEN:
         return "API key lacks access to this model (or org/billing issue)."
-    if status == 404:
+    if status == HTTP_NOT_FOUND:
         return "Model or endpoint not found — verify the model name."
-    if status == 429:
+    if status == HTTP_TOO_MANY_REQUESTS:
         return f"Rate limited by provider. {snippet}"
-    if 500 <= status < 600:
+    if HTTP_INTERNAL_SERVER_ERROR <= status < HTTP_SERVER_ERROR_MAX:
         return f"Provider error (HTTP {status}). {snippet}"
     return f"HTTP {status}: {snippet}"
 
@@ -469,7 +486,7 @@ class LLMClient:
                 last_exc = exc
                 self._log_request_exc(provider_label, exc, attempt, max_retries)
             else:
-                if resp.status_code < 400:
+                if resp.status_code < HTTP_BAD_REQUEST:
                     return self._parse_response_json(resp, provider_label)
                 last_status, last_body = self._classify_error_response(
                     resp, provider_label, attempt, max_retries
