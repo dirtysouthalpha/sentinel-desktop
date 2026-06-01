@@ -4,16 +4,16 @@ These don't require Tesseract or uiautomation to be installed — they verify
 that the modules gracefully no-op when their backends are unavailable.
 """
 
-from core import ocr, ui_tree, utils
+from core import ocr, ui_tree
 
 
 def test_ocr_find_text_no_tesseract_returns_none(monkeypatch):
-    monkeypatch.setattr(utils, "have_tesseract", lambda: False)
+    monkeypatch.setattr(ocr, "have_tesseract", lambda: False)
     assert ocr.find_text("Hello") is None
 
 
 def test_ocr_read_screen_text_no_tesseract_returns_empty(monkeypatch):
-    monkeypatch.setattr(utils, "have_tesseract", lambda: False)
+    monkeypatch.setattr(ocr, "have_tesseract", lambda: False)
     assert ocr.read_screen_text() == ""
 
 
@@ -23,15 +23,15 @@ def test_ocr_find_text_empty_query():
 
 
 def test_uia_list_controls_without_uia_is_empty(monkeypatch):
-    monkeypatch.setattr(utils, "have_uia", lambda: False)
+    monkeypatch.setattr(ui_tree, "have_uia", lambda: False)
     assert ui_tree.list_controls() == []
 
 
 def test_uia_click_control_without_uia_is_none(monkeypatch):
-    monkeypatch.setattr(utils, "have_uia", lambda: False)
+    monkeypatch.setattr(ui_tree, "have_uia", lambda: False)
     assert ui_tree.click_control(name="Send") is None
 
 
 def test_uia_set_text_without_uia_is_false(monkeypatch):
-    monkeypatch.setattr(utils, "have_uia", lambda: False)
+    monkeypatch.setattr(ui_tree, "have_uia", lambda: False)
     assert ui_tree.set_text("hello", name="Subject") is False
