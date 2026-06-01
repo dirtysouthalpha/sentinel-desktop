@@ -541,45 +541,60 @@ class TaskScheduler:
     def _tick(self) -> None:
         """Check all enabled tasks and execute any that are due."""
         now = datetime.now()
-        now_iso = now.isoformat()
-        tasks_to_run: list[dict[str, Any]] = []
-
-        with self._lock:
-            for task in list(self._tasks.values()):
-                if not task.get("enabled", True):
-                    continue
-                cron_expr = task.get("cron_expr", "")
-                if not cron_expr:
-                    continue
-                try:
-                    if cron_matches(cron_expr, now):
-                        tasks_to_run.append(dict(task))
-                except ValueError as exc:
-                    logger.warning("Invalid cron for task %s: %s (%s)", task["id"], cron_expr, exc)
-
+        tasks_to_run = self._collect_due_tasks(now)
         for task in tasks_to_run:
-            logger.info("Running scheduled task: %s (%s)", task["name"], task["id"])
-            result = self._execute_task(task)
-
-            # Update last_run / next_run
-            with self._lock:
-                tid = task["id"]
-                if tid in self._tasks:
-                    self._tasks[tid]["last_run"] = now_iso
-                    cron_expr = self._tasks[tid].get("cron_expr", "")
-                    try:
-                        self._tasks[tid]["next_run"] = _next_run_after(cron_expr, now).isoformat()
-                    except ValueError as exc:
-                        logger.warning("Failed to compute next_run for task %s: %s", tid, exc)
-                        self._tasks[tid]["next_run"] = None
-
-            self._handle_on_complete(task, result)
-
-            if self._on_task_complete is not None:
-                try:
-                    self._on_task_complete(result)
-                except (RuntimeError, OSError, ValueError) as exc:
-                    logger.exception("on_task_complete callback raised: %s", exc)
-
+            self._run_scheduled_task(task, now)
         if tasks_to_run:
             self.save()
+
+    def _collect_due_tasks(self, now: datetime) -> list[dict[str, Any]]:
+        """Collect all tasks that are due to run."""
+        tasks_to_run: list[dict[str, Any]] = []
+        with self._lock:
+            for task in list(self._tasks.values()):
+                if self._is_task_due(task, now):
+                    tasks_to_run.append(dict(task))
+        return tasks_to_run
+
+    def _is_task_due(self, task: dict[str, Any], now: datetime) -> bool:
+        """Check if a task is enabled and due to run."""
+        if not task.get("enabled", True):
+            return False
+        cron_expr = task.get("cron_expr", "")
+        if not cron_expr:
+            return False
+        try:
+            return cron_matches(cron_expr, now)
+        except ValueError as exc:
+            logger.warning("Invalid cron for task %s: %s (%s)", task["id"], cron_expr, exc)
+            return False
+
+    def _run_scheduled_task(self, task: dict[str, Any], now: datetime) -> None:
+        """Execute a scheduled task and update its state."""
+        logger.info("Running scheduled task: %s (%s)", task["name"], task["id"])
+        result = self._execute_task(task)
+        self._update_task_run_times(task, now)
+        self._handle_on_complete(task, result)
+        self._invoke_completion_callback(result)
+
+    def _update_task_run_times(self, task: dict[str, Any], now: datetime) -> None:
+        """Update last_run and next_run timestamps for a task."""
+        now_iso = now.isoformat()
+        with self._lock:
+            tid = task["id"]
+            if tid in self._tasks:
+                self._tasks[tid]["last_run"] = now_iso
+                cron_expr = self._tasks[tid].get("cron_expr", "")
+                try:
+                    self._tasks[tid]["next_run"] = _next_run_after(cron_expr, now).isoformat()
+                except ValueError as exc:
+                    logger.warning("Failed to compute next_run for task %s: %s", tid, exc)
+                    self._tasks[tid]["next_run"] = None
+
+    def _invoke_completion_callback(self, result: dict[str, Any]) -> None:
+        """Invoke the external completion callback if set."""
+        if self._on_task_complete is not None:
+            try:
+                self._on_task_complete(result)
+            except (RuntimeError, OSError, ValueError) as exc:
+                logger.exception("on_task_complete callback raised: %s", exc)

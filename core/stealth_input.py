@@ -207,35 +207,49 @@ def post_hotkey(keys: list[str], hwnd: int | None = None) -> bool:
             return False
         target = _get_focus_hwnd(hwnd) or hwnd
 
-        mod_codes = []
-        main_codes = []
-        for k in keys:
-            k = str(k).lower()
-            if k in _MOD_VK:
-                mod_codes.append(_MOD_VK[k])
-            else:
-                vk = VK_NAMES.get(k)
-                if vk is None:
-                    if len(k) == 1:
-                        vk = ord(k.upper())
-                    else:
-                        return False
-                main_codes.append(vk)
-        if not main_codes:
+        parsed = _parse_hotkey_keys(keys)
+        if parsed is None:
             return False
 
-        for vk in mod_codes:
-            win32api.PostMessage(target, win32con.WM_KEYDOWN, vk, 0)
-        for vk in main_codes:
-            win32api.PostMessage(target, win32con.WM_KEYDOWN, vk, 0)
-            time.sleep(0.005)
-            win32api.PostMessage(target, win32con.WM_KEYUP, vk, 0)
-        for vk in reversed(mod_codes):
-            win32api.PostMessage(target, win32con.WM_KEYUP, vk, 0)
+        mod_codes, main_codes = parsed
+        _send_key_sequence(target, mod_codes, main_codes)
         return True
     except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("post_hotkey failed: %s", exc)
         return False
+
+
+def _parse_hotkey_keys(keys: list[str]) -> tuple[list[int], list[int]] | None:
+    """Parse hotkey keys into modifier and main key VK codes."""
+    mod_codes = []
+    main_codes = []
+    for k in keys:
+        k = str(k).lower()
+        if k in _MOD_VK:
+            mod_codes.append(_MOD_VK[k])
+        else:
+            vk = VK_NAMES.get(k)
+            if vk is None:
+                if len(k) == 1:
+                    vk = ord(k.upper())
+                else:
+                    return None
+            main_codes.append(vk)
+    if not main_codes:
+        return None
+    return mod_codes, main_codes
+
+
+def _send_key_sequence(target: int, mod_codes: list[int], main_codes: list[int]) -> None:
+    """Send a complete key sequence with modifiers."""
+    for vk in mod_codes:
+        win32api.PostMessage(target, win32con.WM_KEYDOWN, vk, 0)
+    for vk in main_codes:
+        win32api.PostMessage(target, win32con.WM_KEYDOWN, vk, 0)
+        time.sleep(0.005)
+        win32api.PostMessage(target, win32con.WM_KEYUP, vk, 0)
+    for vk in reversed(mod_codes):
+        win32api.PostMessage(target, win32con.WM_KEYUP, vk, 0)
 
 
 # ---------------------------------------------------------------------------
