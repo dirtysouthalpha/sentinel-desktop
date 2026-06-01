@@ -85,7 +85,7 @@ class TestReadScreenTextWithConfidence:
     def test_returns_empty_when_tesseract_unavailable(self, monkeypatch):
         from core import ocr
 
-        monkeypatch.setattr(ocr, "_have_tesseract", lambda: False)
+        monkeypatch.setattr(ocr, "have_tesseract", lambda: False)
         text, conf = ocr.read_screen_text_with_confidence()
         assert text == ""
         assert conf["avg_confidence"] == 0
@@ -96,7 +96,7 @@ class TestReadScreenTextWithConfidence:
     def test_returns_ocr_result_with_confidence(self, monkeypatch):
         from core import ocr
 
-        monkeypatch.setattr(ocr, "_have_tesseract", lambda: True)
+        monkeypatch.setattr(ocr, "have_tesseract", lambda: True)
 
         fake_img = MagicMock()
         monkeypatch.setattr(ocr, "capture_screen", lambda monitor=None: fake_img)
@@ -121,7 +121,7 @@ class TestReadScreenTextWithConfidence:
     def test_returns_empty_on_capture_exception(self, monkeypatch):
         from core import ocr
 
-        monkeypatch.setattr(ocr, "_have_tesseract", lambda: True)
+        monkeypatch.setattr(ocr, "have_tesseract", lambda: True)
         monkeypatch.setattr(
             ocr,
             "capture_screen",
@@ -135,7 +135,7 @@ class TestReadScreenTextWithConfidence:
     def test_passes_monitor_param(self, monkeypatch):
         from core import ocr
 
-        monkeypatch.setattr(ocr, "_have_tesseract", lambda: True)
+        monkeypatch.setattr(ocr, "have_tesseract", lambda: True)
 
         captured_monitor = {}
 

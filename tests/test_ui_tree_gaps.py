@@ -46,24 +46,24 @@ class TestHaveUia:
         utils._UIA_OK = None
         utils._auto = None
 
-    @patch("core.ui_tree.platform.system", return_value="Linux")
+    @patch("core.utils.platform.system", return_value="Linux")
     def test_non_windows_returns_false(self, mock_sys):
         assert utils.have_uia() is False
         assert utils._UIA_OK is False
 
-    @patch("core.ui_tree.platform.system", return_value="Windows")
+    @patch("core.utils.platform.system", return_value="Windows")
     def test_import_failure_returns_false(self, mock_sys):
         with patch.dict("sys.modules", {"uiautomation": None}):
             with patch("builtins.__import__", side_effect=ImportError("nope")):
                 assert utils.have_uia() is False
 
-    @patch("core.ui_tree.platform.system", return_value="Windows")
+    @patch("core.utils.platform.system", return_value="Windows")
     def test_cached_true_skips_reprobe(self, mock_sys):
         utils._UIA_OK = True
         assert utils.have_uia() is True
         mock_sys.assert_not_called()
 
-    @patch("core.ui_tree.platform.system", return_value="Windows")
+    @patch("core.utils.platform.system", return_value="Windows")
     def test_cached_false_skips_reprobe(self, mock_sys):
         utils._UIA_OK = False
         assert utils.have_uia() is False
