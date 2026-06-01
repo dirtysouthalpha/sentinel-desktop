@@ -616,3 +616,19 @@ class TestOcrCacheCrossFunction:
         ocr._pytesseract.image_to_data.assert_not_called()
         assert text == "cached text"
         assert conf["avg_confidence"] == 75.0
+
+    def test_image_to_data_failure_returns_cached_text(self):
+        """If image_to_data raises after reusing cached text, cached text is preserved."""
+        ocr._TESSERACT_OK = True
+        ocr._pytesseract = MagicMock()
+        img = Image.new("RGB", (10, 10))
+        cache_key = ocr._image_cache_key(img, preprocess=True)
+        # Text-only cache entry (from _ocr_image fast path).
+        ocr._ocr_cache[cache_key] = ("preserved text", None, time.monotonic())
+        ocr._pytesseract.image_to_data.side_effect = OSError("tesseract crashed")
+
+        text, conf = ocr._ocr_image_with_confidence(img, preprocess=True)
+
+        # The cached text must survive even though image_to_data failed.
+        assert text == "preserved text"
+        assert conf["avg_confidence"] == 0.0

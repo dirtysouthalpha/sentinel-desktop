@@ -250,7 +250,8 @@ def _ocr_image_with_confidence(
 
         target = preprocess_for_ocr(img) if preprocess else img
         # Reuse cached text when available to skip image_to_string.
-        text = cached[0] if cached is not None else _pytesseract.image_to_string(target)  # type: ignore[union-attr]
+        cached_text = cached[0] if cached is not None else None
+        text = cached_text if cached_text is not None else _pytesseract.image_to_string(target)  # type: ignore[union-attr]
         data = _pytesseract.image_to_data(  # type: ignore[union-attr]
             target,
             output_type=_pytesseract.Output.DICT,  # type: ignore[union-attr]
@@ -260,7 +261,9 @@ def _ocr_image_with_confidence(
         return (text, conf_data)
     except (OSError, RuntimeError) as exc:
         logger.warning("Tesseract (with confidence) failed: %s", exc)
-        return ("", empty_conf)
+        # Return cached text if available rather than discarding it on image_to_data failure.
+        fallback_text = cached[0] if cached is not None else ""
+        return (fallback_text, empty_conf)
 
 
 def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = None) -> bool:
