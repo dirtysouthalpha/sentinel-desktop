@@ -191,7 +191,7 @@ class RecorderPanel(ctk.CTkFrame):
         dlg.resizable(False, False)
         dlg.transient(self.winfo_toplevel())
         dlg.grab_set()
-        pad: dict = dict(padx=12, pady=6, sticky="ew")
+        pad: dict = {"padx": 12, "pady": 6, "sticky": "ew"}
         dlg.grid_columnconfigure(1, weight=1)
 
         name_e, desc_e, tags_e = self._build_save_form_fields(dlg, script, pad)

@@ -114,7 +114,7 @@ class CommandPalette:
 
     def get_categories(self) -> list[str]:
         """Return unique categories."""
-        return sorted(set(c.category for c in self._commands))
+        return sorted({c.category for c in self._commands})
 
     def by_shortcut(self, key: str) -> Command | None:
         """Find command by keyboard shortcut."""
