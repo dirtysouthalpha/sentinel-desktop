@@ -395,8 +395,10 @@ class TestAgentWorkerFullFlow:
         callback = MagicMock()
         pool = AgentPool(max_agents=1, on_session_complete=callback)
         try:
-            sid = pool.submit("Goal")
-            session = pool._sessions[sid]
+            # Create session manually without submit to avoid dispatcher picking it up
+            session = AgentSession(id="test_cleanup_id", goal="Goal", config={})
+            pool._sessions["test_cleanup_id"] = session
+            sid = "test_cleanup_id"
 
             mock_vd = MagicMock()
             mock_vd.create.return_value = True
@@ -422,6 +424,10 @@ class TestAgentWorkerFullFlow:
             )
             # Callback still called
             callback.assert_called_once()
+            # Verify the callback received the expected result
+            call_arg = callback.call_args[0][0]
+            assert call_arg["status"] == STATUS_COMPLETED
+            assert call_arg["step_count"] == 1
         finally:
             pool.shutdown(wait=False)
 
