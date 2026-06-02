@@ -4,6 +4,7 @@ Two-panel layout: browseable/searchable script list on the left,
 script detail + parameter entry + run controls on the right.
 """
 
+import contextlib
 import json
 import logging
 import threading
@@ -309,10 +310,8 @@ class ScriptsTab:
         author = script.get("author", "unknown")
         created = script.get("created", "")
         if created:
-            try:
+            with contextlib.suppress((ValueError, TypeError)):
                 created = datetime.fromisoformat(created).strftime("%Y-%m-%d")
-            except (ValueError, TypeError):
-                pass
         self._meta_label.configure(
             text=f"{steps} step{'s' if steps != 1 else ''}  ·  {author}  ·  {created}"
         )
@@ -438,7 +437,5 @@ class ScriptsTab:
             self._output_box.configure(state="disabled")
             self._output_box.see("end")
 
-        try:
+        with contextlib.suppress(RuntimeError):
             self.app.root.after(0, _do)
-        except RuntimeError:
-            pass

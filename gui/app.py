@@ -5,6 +5,7 @@ Dark-themed customtkinter interface with chat, live screenshot, and settings.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -352,11 +353,8 @@ class SentinelApp:
     def _add_chat(self, text: str, tag: str = "system") -> None:
         """Append a line to the chat log. Safe to call from any thread."""
         # Marshal Tk widget updates to the main thread.
-        try:
+        with contextlib.suppress(RuntimeError):
             self.root.after(0, lambda: self._add_chat_main(text, tag))
-        except RuntimeError:
-            # Root may already be destroyed during shutdown — drop silently.
-            pass
 
     def _add_chat_main(self, text: str, tag: str) -> None:
         self.chat_display.configure(state="normal")
