@@ -21,6 +21,16 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Match score thresholds for fuzzy search
+_DEFAULT_MATCH_SCORE = 0.5
+_EXACT_MATCH_SCORE = 1.0
+_STARTS_WITH_SCORE = 0.95
+_CONTAINS_SCORE = 0.85
+_KEYWORD_MATCH_SCORE = 0.75
+_FUZZY_THRESHOLD = 0.5
+_FUZZY_MULTIPLIER = 0.7
+_MINIMUM_SCORE_THRESHOLD = 0.1
+
 
 class Command:
     """A single palette command."""
@@ -52,33 +62,32 @@ class Command:
     def matches(self, query: str) -> float:
         """Return match score 0-1 against query. Uses fuzzy matching."""
         if not query:
-            return 0.5
+            return _DEFAULT_MATCH_SCORE
+
         q = query.lower().strip()
         n = self.name.lower()
+        score = 0.0
 
-        # Exact match
+        # Check each match condition in priority order, stopping at best match
         if q == n:
-            return 1.0
+            score = _EXACT_MATCH_SCORE
+        elif n.startswith(q):
+            score = _STARTS_WITH_SCORE
+        elif q in n:
+            score = _CONTAINS_SCORE
+        else:
+            # Check keywords
+            for kw in self.keywords:
+                if q in kw.lower():
+                    score = _KEYWORD_MATCH_SCORE
+                    break
+            else:
+                # Fuzzy matching as last resort
+                ratio = SequenceMatcher(None, q, n).ratio()
+                if ratio > _FUZZY_THRESHOLD:
+                    score = ratio * _FUZZY_MULTIPLIER
 
-        # Starts with
-        if n.startswith(q):
-            return 0.95
-
-        # Contains
-        if q in n:
-            return 0.85
-
-        # Keyword match
-        for kw in self.keywords:
-            if q in kw.lower():
-                return 0.75
-
-        # Fuzzy ratio
-        ratio = SequenceMatcher(None, q, n).ratio()
-        if ratio > 0.5:
-            return ratio * 0.7
-
-        return 0.0
+        return score
 
 
 class CommandPalette:
@@ -106,7 +115,7 @@ class CommandPalette:
         """Search commands by query. Returns list of (command, score) sorted by score desc."""
         scored = [(cmd, cmd.matches(query)) for cmd in self._commands]
         scored.sort(key=lambda x: x[1], reverse=True)
-        return [(cmd, score) for cmd, score in scored if score > 0.1][:limit]
+        return [(cmd, score) for cmd, score in scored if score > _MINIMUM_SCORE_THRESHOLD][:limit]
 
     def get_all(self) -> list[Command]:
         """Return all commands grouped by category."""

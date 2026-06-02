@@ -28,6 +28,12 @@ DASHBOARD_OVERVIEW_TIMEOUT = 10.0
 HEALTH_CHECK_TIMEOUT = 5.0
 METRICS_TIMEOUT = 3.0
 
+# Dashboard thresholds and limits
+GPU_DATA_FIELD_COUNT = 6
+CPU_MEMORY_WARNING_THRESHOLD = 90
+HEALTH_CHECK_HISTORY_MAX_SIZE = 100
+HEALTH_CHECK_HISTORY_RETENTION = 50
+
 # ─── System Metrics ───────────────────────────────────────────────────────
 
 _start_time = time.time()
@@ -98,7 +104,7 @@ def _get_gpu_info() -> list[dict[str, Any]]:
         if result.returncode == 0:
             for line in result.stdout.strip().split("\n"):
                 parts = [p.strip() for p in line.split(",")]
-                if len(parts) >= 6:
+                if len(parts) >= GPU_DATA_FIELD_COUNT:
                     gpus.append({
                         "name": parts[0],
                         "memory_used_mb": float(parts[1]),
@@ -195,10 +201,10 @@ async def health_check() -> dict[str, Any]:
     status = "healthy"
     issues = []
 
-    if mem.get("percent", 0) > 90:
+    if mem.get("percent", 0) > CPU_MEMORY_WARNING_THRESHOLD:
         status = "warning"
         issues.append(f"Memory at {mem['percent']}%")
-    if cpu.get("percent", 0) > 90:
+    if cpu.get("percent", 0) > CPU_MEMORY_WARNING_THRESHOLD:
         status = "warning"
         issues.append(f"CPU at {cpu['percent']}%")
 
@@ -209,8 +215,8 @@ async def health_check() -> dict[str, Any]:
     }
 
     _health_checks.append(result)
-    if len(_health_checks) > 100:
-        _health_checks[:] = _health_checks[-50:]
+    if len(_health_checks) > HEALTH_CHECK_HISTORY_MAX_SIZE:
+        _health_checks[:] = _health_checks[-HEALTH_CHECK_HISTORY_RETENTION:]
 
     return result
 
