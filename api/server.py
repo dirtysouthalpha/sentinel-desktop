@@ -460,7 +460,12 @@ class SentinelServer:
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
-            windows = await asyncio.to_thread(wm.list_windows)
+            windows = await asyncio.wait_for(
+                asyncio.to_thread(wm.list_windows),
+                timeout=DEFAULT_API_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"List windows timed out after {DEFAULT_API_TIMEOUT}s") from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to list windows: {exc}") from exc
         return {"windows": windows}
@@ -470,7 +475,12 @@ class SentinelServer:
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
-            processes = await asyncio.to_thread(pm.list_processes, 100)
+            processes = await asyncio.wait_for(
+                asyncio.to_thread(pm.list_processes, 100),
+                timeout=DEFAULT_API_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"List processes timed out after {DEFAULT_API_TIMEOUT}s") from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to list processes: {exc}") from exc
         return {"processes": processes}
@@ -480,7 +490,12 @@ class SentinelServer:
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
-            info = await asyncio.to_thread(sysinfo.system_info)
+            info = await asyncio.wait_for(
+                asyncio.to_thread(sysinfo.system_info),
+                timeout=DEFAULT_API_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"System info timed out after {DEFAULT_API_TIMEOUT}s") from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to get system info: {exc}") from exc
         return {"system": info}
@@ -726,8 +741,12 @@ class SentinelServer:
             raise HTTPException(500, "Engine not initialized")
         try:
             # run_task_now() can invoke scripts/goals/powershell — offload to thread.
-            async with asyncio.timeout(300):  # 5 minute timeout for scheduled task execution
-                return await asyncio.to_thread(self.engine.scheduler.run_task_now, req.task_id)
+            return await asyncio.wait_for(
+                asyncio.to_thread(self.engine.scheduler.run_task_now, req.task_id),
+                timeout=LONG_OPERATION_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Task execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
         except (OSError, ValueError, RuntimeError, KeyError) as exc:
             raise HTTPException(500, f"Failed to run task: {exc}") from exc
 
@@ -741,9 +760,14 @@ class SentinelServer:
         try:
             # notify() may make HTTP webhook calls; offload to thread pool.
             nm = self.engine.notifications
-            success = await asyncio.to_thread(
-                lambda: nm.notify(title=req.title, message=req.message, level=req.level),
+            success = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: nm.notify(title=req.title, message=req.message, level=req.level),
+                ),
+                timeout=DEFAULT_API_TIMEOUT,
             )
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Notification timed out after {DEFAULT_API_TIMEOUT}s") from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Notification failed: {exc}") from exc
         return {"success": success}
@@ -771,7 +795,12 @@ class SentinelServer:
         name = req.name
         try:
             # reload_plugin() imports Python modules from disk; offload to thread.
-            success = await asyncio.to_thread(self.engine.plugin_loader.reload_plugin, name)
+            success = await asyncio.wait_for(
+                asyncio.to_thread(self.engine.plugin_loader.reload_plugin, name),
+                timeout=DEFAULT_API_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Plugin reload timed out after {DEFAULT_API_TIMEOUT}s") from None
         except (OSError, ValueError, RuntimeError, ImportError) as exc:
             raise HTTPException(500, f"Failed to reload plugin: {exc}") from exc
         return {"success": success, "name": name}
@@ -853,9 +882,14 @@ class SentinelServer:
 
         try:
             # authenticate() runs bcrypt verification (CPU-intensive); offload to thread.
-            user = await asyncio.to_thread(
-                self.engine.auth_manager.authenticate, req.username, req.password,
+            user = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.engine.auth_manager.authenticate, req.username, req.password,
+                ),
+                timeout=DEFAULT_API_TIMEOUT,
             )
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Authentication timed out after {DEFAULT_API_TIMEOUT}s") from None
         except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Authentication error: {exc}") from exc
         if not user:
@@ -903,13 +937,18 @@ class SentinelServer:
         try:
             log = self.engine.forensic_log if hasattr(self.engine, "forensic_log") else []
             # generate_report() writes a file — offload to thread pool.
-            path = await asyncio.to_thread(
-                self.engine.audit_exporter.generate_report,
-                log,
-                {"goal": "audit"},
-                format,
+            path = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.engine.audit_exporter.generate_report,
+                    log,
+                    {"goal": "audit"},
+                    format,
+                ),
+                timeout=LONG_OPERATION_TIMEOUT,
             )
             return {"path": path, "format": format}
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Audit export timed out after {LONG_OPERATION_TIMEOUT}s") from None
         except (OSError, ValueError, RuntimeError) as exc:
             logger.exception("Audit export failed")
             raise HTTPException(500, f"Audit export failed: {exc}") from exc
