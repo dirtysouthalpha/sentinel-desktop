@@ -201,7 +201,12 @@ def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
     Returns None if no suitable window exists.
     """
     focused_title, focused_rect = _get_foreground_window_info()
-    if focused_rect and not _is_self_window(focused_title) and focused_rect[2] > 0 and focused_rect[3] > 0:
+    if (
+        focused_rect
+        and not _is_self_window(focused_title)
+        and focused_rect[2] > 0
+        and focused_rect[3] > 0
+    ):
         return (*focused_rect, focused_title)
     return _find_best_candidate_window()
 
@@ -339,7 +344,10 @@ def close_window(title: str) -> bool:
             nonlocal found
             if found:
                 return  # Already closed one; stop iterating.
-            if win32gui.IsWindowVisible(hwnd) and title.lower() in win32gui.GetWindowText(hwnd).lower():
+            if (
+                win32gui.IsWindowVisible(hwnd)
+                and title.lower() in win32gui.GetWindowText(hwnd).lower()
+            ):
                 win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
                 found = True
 

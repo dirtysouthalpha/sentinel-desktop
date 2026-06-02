@@ -275,7 +275,11 @@ class ActionExecutor:
         sy = int(y) + self.click_offset[1]
         try:
             # In stealth mode, try the no-cursor-move path first.
-            if self.stealth and stealth_input.is_available() and stealth_input.post_click(sx, sy, button=button):
+            if (
+                self.stealth
+                and stealth_input.is_available()
+                and stealth_input.post_click(sx, sy, button=button)
+            ):
                 if clicks == DOUBLE_CLICK_COUNT:
                     desc = "Double-clicked"
                 elif button == "right":
@@ -313,7 +317,11 @@ class ActionExecutor:
         sx = x + self.click_offset[0]
         sy = y + self.click_offset[1]
 
-        if self.stealth and stealth_input.is_available() and stealth_input.post_click(sx, sy, button=button):
+        if (
+            self.stealth
+            and stealth_input.is_available()
+            and stealth_input.post_click(sx, sy, button=button)
+        ):
             return {
                 "success": True,
                 "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
