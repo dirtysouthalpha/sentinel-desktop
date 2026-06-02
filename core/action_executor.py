@@ -351,7 +351,7 @@ class ActionExecutor:
                     "position": list(ui_pos),
                     "fallback": "uia",
                 }
-        except Exception as exc:
+        except (OSError, AttributeError, RuntimeError, TypeError) as exc:
             logger.debug("click_text UIA fallback failed: %s", exc)
         return None
 
