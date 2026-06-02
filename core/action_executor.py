@@ -12,12 +12,12 @@ from typing import Any
 from core import clipboard as clip
 from core import desktop as desktop_mod
 from core import file_ops, launcher, ocr, stealth_input, ui_tree
-
-_FailSafeException = desktop_mod._FailSafeException
 from core import process_manager as pm
 from core import system_info as sysinfo
 from core import window_manager as wm
 from core.screenshot import capture_to_base64, find_template, wait_for_template
+
+_FailSafeException = desktop_mod._FailSafeException
 
 logger = logging.getLogger(__name__)
 
@@ -679,7 +679,7 @@ class ActionExecutor:
                 "success": found,
                 "output": f"Template {'found and clicked' if found else 'not found'}",
             }
-        except (OSError, RuntimeError, ValueError, IOError) as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             return {
                 "success": False,
                 "output": f"click_image error: {exc}",
