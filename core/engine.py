@@ -40,6 +40,7 @@ from core.tool_schemas import TOOLS as ACTION_TOOLS
 
 if TYPE_CHECKING:
     from core.agent_pool import AgentPool
+    from core.app_profiles import AppProfile
     from core.audit_export import AuditExporter
     from core.auth import AuthManager
     from core.encryption import CredentialVault
@@ -1345,7 +1346,7 @@ class AgentEngine:
                 return w.get("title", "")
         return ""
 
-    def _format_app_profile(self, profile) -> str:
+    def _format_app_profile(self, profile: AppProfile) -> str:
         """Format an app profile into a markdown string."""
         lines = [
             f"## Active App: {profile.display_name}",
