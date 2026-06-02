@@ -78,7 +78,7 @@ class ActionExecutor:
         click_offset: tuple = (0, 0),
         monitor: int | None = None,
         stealth: bool = False,
-    ):
+    ) -> None:
         """Initialize the action executor.
 
         Args:
