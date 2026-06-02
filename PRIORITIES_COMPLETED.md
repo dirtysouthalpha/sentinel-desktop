@@ -31,11 +31,16 @@ All priorities from CLAUDE.md have been systematically verified and completed as
 - **Popup Handler**: Nested dialog scenarios tested
 
 ### ✅ Priority #6: Performance - COMPLETE
-- **OCR Pipeline**: 
+- **OCR Pipeline**:
   - Aggressive downsampling for 2K+ resolutions
-  - 3-second TTL cache (max 50 entries)  
+  - 3-second TTL cache (max 50 entries)
   - 9-point grid cache keys for fast lookups
-- **UI Lookups**: 0.5-second TTL caching for expensive tree scans
+- **UI Lookups**: Enhanced multi-layer caching system
+  - Control lookup cache (0.5s TTL, 100 entries) with hit/miss statistics
+  - Tree traversal cache (1.0s TTL, 50 entries) for list_controls results
+  - Window discovery cache (2.0s TTL, 20 entries) for expensive window scans
+  - Automatic size-based eviction and periodic expiration
+  - Public cache control API (get_cache_stats, clear_all_caches)
 - **Profiling**: `profile_ocr.py` script for bottleneck analysis
 - **Optimization**: Cache-aware text reuse, region-of-interest support
 
