@@ -243,6 +243,32 @@ class ScriptEngine:
             duration_ms=duration_ms,
         )
 
+    def _handle_step_result(
+        self,
+        result: dict[str, Any],
+        step_num: int,
+        action: str,
+    ) -> tuple[bool, str | None]:
+        """Process a step result and update error tracking.
+
+        Args:
+            result: The step execution result.
+            step_num: The step number (1-indexed).
+            action: The action type for error messages.
+
+        Returns:
+            (should_continue, error_message) tuple.
+        """
+        if result.get("success", False):
+            return True, None
+
+        error_msg = (
+            f"Step {step_num} ({action}) failed: "
+            f"{result.get('output', result.get('error', 'unknown'))}"
+        )
+        should_continue = self._on_error != "stop"
+        return should_continue, error_msg
+
     def _run_all_steps(
         self,
         steps: list[dict[str, Any]],
@@ -276,22 +302,17 @@ class ScriptEngine:
 
             if result.get("success", False):
                 steps_completed += 1
+                wait_ms = step.get("wait_after_ms", 0)
+                if wait_ms > 0:
+                    time.sleep(wait_ms / 1000.0)
             else:
                 success = False
+                should_continue, error_msg = self._handle_step_result(result, step_num, action)
                 if first_error is None:
-                    first_error = (
-                        f"Step {step_num} ({action}) failed: "
-                        f"{result.get('output', result.get('error', 'unknown'))}"
-                    )
+                    first_error = error_msg
                 steps_completed += 1
-                if self._on_error == "stop":
+                if not should_continue:
                     break
-                # "skip" and "retry_once" both continue to the next step
-                continue
-
-            wait_ms = step.get("wait_after_ms", 0)
-            if wait_ms > 0:
-                time.sleep(wait_ms / 1000.0)
 
         return steps_completed, results, first_error, success
 
