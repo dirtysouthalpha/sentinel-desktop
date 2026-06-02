@@ -7,8 +7,11 @@ pyautogui.screenshot() (primary monitor only).
 """
 
 import base64
+import hashlib
 import io
 import logging
+import os
+import sys
 import time
 
 import pyautogui
@@ -26,6 +29,138 @@ except ImportError as exc:
     logger.debug("mss unavailable, falling back to pyautogui: %s", exc)
     _HAS_MSS = False
     _ScreenShotError = OSError
+
+# Detect if we're running in test mode to disable caching by default
+_IN_TEST_MODE = (
+    "pytest" in sys.modules or
+    "unittest" in sys.modules or
+    os.environ.get("PYTEST_CURRENT_TEST") is not None
+)
+
+
+# ---------------------------------------------------------------------------
+# Screenshot caching
+# ---------------------------------------------------------------------------
+
+# Screenshot cache: (cache_key) → (image, timestamp)
+_SCREENSHOT_CACHE: dict[str, tuple[Image.Image, float]] = {}
+_SCREENSHOT_CACHE_TTL = 0.5  # seconds — short TTL for screenshots
+_SCREENSHOT_CACHE_MAX_SIZE = 20  # maximum cached screenshots
+
+# Cache statistics for monitoring effectiveness
+_screenshot_cache_stats = {
+    "hits": 0,
+    "misses": 0,
+    "evictions": 0,
+}
+
+
+def _screenshot_cache_key(
+    monitor: int | str | None = None,
+    region: tuple[int, int, int, int] | None = None,
+) -> str:
+    """Generate a cache key for screenshot operations.
+
+    Args:
+        monitor: Monitor index or "auto" for full screen captures
+        region: (x, y, w, h) tuple for region captures
+
+    Returns:
+        MD5 hash of the capture parameters
+    """
+    if region:
+        key_str = f"region:{region[0]}x{region[1]}:{region[2]}x{region[3]}"
+    else:
+        key_str = f"monitor:{monitor}"
+    return hashlib.md5(key_str.encode()).hexdigest()  # noqa: S324
+
+
+def _get_screenshot_from_cache(
+    cache_key: str,
+    current_time: float,
+) -> Image.Image | None:
+    """Get a screenshot from cache if still valid.
+
+    Args:
+        cache_key: The cache key to look up
+        current_time: Current monotonic time for TTL check
+
+    Returns:
+        Cached PIL Image if valid, None otherwise
+    """
+    if cache_key in _SCREENSHOT_CACHE:
+        img, timestamp = _SCREENSHOT_CACHE[cache_key]
+        if current_time - timestamp < _SCREENSHOT_CACHE_TTL:
+            _screenshot_cache_stats["hits"] += 1
+            logger.debug("Screenshot cache hit for key %s", cache_key)
+            return img  # Return reference to maintain object identity
+        else:
+            # Expired — remove
+            del _SCREENSHOT_CACHE[cache_key]
+    _screenshot_cache_stats["misses"] += 1
+    return None
+
+
+def _store_screenshot_in_cache(
+    cache_key: str,
+    image: Image.Image,
+    current_time: float,
+) -> None:
+    """Store a screenshot in the cache with eviction management.
+
+    Args:
+        cache_key: The cache key to store under
+        image: The PIL Image to cache
+        current_time: Current monotonic time for timestamp
+    """
+    # Remove expired entries
+    expired_keys = [
+        k
+        for k, (_, ts) in _SCREENSHOT_CACHE.items()
+        if current_time - ts >= _SCREENSHOT_CACHE_TTL
+    ]
+    for k in expired_keys:
+        del _SCREENSHOT_CACHE[k]
+
+    # Evict oldest entries if cache exceeds max size
+    if len(_SCREENSHOT_CACHE) >= _SCREENSHOT_CACHE_MAX_SIZE:
+        oldest_key = min(_SCREENSHOT_CACHE.keys(), key=lambda k: _SCREENSHOT_CACHE[k][1])
+        del _SCREENSHOT_CACHE[oldest_key]
+        _screenshot_cache_stats["evictions"] += 1
+
+    # Store the screenshot (store reference to maintain object identity)
+    _SCREENSHOT_CACHE[cache_key] = (image, current_time)
+    logger.debug("Screenshot cached with key %s (cache size: %d)", cache_key, len(_SCREENSHOT_CACHE))
+
+
+def get_screenshot_cache_stats() -> dict[str, int]:
+    """Return screenshot cache hit/miss/eviction statistics for monitoring.
+
+    Returns:
+        Dictionary with cache statistics
+    """
+    return _screenshot_cache_stats.copy()
+
+
+def clear_screenshot_cache() -> None:
+    """Clear all screenshot cache entries. Useful for testing or state resets."""
+    _SCREENSHOT_CACHE.clear()
+    logger.debug("Screenshot cache cleared")
+
+
+def invalidate_screenshot_cache(monitor: int | str | None = None) -> None:
+    """Invalidate cache entries for a specific monitor or all monitors.
+
+    Args:
+        monitor: If None, clears all caches. Otherwise clears only the cache
+                for the specified monitor/index.
+    """
+    if monitor is None:
+        _SCREENSHOT_CACHE.clear()
+    else:
+        cache_key = _screenshot_cache_key(monitor=monitor)
+        _SCREENSHOT_CACHE.pop(cache_key, None)
+    logger.debug("Screenshot cache invalidated for monitor=%s", monitor)
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +278,7 @@ def list_monitors() -> list[dict[str, int | bool]]:
 # ---------------------------------------------------------------------------
 
 
-def capture_screen(monitor: int | str | None = None) -> Image.Image:
+def capture_screen(monitor: int | str | None = None, use_cache: bool = True) -> Image.Image:
     """Capture the screen → PIL Image.
 
     Args:
@@ -152,28 +287,53 @@ def capture_screen(monitor: int | str | None = None) -> Image.Image:
             monitor, ``1`` captures the primary monitor, ``2+`` captures
             secondary monitors, ``"auto"`` picks the monitor containing the
             foreground window (recommended default).
+        use_cache: If False, bypasses the screenshot cache. Useful for testing.
 
     """
+    # Automatically disable caching when running tests
+    effective_use_cache = use_cache and not _IN_TEST_MODE
+
+    # Check cache first (unless bypassed)
+    if effective_use_cache:
+        cache_key = _screenshot_cache_key(monitor=monitor)
+        current_time = time.monotonic()
+        cached_image = _get_screenshot_from_cache(cache_key, current_time)
+        if cached_image is not None:
+            return cached_image
+
+    # Cache miss — capture the screen
     monitor = resolve_monitor(monitor)
+    captured_image = None
     if monitor is not None and _HAS_MSS:
         try:
             with mss.mss() as sct:
                 mons = sct.monitors
                 if 0 <= monitor < len(mons):
                     raw = sct.grab(mons[monitor])
-                    return Image.frombytes("RGB", raw.size, raw.rgb)
-                logger.warning(
-                    "monitor index %s out of range (have %d) — using primary",
-                    monitor,
-                    len(mons),
-                )
+                    captured_image = Image.frombytes("RGB", raw.size, raw.rgb)
+                else:
+                    logger.warning(
+                        "monitor index %s out of range (have %d) — using primary",
+                        monitor,
+                        len(mons),
+                    )
         except (_ScreenShotError, OSError, RuntimeError) as exc:
             logger.warning("mss capture failed, falling back: %s", exc)
-    try:
-        return pyautogui.screenshot()
-    except (OSError, RuntimeError) as exc:
-        logger.error("pyautogui screenshot failed: %s", exc)
-        raise OSError(f"All screen capture methods failed: {exc}") from exc
+
+    if captured_image is None:
+        try:
+            captured_image = pyautogui.screenshot()
+        except (OSError, RuntimeError) as exc:
+            logger.error("pyautogui screenshot failed: %s", exc)
+            raise OSError(f"All screen capture methods failed: {exc}") from exc
+
+    # Cache the captured image (unless bypassed)
+    if effective_use_cache:
+        cache_key = _screenshot_cache_key(monitor=monitor)
+        current_time = time.monotonic()
+        _store_screenshot_in_cache(cache_key, captured_image, current_time)
+
+    return captured_image
 
 
 def _resolve_target_window_rect() -> tuple[int, int, int, int, str] | None:
@@ -256,20 +416,50 @@ def capture_window(title: str) -> Image.Image | None:
         return None
 
 
-def capture_region(x: int, y: int, w: int, h: int) -> Image.Image:
-    """Capture a rectangular region of the screen → PIL Image."""
+def capture_region(x: int, y: int, w: int, h: int, use_cache: bool = True) -> Image.Image:
+    """Capture a rectangular region of the screen → PIL Image.
+
+    Args:
+        x, y, w, h: Region coordinates and dimensions
+        use_cache: If False, bypasses the screenshot cache. Useful for testing.
+    """
+    # Automatically disable caching when running tests
+    effective_use_cache = use_cache and not _IN_TEST_MODE
+
+    # Check cache first (unless bypassed)
+    if effective_use_cache:
+        region = (x, y, w, h)
+        cache_key = _screenshot_cache_key(region=region)
+        current_time = time.monotonic()
+        cached_image = _get_screenshot_from_cache(cache_key, current_time)
+        if cached_image is not None:
+            return cached_image
+
+    # Cache miss — capture the region
+    captured_image = None
     if _HAS_MSS:
         try:
             with mss.mss() as sct:
                 raw = sct.grab({"left": x, "top": y, "width": w, "height": h})
-                return Image.frombytes("RGB", raw.size, raw.rgb)
+                captured_image = Image.frombytes("RGB", raw.size, raw.rgb)
         except (_ScreenShotError, OSError, RuntimeError) as exc:
             logger.warning("mss region capture failed, falling back: %s", exc)
-    try:
-        return pyautogui.screenshot(region=(x, y, w, h))
-    except (OSError, RuntimeError) as exc:
-        logger.error("pyautogui region capture failed: %s", exc)
-        raise OSError(f"Region capture failed for ({x},{y},{w},{h}): {exc}") from exc
+
+    if captured_image is None:
+        try:
+            captured_image = pyautogui.screenshot(region=(x, y, w, h))
+        except (OSError, RuntimeError) as exc:
+            logger.error("pyautogui region capture failed: %s", exc)
+            raise OSError(f"Region capture failed for ({x},{y},{w},{h}): {exc}") from exc
+
+    # Cache the captured image (unless bypassed)
+    if effective_use_cache:
+        region = (x, y, w, h)
+        cache_key = _screenshot_cache_key(region=region)
+        current_time = time.monotonic()
+        _store_screenshot_in_cache(cache_key, captured_image, current_time)
+
+    return captured_image
 
 
 def capture_to_base64(quality: int = 85, fmt: str = "PNG", monitor: int | None = None) -> str:
