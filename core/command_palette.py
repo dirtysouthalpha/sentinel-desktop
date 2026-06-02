@@ -280,6 +280,7 @@ def _register_theme_commands(p: CommandPalette, app: SentinelApp) -> None:
 
             Returns:
                 A callable that sets the theme when invoked.
+
             """
             return lambda: app.set_theme(theme_name.lower())
         p.register(

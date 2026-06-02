@@ -370,8 +370,7 @@ def read_focused_window_text() -> str:
 
 
 def read_focused_window_text_with_title() -> tuple[str, str]:
-    """Return (text, title) of the OCR'd window so callers can surface what
-    window was actually read.
+    """Return (text, title) of the OCR'd window for debugging multi-monitor issues.
 
     Useful for debugging multi-monitor confusion.
     """

@@ -1414,8 +1414,7 @@ class AgentEngine:
             )
 
     def _prune_old_screenshots(self, messages: list[dict[str, Any]]) -> None:
-        """Drop the image bytes from older screenshot messages, but PRESERVE
-        any text in those messages (which often includes the original goal!).
+        """Drop image bytes from older screenshot messages, but preserve any text.
 
         Earlier versions of this method replaced the whole message with a
         text stub — that erased the user's goal from the first message and

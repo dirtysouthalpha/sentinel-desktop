@@ -122,8 +122,7 @@ class Script:
 
 
 class ActionRecorder:
-    """Hooks into the agent loop to capture each action + result into a
-    replayable Script.
+    """Capture each action + result into a replayable Script.
 
     Usage::
 
@@ -256,8 +255,9 @@ class ActionRecorder:
 
     @staticmethod
     def list_scripts(directory: str) -> list[dict[str, Any]]:
-        """Scan *directory* for ``.json`` files and return a list of dicts
-        ``{"name": ..., "description": ..., "tags": [...], "path": ...}``.
+        """Scan directory for JSON files and return metadata dicts.
+
+        Returns ``{"name": ..., "description": ..., "tags": [...], "path": ...}`` for each.
         """
         results: list[dict[str, Any]] = []
         dir_path = Path(directory)
@@ -392,8 +392,7 @@ class ActionRecorder:
 
     @staticmethod
     def _detect_parameters(steps: list[dict[str, Any]]) -> list[dict[str, str]]:
-        """Auto-detect repeated text values across steps and suggest
-        parameterizing them.
+        """Auto-detect repeated text values across steps and parameterize them.
 
         If the same string appears in two or more steps (inside ``params``
         values), it is promoted to a script parameter.
@@ -422,9 +421,10 @@ class ActionRecorder:
 
     @staticmethod
     def _finalise_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Strip internal-only fields so the serialized JSON matches the
-        canonical schema (``action``, ``params``, ``description``,
-        ``wait_after_ms``, ``screenshot_hash``).
+        """Strip internal-only fields to match the canonical JSON schema.
+
+        Canonical schema: ``action``, ``params``, ``description``,
+        ``wait_after_ms``, ``screenshot_hash``.
         """
         out: list[dict[str, Any]] = []
         for step in steps:

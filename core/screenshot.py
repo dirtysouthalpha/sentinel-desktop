@@ -67,6 +67,7 @@ def _screenshot_cache_key(
 
     Returns:
         MD5 hash of the capture parameters
+
     """
     if region:
         key_str = f"region:{region[0]}x{region[1]}:{region[2]}x{region[3]}"
@@ -87,6 +88,7 @@ def _get_screenshot_from_cache(
 
     Returns:
         Cached PIL Image if valid, None otherwise
+
     """
     if cache_key in _SCREENSHOT_CACHE:
         img, timestamp = _SCREENSHOT_CACHE[cache_key]
@@ -112,6 +114,7 @@ def _store_screenshot_in_cache(
         cache_key: The cache key to store under
         image: The PIL Image to cache
         current_time: Current monotonic time for timestamp
+
     """
     # Remove expired entries
     expired_keys = [
@@ -138,6 +141,7 @@ def get_screenshot_cache_stats() -> dict[str, int]:
 
     Returns:
         Dictionary with cache statistics
+
     """
     return _screenshot_cache_stats.copy()
 
@@ -154,6 +158,7 @@ def invalidate_screenshot_cache(monitor: int | str | None = None) -> None:
     Args:
         monitor: If None, clears all caches. Otherwise clears only the cache
                 for the specified monitor/index.
+
     """
     if monitor is None:
         _SCREENSHOT_CACHE.clear()
@@ -325,6 +330,7 @@ def _capture_screen_with_methods(monitor: int | str | None) -> Image.Image:
 
     Raises:
         OSError: If all capture methods fail.
+
     """
     captured_image = None
     if monitor is not None and _HAS_MSS:
@@ -372,9 +378,7 @@ def _resolve_target_window_rect() -> tuple[int, int, int, int, str] | None:
 
 
 def capture_focused_window() -> Image.Image | None:
-    """Capture the *target* window's pixels — the foreground window, unless
-    that's the Sentinel Desktop GUI itself (in which case fall back to the
-    most recent other app).
+    """Capture the target window's pixels, avoiding the Sentinel Desktop GUI.
 
     Returns None only when no suitable window can be found.
     """
@@ -437,8 +441,12 @@ def capture_region(x: int, y: int, w: int, h: int, use_cache: bool = True) -> Im
     """Capture a rectangular region of the screen → PIL Image.
 
     Args:
-        x, y, w, h: Region coordinates and dimensions
+        x: X coordinate of the region's top-left corner
+        y: Y coordinate of the region's top-left corner
+        w: Width of the region in pixels
+        h: Height of the region in pixels
         use_cache: If False, bypasses the screenshot cache. Useful for testing.
+
     """
     # Automatically disable caching when running tests
     effective_use_cache = use_cache and not _IN_TEST_MODE

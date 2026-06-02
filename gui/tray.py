@@ -87,8 +87,9 @@ class SentinelTray:
         self._thread: threading.Thread | None = None
 
     def run(self) -> bool:
-        """Start the tray icon. Returns True if it's running; False if pystray
-        isn't available.
+        """Start the tray icon.
+
+        Returns True if it's running; False if pystray isn't available.
         """
         if not _HAS_TRAY:
             return False

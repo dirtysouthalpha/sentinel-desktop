@@ -63,6 +63,7 @@ def _evict_oldest_entry(
     Args:
         cache: The cache dictionary to evict from
         max_size: Maximum size before eviction starts
+
     """
     if len(cache) > max_size:
         # Find and remove the oldest entry (by timestamp)
@@ -79,6 +80,7 @@ def _clear_expired_entries(
         cache: The cache dictionary to clean
         ttl: Time-to-live in seconds
         current_time: Current monotonic time (optional)
+
     """
     if current_time is None:
         current_time = time.monotonic()
@@ -96,6 +98,7 @@ def get_cache_stats() -> dict[str, int]:
 
     Returns:
         Dictionary with cache statistics for each cache layer
+
     """
     return _cache_stats.copy()
 
@@ -174,6 +177,7 @@ def _walk_controls_tree(
 
     Returns:
         List of control dictionaries.
+
     """
     root = _find_window(window_title)
     if root is None:

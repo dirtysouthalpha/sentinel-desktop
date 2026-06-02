@@ -189,9 +189,7 @@ def get_focused_window_rect() -> tuple[int, int, int, int] | None:
 
 
 def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
-    """Return (x, y, w, h, title) for the window the agent likely wants to
-    inspect — the foreground window, unless that's Sentinel Desktop itself
-    (which often happens between actions when focus snaps back to the GUI).
+    """Return geometry for the target window, avoiding Sentinel Desktop itself.
 
     In that case we fall back to the most recent *other* visible window.
     Returns None if no suitable window exists.
@@ -306,8 +304,9 @@ def restore_window_hwnd(hwnd: int) -> bool:
 
 
 def restore_window(title: str) -> bool:
-    """Restore a window by partial title match. Returns True if a match was
-    found and the restore call was issued.
+    """Restore a window by partial title match.
+
+    Returns True if a match was found and the restore call was issued.
     """
     if not title:
         return False

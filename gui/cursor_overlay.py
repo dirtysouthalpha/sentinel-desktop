@@ -34,8 +34,9 @@ def _ease_out(t: float) -> float:
 
 
 class CursorOverlay:
-    """Owns a hidden Tk root on a background thread and renders an animated
-    cursor overlay. Thread-safe — call show_action() from any thread.
+    """Render an animated cursor overlay on a hidden Tk root.
+
+    Thread-safe — call show_action() from any thread.
     """
 
     def __init__(self, accent_color: str = "#00F0FF") -> None:
