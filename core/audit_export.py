@@ -282,7 +282,7 @@ class AuditExporter:
     # CSV  (RFC 4180)
     # ------------------------------------------------------------------
 
-    def export_csv(self, log: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
+    def export_csv(self, log: list[dict[str, Any]], _metadata: dict[str, Any]) -> str:
         """Export audit data as an RFC-4180-compliant CSV file."""
         masked = _mask_log(log)
         filename = self._filename("audit_report", "csv")

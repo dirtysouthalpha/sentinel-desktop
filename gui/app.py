@@ -629,7 +629,7 @@ class SentinelApp:
 
     # ── Command palette ─────────────────────────────────────────────────
 
-    def _show_command_palette(self, event: Any = None) -> None:
+    def _show_command_palette(self, _event: Any = None) -> None:
         palette = ctk.CTkToplevel(self.root)
         palette.title("Command Palette")
         palette.geometry("500x400")

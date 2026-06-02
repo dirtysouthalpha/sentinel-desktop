@@ -876,7 +876,7 @@ class SentinelServer:
         self,
         req: AuthLoginRequest,
         request: Request,
-        authorization: str | None = Header(default=None),
+        authorization: str | None = Header(default=None),  # noqa: ARG002
     ) -> dict[str, str]:
         """Authenticate and get a session token."""
         if not self.engine:

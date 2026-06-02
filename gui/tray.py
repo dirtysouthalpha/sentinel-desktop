@@ -94,7 +94,7 @@ class SentinelTray:
         if not _HAS_TRAY:
             return False
 
-        def _quit(icon: Any, item: Any) -> None:
+        def _quit(icon: Any, _item: Any) -> None:
             try:
                 if self._on_quit:
                     self._on_quit()
@@ -102,11 +102,11 @@ class SentinelTray:
                 icon.stop()
 
         menu = pystray.Menu(
-            pystray.MenuItem("Show Sentinel", lambda i, _: self._on_show(), default=True),
-            pystray.MenuItem("Hide", lambda i, _: self._on_hide()),
+            pystray.MenuItem("Show Sentinel", lambda _i, _: self._on_show(), default=True),
+            pystray.MenuItem("Hide", lambda _i, _: self._on_hide()),
             pystray.MenuItem(
                 "Stop running agent",
-                lambda i, _: self._on_stop_agent() if self._on_stop_agent else None,
+                lambda _i, _: self._on_stop_agent() if self._on_stop_agent else None,
             ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit Sentinel", _quit),

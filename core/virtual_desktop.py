@@ -499,7 +499,7 @@ class _Win32VirtualDesktop:
         """Return an EnumWindows callback that appends matching window info to *windows*."""
         desktop_handle = self._handle
 
-        def _enum_cb(hwnd: int, lparam: int) -> bool:
+        def _enum_cb(hwnd: int, _lparam: int) -> bool:
             if not user32.IsWindowVisible(hwnd):  # type: ignore[union-attr]
                 return True
             tid = user32.GetWindowThreadProcessId(hwnd, None)  # type: ignore[union-attr]

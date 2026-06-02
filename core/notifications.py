@@ -457,7 +457,7 @@ class NotificationManager:
 
     # -- Windows Toast -------------------------------------------------
 
-    def _send_toast(self, title: str, message: str, level: str) -> tuple[bool, str]:
+    def _send_toast(self, title: str, message: str, _level: str) -> tuple[bool, str]:
         """Show a Windows toast notification.
 
         Tries ``win10toast`` first; falls back to a non-blocking

@@ -335,7 +335,7 @@ class ActionRecorder:
         return f"{action_type} — {status}"
 
     @staticmethod
-    def _describe_step(action_type: str, params: dict[str, Any], result_summary: str) -> str:
+    def _describe_step(action_type: str, params: dict[str, Any], _result_summary: str) -> str:
         """One-line human description of a single step."""
         verbs = {
             "click": "Click",

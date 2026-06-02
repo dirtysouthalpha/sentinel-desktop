@@ -293,7 +293,7 @@ class RecorderPanel(ctk.CTkFrame):
             text=f"Playing step 0/{total}…", text_color=self._t("status_running", "#95E400"),
         )
         engine.set_progress_callback(
-            lambda s, t, a, r: self.after(
+            lambda s, t, _a, _r: self.after(
                 0, lambda: self.status_label.configure(text=f"Playing step {s}/{t}…"),
             ),
         )
@@ -430,7 +430,7 @@ class RecorderPanel(ctk.CTkFrame):
         menu.add_command(label="▶ Run", command=_run)
         menu.add_command(label="🗑 Delete", command=lambda pp=p: self._delete_script(pp, dlg))
         row.bind("<Button-3>", lambda e, m=menu: m.tk_popup(e.x_root, e.y_root))
-        row.bind("<Double-Button-1>", lambda e, fn=_run: fn())
+        row.bind("<Double-Button-1>", lambda _e, fn=_run: fn())
         items.append({"data": info, "row": row})
 
     def _add_script_info_labels(self, row: Any, info: dict[str, Any], sc: int) -> None:

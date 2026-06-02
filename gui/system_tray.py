@@ -298,8 +298,8 @@ class SystemTrayIcon:
             pystray.MenuItem("🔧 IT Quick Actions", self._build_it_actions_submenu()),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
-                lambda text: f"Status: {self._current_status.replace('_', ' ').title()}",
-                lambda icon, item: None,
+                lambda _text: f"Status: {self._current_status.replace('_', ' ').title()}",
+                lambda _icon, _item: None,
                 enabled=False,
             ),
             pystray.Menu.SEPARATOR,
@@ -310,15 +310,15 @@ class SystemTrayIcon:
 
     # ── Menu callbacks ──────────────────────────────────────────────────
 
-    def _on_new_task(self, icon: Any, item: Any) -> None:
+    def _on_new_task(self, _icon: Any, _item: Any) -> None:
         """Show window and focus the input."""
         self._invoke_on_app("_tray_new_task")
 
-    def _on_record(self, icon: Any, item: Any) -> None:
+    def _on_record(self, _icon: Any, _item: Any) -> None:
         """Toggle recording."""
         self._invoke_on_app("_tray_toggle_record")
 
-    def _on_run_last_script(self, icon: Any, item: Any) -> None:
+    def _on_run_last_script(self, _icon: Any, _item: Any) -> None:
         """Run the most recently used script."""
         self._invoke_on_app("_tray_run_last_script")
 
@@ -338,7 +338,7 @@ class SystemTrayIcon:
         """Restore the main window from minimized / hidden state."""
         self._invoke_on_app("_tray_show_window")
 
-    def _on_exit(self, icon: Any, item: Any) -> None:
+    def _on_exit(self, _icon: Any, _item: Any) -> None:
         """Shut down the application."""
         self._invoke_on_app("_tray_quit")
 

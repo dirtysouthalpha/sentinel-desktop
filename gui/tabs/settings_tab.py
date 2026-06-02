@@ -43,7 +43,7 @@ class SettingsTab:
         self._callbacks: dict[str, Callable[..., Any]] = {}
 
         # Color helper
-        self._t = app._t if hasattr(app, "_t") else lambda k, f="": f
+        self._t = app._t if hasattr(app, "_t") else lambda _k, f="": f
 
         self._build()
 

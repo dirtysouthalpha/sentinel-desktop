@@ -286,7 +286,7 @@ class HistoryTab(ctk.CTkFrame):
             ).pack(fill="x", padx=8, pady=(0, 4))
 
             idx = i
-            card.bind("<Button-1>", lambda e, idx=idx: self.select_session(idx))
+            card.bind("<Button-1>", lambda _e, idx=idx: self.select_session(idx))
 
     def select_session(self, index: int) -> None:
         """Show session details in right panel."""

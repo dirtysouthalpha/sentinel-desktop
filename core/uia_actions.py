@@ -340,7 +340,7 @@ class UIAActionPipeline:
         self,
         x: int,
         y: int,
-        hwnd: int | None = None,
+        _hwnd: int | None = None,
         *,
         button: str = "left",
         clicks: int = 1,

@@ -511,7 +511,7 @@ class TaskScheduler:
                 logger.exception("PowerShell execution failed for task %s", task.get("id"))
         return r
 
-    def _handle_on_complete(self, task: dict[str, Any], result: dict[str, Any]) -> None:
+    def _handle_on_complete(self, task: dict[str, Any], _result: dict[str, Any]) -> None:
         """Process the ``on_complete`` directive of a task."""
         directive = task.get("on_complete")
         if not directive:
