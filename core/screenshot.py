@@ -303,6 +303,29 @@ def capture_screen(monitor: int | str | None = None, use_cache: bool = True) -> 
 
     # Cache miss — capture the screen
     monitor = resolve_monitor(monitor)
+    captured_image = _capture_screen_with_methods(monitor)
+
+    # Cache the captured image (unless bypassed)
+    if effective_use_cache:
+        cache_key = _screenshot_cache_key(monitor=monitor)
+        current_time = time.monotonic()
+        _store_screenshot_in_cache(cache_key, captured_image, current_time)
+
+    return captured_image
+
+
+def _capture_screen_with_methods(monitor: int | str | None) -> Image.Image:
+    """Capture screen using available methods (mss → pyautogui fallback).
+
+    Args:
+        monitor: Resolved monitor index.
+
+    Returns:
+        Captured PIL Image.
+
+    Raises:
+        OSError: If all capture methods fail.
+    """
     captured_image = None
     if monitor is not None and _HAS_MSS:
         try:
@@ -326,12 +349,6 @@ def capture_screen(monitor: int | str | None = None, use_cache: bool = True) -> 
         except (OSError, RuntimeError) as exc:
             logger.error("pyautogui screenshot failed: %s", exc)
             raise OSError(f"All screen capture methods failed: {exc}") from exc
-
-    # Cache the captured image (unless bypassed)
-    if effective_use_cache:
-        cache_key = _screenshot_cache_key(monitor=monitor)
-        current_time = time.monotonic()
-        _store_screenshot_in_cache(cache_key, captured_image, current_time)
 
     return captured_image
 
