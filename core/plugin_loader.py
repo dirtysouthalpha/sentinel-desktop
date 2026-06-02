@@ -515,12 +515,15 @@ class PluginLoader:
     # -- dunder helpers -----------------------------------------------------
 
     def __len__(self) -> int:
+        """Return the number of loaded plugins."""
         with self._lock:
             return len(self._plugins)
 
     def __contains__(self, name: str) -> bool:
+        """Return True if a plugin with the given name is loaded."""
         with self._lock:
             return name in self._plugins
 
     def __repr__(self) -> str:
+        """Return a string representation of the plugin loader."""
         return f"PluginLoader(plugin_dir={self._plugin_dir!r}, loaded={len(self._plugins)})"

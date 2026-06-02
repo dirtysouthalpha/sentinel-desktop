@@ -63,6 +63,7 @@ class PSResult:
     objects: list[dict[str, Any]] = field(default_factory=list)
 
     def __str__(self) -> str:
+        """Return a concise string representation of the PowerShell result."""
         status = "OK" if self.success else "FAIL"
         return (
             f"PSResult({status}, code={self.exit_code}, "

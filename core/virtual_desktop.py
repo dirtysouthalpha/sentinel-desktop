@@ -818,6 +818,7 @@ class VirtualDesktop:
     # -- context manager -----------------------------------------------------
 
     def __enter__(self) -> VirtualDesktop:
+        """Enter the virtual desktop context manager."""
         self.create()
         return self
 
@@ -827,11 +828,13 @@ class VirtualDesktop:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
+        """Exit the virtual desktop context manager and clean up."""
         self.switch_back()
         self.close()
 
     # -- repr ----------------------------------------------------------------
 
     def __repr__(self) -> str:
+        """Return a string representation of the virtual desktop."""
         impl_type = type(self._impl).__name__
         return f"<VirtualDesktop name={self._name!r} impl={impl_type}>"

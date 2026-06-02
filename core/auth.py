@@ -44,18 +44,22 @@ class Role(str, Enum):
     ADMIN = "admin"
 
     def __ge__(self, other: Role) -> bool:
+        """Return True if this role has greater or equal privilege."""
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] >= order[other]
 
     def __gt__(self, other: Role) -> bool:
+        """Return True if this role has strictly greater privilege."""
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] > order[other]
 
     def __le__(self, other: Role) -> bool:
+        """Return True if this role has less or equal privilege."""
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] <= order[other]
 
     def __lt__(self, other: Role) -> bool:
+        """Return True if this role has strictly less privilege."""
         order = {Role.VIEWER: 0, Role.OPERATOR: 1, Role.ADMIN: 2}
         return order[self] < order[other]
 
