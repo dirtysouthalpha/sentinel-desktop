@@ -531,7 +531,8 @@ class SentinelServer:
         try:
             # run_script() replays multi-step scripts with sleep() delays;
             # run in thread pool so the event loop stays responsive.
-            result = await asyncio.to_thread(engine.run_script, safe_path, req.params)
+            async with asyncio.timeout(300):  # 5 minute timeout for script execution
+                result = await asyncio.to_thread(engine.run_script, safe_path, req.params)
         except (OSError, ValueError) as exc:
             logger.exception("Script execution failed")
             raise HTTPException(500, f"Script execution failed: {exc}") from exc
@@ -631,7 +632,8 @@ class SentinelServer:
         wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
         try:
             # run_workflow() replays multi-step workflows with delays; offload to thread.
-            result = await asyncio.to_thread(wf.run_workflow, req.path, req.variables)
+            async with asyncio.timeout(300):  # 5 minute timeout for workflow execution
+                result = await asyncio.to_thread(wf.run_workflow, req.path, req.variables)
         except (OSError, ValueError) as exc:
             logger.exception("Workflow execution failed")
             raise HTTPException(500, f"Workflow execution failed: {exc}") from exc
@@ -687,7 +689,8 @@ class SentinelServer:
             raise HTTPException(500, "Engine not initialized")
         try:
             # run_task_now() can invoke scripts/goals/powershell — offload to thread.
-            return await asyncio.to_thread(self.engine.scheduler.run_task_now, req.task_id)
+            async with asyncio.timeout(300):  # 5 minute timeout for scheduled task execution
+                return await asyncio.to_thread(self.engine.scheduler.run_task_now, req.task_id)
         except (OSError, ValueError, RuntimeError, KeyError) as exc:
             raise HTTPException(500, f"Failed to run task: {exc}") from exc
 
