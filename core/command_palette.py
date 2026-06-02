@@ -272,11 +272,13 @@ def _register_theme_commands(p: CommandPalette, app: SentinelApp) -> None:
         ("Mono", ["mono", "grayscale", "minimal", "theme"]),
     ]
     for name, kws in themes:
+        def make_theme_setter(theme_name: str) -> callable:
+            return lambda: app.set_theme(theme_name.lower())
         p.register(
             f"Theme: {name}",
             "",
             "Theme",
-            lambda n=name.lower(): app.set_theme(n),
+            make_theme_setter(name),
             keywords=kws,
         )
 

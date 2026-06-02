@@ -141,7 +141,8 @@ class ActionExecutor:
         except asyncio.TimeoutError:
             action_type = action.get("action", "").lower()
             params = {k: v for k, v in action.items() if k != "action"}
-            result = {"success": False, "output": f"Action '{action_type}' timed out", "error": "timeout"}
+            error_msg = f"Action '{action_type}' timed out"
+            result = {"success": False, "output": error_msg, "error": "timeout"}
             self._log_entry(action_type, params, result)
             return result
 
@@ -153,7 +154,8 @@ class ActionExecutor:
         if self.approval_callback:
             approved = await self.approval_callback(action)
             if not approved:
-                result = {"success": False, "output": "Action rejected by user", "error": "rejected"}
+                error_msg = "Action rejected by user"
+                result = {"success": False, "output": error_msg, "error": "rejected"}
                 self._log_entry(action_type, params, result)
                 return result
 
