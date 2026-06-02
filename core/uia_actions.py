@@ -475,10 +475,7 @@ class UIAActionPipeline:
                 hwnd = _win32gui.WindowFromPoint((int(x), int(y)))
                 if hwnd:
                     # WM_VSCROLL parameters
-                    if amount > 0:
-                        scroll_cmd = _win32con.SB_LINEUP
-                    else:
-                        scroll_cmd = _win32con.SB_LINEDOWN
+                    scroll_cmd = _win32con.SB_LINEUP if amount > 0 else _win32con.SB_LINEDOWN
                     repeats = abs(amount)
                     for _ in range(max(1, repeats)):
                         _win32api.PostMessage(

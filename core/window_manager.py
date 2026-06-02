@@ -201,9 +201,8 @@ def get_target_window_rect() -> tuple[int, int, int, int, str] | None:
     Returns None if no suitable window exists.
     """
     focused_title, focused_rect = _get_foreground_window_info()
-    if focused_rect and not _is_self_window(focused_title):
-        if focused_rect[2] > 0 and focused_rect[3] > 0:
-            return (*focused_rect, focused_title)
+    if focused_rect and not _is_self_window(focused_title) and focused_rect[2] > 0 and focused_rect[3] > 0:
+        return (*focused_rect, focused_title)
     return _find_best_candidate_window()
 
 
@@ -266,15 +265,14 @@ def get_window_rect(title: str) -> tuple[int, int, int, int] | None:
             t = (w.get("title") or "").lower()
             if needle in t:
                 rect = (w["x"], w["y"], w["width"], w["height"])
-                if _looks_minimized(rect):
+                if _looks_minimized(rect) and "hwnd" in w:
                     # Try to restore so capture_region gets real pixels.
-                    if "hwnd" in w:
-                        restore_window_hwnd(w["hwnd"])
-                        # Re-fetch the post-restore rect.
-                        for w2 in list_windows():
-                            if (w2.get("title") or "").lower() == (w.get("title") or "").lower():
-                                rect = (w2["x"], w2["y"], w2["width"], w2["height"])
-                                break
+                    restore_window_hwnd(w["hwnd"])
+                    # Re-fetch the post-restore rect.
+                    for w2 in list_windows():
+                        if (w2.get("title") or "").lower() == (w.get("title") or "").lower():
+                            rect = (w2["x"], w2["y"], w2["width"], w2["height"])
+                            break
                 return rect
     except (_Win32Error, OSError) as exc:
         logger.debug("get_window_rect via list_windows failed: %s", exc)
@@ -341,10 +339,9 @@ def close_window(title: str) -> bool:
             nonlocal found
             if found:
                 return  # Already closed one; stop iterating.
-            if win32gui.IsWindowVisible(hwnd):
-                if title.lower() in win32gui.GetWindowText(hwnd).lower():
-                    win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
-                    found = True
+            if win32gui.IsWindowVisible(hwnd) and title.lower() in win32gui.GetWindowText(hwnd).lower():
+                win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+                found = True
 
         try:
             win32gui.EnumWindows(_find, None)

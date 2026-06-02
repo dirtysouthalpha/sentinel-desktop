@@ -63,7 +63,7 @@ def _cpu_stats() -> tuple[float, int]:
 
 def _disk_stats() -> tuple[float, float, float]:
     """Return (total_gb, used_gb, percent) for the system root or zeros on failure."""
-    root = (os.environ.get("SystemDrive", "C:") + "\\") if platform.system() == "Windows" else "/"
+    root = (os.environ.get("SystemDrive", "C:") + "\\") if platform.system() == "Windows" else "/"  # noqa: SIM112
     try:
         disk = psutil.disk_usage(root)
         return round(disk.total / (1024**3), 1), round(disk.used / (1024**3), 1), disk.percent

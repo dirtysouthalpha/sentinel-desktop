@@ -981,7 +981,7 @@ class SentinelServer:
 
     # ── WebSocket broadcasting ──────────────────────────────────────
 
-    def _broadcast_step(self, **kwargs: Any) -> None:
+    def _broadcast_step(self, **kwargs: Any) -> None:  # noqa: ANN401
         """Engine step callback (runs on worker thread). Schedules a broadcast."""
         # Avoid sending raw base64 screenshots over WS — too large by default.
         kwargs.pop("screenshot", None)

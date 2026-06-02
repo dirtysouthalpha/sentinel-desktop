@@ -299,10 +299,7 @@ class ActionRecorder:
             params = step.get("params", {})
             desc = step.get("description", "")
 
-            if desc:
-                fragment = desc
-            else:
-                fragment = ActionRecorder._describe_step_static(action, params)
+            fragment = desc or ActionRecorder._describe_step_static(action, params)
 
             action_parts.append(fragment)
 

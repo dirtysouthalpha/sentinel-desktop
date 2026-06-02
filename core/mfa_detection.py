@@ -350,9 +350,8 @@ def _scan_children_for_auth(
         ctrl_type = _get_control_type(ctrl)
         if ctrl_type is None:
             continue
-        if ctrl_type == "EditControl":
-            if _check_password_control(ctrl):
-                found_password = True
+        if ctrl_type == "EditControl" and _check_password_control(ctrl):
+            found_password = True
         if ctrl_type in ("TextControl", "StaticControl"):
             auth_found, text_part = _check_text_control_for_auth(ctrl)
             if auth_found:
