@@ -409,7 +409,8 @@ class SentinelServer:
         except (ValueError, KeyError) as exc:
             raise HTTPException(400, f"Invalid action payload: {exc}") from exc
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"Command execution timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"Command execution timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except OSError as exc:
             raise HTTPException(500, f"Action execution failed: {exc}") from exc
         except RuntimeError as exc:
@@ -437,7 +438,8 @@ class SentinelServer:
                 timeout=DEFAULT_API_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"Screenshot capture timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"Screenshot capture timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Screen capture failed: {exc}") from exc
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
@@ -465,7 +467,8 @@ class SentinelServer:
                 timeout=DEFAULT_API_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"List windows timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"List windows timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to list windows: {exc}") from exc
         return {"windows": windows}
@@ -480,7 +483,8 @@ class SentinelServer:
                 timeout=DEFAULT_API_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"List processes timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"List processes timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to list processes: {exc}") from exc
         return {"processes": processes}
@@ -495,7 +499,8 @@ class SentinelServer:
                 timeout=DEFAULT_API_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"System info timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"System info timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Failed to get system info: {exc}") from exc
         return {"system": info}
@@ -572,7 +577,8 @@ class SentinelServer:
                 )
         except asyncio.TimeoutError:
             logger.exception("Script execution timed out")
-            raise HTTPException(504, f"Script execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
+            timeout_msg = f"Script execution timed out after {LONG_OPERATION_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, ValueError) as exc:
             logger.exception("Script execution failed")
             raise HTTPException(500, f"Script execution failed: {exc}") from exc
@@ -607,7 +613,8 @@ class SentinelServer:
             }
         except asyncio.TimeoutError:
             logger.exception("PowerShell execution timed out")
-            return {"success": False, "error": f"PowerShell execution timed out after {LONG_OPERATION_TIMEOUT}s"}
+            error_msg = f"PowerShell execution timed out after {LONG_OPERATION_TIMEOUT}s"
+            return {"success": False, "error": error_msg}
         except (OSError, ValueError, RuntimeError) as exc:
             logger.exception("PowerShell execution failed")
             return {"success": False, "error": str(exc)}
@@ -685,7 +692,8 @@ class SentinelServer:
                 )
         except asyncio.TimeoutError:
             logger.exception("Workflow execution timed out")
-            raise HTTPException(504, f"Workflow execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
+            timeout_msg = f"Workflow execution timed out after {LONG_OPERATION_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, ValueError) as exc:
             logger.exception("Workflow execution failed")
             raise HTTPException(500, f"Workflow execution failed: {exc}") from exc
@@ -746,7 +754,8 @@ class SentinelServer:
                 timeout=LONG_OPERATION_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"Task execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
+            timeout_msg = f"Task execution timed out after {LONG_OPERATION_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, ValueError, RuntimeError, KeyError) as exc:
             raise HTTPException(500, f"Failed to run task: {exc}") from exc
 
@@ -767,7 +776,8 @@ class SentinelServer:
                 timeout=DEFAULT_API_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"Notification timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"Notification timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, RuntimeError) as exc:
             raise HTTPException(500, f"Notification failed: {exc}") from exc
         return {"success": success}
@@ -800,7 +810,8 @@ class SentinelServer:
                 timeout=DEFAULT_API_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"Plugin reload timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"Plugin reload timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, ValueError, RuntimeError, ImportError) as exc:
             raise HTTPException(500, f"Failed to reload plugin: {exc}") from exc
         return {"success": success, "name": name}
@@ -889,7 +900,8 @@ class SentinelServer:
                 timeout=DEFAULT_API_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"Authentication timed out after {DEFAULT_API_TIMEOUT}s") from None
+            timeout_msg = f"Authentication timed out after {DEFAULT_API_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Authentication error: {exc}") from exc
         if not user:
@@ -948,7 +960,8 @@ class SentinelServer:
             )
             return {"path": path, "format": format}
         except asyncio.TimeoutError:
-            raise HTTPException(504, f"Audit export timed out after {LONG_OPERATION_TIMEOUT}s") from None
+            timeout_msg = f"Audit export timed out after {LONG_OPERATION_TIMEOUT}s"
+            raise HTTPException(504, timeout_msg) from None
         except (OSError, ValueError, RuntimeError) as exc:
             logger.exception("Audit export failed")
             raise HTTPException(500, f"Audit export failed: {exc}") from exc
@@ -1095,12 +1108,15 @@ class SentinelServer:
         # Validate and sanitize workflow name
         workflow_name = (name or "New Workflow").strip()
         if len(workflow_name) > MAX_WORKFLOW_NAME_LENGTH:
-            workflow_name = workflow_name[:MAX_WORKFLOW_NAME_LENGTH]  # Prevent unreasonably long names
+            # Prevent unreasonably long workflow names
+            workflow_name = workflow_name[:MAX_WORKFLOW_NAME_LENGTH]
         if not workflow_name:
             workflow_name = "New Workflow"
+        # Limit description length to prevent unreasonably long descriptions
+        desc = description[:500] if description else ""
         wf = self._workflow_store.create(
             name=workflow_name,
-            description=description[:500] if description else "",  # Limit description length
+            description=desc,
         )
         return wf.to_dict()
 

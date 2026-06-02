@@ -141,7 +141,10 @@ class ActionExecutor:
 
         """
         try:
-            return await asyncio.wait_for(self._execute_with_logging(action), timeout=EXECUTE_WITH_LOGGING_TIMEOUT)
+            return await asyncio.wait_for(
+                self._execute_with_logging(action),
+                timeout=EXECUTE_WITH_LOGGING_TIMEOUT,
+            )
         except asyncio.TimeoutError:
             action_type = action.get("action", "").lower()
             params = {k: v for k, v in action.items() if k != "action"}
@@ -192,14 +195,18 @@ class ActionExecutor:
             return {"success": False, "output": error_msg, "error": "unknown_action"}
         try:
             if asyncio.iscoroutinefunction(handler):
-                return await asyncio.wait_for(handler(self, **params), timeout=DEFAULT_ACTION_TIMEOUT)
+                return await asyncio.wait_for(
+                    handler(self, **params),
+                    timeout=DEFAULT_ACTION_TIMEOUT,
+                )
             loop = asyncio.get_event_loop()
             return await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: handler(self, **params)),
                 timeout=DEFAULT_ACTION_TIMEOUT,
             )
         except asyncio.TimeoutError:
-            return {"success": False, "output": f"Action '{action_type}' timed out", "error": "timeout"}
+            timeout_msg = f"Action '{action_type}' timed out"
+            return {"success": False, "output": timeout_msg, "error": "timeout"}
         except Exception as exc:
             logger.exception("Action '%s' failed", action_type)
             return {"success": False, "output": str(exc), "error": type(exc).__name__}
@@ -505,10 +512,15 @@ class ActionExecutor:
                 logger.debug("click_control OCR fallback failed: %s", exc)
         return {
             "success": False,
-            "output": f"No control matched (name={name!r}, automation_id={automation_id!r}, "
-            f"control_type={control_type!r})",
+            "output": (
+                f"No control matched (name={name!r}, automation_id={automation_id!r}, "
+                f"control_type={control_type!r})"
+            ),
             "error": "control_not_found",
-            "hint": "Try list_controls() to see available controls, or click(x,y) with screenshot coordinates",
+            "hint": (
+                "Try list_controls() to see available controls, "
+                "or click(x,y) with screenshot coordinates"
+            ),
         }
 
     def _list_controls(
@@ -864,9 +876,11 @@ class ActionExecutor:
             result = sw.wait_for_change(timeout=float(timeout), region=region_tuple)
             return {
                 "success": result.success,
-                "output": f"Screen changed after {result.elapsed:.1f}s ({result.frames_checked} frames)"
-                if result.success
-                else f"No change after {result.elapsed:.1f}s",
+                "output": (
+                    f"Screen changed after {result.elapsed:.1f}s ({result.frames_checked} frames)"
+                    if result.success
+                    else "Screen did not change within timeout"
+                ),
                 "elapsed": result.elapsed,
                 "frames_checked": result.frames_checked,
             }

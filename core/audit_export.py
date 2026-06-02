@@ -410,7 +410,12 @@ class AuditExporter:
   }
   h1, h2, h3 { color: var(--accent); font-weight: 600; }
   h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
-  h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }
+  h2 {
+    font-size: 1.2rem;
+    margin: 1.5rem 0 0.75rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.35rem;
+  }
   .timestamp { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.5rem; }"""
 
     @staticmethod
