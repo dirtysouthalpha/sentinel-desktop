@@ -408,13 +408,13 @@ class SentinelServer:
             )
         except (ValueError, KeyError) as exc:
             raise HTTPException(400, f"Invalid action payload: {exc}") from exc
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Command execution timed out after {DEFAULT_API_TIMEOUT}s") from None
         except OSError as exc:
             raise HTTPException(500, f"Action execution failed: {exc}") from exc
         except RuntimeError as exc:
             logger.exception("Unexpected error executing command")
             raise HTTPException(500, f"Internal error: {exc}") from exc
-        except asyncio.TimeoutError:
-            raise HTTPException(504, f"Command execution timed out after {DEFAULT_API_TIMEOUT}s") from None
 
     async def _handle_stop(
         self, authorization: str | None = Header(default=None),
@@ -436,10 +436,10 @@ class SentinelServer:
                 asyncio.to_thread(capture_to_base64),
                 timeout=DEFAULT_API_TIMEOUT,
             )
-        except (OSError, ValueError) as exc:
-            raise HTTPException(500, f"Screen capture failed: {exc}") from exc
         except asyncio.TimeoutError:
             raise HTTPException(504, f"Screenshot capture timed out after {DEFAULT_API_TIMEOUT}s") from None
+        except (OSError, ValueError) as exc:
+            raise HTTPException(500, f"Screen capture failed: {exc}") from exc
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
     async def _handle_status(
@@ -555,12 +555,12 @@ class SentinelServer:
                     asyncio.to_thread(engine.run_script, safe_path, req.params),
                     timeout=LONG_OPERATION_TIMEOUT,
                 )
-        except (OSError, ValueError) as exc:
-            logger.exception("Script execution failed")
-            raise HTTPException(500, f"Script execution failed: {exc}") from exc
         except asyncio.TimeoutError:
             logger.exception("Script execution timed out")
             raise HTTPException(504, f"Script execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
+        except (OSError, ValueError) as exc:
+            logger.exception("Script execution failed")
+            raise HTTPException(500, f"Script execution failed: {exc}") from exc
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,
@@ -590,12 +590,12 @@ class SentinelServer:
                 "exit_code": ps_result.exit_code,
                 "objects": ps_result.objects[:100],
             }
-        except (OSError, ValueError, RuntimeError) as exc:
-            logger.exception("PowerShell execution failed")
-            return {"success": False, "error": str(exc)}
         except asyncio.TimeoutError:
             logger.exception("PowerShell execution timed out")
             return {"success": False, "error": f"PowerShell execution timed out after {LONG_OPERATION_TIMEOUT}s"}
+        except (OSError, ValueError, RuntimeError) as exc:
+            logger.exception("PowerShell execution failed")
+            return {"success": False, "error": str(exc)}
 
     async def _handle_recorder_start(
         self, authorization: str | None = Header(default=None),
@@ -668,12 +668,12 @@ class SentinelServer:
                     asyncio.to_thread(wf.run_workflow, req.path, req.variables),
                     timeout=LONG_OPERATION_TIMEOUT,
                 )
-        except (OSError, ValueError) as exc:
-            logger.exception("Workflow execution failed")
-            raise HTTPException(500, f"Workflow execution failed: {exc}") from exc
         except asyncio.TimeoutError:
             logger.exception("Workflow execution timed out")
             raise HTTPException(504, f"Workflow execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
+        except (OSError, ValueError) as exc:
+            logger.exception("Workflow execution failed")
+            raise HTTPException(500, f"Workflow execution failed: {exc}") from exc
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,

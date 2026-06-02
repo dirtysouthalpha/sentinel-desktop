@@ -249,6 +249,7 @@ class TestHandleScreenshot:
 
         monkeypatch.setattr(mod, "capture_to_base64", lambda: (_ for _ in ()).throw(OSError("no display")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_screenshot(authorization=None))
         assert exc_info.value.status_code == 500
@@ -258,6 +259,7 @@ class TestHandleScreenshot:
 
         monkeypatch.setattr(mod, "capture_to_base64", lambda: (_ for _ in ()).throw(ValueError("bad")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_screenshot(authorization=None))
         assert exc_info.value.status_code == 500
@@ -281,6 +283,7 @@ class TestHandleWindows:
 
         monkeypatch.setattr(mod.wm, "list_windows", lambda: (_ for _ in ()).throw(OSError("fail")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_windows(authorization=None))
         assert exc_info.value.status_code == 500
@@ -290,6 +293,7 @@ class TestHandleWindows:
 
         monkeypatch.setattr(mod.wm, "list_windows", lambda: (_ for _ in ()).throw(RuntimeError("crash")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_windows(authorization=None))
         assert exc_info.value.status_code == 500
@@ -325,6 +329,7 @@ class TestHandleProcesses:
 
         monkeypatch.setattr(mod.pm, "list_processes", lambda limit=100: (_ for _ in ()).throw(OSError("fail")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_processes(authorization=None))
         assert exc_info.value.status_code == 500
@@ -334,6 +339,7 @@ class TestHandleProcesses:
 
         monkeypatch.setattr(mod.pm, "list_processes", lambda limit=100: (_ for _ in ()).throw(RuntimeError("crash")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_processes(authorization=None))
         assert exc_info.value.status_code == 500
@@ -357,6 +363,7 @@ class TestHandleSystem:
 
         monkeypatch.setattr(mod.sysinfo, "system_info", lambda: (_ for _ in ()).throw(OSError("fail")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_system(authorization=None))
         assert exc_info.value.status_code == 500
@@ -366,6 +373,7 @@ class TestHandleSystem:
 
         monkeypatch.setattr(mod.sysinfo, "system_info", lambda: (_ for _ in ()).throw(RuntimeError("crash")))
         server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_system(authorization=None))
         assert exc_info.value.status_code == 500
@@ -552,7 +560,7 @@ class TestHandleStopEdgeCases:
 class TestWorkflowBuilderList:
     def test_list_empty(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         # Clear any existing workflows for this test
         for wf in server._workflow_store.list_all():
             server._workflow_store.delete(wf.id)
@@ -561,7 +569,7 @@ class TestWorkflowBuilderList:
 
     def test_list_returns_dicts(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         # Clear any existing workflows for this test
         for wf in server._workflow_store.list_all():
             server._workflow_store.delete(wf.id)
@@ -577,7 +585,7 @@ class TestWorkflowBuilderList:
 class TestWorkflowBuilderCreate:
     def test_create_default_name(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         result = _run(server._handle_workflow_builder_create(authorization=None))
         assert result["name"] == "New Workflow"
         assert "id" in result
@@ -586,7 +594,7 @@ class TestWorkflowBuilderCreate:
 
     def test_create_custom_name(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         result = _run(
             server._handle_workflow_builder_create(name="Custom WF", description="desc", authorization=None)
         )
@@ -599,7 +607,7 @@ class TestWorkflowBuilderCreate:
 class TestWorkflowTemplates:
     def test_templates_returns_dict(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         result = _run(server._handle_workflow_templates(authorization=None))
         assert "templates" in result
         assert isinstance(result["templates"], dict)
@@ -608,7 +616,7 @@ class TestWorkflowTemplates:
 class TestWorkflowAddStep:
     def test_add_step_success(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         wf = server._workflow_store.create(name="WF")
         result = _run(
             server._handle_workflow_add_step(
@@ -623,7 +631,7 @@ class TestWorkflowAddStep:
         from fastapi import HTTPException
 
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(
                 server._handle_workflow_add_step(
@@ -636,7 +644,7 @@ class TestWorkflowAddStep:
 class TestWorkflowRemoveStep:
     def test_remove_step_success(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         wf = server._workflow_store.create(name="WF")
         step = wf.add_step(action="type", name="Type text")
         result = _run(
@@ -649,7 +657,7 @@ class TestWorkflowRemoveStep:
         from fastapi import HTTPException
 
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(
                 server._handle_workflow_remove_step(
@@ -662,14 +670,14 @@ class TestWorkflowRemoveStep:
 class TestWorkflowBuilderDelete:
     def test_delete_existing(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         wf = server._workflow_store.create(name="WF")
         result = _run(server._handle_workflow_builder_delete(wf.id, authorization=None))
         assert result["deleted"] is True
 
     def test_delete_nonexistent(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         result = _run(server._handle_workflow_builder_delete("nonexistent", authorization=None))
         assert result["deleted"] is False
 
@@ -677,7 +685,7 @@ class TestWorkflowBuilderDelete:
 class TestWorkflowDuplicate:
     def test_duplicate_success(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         wf = server._workflow_store.create(name="Original")
         result = _run(server._handle_workflow_duplicate(wf.id, authorization=None))
         assert result["name"] == "Original (Copy)"
@@ -687,7 +695,7 @@ class TestWorkflowDuplicate:
 
     def test_duplicate_custom_name(self):
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         wf = server._workflow_store.create(name="Original")
         result = _run(
             server._handle_workflow_duplicate(wf.id, new_name="Custom Copy", authorization=None)
@@ -700,7 +708,7 @@ class TestWorkflowDuplicate:
         from fastapi import HTTPException
 
         server = _make_server()
-        app = server.create_app()
+        _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_workflow_duplicate("nonexistent", authorization=None))
         assert exc_info.value.status_code == 404
@@ -861,3 +869,116 @@ class TestHandleGoalConfigPassthrough:
         assert result["status"] == "started"
         assert captured_cfg["max_steps"] == 20
         assert captured_cfg["approval_mode"] is True
+
+
+# ---------------------------------------------------------------------------
+# Timeout tests - 100% coverage
+# ---------------------------------------------------------------------------
+
+
+class TestHandleCommandTimeout:
+    def test_command_timeout(self, monkeypatch):
+        """Test command execution timeout raises 504."""
+        from fastapi import HTTPException
+
+        def fake_to_thread(func, *args):
+            raise asyncio.TimeoutError()
+
+        monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+
+        fake_executor = type("E", (), {"execute_sync": lambda s, p: {"status": "ok"}})()
+
+        class FakeAE:
+            def __init__(self, cfg):
+                self.executor = fake_executor
+
+        monkeypatch.setattr(mod, "AgentEngine", FakeAE)
+        server = _make_server()
+        req = mod.CommandRequest(command='{"action": "click", "x": 1}')
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_command(req, authorization=None))
+        assert exc_info.value.status_code == 504
+        assert "timed out after" in str(exc_info.value.detail)
+
+
+class TestHandleScreenshotTimeout:
+    def test_screenshot_timeout(self, monkeypatch):
+        """Test screenshot capture timeout raises 504."""
+        from fastapi import HTTPException
+
+        def fake_to_thread(func, *args):
+            raise asyncio.TimeoutError()
+
+        monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+        monkeypatch.setattr(mod, "capture_to_base64", lambda: "base64data")
+        server = _make_server()
+        _ = server.create_app()  # Initialize workflow store
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_screenshot(authorization=None))
+        assert exc_info.value.status_code == 504
+        assert "Screenshot capture timed out after" in str(exc_info.value.detail)
+
+
+class TestHandleScriptRunTimeout:
+    def test_script_run_timeout(self, monkeypatch):
+        """Test script execution timeout raises 504."""
+        from fastapi import HTTPException
+
+        def fake_to_thread(func, *args):
+            raise asyncio.TimeoutError()
+
+        monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+
+        fake_engine = type("E", (), {"run_script": lambda s, p, v: {"status": "ok"}, "executor": type("Ex", (), {"execute_sync": lambda s, p: {}})()})()
+
+        server = _make_server()
+        server.engine = fake_engine
+        req = mod.ScriptRunRequest(path="test.json", params={})
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_script_run(req, authorization=None))
+        assert exc_info.value.status_code == 504
+        assert "Script execution timed out after" in str(exc_info.value.detail)
+
+
+class TestHandlePowerShellTimeout:
+    def test_powershell_timeout(self, monkeypatch):
+        """Test PowerShell execution timeout returns error dict."""
+        def fake_to_thread(func, *args):
+            raise asyncio.TimeoutError()
+
+        monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+
+        fake_ps = type("PS", (), {"run_command": lambda s, c: type("R", (), {"exit_code": 0, "objects": []})()})()
+
+        fake_engine = type("E", (), {"powershell": fake_ps})()
+
+        server = _make_server()
+        server.engine = fake_engine
+        req = mod.PowerShellRequest(command="Get-Process")
+        result = _run(server._handle_powershell(req, authorization=None))
+        assert result["success"] is False
+        assert "PowerShell execution timed out after" in result["error"]
+
+
+class TestHandleWorkflowRunTimeout:
+    def test_workflow_run_timeout(self, monkeypatch):
+        """Test workflow execution timeout raises 504."""
+        from fastapi import HTTPException
+
+        def fake_to_thread(func, *args):
+            raise asyncio.TimeoutError()
+
+        monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+
+        fake_wf = type("WF", (), {"run_workflow": lambda s, p, v: {"status": "ok"}})()
+
+        fake_engine = type("E", (), {"executor": type("Ex", (), {"execute_sync": lambda s, p: {}})(), "script_engine": type("SE", (), {})()})()
+
+        server = _make_server()
+        server.engine = fake_engine
+        server.workflow = fake_wf
+        req = mod.WorkflowRunRequest(path="test.json", variables={})
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_workflow_run(req, authorization=None))
+        assert exc_info.value.status_code == 504
+        assert "Workflow execution timed out after" in str(exc_info.value.detail)
