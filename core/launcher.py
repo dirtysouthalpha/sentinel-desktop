@@ -132,7 +132,11 @@ def smart_open(name: str) -> dict[str, Any]:
             "command": launch_cmd,
         }
     except (OSError, subprocess.SubprocessError, FileNotFoundError) as exc:
-        return {"success": False, "output": f"Failed to launch {name!r}: {exc}", "error": "launch_failed"}
+        return {
+            "success": False,
+            "output": f"Failed to launch {name!r}: {exc}",
+            "error": "launch_failed",
+        }
 
 
 def _resolve_app(name: str) -> tuple[str, str] | dict[str, Any]:

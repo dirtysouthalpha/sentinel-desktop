@@ -344,13 +344,29 @@ def _register_it_quick_actions(p: CommandPalette, app: SentinelApp) -> None:
     """Register IT support quick-action commands (disk cleanup, network diag, etc.)."""
     scripts = [
         ("🔧 IT: Disk Cleanup", "disk_cleanup", ["disk", "cleanup", "clean", "maintenance"]),
-        ("🔧 IT: Network Diagnostics", "network_diag", ["network", "ping", "dns", "diag", "tracert"]),
+        (
+            "🔧 IT: Network Diagnostics",
+            "network_diag",
+            ["network", "ping", "dns", "diag", "tracert"],
+        ),
         ("🔧 IT: Service Restart...", "service_restart", ["service", "restart", "windows"]),
         ("🔧 IT: Event Log Errors", "event_log_errors", ["event", "log", "error", "viewer"]),
         ("🔧 IT: Temp File Cleanup", "temp_file_cleanup", ["temp", "cleanup", "files", "junk"]),
-        ("🔧 IT: Software Inventory", "software_inventory", ["software", "inventory", "installed", "list"]),
-        ("🔧 IT: System Info Export", "system_info_export", ["system", "info", "export", "msinfo"]),
-        ("🔧 IT: Create Restore Point...", "restore_point_create", ["restore", "point", "backup", "system"]),
+        (
+            "🔧 IT: Software Inventory",
+            "software_inventory",
+            ["software", "inventory", "installed", "list"],
+        ),
+        (
+            "🔧 IT: System Info Export",
+            "system_info_export",
+            ["system", "info", "export", "msinfo"],
+        ),
+        (
+            "🔧 IT: Create Restore Point...",
+            "restore_point_create",
+            ["restore", "point", "backup", "system"],
+        ),
     ]
     for label, script_name, kws in scripts:
         p.register(

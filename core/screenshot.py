@@ -133,7 +133,11 @@ def _store_screenshot_in_cache(
 
     # Store the screenshot (store reference to maintain object identity)
     _SCREENSHOT_CACHE[cache_key] = (image, current_time)
-    logger.debug("Screenshot cached with key %s (cache size: %d)", cache_key, len(_SCREENSHOT_CACHE))
+    logger.debug(
+        "Screenshot cached with key %s (cache size: %d)",
+        cache_key,
+        len(_SCREENSHOT_CACHE),
+    )
 
 
 def get_screenshot_cache_stats() -> dict[str, int]:

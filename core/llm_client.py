@@ -583,7 +583,7 @@ class LLMClient:
         body = (resp.text or "")[:500]
         if resp.status_code not in RETRY_STATUSES:
             raise LLMError(_friendly_http_error(resp.status_code, body))
-        logger.warning(
+        logger.warning(  # noqa: E501
             "%s: HTTP %d (attempt %d/%d) — %s",
             provider_label,
             resp.status_code,

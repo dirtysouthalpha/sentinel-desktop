@@ -630,7 +630,10 @@ class AgentEngine:
                 self.running = False
                 return action, "abort"
             messages.append(
-                {"role": "user", "content": "The user skipped that action. Try a different approach."},
+                {
+                    "role": "user",
+                    "content": "The user skipped that action. Try a different approach.",
+                },
             )
             return action, "continue"
         return approved_action or action, None
@@ -919,13 +922,17 @@ class AgentEngine:
         if failure_type == "parse":
             self.notes.append(f"Step {self.step}: No valid action parsed from LLM response")
             messages.append(
-                {"role": "user", "content": "Please respond with a valid JSON action. Only JSON, no other text."},
+                {
+                    "role": "user",
+                    "content": "Please respond with a valid JSON action. Only JSON, no other text.",
+                },
             )
 
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
             self.notes.append(f"Terminating: {self._consecutive_failures} consecutive failures")
             self.logger.log_event(
-                "abort", {"reason": "max_consecutive_failures", "count": self._consecutive_failures},
+                "abort",
+                {"reason": "max_consecutive_failures", "count": self._consecutive_failures},
             )
             return "abort"
 

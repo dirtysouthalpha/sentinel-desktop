@@ -159,7 +159,11 @@ class CheckpointManager:
             checkpoint_id, goal, step_num, status, agent_memory,
             last_screenshot_path, config, messages,
         )
-        return checkpoint_id if self._persist_checkpoint(record, checkpoint_id, step_num, status) else None
+        return (
+            checkpoint_id
+            if self._persist_checkpoint(record, checkpoint_id, step_num, status)
+            else None
+        )
 
     def _build_checkpoint_record(
         self,

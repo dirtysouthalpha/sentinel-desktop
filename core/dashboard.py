@@ -97,9 +97,14 @@ def _get_gpu_info() -> list[dict[str, Any]]:
     gpus = []
     try:
         result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=GPU_QUERY_TIMEOUT,
+            [
+                "nvidia-smi",
+                "--query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=GPU_QUERY_TIMEOUT,
         )
         if result.returncode == 0:
             for line in result.stdout.strip().split("\n"):

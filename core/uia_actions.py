@@ -167,7 +167,9 @@ class UIAActionPipeline:
         try:
             from core.ui_tree import click_control
 
-            result = click_control(name=name, control_type=control_type, window_title=window_title, button=button)
+            result = click_control(
+                name=name, control_type=control_type, window_title=window_title, button=button
+            )
             if result is not None:
                 return _result(True, {"x": result[0], "y": result[1]}, "uia")
         except (OSError, AttributeError, RuntimeError) as exc:
@@ -189,8 +191,12 @@ class UIAActionPipeline:
             if bounds is not None:
                 from core.stealth_input import post_click
 
-                if post_click(bounds["center_x"], bounds["center_y"], button=button):
-                    return _result(True, {"x": bounds["center_x"], "y": bounds["center_y"]}, "postmessage")
+                if post_click(
+                    bounds["center_x"], bounds["center_y"], button=button
+                ):
+                    return _result(  # noqa: E501
+                        True, {"x": bounds["center_x"], "y": bounds["center_y"]}, "postmessage"
+                    )
         except OSError as exc:
             logger.debug("PostMessage click_element failed: %s", exc)
         return None
@@ -206,7 +212,9 @@ class UIAActionPipeline:
         try:
             bounds = self._uia_bounds(name, control_type, window_title)
             if bounds is not None:
-                self._get_physical_desktop().click(bounds["center_x"], bounds["center_y"], button=button)
+                self._get_physical_desktop().click(  # noqa: E501
+                    bounds["center_x"], bounds["center_y"], button=button
+                )
                 return _result(True, {"x": bounds["center_x"], "y": bounds["center_y"]}, "physical")
         except (OSError, AttributeError, RuntimeError) as exc:
             logger.debug("Physical click_element failed: %s", exc)

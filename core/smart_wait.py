@@ -378,7 +378,9 @@ class SmartWait:
             if current is None:
                 continue
             frames += 1
-            prev_small, result = _eval_change_frame(baseline_small, prev_small, current, start, frames)
+            prev_small, result = _eval_change_frame(
+                baseline_small, prev_small, current, start, frames
+            )
             if result is not None:
                 return result
 
@@ -422,9 +424,13 @@ class SmartWait:
             return _fail(time.monotonic() - start, 0, last_score)
 
         frames = 1
-        return self._stability_loop(start, frames, prev_small, last_change_time, last_score, timeout, stable_time, interval, region)
+        return self._stability_loop(  # noqa: E501
+            start, frames, prev_small, last_change_time, last_score, timeout, stable_time, interval, region
+        )
 
-    def _capture_initial_frame(self, region: tuple[int, int, int, int] | None) -> Image.Image | None:
+    def _capture_initial_frame(  # noqa: E501
+        self, region: tuple[int, int, int, int] | None
+    ) -> Image.Image | None:
         """Capture and downsample the initial frame for stability detection."""
         prev = self._capture(region)
         if prev is None:
