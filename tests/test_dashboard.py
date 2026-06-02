@@ -447,14 +447,17 @@ class TestMetrics:
     async def test_metrics_timeout_returns_zeros(self):
         """Test that metrics endpoint returns zero values on timeout."""
         import asyncio
+
         import core.dashboard as dash
 
         fake_psutil = _make_psutil()
         with patch.dict(sys.modules, {"psutil": fake_psutil}):
             # Patch asyncio.gather to raise TimeoutError
-            original_gather = asyncio.gather
-
             async def _timeout_gather(*args, **kwargs):
+                # Close coroutines to avoid RuntimeWarning about unawaited to_thread calls
+                for coro in args:
+                    if hasattr(coro, 'close'):
+                        coro.close()
                 raise asyncio.TimeoutError("simulated timeout")
 
             with patch("asyncio.gather", side_effect=_timeout_gather):
@@ -473,15 +476,18 @@ class TestTimeoutHandlers:
     async def test_overview_timeout_returns_partial_data(self):
         """Test that dashboard_overview returns partial data on timeout."""
         import asyncio
+
         import core.dashboard as dash
 
         fake_psutil = _make_psutil()
         with patch.dict(sys.modules, {"psutil": fake_psutil}), \
              patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
             # Patch asyncio.gather to raise TimeoutError
-            original_gather = asyncio.gather
-
             async def _timeout_gather(*args, **kwargs):
+                # Close coroutines to avoid RuntimeWarning about unawaited to_thread calls
+                for coro in args:
+                    if hasattr(coro, 'close'):
+                        coro.close()
                 raise asyncio.TimeoutError("simulated timeout")
 
             with patch("asyncio.gather", side_effect=_timeout_gather):
@@ -500,14 +506,17 @@ class TestTimeoutHandlers:
     async def test_health_check_timeout_returns_healthy_status(self):
         """Test that health_check returns healthy status on timeout (zero values)."""
         import asyncio
+
         import core.dashboard as dash
 
         fake_psutil = _make_psutil()
         with patch.dict(sys.modules, {"psutil": fake_psutil}):
             # Patch asyncio.gather to raise TimeoutError
-            original_gather = asyncio.gather
-
             async def _timeout_gather(*args, **kwargs):
+                # Close coroutines to avoid RuntimeWarning about unawaited to_thread calls
+                for coro in args:
+                    if hasattr(coro, 'close'):
+                        coro.close()
                 raise asyncio.TimeoutError("simulated timeout")
 
             with patch("asyncio.gather", side_effect=_timeout_gather):
