@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 
 _IS_WINDOWS = is_windows()
 
+# Sleep intervals for sound sequences
+MFA_BEEP_INTERVAL = 0.1
+SUCCESS_TONE_INTERVAL = 0.05
+ERROR_TONE_INTERVAL = 0.05
+
 
 def play_sound(sound_type: str = "complete", blocking: bool = False) -> None:
     """Play a notification sound.
@@ -50,21 +55,21 @@ def _play(sound_type: str) -> None:
                 winsound.Beep(freq, duration)
                 import time
 
-                time.sleep(0.1)
+                time.sleep(MFA_BEEP_INTERVAL)
                 winsound.Beep(freq, duration)
             elif sound_type == "complete":
                 # Two-tone success: low→high
                 winsound.Beep(600, 100)
                 import time
 
-                time.sleep(0.05)
+                time.sleep(SUCCESS_TONE_INTERVAL)
                 winsound.Beep(900, 150)
             elif sound_type == "error":
                 # Descending error tone
                 winsound.Beep(400, 200)
                 import time
 
-                time.sleep(0.05)
+                time.sleep(ERROR_TONE_INTERVAL)
                 winsound.Beep(250, 300)
             else:
                 winsound.Beep(freq, duration)

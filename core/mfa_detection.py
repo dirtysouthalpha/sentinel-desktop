@@ -41,6 +41,9 @@ _IS_WINDOWS = is_windows()
 # Integration constants
 # ---------------------------------------------------------------------------
 
+# Thread join timeout buffer over monitoring interval
+THREAD_JOIN_TIMEOUT_BUFFER = 2.0
+
 AUTH_WINDOW_TITLES: list[tuple[str, str]] = [
     ("Windows Security", "credential"),
     ("User Account Control", "uac"),
@@ -579,7 +582,7 @@ class MFADetector:
         thread = self._monitor_thread
         self._monitor_thread = None
         if thread is not None and thread.is_alive():
-            thread.join(timeout=self._interval + 2.0)
+            thread.join(timeout=self._interval + THREAD_JOIN_TIMEOUT_BUFFER)
             logger.info("MFA monitoring stopped")
 
     def get_last_detection(self) -> DetectionResult | None:

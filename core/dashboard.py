@@ -21,6 +21,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
+# ─── Constants ───────────────────────────────────────────────────────────────
+
+GPU_QUERY_TIMEOUT = 5
+DASHBOARD_OVERVIEW_TIMEOUT = 10.0
+HEALTH_CHECK_TIMEOUT = 5.0
+METRICS_TIMEOUT = 3.0
+
 # ─── System Metrics ───────────────────────────────────────────────────────
 
 _start_time = time.time()
@@ -86,7 +93,7 @@ def _get_gpu_info() -> list[dict[str, Any]]:
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw",
              "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True, text=True, timeout=GPU_QUERY_TIMEOUT,
         )
         if result.returncode == 0:
             for line in result.stdout.strip().split("\n"):
@@ -129,7 +136,7 @@ async def dashboard_overview() -> dict[str, Any]:
     # Run potentially blocking I/O helpers in the thread pool so the event
     # loop stays responsive. _get_gpu_info() spawns nvidia-smi (up to 5s);
     # disk/memory calls are typically fast but still use blocking syscalls.
-    # Use timeout=10 to ensure the API remains responsive.
+    # Use timeout to ensure the API remains responsive.
     try:
         cpu, memory, disks, gpus, logs = await asyncio.wait_for(
             asyncio.gather(
@@ -139,10 +146,10 @@ async def dashboard_overview() -> dict[str, Any]:
                 asyncio.to_thread(_get_gpu_info),
                 asyncio.to_thread(_count_log_entries),
             ),
-            timeout=10.0,
+            timeout=DASHBOARD_OVERVIEW_TIMEOUT,
         )
     except asyncio.TimeoutError:
-        logger.warning("Dashboard overview timed out after 10 seconds")
+        logger.warning("Dashboard overview timed out after %s seconds", DASHBOARD_OVERVIEW_TIMEOUT)
         # Return partial data with default values
         cpu = {"percent": 0, "cores": 0}
         memory = {"percent": 0, "used_gb": 0, "total_gb": 0}
@@ -178,10 +185,10 @@ async def health_check() -> dict[str, Any]:
                 asyncio.to_thread(_get_memory_info),
                 asyncio.to_thread(_get_cpu_info),
             ),
-            timeout=5.0,
+            timeout=HEALTH_CHECK_TIMEOUT,
         )
     except asyncio.TimeoutError:
-        logger.warning("Health check timed out after 5 seconds")
+        logger.warning("Health check timed out after %s seconds", HEALTH_CHECK_TIMEOUT)
         mem = {"percent": 0}
         cpu = {"percent": 0}
 
@@ -217,10 +224,10 @@ async def metrics() -> dict[str, Any]:
                 asyncio.to_thread(_get_memory_info),
                 asyncio.to_thread(_get_cpu_info),
             ),
-            timeout=3.0,
+            timeout=METRICS_TIMEOUT,
         )
     except asyncio.TimeoutError:
-        logger.warning("Metrics endpoint timed out after 3 seconds")
+        logger.warning("Metrics endpoint timed out after %s seconds", METRICS_TIMEOUT)
         mem = {"percent": 0, "used_gb": 0}
         cpu = {"percent": 0}
 

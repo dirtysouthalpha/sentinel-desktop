@@ -40,6 +40,10 @@ MAX_PREVIEW_LENGTH = 200
 MAX_STRING_VALUE_LENGTH = 200
 MAX_COLLECTION_STRING_LENGTH = 500
 
+# Timeout constants
+DEFAULT_ACTION_TIMEOUT = 60.0
+EXECUTE_WITH_LOGGING_TIMEOUT = 65.0
+
 # Actions that *change state* on the user's machine. In dry-run mode these
 # are logged instead of executed. Read-only actions (screenshot, find_image,
 # list_*, system_info, read_file, clipboard_read, note) still run for real
@@ -137,7 +141,7 @@ class ActionExecutor:
 
         """
         try:
-            return await asyncio.wait_for(self._execute_with_logging(action), timeout=65.0)
+            return await asyncio.wait_for(self._execute_with_logging(action), timeout=EXECUTE_WITH_LOGGING_TIMEOUT)
         except asyncio.TimeoutError:
             action_type = action.get("action", "").lower()
             params = {k: v for k, v in action.items() if k != "action"}
@@ -188,11 +192,11 @@ class ActionExecutor:
             return {"success": False, "output": error_msg, "error": "unknown_action"}
         try:
             if asyncio.iscoroutinefunction(handler):
-                return await asyncio.wait_for(handler(self, **params), timeout=60.0)
+                return await asyncio.wait_for(handler(self, **params), timeout=DEFAULT_ACTION_TIMEOUT)
             loop = asyncio.get_event_loop()
             return await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: handler(self, **params)),
-                timeout=60.0,
+                timeout=DEFAULT_ACTION_TIMEOUT,
             )
         except asyncio.TimeoutError:
             return {"success": False, "output": f"Action '{action_type}' timed out", "error": "timeout"}
