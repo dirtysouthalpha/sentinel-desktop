@@ -184,7 +184,8 @@ class ActionExecutor:
         """Dispatch *action_type* to its handler with a 60-second timeout."""
         handler = self._dispatch_table.get(action_type)
         if not handler:
-            return {"success": False, "output": f"Unknown action: {action_type}", "error": "unknown_action"}
+            error_msg = f"Unknown action: {action_type}"
+            return {"success": False, "output": error_msg, "error": "unknown_action"}
         try:
             if asyncio.iscoroutinefunction(handler):
                 return await asyncio.wait_for(handler(self, **params), timeout=60.0)
@@ -255,7 +256,12 @@ class ActionExecutor:
             # In stealth mode, try the no-cursor-move path first.
             if self.stealth and stealth_input.is_available():
                 if stealth_input.post_click(sx, sy, button=button):
-                    desc = f"{'Double-clicked' if clicks == DOUBLE_CLICK_COUNT else 'Right-clicked' if button == 'right' else 'Clicked'}"
+                    if clicks == DOUBLE_CLICK_COUNT:
+                        desc = "Double-clicked"
+                    elif button == "right":
+                        desc = "Right-clicked"
+                    else:
+                        desc = "Clicked"
                     return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
                 # PostMessage failed; fall through to physical click.
             self._desktop.click(sx, sy, button=button, clicks=clicks)
@@ -316,7 +322,10 @@ class ActionExecutor:
                 "success": False,
                 "output": f"Text {text!r} not found via OCR or UIAutomation",
                 "error": "text_not_found",
-                "hint": "Try list_controls() to find the element, or use click(x,y) with coordinates from the screenshot",
+                "hint": (
+                    "Try list_controls() to find the element, or use "
+                    "click(x,y) with coordinates from the screenshot"
+                ),
             }
         except Exception as exc:
             return {
