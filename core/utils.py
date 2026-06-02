@@ -3,6 +3,7 @@
 import logging
 import platform
 from datetime import datetime, timezone
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ def have_uia() -> bool:
     return _UIA_OK
 
 
-def get_uia_auto():
+def get_uia_auto() -> Any:
     """Return the uiautomation module reference if available, else None.
 
     This provides access to the uiautomation module for functions that need
@@ -89,7 +90,7 @@ def get_uia_auto():
     return _auto
 
 
-def get_tesseract():
+def get_tesseract() -> Any:
     """Return the pytesseract module reference if available, else None.
 
     This provides access to the pytesseract module for functions that need
