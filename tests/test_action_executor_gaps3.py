@@ -197,6 +197,41 @@ class TestClickTextStealthFallback:
 
 
 # ===================================================================
+# Lines 260, 262: stealth double-click and right-click branches
+# ===================================================================
+
+
+class TestStealthClickVariants:
+    """Coverage for stealth mode double-click and right-click success paths."""
+
+    def test_stealth_double_click_success(self, monkeypatch):
+        """Stealth mode enabled, post_click succeeds, clicks=2 -> covers line 260."""
+        import core.action_executor as ae_mod
+
+        monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
+        monkeypatch.setattr(ae_mod.stealth_input, "post_click", MagicMock(return_value=True))
+
+        ex = _make_executor(stealth=True)
+        result = ex._click(x=100, y=200, clicks=2)
+        assert result["success"] is True
+        assert "Double-clicked" in result["output"]
+        assert "stealth" in result["output"]
+
+    def test_stealth_right_click_success(self, monkeypatch):
+        """Stealth mode enabled, post_click succeeds, button='right' -> covers line 262."""
+        import core.action_executor as ae_mod
+
+        monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
+        monkeypatch.setattr(ae_mod.stealth_input, "post_click", MagicMock(return_value=True))
+
+        ex = _make_executor(stealth=True)
+        result = ex._click(x=100, y=200, button="right")
+        assert result["success"] is True
+        assert "Right-clicked" in result["output"]
+        assert "stealth" in result["output"]
+
+
+# ===================================================================
 # 7. Lines 285-301: click_text UIA fallback failure paths
 # ===================================================================
 
