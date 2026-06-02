@@ -176,24 +176,30 @@ def _coords_from_action(action: dict[str, Any]) -> tuple[int, int] | None:
 
 def _label_for_action(action: dict[str, Any]) -> str:
     name = action.get("action", "")
+    result = ""
+
+    # Use if-elif chain to avoid multiple returns
     if name == "click":
-        return f"click ({action.get('x', '?')}, {action.get('y', '?')})"
-    if name == "click_text":
-        return f"click text: {str(action.get('text', ''))[:40]}"
-    if name == "click_control":
-        return f"click control: {str(action.get('name', ''))[:40]}"
-    if name == "type_text":
-        return f"type: {str(action.get('text', ''))[:40]}"
-    if name == "set_text":
-        return f"set text: {str(action.get('name', ''))[:40]}"
-    if name == "hotkey":
+        result = f"click ({action.get('x', '?')}, {action.get('y', '?')})"
+    elif name == "click_text":
+        result = f"click text: {str(action.get('text', ''))[:40]}"
+    elif name == "click_control":
+        result = f"click control: {str(action.get('name', ''))[:40]}"
+    elif name == "type_text":
+        result = f"type: {str(action.get('text', ''))[:40]}"
+    elif name == "set_text":
+        result = f"set text: {str(action.get('name', ''))[:40]}"
+    elif name == "hotkey":
         keys = action.get("keys") or []
-        return "hotkey: " + "+".join(map(str, keys))[:40]
-    if name == "press_key":
-        return f"press: {action.get('key', '')}"
-    if name == "scroll":
-        return f"scroll: {action.get('amount', '')}"
-    return name or "action"
+        result = "hotkey: " + "+".join(map(str, keys))[:40]
+    elif name == "press_key":
+        result = f"press: {action.get('key', '')}"
+    elif name == "scroll":
+        result = f"scroll: {action.get('amount', '')}"
+    else:
+        result = name or "action"
+
+    return result
 
 
 def _color_for_kind(kind: str) -> str:

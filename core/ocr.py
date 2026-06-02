@@ -285,19 +285,23 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
             avg_confidence, low_confidence_words, etc.
 
     """
+    # Validate text has sufficient alphanumeric content
     if not text or not text.strip():
         return True
+
     lines = [ln for ln in text.splitlines() if ln.strip()]
-    if not lines:  # pragma: no cover  # unreachable: non-empty text.strip() implies a non-empty line
-        return True
-    total_alnum = sum(c.isalnum() for c in text)
-    if total_alnum < 20:
-        return True
-    avg_alnum_per_line = total_alnum / len(lines)
-    if avg_alnum_per_line < _MIN_ALNUM_PER_LINE_FOR_CONFIDENT:
+    # pragma: no cover  # unreachable: non-empty text.strip() implies a non-empty line
+    if not lines:
         return True
 
-    # Check Tesseract confidence scores if available
+    total_alnum = sum(c.isalnum() for c in text)
+    avg_alnum_per_line = total_alnum / len(lines)
+
+    # Combine alphanumeric checks to reduce returns
+    if total_alnum < 20 or avg_alnum_per_line < _MIN_ALNUM_PER_LINE_FOR_CONFIDENT:
+        return True
+
+    # Check confidence metrics if provided
     if confidence_data:
         avg_conf = confidence_data.get("avg_confidence", 0)
         if avg_conf > 0 and avg_conf < _MIN_AVG_CONFIDENCE:
@@ -307,7 +311,7 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
                 _MIN_AVG_CONFIDENCE,
             )
             return True
-        # If many individual words are low-confidence, flag it
+
         low_conf_words = confidence_data.get("low_confidence_words", [])
         word_count = confidence_data.get("word_count", 0)
         if word_count > 3 and len(low_conf_words) / max(word_count, 1) > 0.5:

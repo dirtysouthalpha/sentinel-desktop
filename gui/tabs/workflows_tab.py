@@ -324,23 +324,28 @@ class WorkflowsTab(ctk.CTkFrame):
     def _step_summary(step: dict[str, Any]) -> str:
         """Build a one-line summary for a step."""
         stype = step.get("type", "action")
+        result = ""
+
         if stype == "script":
-            return f"Run script: {step.get('path', '?')}"
-        if stype == "action":
+            result = f"Run script: {step.get('path', '?')}"
+        elif stype == "action":
             act = step.get("action", {})
             params = ", ".join(f"{k}={v}" for k, v in act.items() if k != "action")
-            return f"Action: {act.get('action', '?')}({params})"
-        if stype == "condition":
-            return f"If: {step.get('check', '?')}"
-        if stype == "loop":
-            return f"Loop over: {step.get('over', '?')}"
-        if stype == "sub_workflow":
-            return f"Sub-workflow: {step.get('path', '?')}"
-        if stype == "delay":
-            return f"Wait {step.get('delay_seconds', 0)}s"
-        if stype == "notify":
-            return f"Notify: {step.get('message', '')}"
-        return stype
+            result = f"Action: {act.get('action', '?')}({params})"
+        elif stype == "condition":
+            result = f"If: {step.get('check', '?')}"
+        elif stype == "loop":
+            result = f"Loop over: {step.get('over', '?')}"
+        elif stype == "sub_workflow":
+            result = f"Sub-workflow: {step.get('path', '?')}"
+        elif stype == "delay":
+            result = f"Wait {step.get('delay_seconds', 0)}s"
+        elif stype == "notify":
+            result = f"Notify: {step.get('message', '')}"
+        else:
+            result = stype
+
+        return result
 
     # ── Variables editing ─────────────────────────────────────────────
 

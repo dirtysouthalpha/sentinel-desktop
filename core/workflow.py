@@ -178,29 +178,36 @@ class WorkflowEngine:
     @staticmethod
     def _evaluate_comparison(op: str, left: str, right: str) -> bool:
         """Evaluate a single comparison operation."""
+        result = False
+
+        # Handle string and equality operations
         if op == "==":
-            return left == right
-        if op == "!=":
-            return left != right
-        if op == "contains":
-            return right in left
+            result = left == right
+        elif op == "!=":
+            result = left != right
+        elif op == "contains":
+            result = right in left
+        else:
+            # Handle numeric operations
+            try:
+                left_num = float(left)
+                right_num = float(right)
+                if op == ">":
+                    result = left_num > right_num
+                elif op == "<":
+                    result = left_num < right_num
+                elif op == ">=":
+                    result = left_num >= right_num
+                elif op == "<=":
+                    result = left_num <= right_num
+                else:
+                    logger.debug("Unknown comparison operator '%s'", op)
+                    result = False
+            except ValueError:
+                logger.debug("Non-numeric comparison '%s' %s '%s'", left, op, right)
+                result = False
 
-        try:
-            left_num = float(left)
-            right_num = float(right)
-            if op == ">":
-                return left_num > right_num
-            if op == "<":
-                return left_num < right_num
-            if op == ">=":
-                return left_num >= right_num
-            if op == "<=":
-                return left_num <= right_num
-        except ValueError:
-            logger.debug("Non-numeric comparison '%s' %s '%s'", left, op, right)
-            return False
-
-        return False
+        return result
 
     def run_workflow(self, path: str, variables: dict[str, Any] | None = None) -> WorkflowResult:
         """Execute a workflow from a JSON file.
@@ -426,24 +433,28 @@ class WorkflowEngine:
 
     def _execute_step(self, step: WorkflowStep) -> dict[str, Any]:
         """Execute a single workflow step."""
+        result = {}
+
         if step.type == StepType.SCRIPT:
-            return self._exec_script(step)
+            result = self._exec_script(step)
         elif step.type == StepType.ACTION:
-            return self._exec_action(step)
+            result = self._exec_action(step)
         elif step.type == StepType.CONDITION:
-            return {"success": True, "type": "condition"}
+            result = {"success": True, "type": "condition"}
         elif step.type == StepType.LOOP:
-            return {"success": True, "type": "loop"}
+            result = {"success": True, "type": "loop"}
         elif step.type == StepType.SUB_WORKFLOW:
-            return self._exec_sub_workflow(step)
+            result = self._exec_sub_workflow(step)
         elif step.type == StepType.DELAY:
             seconds = max(0.0, min(step.delay_seconds, 3600.0))
             time.sleep(seconds)
-            return {"success": True, "type": "delay", "seconds": seconds}
+            result = {"success": True, "type": "delay", "seconds": seconds}
         elif step.type == StepType.NOTIFY:
-            return self._exec_notify(step)
+            result = self._exec_notify(step)
         else:
-            return {"success": False, "error": f"Unknown step type: {step.type}"}
+            result = {"success": False, "error": f"Unknown step type: {step.type}"}
+
+        return result
 
     def _exec_script(self, step: WorkflowStep) -> dict[str, Any]:
         """Run a recorded script."""

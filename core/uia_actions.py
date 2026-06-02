@@ -663,33 +663,37 @@ class UIAActionPipeline:
 
         Returns True if the full path was traversed successfully.
         """
-        if _auto is None:
-            return False
-        try:
-            from core.ui_tree import _find_window
+        result = False
 
-            root = _find_window(window_title)
-            if root is None:
-                return False
-            menu_bar = self._find_menu_bar(root)
-            if menu_bar is None:
-                return False
+        if _auto is not None:
+            try:
+                from core.ui_tree import _find_window
 
-            current = menu_bar
-            for i, segment in enumerate(segments):
-                target = self._find_child_by_name(current, segment)
-                if target is None:
-                    return False
-                if i == len(segments) - 1:
-                    return self._invoke_menu_item(target)
-                if not self._expand_menu_item(target):
-                    return False
-                current = target
+                root = _find_window(window_title)
+                if root is not None:
+                    menu_bar = self._find_menu_bar(root)
+                    if menu_bar is not None:
+                        current = menu_bar
+                        for i, segment in enumerate(segments):
+                            target = self._find_child_by_name(current, segment)
+                            if target is None:
+                                result = False
+                                break
+                            if i == len(segments) - 1:
+                                result = self._invoke_menu_item(target)
+                                break
+                            if not self._expand_menu_item(target):
+                                result = False
+                                break
+                            current = target
+                        else:
+                            # Loop completed without hitting a break
+                            result = False  # shouldn't reach here
+            except (OSError, AttributeError, RuntimeError) as exc:
+                logger.debug("_uia_menu_walk failed: %s", exc)
+                result = False
 
-            return False  # shouldn't reach here
-        except (OSError, AttributeError, RuntimeError) as exc:
-            logger.debug("_uia_menu_walk failed: %s", exc)
-            return False
+        return result
 
     @staticmethod
     def _find_menu_bar(root: Any) -> Any | None:
