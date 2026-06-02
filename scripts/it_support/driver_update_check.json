@@ -4,70 +4,106 @@
   "author": "sentinel-desktop",
   "created": "2026-05-12T00:00:00",
   "version": "3.0",
-  "tags": ["driver", "device manager", "hardware", "update"],
+  "tags": [
+    "driver",
+    "device manager",
+    "hardware",
+    "update"
+  ],
   "category": "hardware",
   "icon": "🔌",
   "parameters": [],
   "steps": [
     {
       "action": "start_process",
-      "params": { "command": "devmgmt.msc", "args": "" },
+      "params": {
+        "command": "devmgmt.msc",
+        "args": ""
+      },
       "description": "Open Device Manager",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Open Device Manager"
     },
     {
       "action": "click",
-      "params": { "target": "menu#Action" },
+      "params": {
+        "target": "menu#Action"
+      },
       "description": "Click the Action menu in menu bar",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Click the Action menu in menu bar"
     },
     {
       "action": "click",
-      "params": { "target": "menuitem#ScanForHardwareChanges" },
+      "params": {
+        "target": "menuitem#ScanForHardwareChanges"
+      },
       "description": "Click 'Scan for hardware changes'",
-      "wait_after_ms": 3000
+      "wait_after_ms": 3000,
+      "name": "Click 'Scan for hardware changes'"
     },
     {
       "action": "press_key",
-      "params": { "key": "Tab" },
+      "params": {
+        "key": "Tab"
+      },
       "description": "Ensure focus is on device list",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Ensure focus is on device list"
     },
     {
       "action": "press_key",
-      "params": { "key": "Home" },
+      "params": {
+        "key": "Home"
+      },
       "description": "Jump to top of device list",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Jump to top of device list"
     },
     {
       "action": "press_key",
-      "params": { "key": "Apps" },
+      "params": {
+        "key": "Apps"
+      },
       "description": "Open context menu on first device",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Open context menu on first device"
     },
     {
       "action": "click",
-      "params": { "target": "menuitem#UpdateDriver" },
+      "params": {
+        "target": "menuitem#UpdateDriver"
+      },
       "description": "Click 'Update driver' from context menu",
-      "wait_after_ms": 1500
+      "wait_after_ms": 1500,
+      "name": "Click 'Update driver' from context menu"
     },
     {
       "action": "click",
-      "params": { "target": "button#SearchAutomatically" },
+      "params": {
+        "target": "button#SearchAutomatically"
+      },
       "description": "Click 'Search automatically for drivers'",
-      "wait_after_ms": 5000
+      "wait_after_ms": 5000,
+      "name": "Click 'Search automatically for drivers'"
     },
     {
       "action": "click",
-      "params": { "target": "button#Close" },
+      "params": {
+        "target": "button#Close"
+      },
       "description": "Close the driver update results dialog",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Close the driver update results dialog"
     },
     {
       "action": "press_key",
-      "params": { "key": "Alt+F4" },
+      "params": {
+        "key": "Alt+F4"
+      },
       "description": "Close Device Manager",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Close Device Manager"
     }
   ]
 }

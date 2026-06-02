@@ -4,28 +4,45 @@
   "author": "sentinel-desktop",
   "created": "2026-06-01T00:00:00",
   "version": "3.0",
-  "tags": ["rdp", "remote-desktop", "remote-access", "admin"],
+  "tags": [
+    "rdp",
+    "remote-desktop",
+    "remote-access",
+    "admin"
+  ],
   "category": "remote_access",
   "icon": "🖥️",
   "parameters": [],
   "steps": [
     {
       "action": "start_process",
-      "params": { "command": "cmd", "args": "/c reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\" /v fDenyTSConnections /t REG_DWORD /d 0 /f && echo RDP_REGISTRY_SET" },
+      "params": {
+        "command": "cmd",
+        "args": "/c reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\" /v fDenyTSConnections /t REG_DWORD /d 0 /f && echo RDP_REGISTRY_SET"
+      },
       "description": "Enable RDP via registry key",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Enable RDP via registry key"
     },
     {
       "action": "start_process",
-      "params": { "command": "cmd", "args": "/c netsh advfirewall firewall set rule group=\"remote desktop\" new enable=Yes && echo RDP_FIREWALL_ENABLED" },
+      "params": {
+        "command": "cmd",
+        "args": "/c netsh advfirewall firewall set rule group=\"remote desktop\" new enable=Yes && echo RDP_FIREWALL_ENABLED"
+      },
       "description": "Allow RDP through Windows Firewall",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Allow RDP through Windows Firewall"
     },
     {
       "action": "start_process",
-      "params": { "command": "cmd", "args": "/c sc config TermService start= auto && net start TermService && echo RDP_SERVICE_STARTED" },
+      "params": {
+        "command": "cmd",
+        "args": "/c sc config TermService start= auto && net start TermService && echo RDP_SERVICE_STARTED"
+      },
       "description": "Ensure Remote Desktop Service is running and set to auto-start",
-      "wait_after_ms": 3000
+      "wait_after_ms": 3000,
+      "name": "Ensure Remote Desktop Service is running and set t"
     }
   ]
 }

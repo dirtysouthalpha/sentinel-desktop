@@ -4,136 +4,208 @@
   "author": "sentinel-desktop",
   "created": "2026-05-12T00:00:00",
   "version": "3.0",
-  "tags": ["temp", "cleanup", "storage", "maintenance", "prefetch"],
+  "tags": [
+    "temp",
+    "cleanup",
+    "storage",
+    "maintenance",
+    "prefetch"
+  ],
   "category": "system_maintenance",
   "icon": "🧹",
   "parameters": [],
   "steps": [
     {
       "action": "hotkey",
-      "params": { "keys": ["Win", "R"] },
+      "params": {
+        "keys": [
+          "Win",
+          "R"
+        ]
+      },
       "description": "Open Run dialog",
-      "wait_after_ms": 800
+      "wait_after_ms": 800,
+      "name": "Open Run dialog"
     },
     {
       "action": "type_text",
-      "params": { "text": "cmd" },
+      "params": {
+        "text": "cmd"
+      },
       "description": "Type cmd to open Command Prompt",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Type cmd to open Command Prompt"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Launch Command Prompt",
-      "wait_after_ms": 1500
+      "wait_after_ms": 1500,
+      "name": "Launch Command Prompt"
     },
     {
       "action": "type_text",
-      "params": { "text": "echo Cleaning User Temp Files..." },
+      "params": {
+        "text": "echo Cleaning User Temp Files..."
+      },
       "description": "Display section header",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Display section header"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute echo",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Execute echo"
     },
     {
       "action": "type_text",
-      "params": { "text": "del /q /f /s %TEMP%\\*" },
+      "params": {
+        "text": "del /q /f /s %TEMP%\\*"
+      },
       "description": "Delete all files in user %TEMP% folder",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Delete all files in user %TEMP% folder"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute user temp cleanup",
-      "wait_after_ms": 3000
+      "wait_after_ms": 3000,
+      "name": "Execute user temp cleanup"
     },
     {
       "action": "type_text",
-      "params": { "text": "for /d %d in (%TEMP%\\*) do rd /s /q \"%d\"" },
+      "params": {
+        "text": "for /d %d in (%TEMP%\\*) do rd /s /q \"%d\""
+      },
       "description": "Remove subdirectories in user %TEMP%",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Remove subdirectories in user %TEMP%"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute user temp folder cleanup",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Execute user temp folder cleanup"
     },
     {
       "action": "type_text",
-      "params": { "text": "echo Cleaning Windows Temp Files..." },
+      "params": {
+        "text": "echo Cleaning Windows Temp Files..."
+      },
       "description": "Display section header",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Display section header"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute echo",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Execute echo"
     },
     {
       "action": "type_text",
-      "params": { "text": "del /q /f /s C:\\Windows\\Temp\\*" },
+      "params": {
+        "text": "del /q /f /s C:\\Windows\\Temp\\*"
+      },
       "description": "Delete all files in Windows Temp",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Delete all files in Windows Temp"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute Windows Temp cleanup",
-      "wait_after_ms": 3000
+      "wait_after_ms": 3000,
+      "name": "Execute Windows Temp cleanup"
     },
     {
       "action": "type_text",
-      "params": { "text": "for /d %d in (C:\\Windows\\Temp\\*) do rd /s /q \"%d\"" },
+      "params": {
+        "text": "for /d %d in (C:\\Windows\\Temp\\*) do rd /s /q \"%d\""
+      },
       "description": "Remove subdirectories in Windows Temp",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Remove subdirectories in Windows Temp"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute Windows Temp folder cleanup",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Execute Windows Temp folder cleanup"
     },
     {
       "action": "type_text",
-      "params": { "text": "echo Cleaning Prefetch Files..." },
+      "params": {
+        "text": "echo Cleaning Prefetch Files..."
+      },
       "description": "Display section header",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Display section header"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute echo",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Execute echo"
     },
     {
       "action": "type_text",
-      "params": { "text": "del /q /f /s C:\\Windows\\Prefetch\\*" },
+      "params": {
+        "text": "del /q /f /s C:\\Windows\\Prefetch\\*"
+      },
       "description": "Delete all files in Prefetch folder",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Delete all files in Prefetch folder"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute Prefetch cleanup",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Execute Prefetch cleanup"
     },
     {
       "action": "type_text",
-      "params": { "text": "echo Temporary File Cleanup Complete." },
+      "params": {
+        "text": "echo Temporary File Cleanup Complete."
+      },
       "description": "Display completion message",
-      "wait_after_ms": 300
+      "wait_after_ms": 300,
+      "name": "Display completion message"
     },
     {
       "action": "press_key",
-      "params": { "key": "Enter" },
+      "params": {
+        "key": "Enter"
+      },
       "description": "Execute echo",
-      "wait_after_ms": 500
+      "wait_after_ms": 500,
+      "name": "Execute echo"
     }
   ]
 }

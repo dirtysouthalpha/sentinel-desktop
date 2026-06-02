@@ -4,7 +4,12 @@
   "author": "sentinel-desktop",
   "created": "2026-06-01T00:00:00",
   "version": "3.0",
-  "tags": ["user-profile", "login", "troubleshooting", "registry"],
+  "tags": [
+    "user-profile",
+    "login",
+    "troubleshooting",
+    "registry"
+  ],
   "category": "user_management",
   "icon": "👤",
   "parameters": [
@@ -28,21 +33,33 @@
   "steps": [
     {
       "action": "start_process",
-      "params": { "command": "cmd", "args": "/c wmic UserAccount list brief > \"{{output_path}}\" && echo PROFILE_LIST_EXPORTED" },
+      "params": {
+        "command": "cmd",
+        "args": "/c wmic UserAccount list brief > \"{{output_path}}\" && echo PROFILE_LIST_EXPORTED"
+      },
       "description": "Export local user account list to file",
-      "wait_after_ms": 3000
+      "wait_after_ms": 3000,
+      "name": "Export local user account list to file"
     },
     {
       "action": "start_process",
-      "params": { "command": "cmd", "args": "/c dir /b \"%SystemDrive%\\Users\" >> \"{{output_path}}\" && echo PROFILE_DIRS_APPENDED" },
+      "params": {
+        "command": "cmd",
+        "args": "/c dir /b \"%SystemDrive%\\Users\" >> \"{{output_path}}\" && echo PROFILE_DIRS_APPENDED"
+      },
       "description": "Append user profile directory listing to report",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Append user profile directory listing to report"
     },
     {
       "action": "start_process",
-      "params": { "command": "notepad", "args": "{{output_path}}" },
+      "params": {
+        "command": "notepad",
+        "args": "{{output_path}}"
+      },
       "description": "Open the profile report in Notepad for review",
-      "wait_after_ms": 2000
+      "wait_after_ms": 2000,
+      "name": "Open the profile report in Notepad for review"
     }
   ]
 }
