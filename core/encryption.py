@@ -348,6 +348,11 @@ class CredentialVault:
     # Vault persistence helpers
     # ------------------------------------------------------------------
 
+    def _validate_vault_structure(self, data: Any) -> None:
+        """Validate vault data structure and raise ValueError if invalid."""
+        if not isinstance(data, dict) or "keys" not in data:
+            raise ValueError("Invalid vault structure")
+
     def _load(self) -> dict[str, Any]:
         """Read the vault JSON from disk.  Returns an empty vault on error."""
         if not self._path.exists():
@@ -356,8 +361,7 @@ class CredentialVault:
         try:
             text = self._path.read_text(encoding="utf-8")
             data = json.loads(text)
-            if not isinstance(data, dict) or "keys" not in data:
-                raise ValueError("Invalid vault structure")
+            self._validate_vault_structure(data)
             return data
         except (OSError, json.JSONDecodeError, ValueError):
             logger.exception("Failed to load vault from %s — vault data may be lost", self._path)
