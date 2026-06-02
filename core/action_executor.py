@@ -1294,10 +1294,7 @@ def _contains_sensitive(text: str) -> bool:
     Used to prevent accidental typing of secrets.
     """
     lower = text.lower()
-    for keyword in SENSITIVE_FIELDS:
-        if keyword in lower:
-            return True
-    return False
+    return any(keyword in lower for keyword in SENSITIVE_FIELDS)
 
 
 def _sanitize_params(params: dict) -> dict:
