@@ -424,8 +424,16 @@ class SmartWait:
             return _fail(time.monotonic() - start, 0, last_score)
 
         frames = 1
-        return self._stability_loop(  # noqa: E501
-            start, frames, prev_small, last_change_time, last_score, timeout, stable_time, interval, region
+        return self._stability_loop(
+            start,
+            frames,
+            prev_small,
+            last_change_time,
+            last_score,
+            timeout,
+            stable_time,
+            interval,
+            region,
         )
 
     def _capture_initial_frame(  # noqa: E501

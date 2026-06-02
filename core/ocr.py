@@ -290,9 +290,10 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
         return True
 
     lines = [ln for ln in text.splitlines() if ln.strip()]
-    # pragma: no cover  # unreachable: non-empty text.strip() implies a non-empty line
+    # pragma: no cover  # unreachable: non-empty text implies non-empty line
     if not lines:
-        return True  # pragma: no cover  # unreachable: non-empty text.strip() implies a non-empty line
+        # pragma: no cover  # unreachable: non-empty text implies non-empty line
+        return True
 
     total_alnum = sum(c.isalnum() for c in text)
     avg_alnum_per_line = total_alnum / len(lines)

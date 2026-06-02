@@ -160,7 +160,10 @@ class RecorderPanel(ctk.CTkFrame):
     def _build_save_form_fields(
         self, dlg: Any, script: Any, pad: dict,
     ) -> tuple[Any, Any, Any]:
-        """Add Name/Description/Tags fields to *dlg*. Returns (name_entry, desc_entry, tags_entry)."""
+        """Add Name/Description/Tags fields to *dlg*.
+
+        Returns (name_entry, desc_entry, tags_entry).
+        """
         ctk.CTkLabel(dlg, text="Name:", font=("Segoe UI", 12)).grid(row=0, column=0, **pad)
         name_e = ctk.CTkEntry(dlg, font=("Segoe UI", 12))
         name_e.insert(0, script.name)

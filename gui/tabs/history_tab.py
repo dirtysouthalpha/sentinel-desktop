@@ -322,7 +322,10 @@ class HistoryTab(ctk.CTkFrame):
             action = step.get("action", "unknown")
             ok = step_data.get("ok", True)
             ts = step_data.get("timestamp", "")[11:19]
-            color = self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
+            if ok:
+                color = self._t("status_running", "#95E400")
+            else:
+                color = self._t("status_error", "#ff3b3b")
             icon = "✓" if ok else "✗"
             row = ctk.CTkFrame(self.timeline, fg_color="transparent", height=28)
             row.pack(fill="x", pady=1)

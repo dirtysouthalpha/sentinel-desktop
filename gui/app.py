@@ -154,7 +154,12 @@ class SentinelApp:
 
         self._build_main_area_into(tab_dashboard)
         self._safe_load_tab(tab_scripts, "gui.tabs.scripts_tab", "ScriptsTab", "scripts_tab")
-        self._safe_load_tab(tab_workflows, "gui.tabs.workflows_tab", "WorkflowsTab", "workflows_tab")
+        self._safe_load_tab(
+            tab_workflows,
+            "gui.tabs.workflows_tab",
+            "WorkflowsTab",
+            "workflows_tab",
+        )
         self._safe_load_tab(tab_history, "gui.tabs.history_tab", "HistoryTab", "history_tab")
         self._safe_load_tab(tab_settings, "gui.tabs.settings_tab", "SettingsTab", "settings_tab")
 
@@ -231,7 +236,10 @@ class SentinelApp:
     # ── Input ───────────────────────────────────────────────────────────
 
     def _build_input(self) -> None:
-        """Build multi-line input area with quick-action chips, recent-prompts dropdown, and run/stop buttons."""
+        """Build multi-line input area with quick-action chips and run/stop buttons.
+
+        Includes quick-action chips, recent prompts dropdown, and run/stop buttons.
+        """
         input_frame = ctk.CTkFrame(self.root)
         input_frame.pack(fill="x", padx=8, pady=(4, 8))
         input_frame.grid_columnconfigure(0, weight=1)
@@ -1054,7 +1062,11 @@ class SettingsWindow:
             ("autonomous_var", "autonomous", "Fully autonomous (no approval prompts)"),
             ("dry_run_var", "dry_run", "Dry-run (log actions, don't execute)"),
             ("stealth_var", "stealth_input", "Stealth input (don't move my mouse/keyboard)"),
-            ("tray_var", "minimize_to_tray", "Minimize to system tray (closes to tray instead of taskbar)"),
+            (
+                "tray_var",
+                "minimize_to_tray",
+                "Minimize to system tray (closes to tray instead of taskbar)",
+            ),
             ("start_tray_var", "start_in_tray", "Start hidden in tray (background-only launch)"),
         ]
         for attr, cfg_key, label in toggles:

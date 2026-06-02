@@ -579,7 +579,10 @@ class LLMClient:
     def _classify_error_response(
         resp: Any, provider_label: str, attempt: int, max_retries: int,
     ) -> tuple[int, str]:
-        """Handle a ≥400 HTTP response. Raises for non-retriable; returns (status, body) for retriable."""
+        """Handle ≥400 HTTP response.
+
+        Raises for non-retriable errors; returns (status, body) for retriable.
+        """
         body = (resp.text or "")[:500]
         if resp.status_code not in RETRY_STATUSES:
             raise LLMError(_friendly_http_error(resp.status_code, body))

@@ -336,7 +336,11 @@ TEMPLATES: dict[str, dict] = {
             {"action": "click", "name": "Create new user", "params": {"text": "New User"}},
             {"action": "type_text", "name": "Enter name", "params": {"text": "{full_name}"}},
             {"action": "type_text", "name": "Enter username", "params": {"text": "{username}"}},
-            {"action": "type_text", "name": "Set temp password", "params": {"text": "{temp_password}"}},
+            {
+                "action": "type_text",
+                "name": "Set temp password",
+                "params": {"text": "{temp_password}"},
+            },
             {"action": "click", "name": "Create", "params": {"text": "OK"}},
             {"action": "launch_app", "name": "Open email admin", "params": {"app": "chrome", "url": "https://admin.microsoft.com"}},
         ],

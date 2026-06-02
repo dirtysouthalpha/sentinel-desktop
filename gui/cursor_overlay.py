@@ -228,7 +228,13 @@ class CursorOverlay:
             t = i / max(pulse_steps, 1)
             scale = 1.0 + 0.5 * math.sin(t * math.pi)
             r = _RING_RADIUS * scale
-            self._canvas.coords(self._ring_id, target_x - r, target_y - r, target_x + r, target_y + r)
+            self._canvas.coords(
+                self._ring_id,
+                target_x - r,
+                target_y - r,
+                target_x + r,
+                target_y + r,
+            )
             self._root.update_idletasks()
             time.sleep(1.0 / _STEPS_PER_SECOND)
         return True

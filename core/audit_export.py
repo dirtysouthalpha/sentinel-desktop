@@ -470,8 +470,18 @@ class AuditExporter:
     border-radius: 6px;
     padding: 0.75rem 1rem;
   }
-  .meta-card .label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  .meta-card .value { color: var(--text); font-size: 0.95rem; margin-top: 0.15rem; word-break: break-word; }"""
+  .meta-card .label {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .meta-card .value {
+    color: var(--text);
+    font-size: 0.95rem;
+    margin-top: 0.15rem;
+    word-break: break-word;
+  }"""
 
     @staticmethod
     def _css_summary_card_styles() -> str:
@@ -495,8 +505,20 @@ class AuditExporter:
     @staticmethod
     def _css_cell_styles() -> str:
         """Return CSS styles for table cells."""
-        return """  .result-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .params-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; color: var(--text-dim); }"""
+        return """  .result-cell {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .params-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }"""
 
     @staticmethod
     def _css_action_list_styles() -> str:

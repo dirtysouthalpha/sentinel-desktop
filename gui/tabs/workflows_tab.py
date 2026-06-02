@@ -284,8 +284,17 @@ class WorkflowsTab(ctk.CTkFrame):
         ).grid(row=0, column=1, sticky="ew", padx=4, pady=4)
         return stype
 
-    def _render_step_connector(self, idx: int, step: dict[str, Any], stype: str, last: bool) -> None:
-        """Render the connector row below a step card (branch arrows or pipe)."""
+    def _render_step_connector(
+        self,
+        idx: int,
+        step: dict[str, Any],
+        stype: str,
+        last: bool,
+    ) -> None:
+        """Render the connector row below a step card.
+
+        Shows branch arrows for conditions or pipe for sequential steps.
+        """
         t = self._t
         if stype == "condition":
             bf = ctk.CTkFrame(self._steps_frame, fg_color="transparent", height=24)
