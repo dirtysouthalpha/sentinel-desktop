@@ -3,6 +3,7 @@
 # import time. The test executes only the routing logic that doesn't call
 # into pyautogui.
 
+import asyncio
 import pytest
 
 import core.desktop as desktop_mod
@@ -329,3 +330,61 @@ def test_sequential_actions_log_in_order(fake_executor):
     for i, entry in enumerate(log):
         assert entry["action"] == "click"
         assert entry["success"] is True
+
+
+# ---- Approval callback timeout handling ----
+
+def test_approval_callback_timeout_returns_error(fake_executor):
+    """Test that approval callback timeout is handled gracefully."""
+    import asyncio
+
+    async def never_approve(_action):
+        """Simulate a user that never responds."""
+        await asyncio.sleep(600)  # Sleep longer than timeout
+        return True
+
+    async def run_timeout_test():
+        ex = fake_executor(approval_callback=never_approve)
+        # Monkey patch the timeout to be very short for testing
+        from core import action_executor
+        original_timeout = action_executor.APPROVAL_CALLBACK_TIMEOUT
+        action_executor.APPROVAL_CALLBACK_TIMEOUT = 0.1  # 100ms
+
+        try:
+            out = await ex.execute({"action": "click", "x": 1, "y": 2})
+            return out
+        finally:
+            action_executor.APPROVAL_CALLBACK_TIMEOUT = original_timeout
+
+    out = asyncio.run(run_timeout_test())
+    assert out["success"] is False
+    assert out.get("error") == "timeout"
+    assert "approval timed out" in out.get("output", "").lower()
+
+
+def test_approval_callback_rejection_returns_error(fake_executor):
+    """Test that rejected approval returns proper error."""
+    async def always_reject(_action):
+        return False
+
+    async def run_rejection_test():
+        ex = fake_executor(approval_callback=always_reject)
+        return await ex.execute({"action": "click", "x": 1, "y": 2})
+
+    out = asyncio.run(run_rejection_test())
+    assert out["success"] is False
+    assert out.get("error") == "rejected"
+    assert "rejected" in out.get("output", "").lower()
+
+
+def test_approval_callback_acceptance_allows_action(fake_executor):
+    """Test that approved actions execute normally."""
+    async def always_approve(_action):
+        return True
+
+    async def run_approval_test():
+        ex = fake_executor(approval_callback=always_approve)
+        return await ex.execute({"action": "click", "x": 1, "y": 2})
+
+    out = asyncio.run(run_approval_test())
+    assert out["success"] is True
