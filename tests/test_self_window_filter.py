@@ -6,7 +6,7 @@ from core import window_manager as wm
 def test_is_self_window_recognises_sentinel():
     assert wm._is_self_window("Sentinel Desktop v2")
     assert wm._is_self_window("Sentinel Desktop - 1.0")
-    assert not wm._is_self_window("Mail - Brandon Goolsby - Outlook")
+    assert not wm._is_self_window("Mail - Jane Doe - Outlook")
     assert not wm._is_self_window("")
     assert not wm._is_self_window("Notepad")
 

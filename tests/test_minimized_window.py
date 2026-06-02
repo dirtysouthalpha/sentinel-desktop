@@ -34,7 +34,7 @@ def test_get_window_rect_uses_list_windows(monkeypatch):
             "hwnd": 1,
         },
         {
-            "title": "Mail - Brandon Goolsby - Outlook",
+            "title": "Mail - Jane Doe - Outlook",
             "x": 100,
             "y": 100,
             "width": 1800,
