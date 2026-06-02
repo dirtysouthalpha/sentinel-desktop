@@ -43,6 +43,7 @@ MAX_COLLECTION_STRING_LENGTH = 500
 # Timeout constants
 DEFAULT_ACTION_TIMEOUT = 60.0
 EXECUTE_WITH_LOGGING_TIMEOUT = 65.0
+APPROVAL_CALLBACK_TIMEOUT = 300.0  # 5 minutes for user approval
 
 # Actions that *change state* on the user's machine. In dry-run mode these
 # are logged instead of executed. Read-only actions (screenshot, find_image,
@@ -159,7 +160,16 @@ class ActionExecutor:
         params = {k: v for k, v in action.items() if k != "action"}
 
         if self.approval_callback:
-            approved = await self.approval_callback(action)
+            try:
+                approved = await asyncio.wait_for(
+                    self.approval_callback(action),
+                    timeout=APPROVAL_CALLBACK_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                error_msg = "Action approval timed out"
+                result = {"success": False, "output": error_msg, "error": "timeout"}
+                self._log_entry(action_type, params, result)
+                return result
             if not approved:
                 error_msg = "Action rejected by user"
                 result = {"success": False, "output": error_msg, "error": "rejected"}
