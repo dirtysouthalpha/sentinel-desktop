@@ -425,6 +425,38 @@ def _extract_model_ids(data: object, provider_key: str) -> list[str] | None:
     return sorted(ids)
 
 
+def _build_models_request(
+    provider: dict[str, Any],
+    provider_key: str,
+    api_key: str,
+    custom_url: str | None,
+) -> tuple[str | None, dict[str, str]]:
+    """Build the URL and headers for a models endpoint request.
+
+    Args:
+        provider: Provider configuration dict.
+        provider_key: Provider key for logging.
+        api_key: API key for authentication.
+        custom_url: Optional custom URL override.
+
+    Returns:
+        (url, headers) tuple, or (None, {}) if URL cannot be built.
+    """
+    base_url = get_base_url(provider_key, custom_url)
+    if not base_url:
+        logger.warning("fetch_models: no base_url for %r", provider_key)
+        return None, {}
+
+    models_endpoint = provider.get("models_endpoint")
+    url = f"{base_url}{models_endpoint}"
+
+    headers: dict[str, str] = {}
+    if not provider.get("no_auth") and api_key:
+        headers[provider["auth_header"]] = f"{provider['auth_prefix']}{api_key}"
+
+    return url, headers
+
+
 def fetch_models(
     provider_key: str,
     api_key: str = "",
@@ -459,16 +491,9 @@ def fetch_models(
     if models_endpoint is None:
         return sorted(provider.get("manual_models", []))
 
-    # Resolve base URL.
-    base_url = get_base_url(provider_key, custom_url)
-    if not base_url:
-        logger.warning("fetch_models: no base_url for %r", provider_key)
+    url, headers = _build_models_request(provider, provider_key, api_key, custom_url)
+    if not url:
         return []
-
-    url = f"{base_url}{models_endpoint}"
-    headers: dict[str, str] = {}
-    if not provider.get("no_auth") and api_key:
-        headers[provider["auth_header"]] = f"{provider['auth_prefix']}{api_key}"
 
     data = _fetch_models_raw(url, headers, provider_key)
     if data is None:
