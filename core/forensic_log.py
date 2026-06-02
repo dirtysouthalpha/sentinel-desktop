@@ -174,6 +174,48 @@ class ForensicLog:
     # Step logging
     # ------------------------------------------------------------------
 
+    def _build_step_dict(
+        self,
+        step_id: str,
+        now: str,
+        step_num: int,
+        action_type: str,
+        target: str,
+        params: dict[str, Any],
+        result: str,
+        screenshot_path: str | None,
+    ) -> dict[str, Any]:
+        """Build a step dictionary for logging.
+
+        Args:
+            step_id: Unique step identifier.
+            now: Current timestamp in ISO format.
+            step_num: Step number (1-indexed).
+            action_type: Type of action performed.
+            target: Action target (element, coordinates, etc.).
+            params: Action parameters (sensitive values will be redacted).
+            result: Step result status.
+            screenshot_path: Optional screenshot path.
+
+        Returns:
+            Complete step dictionary with all metadata.
+        """
+        duration_ms = self._compute_step_duration(now)
+        event_type = self._infer_event_type(result)
+        return {
+            "step_id": step_id,
+            "run_id": self._run.get("run_id", ""),
+            "step_num": step_num,
+            "timestamp": now,
+            "action_type": action_type,
+            "target": target,
+            "params": _redact_params(params),
+            "result": result,
+            "screenshot_path": screenshot_path,
+            "duration_ms": duration_ms,
+            "event_type": event_type,
+        }
+
     def log_step(
         self,
         step_num: int,
@@ -201,21 +243,9 @@ class ForensicLog:
         now = _iso_now()
 
         with self._lock:
-            duration_ms = self._compute_step_duration(now)
-            event_type = self._infer_event_type(result)
-            step: dict[str, Any] = {
-                "step_id": step_id,
-                "run_id": self._run.get("run_id", ""),
-                "step_num": step_num,
-                "timestamp": now,
-                "action_type": action_type,
-                "target": target,
-                "params": _redact_params(params),
-                "result": result,
-                "screenshot_path": screenshot_path,
-                "duration_ms": duration_ms,
-                "event_type": event_type,
-            }
+            step = self._build_step_dict(
+                step_id, now, step_num, action_type, target, params, result, screenshot_path
+            )
             self._steps.append(step)
             self._last_step_time = now
 
