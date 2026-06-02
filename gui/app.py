@@ -96,7 +96,7 @@ class SentinelApp:
         header.pack_propagate(False)
 
         ctk.CTkLabel(header, text="⬡ Sentinel Desktop", font=("Segoe UI", 16, "bold")).pack(
-            side="left", padx=12
+            side="left", padx=12,
         )
         self.status_label = ctk.CTkLabel(
             header, text="● IDLE", font=("Segoe UI", 12),
@@ -114,7 +114,7 @@ class SentinelApp:
         )
         self.provider_label.pack(side="right", padx=12)
         ctk.CTkButton(header, text="⚙", width=32, height=32, command=self._open_settings).pack(
-            side="right", padx=4
+            side="right", padx=4,
         )
 
     def _build_mode_badges(self, header: Any) -> None:
@@ -200,7 +200,7 @@ class SentinelApp:
         right.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(right, text="Live View", font=("Segoe UI", 12, "bold")).grid(
-            row=0, column=0, sticky="w", padx=8, pady=4
+            row=0, column=0, sticky="w", padx=8, pady=4,
         )
 
         self.screenshot_label = ctk.CTkLabel(right, text="No screenshot")
@@ -410,10 +410,10 @@ class SentinelApp:
         )
         self.engine.on_step_callback = self._on_engine_step
         self.status_label.configure(
-            text="● RUNNING", text_color=self._t("status_running", "#95E400")
+            text="● RUNNING", text_color=self._t("status_running", "#95E400"),
         )
         self.engine_thread = threading.Thread(
-            target=lambda: self._agent_run_thread(goal), daemon=True
+            target=lambda: self._agent_run_thread(goal), daemon=True,
         )
         self.engine_thread.start()
 
@@ -789,7 +789,7 @@ class SentinelApp:
             # Combine side by side
             total_w = before_img.width + after_img.width + 4
             combined = Image.new(
-                "RGB", (total_w, max(before_img.height, after_img.height) + 20), (30, 30, 30)
+                "RGB", (total_w, max(before_img.height, after_img.height) + 20), (30, 30, 30),
             )
             combined.paste(before_img, (0, 0))
             combined.paste(after_img, (before_img.width + 4, 0))
@@ -883,7 +883,7 @@ class SettingsWindow:
     """Settings modal for provider/API key configuration."""
 
     def __init__(
-        self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None
+        self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None,
     ) -> None:
         """Initialize the settings modal.
 
@@ -918,7 +918,7 @@ class SettingsWindow:
         from core.provider_registry import PROVIDERS, get_provider_names
 
         ctk.CTkLabel(self.win, text="Provider", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(20, 4)
+            anchor="w", padx=20, pady=(20, 4),
         )
         self.provider_var = ctk.StringVar(value=self.cfg.get("provider", "openai"))
         self.provider_menu = ctk.CTkOptionMenu(
@@ -928,7 +928,7 @@ class SettingsWindow:
         self.provider_menu.pack(fill="x", padx=20, pady=4)
 
         ctk.CTkLabel(self.win, text="Base URL", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
+            anchor="w", padx=20, pady=(12, 4),
         )
         url_frame = ctk.CTkFrame(self.win)
         url_frame.pack(fill="x", padx=20, pady=4)
@@ -955,7 +955,7 @@ class SettingsWindow:
     def _build_credentials_section(self) -> None:
         """Build API key and model name entry fields."""
         ctk.CTkLabel(self.win, text="API Key", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
+            anchor="w", padx=20, pady=(12, 4),
         )
         self.api_key_entry = ctk.CTkEntry(
             self.win, show="•", height=36, placeholder_text="Paste your API key…",
@@ -965,7 +965,7 @@ class SettingsWindow:
             self.api_key_entry.insert(0, self.cfg["api_key"])
 
         ctk.CTkLabel(self.win, text="Model", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
+            anchor="w", padx=20, pady=(12, 4),
         )
         model_frame = ctk.CTkFrame(self.win)
         model_frame.pack(fill="x", padx=20, pady=4)
@@ -983,7 +983,7 @@ class SettingsWindow:
     def _build_theme_section(self) -> None:
         """Build the theme dropdown."""
         ctk.CTkLabel(self.win, text="Theme", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
+            anchor="w", padx=20, pady=(12, 4),
         )
         self.theme_var = ctk.StringVar(value=self.cfg.get("theme", "sentinel"))
         ctk.CTkOptionMenu(
@@ -1014,7 +1014,7 @@ class SettingsWindow:
         from core.screenshot import list_monitors
 
         ctk.CTkLabel(self.win, text="Monitor", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
+            anchor="w", padx=20, pady=(12, 4),
         )
         monitor_choices: list[str] = ["auto — monitor with focused window (recommended)"]
         try:
@@ -1048,7 +1048,7 @@ class SettingsWindow:
             return (self.app.current_theme.get(key, fb)) if self.app else fb
 
         ctk.CTkLabel(self.win, text="Run mode", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
+            anchor="w", padx=20, pady=(12, 4),
         )
         toggles = [
             ("autonomous_var", "autonomous", "Fully autonomous (no approval prompts)"),
@@ -1080,7 +1080,7 @@ class SettingsWindow:
     def _build_step_budget_section(self) -> None:
         """Build the step-budget entry field."""
         ctk.CTkLabel(self.win, text="Step Budget", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
+            anchor="w", padx=20, pady=(12, 4),
         )
         self.steps_entry = ctk.CTkEntry(self.win, height=36, placeholder_text="100")
         self.steps_entry.pack(fill="x", padx=20, pady=4)
@@ -1118,7 +1118,7 @@ class SettingsWindow:
             self.model_var.set(models[0] if len(models) == 1 else "")
             # Show first few in a tooltip-like message
             self.model_entry.configure(
-                placeholder_text=f"Found {len(models)} models: {', '.join(models[:5])}"
+                placeholder_text=f"Found {len(models)} models: {', '.join(models[:5])}",
             )
         else:
             self.model_var.set("")

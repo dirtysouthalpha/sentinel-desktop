@@ -561,7 +561,7 @@ class PopupHandler:
         return self._apply_cooldown_and_dismiss(result)
 
     def _prepare_detection_inputs(
-        self, screenshot: Image.Image | None
+        self, screenshot: Image.Image | None,
     ) -> tuple[str, str] | None:
         """Capture screenshot (if needed), OCR it, and extract title/body text.
 

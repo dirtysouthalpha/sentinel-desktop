@@ -107,7 +107,7 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
                         "name": entry.name,
                         "is_dir": entry.is_dir(),
                         "size": entry.stat().st_size if entry.is_file() else 0,
-                    }
+                    },
                 )
             except OSError as e:
                 logger.debug("Skipping directory entry %s: %s", entry.name, e)

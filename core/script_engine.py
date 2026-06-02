@@ -100,7 +100,7 @@ def _extract_required_params(script: dict[str, Any]) -> set[str]:
 
 
 def _validate_script(
-    script: dict[str, Any], params: dict[str, Any] | None, executor: Any
+    script: dict[str, Any], params: dict[str, Any] | None, executor: Any,
 ) -> list[str]:
     """Return a list of validation error strings (empty == valid)."""
     errors: list[str] = []
@@ -177,7 +177,7 @@ class ScriptEngine:
         """Set error policy: ``'stop'``, ``'skip'``, or ``'retry_once'``."""
         if policy not in ("stop", "skip", "retry_once"):
             raise ValueError(
-                f"Invalid on_error policy '{policy}'; expected 'stop', 'skip', or 'retry_once'."
+                f"Invalid on_error policy '{policy}'; expected 'stop', 'skip', or 'retry_once'.",
             )
         self._on_error = policy
 

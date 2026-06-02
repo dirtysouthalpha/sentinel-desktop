@@ -522,7 +522,7 @@ class LLMClient:
                 if resp.status_code < HTTP_BAD_REQUEST:
                     return self._parse_response_json(resp, provider_label)
                 last_status, last_body = self._classify_error_response(
-                    resp, provider_label, attempt, max_retries
+                    resp, provider_label, attempt, max_retries,
                 )
 
             if attempt >= max_retries:
@@ -536,7 +536,7 @@ class LLMClient:
 
     @staticmethod
     def _log_request_exc(
-        provider_label: str, exc: Exception, attempt: int, max_retries: int
+        provider_label: str, exc: Exception, attempt: int, max_retries: int,
     ) -> None:
         """Log a network-level request failure with attempt context."""
         logger.warning(
@@ -561,10 +561,10 @@ class LLMClient:
             raise LLMError(_friendly_http_error(last_status, last_body))
         if last_exc is not None:
             raise LLMError(
-                f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}"
+                f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}",
             ) from last_exc
         raise LLMError(
-            f"{provider_label}: request failed for unknown reasons ({max_retries + 1} attempts)"
+            f"{provider_label}: request failed for unknown reasons ({max_retries + 1} attempts)",
         )
 
     @staticmethod
@@ -577,7 +577,7 @@ class LLMClient:
 
     @staticmethod
     def _classify_error_response(
-        resp: Any, provider_label: str, attempt: int, max_retries: int
+        resp: Any, provider_label: str, attempt: int, max_retries: int,
     ) -> tuple[int, str]:
         """Handle a ≥400 HTTP response. Raises for non-retriable; returns (status, body) for retriable."""
         body = (resp.text or "")[:500]
@@ -635,7 +635,7 @@ class LLMClient:
                             "properties": {},
                         },
                     ),
-                }
+                },
             )
         return anthropic_tools
 

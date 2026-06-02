@@ -119,7 +119,7 @@ class PluginAPI:
     # -- registration helpers ------------------------------------------------
 
     def register_action(
-        self, name: str, handler: Callable[..., Any], description: str = ""
+        self, name: str, handler: Callable[..., Any], description: str = "",
     ) -> None:
         """Register a named action that the agent can invoke.
 
@@ -142,11 +142,11 @@ class PluginAPI:
                 handler=handler,
                 description=description,
                 plugin_name=self._plugin_name,
-            )
+            ),
         )
 
     def register_command(
-        self, name: str, handler: Callable[..., Any], keywords: Sequence[str] | None = None
+        self, name: str, handler: Callable[..., Any], keywords: Sequence[str] | None = None,
     ) -> None:
         """Register a command-palette / voice command.
 
@@ -168,7 +168,7 @@ class PluginAPI:
                 handler=handler,
                 keywords=list(keywords or []),
                 plugin_name=self._plugin_name,
-            )
+            ),
         )
 
     def register_setting(self, key: str, default: Any = None, label: str = "") -> None:
@@ -190,7 +190,7 @@ class PluginAPI:
                 default=default,
                 label=label,
                 plugin_name=self._plugin_name,
-            )
+            ),
         )
 
     # -- accessor helpers ----------------------------------------------------
@@ -305,7 +305,7 @@ class PluginLoader:
                         "loaded": False,
                         "error": str(exc),
                         "filepath": str(filepath),
-                    }
+                    },
                 )
 
         return results
@@ -380,7 +380,7 @@ class PluginLoader:
         if missing:
             sys.modules.pop(module_name, None)
             raise AttributeError(
-                f"Plugin {filepath.name} is missing required attributes: " + ", ".join(missing)
+                f"Plugin {filepath.name} is missing required attributes: " + ", ".join(missing),
             )
         if not hasattr(module, "register") or not callable(module.register):
             sys.modules.pop(module_name, None)

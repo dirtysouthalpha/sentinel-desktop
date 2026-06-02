@@ -288,7 +288,7 @@ class AgentPool:
                 raise KeyError(f"No such session: {session_id}")
             if session.status not in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED):
                 raise ValueError(
-                    f"Session {session_id} has status '{session.status}', not a terminal state"
+                    f"Session {session_id} has status '{session.status}', not a terminal state",
                 )
             return session.to_dict()
 
@@ -412,7 +412,7 @@ class AgentPool:
         )
 
     def _mark_session_failed(
-        self, session: AgentSession, error: str, error_type: str
+        self, session: AgentSession, error: str, error_type: str,
     ) -> None:
         """Thread-safe helper to mark a session as failed with error metadata."""
         with self._lock:
@@ -492,7 +492,7 @@ class AgentPool:
             from core.engine import AgentEngine
         except ImportError as exc:
             logger.exception(
-                "Worker: failed to import engine/virtual_desktop for session %s", session_id
+                "Worker: failed to import engine/virtual_desktop for session %s", session_id,
             )
             with self._lock:
                 session = self._sessions.get(session_id)

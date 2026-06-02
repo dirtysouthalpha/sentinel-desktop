@@ -273,7 +273,7 @@ class ActionRecorder:
                         "description": data.get("description", ""),
                         "tags": data.get("tags", []),
                         "path": str(filepath),
-                    }
+                    },
                 )
             except (json.JSONDecodeError, OSError) as exc:
                 logger.warning("Skipping unreadable script %s: %s", filepath, exc)
@@ -415,7 +415,7 @@ class ActionRecorder:
                             "type": "string",
                             "default": text,
                             "prompt": f"Enter value for '{param_name}'",
-                        }
+                        },
                     )
         return parameters
 
@@ -435,6 +435,6 @@ class ActionRecorder:
                     "description": step.get("description", ""),
                     "wait_after_ms": step.get("wait_after_ms", 500),
                     "screenshot_hash": step.get("screenshot_hash", ""),
-                }
+                },
             )
         return out

@@ -189,7 +189,7 @@ class CheckpointManager:
         }
 
     def _persist_checkpoint(
-        self, record: dict[str, Any], checkpoint_id: str, step_num: int, status: str
+        self, record: dict[str, Any], checkpoint_id: str, step_num: int, status: str,
     ) -> bool:
         """Write checkpoint record to disk. Returns True on success."""
         dest = self._dir / f"{checkpoint_id}.json"
@@ -293,7 +293,7 @@ class CheckpointManager:
                     "step_num": record.get("step_num", 0),
                     "timestamp": record.get("timestamp", ""),
                     "status": record.get("status", "unknown"),
-                }
+                },
             )
 
         return result

@@ -284,7 +284,7 @@ class SystemTrayIcon:
                 pystray.MenuItem(
                     action_info["label"],
                     lambda _icon, _item, sp=script_path: self._run_it_script(sp),
-                )
+                ),
             )
         return pystray.Menu(*it_items)
 

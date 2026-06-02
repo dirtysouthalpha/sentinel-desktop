@@ -141,7 +141,7 @@ def _text_timeline_lines(masked: list[dict[str, Any]]) -> list[str]:
                 str(entry.get("timestamp", "")),
                 entry.get("action", ""),
                 result_str,
-            )
+            ),
         )
     lines.append("")
     return lines
@@ -197,7 +197,7 @@ class AuditExporter:
             self._dir_ready = True
         except OSError:
             logger.exception(
-                "Failed to create output dir %s — all exports will fail", self.output_dir
+                "Failed to create output dir %s — all exports will fail", self.output_dir,
             )
 
     # ------------------------------------------------------------------
@@ -246,7 +246,7 @@ class AuditExporter:
             raise ValueError(_msg)
         if not self._dir_ready:
             raise OSError(
-                f"Output directory {self.output_dir!r} is not available — check permissions"
+                f"Output directory {self.output_dir!r} is not available — check permissions",
             )
         return handler(log, metadata)
 
@@ -577,7 +577,7 @@ class AuditExporter:
                 f'<td class="params-cell">{params_str}</td>'
                 f'<td class="result-cell">{result_display}</td>'
                 f"<td>{entry.get('duration', '')}s</td>"
-                f"</tr>"
+                f"</tr>",
             )
         return (
             "<h2>Step Timeline</h2>\n"

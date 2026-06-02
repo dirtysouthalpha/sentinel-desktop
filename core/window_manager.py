@@ -62,7 +62,7 @@ def list_windows() -> list[dict[str, Any]]:
                             "height": rect[3] - rect[1],
                             "is_focused": hwnd == win32gui.GetForegroundWindow(),
                             "hwnd": hwnd,
-                        }
+                        },
                     )
 
         try:
@@ -81,7 +81,7 @@ def list_windows() -> list[dict[str, Any]]:
                             "width": w.width,
                             "height": w.height,
                             "is_focused": w.isActive,
-                        }
+                        },
                     )
         except (OSError, RuntimeError) as e:
             logger.error("list_windows via pygetwindow failed: %s", e)

@@ -106,7 +106,7 @@ class _Indicator:
         _make_clickthrough(self.win)
 
     def _setup_window(
-        self, tk: Any, master: Any, w: int, h: int, x: int, y: int
+        self, tk: Any, master: Any, w: int, h: int, x: int, y: int,
     ) -> tuple[Any, Any]:
         """Create and position the transparent Toplevel window and its canvas."""
         win = tk.Toplevel(master)

@@ -28,7 +28,7 @@ class AppProfile:
             "launch_delay": 2.0,
             "action_delay": 0.3,
             "page_load_delay": 2.0,
-        }
+        },
     )
     known_controls: dict[str, str] = field(default_factory=dict)
     menu_paths: dict[str, list[str]] = field(default_factory=dict)

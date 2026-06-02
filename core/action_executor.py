@@ -179,7 +179,7 @@ class ActionExecutor:
                 logger.debug("pre_action_callback failed: %s", exc)
 
     async def _dispatch_action_async(
-        self, action_type: str, params: dict[str, Any]
+        self, action_type: str, params: dict[str, Any],
     ) -> dict[str, Any]:
         """Dispatch *action_type* to its handler with a 60-second timeout."""
         handler = self._dispatch_table.get(action_type)
@@ -245,7 +245,7 @@ class ActionExecutor:
     # Action handlers (sync — wrapped by execute())
     # -------------------------------------------------------------------
     def _click(
-        self, *, x: int, y: int, button: str = "left", clicks: int = 1, **_
+        self, *, x: int, y: int, button: str = "left", clicks: int = 1, **_,
     ) -> dict[str, Any]:
         """Click at screen coordinates with optional stealth mode via PostMessage."""
         # Translate from captured-image coords to absolute screen coords for
@@ -508,7 +508,7 @@ class ActionExecutor:
         }
 
     def _list_controls(
-        self, *, window_title: str | None = None, max_results: int = 60, **_
+        self, *, window_title: str | None = None, max_results: int = 60, **_,
     ) -> dict:
         """List accessible controls in a window for the LLM to choose from."""
         try:
@@ -877,7 +877,7 @@ class ActionExecutor:
             }
 
     def _wait_for_stable(
-        self, *, timeout: float = 10, stable_time: float = 1.5, region: list | None = None, **_
+        self, *, timeout: float = 10, stable_time: float = 1.5, region: list | None = None, **_,
     ) -> dict:
         """Wait until the screen stops changing."""
         try:
@@ -886,7 +886,7 @@ class ActionExecutor:
             sw = SmartWait()
             region_tuple = tuple(region) if region else None
             result = sw.wait_for_stable(
-                timeout=float(timeout), stable_time=float(stable_time), region=region_tuple
+                timeout=float(timeout), stable_time=float(stable_time), region=region_tuple,
             )
             return {
                 "success": result.success,
@@ -906,7 +906,7 @@ class ActionExecutor:
             }
 
     def _wait_for_text(
-        self, *, text: str, timeout: float = 10, region: list | None = None, **_
+        self, *, text: str, timeout: float = 10, region: list | None = None, **_,
     ) -> dict:
         """Wait until specific text appears on screen via OCR."""
         try:

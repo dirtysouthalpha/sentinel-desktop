@@ -79,7 +79,7 @@ class ScriptsTab:
 
     def _build_left_panel(self) -> None:
         left = ctk.CTkFrame(
-            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
+            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5,
         )
         left.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 4))
         left.grid_columnconfigure(0, weight=1)
@@ -116,7 +116,7 @@ class ScriptsTab:
 
     def _build_right_panel(self) -> None:
         right = ctk.CTkFrame(
-            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
+            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5,
         )
         right.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(4, 0))
         right.grid_columnconfigure(0, weight=1)
@@ -302,7 +302,7 @@ class ScriptsTab:
         self._selected_path = path
 
         self._name_label.configure(
-            text=f"{script.get('icon', '📄')} {script.get('name', 'Untitled')}"
+            text=f"{script.get('icon', '📄')} {script.get('name', 'Untitled')}",
         )
         self._desc_label.configure(text=script.get("description", "No description."))
 
@@ -313,7 +313,7 @@ class ScriptsTab:
             with contextlib.suppress((ValueError, TypeError)):
                 created = datetime.fromisoformat(created).strftime("%Y-%m-%d")
         self._meta_label.configure(
-            text=f"{steps} step{'s' if steps != 1 else ''}  ·  {author}  ·  {created}"
+            text=f"{steps} step{'s' if steps != 1 else ''}  ·  {author}  ·  {created}",
         )
         self._build_param_fields(script)
 
@@ -383,7 +383,7 @@ class ScriptsTab:
                 lines = [
                     f"\n{mark} {word} — "
                     f"{result.steps_completed}/{result.steps_total} steps "
-                    f"in {result.duration_ms}ms"
+                    f"in {result.duration_ms}ms",
                 ]
                 if result.error:
                     lines.append(f"   Error: {result.error}")
@@ -396,13 +396,13 @@ class ScriptsTab:
                 self._append_output(f"\n❌ Exception: {exc}")
             finally:
                 self.app.root.after(
-                    0, lambda: self._run_btn.configure(state="normal", text="▶ Run Script")
+                    0, lambda: self._run_btn.configure(state="normal", text="▶ Run Script"),
                 )
 
         threading.Thread(target=_run, daemon=True).start()
 
     def _on_script_progress(
-        self, step_num: int, total: int, action: str, result: dict[str, Any]
+        self, step_num: int, total: int, action: str, result: dict[str, Any],
     ) -> None:
         """Progress callback from ScriptEngine (worker thread)."""
         ok = result.get("success", False)
@@ -410,7 +410,7 @@ class ScriptsTab:
         self.app.root.after(
             0,
             lambda: self._append_output(
-                f"   Step {step_num}/{total}: {'✓' if ok else '✗'} {action} — {out}"
+                f"   Step {step_num}/{total}: {'✓' if ok else '✗'} {action} — {out}",
             ),
         )
 

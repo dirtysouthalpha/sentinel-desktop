@@ -263,7 +263,7 @@ class WorkflowsTab(ctk.CTkFrame):
         summary = self._step_summary(step)
 
         card = ctk.CTkFrame(
-            self._steps_frame, corner_radius=3, fg_color=t("bg_input", "#111418")
+            self._steps_frame, corner_radius=3, fg_color=t("bg_input", "#111418"),
         )
         card.grid(row=idx * 2, column=0, sticky="ew", padx=4, pady=(4, 0))
         card.grid_columnconfigure(1, weight=1)

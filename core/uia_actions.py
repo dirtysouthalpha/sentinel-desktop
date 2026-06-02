@@ -278,7 +278,7 @@ class UIAActionPipeline:
         return self._select_menu_physical(segments, path)
 
     def _select_menu_uia(
-        self, segments: list[str], window_title: str | None
+        self, segments: list[str], window_title: str | None,
     ) -> bool:
         """Tier 1: UIA menu traversal. Returns True on success."""
         try:
@@ -300,7 +300,7 @@ class UIAActionPipeline:
             logger.debug("PostMessage select_menu_item failed: %s", exc)
 
     def _select_menu_physical(
-        self, segments: list[str], path: str
+        self, segments: list[str], path: str,
     ) -> dict[str, Any]:
         """Tier 3: pyautogui mnemonic navigation; returns failure result if unavailable."""
         try:

@@ -254,7 +254,7 @@ def list_monitors() -> list[dict[str, int | bool]]:
                         "height": m.get("height", 0),
                         "is_primary": i == 1,  # mss convention
                         "is_virtual": i == 0,  # union-of-all
-                    }
+                    },
                 )
             return out
         except (_ScreenShotError, OSError, RuntimeError) as exc:
@@ -274,7 +274,7 @@ def list_monitors() -> list[dict[str, int | bool]]:
             "height": h,
             "is_primary": True,
             "is_virtual": False,
-        }
+        },
     ]
 
 
@@ -501,7 +501,7 @@ def capture_to_base64(quality: int = 85, fmt: str = "PNG", monitor: int | None =
 
 
 def capture_region_to_base64(
-    x: int, y: int, w: int, h: int, quality: int = 85, fmt: str = "PNG"
+    x: int, y: int, w: int, h: int, quality: int = 85, fmt: str = "PNG",
 ) -> str:
     """Capture a screen region → base64 image (PNG by default)."""
     img = capture_region(x, y, w, h)
@@ -538,7 +538,7 @@ def base64_to_image(b64_str: str) -> Image.Image:
 
 
 def find_template(
-    template_path: str, confidence: float = 0.8, monitor: int | None = None
+    template_path: str, confidence: float = 0.8, monitor: int | None = None,
 ) -> tuple[int, int] | None:
     """Find a template image on screen. Returns center (x, y) or None."""
     try:

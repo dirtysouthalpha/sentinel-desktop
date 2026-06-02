@@ -307,7 +307,7 @@ class AgentEngine:
         self.logger = ForensicLog()
         self.checkpoint = CheckpointManager()
         self.gate = ApprovalGate(
-            enabled=bool(self.config.get("approval_mode") and not self.config.get("autonomous"))
+            enabled=bool(self.config.get("approval_mode") and not self.config.get("autonomous")),
         )
         if self.approval_callback:
             self.gate.set_callback(self.approval_callback)
@@ -402,7 +402,7 @@ class AgentEngine:
             from core.plugin_loader import PluginLoader
 
             self._plugin_loader = PluginLoader(
-                os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins"),
             )
             try:
                 loaded = self._plugin_loader.load_all()
@@ -512,7 +512,7 @@ class AgentEngine:
                 self.step += 1
                 logger.info("Step %d/%d", self.step, self.max_steps)
                 outcome, screenshot_b64 = self._run_one_step(
-                    provider, api_key, model, goal, messages, screenshot_b64
+                    provider, api_key, model, goal, messages, screenshot_b64,
                 )
                 if outcome == "abort":
                     break
@@ -630,7 +630,7 @@ class AgentEngine:
                 self.running = False
                 return action, "abort"
             messages.append(
-                {"role": "user", "content": "The user skipped that action. Try a different approach."}
+                {"role": "user", "content": "The user skipped that action. Try a different approach."},
             )
             return action, "continue"
         return approved_action or action, None
@@ -691,7 +691,7 @@ class AgentEngine:
         if not api_key and provider not in ("ollama", "lmstudio", "custom"):
             self.notes = [
                 "Error: API key not configured. Open ⚙ Settings, pick a "
-                "provider, paste your API key, and choose a model."
+                "provider, paste your API key, and choose a model.",
             ]
             self.running = False
             return {"steps": 0, "notes": self.notes, "error": "api_key_missing"}
@@ -702,7 +702,7 @@ class AgentEngine:
         if not model:
             self.notes = [
                 f"Error: No model selected for provider {provider!r}. "
-                "Open ⚙ Settings, click 🔍 Detect, or type a model name."
+                "Open ⚙ Settings, click 🔍 Detect, or type a model name.",
             ]
             self.running = False
             return {"steps": 0, "notes": self.notes, "error": "model_missing"}
@@ -862,7 +862,7 @@ class AgentEngine:
         return self._check_action_failure_threshold(error_msg, messages)
 
     def _check_action_failure_threshold(
-        self, error_msg: str, messages: list[dict[str, Any]]
+        self, error_msg: str, messages: list[dict[str, Any]],
     ) -> str | None:
         """Return "abort", "recover", or None based on current consecutive failure count."""
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
@@ -894,7 +894,7 @@ class AgentEngine:
                         "3) Trying keyboard navigation instead of mouse clicks, "
                         "4) Finishing with a note if the goal is partially achieved."
                     ),
-                }
+                },
             )
             return "recover"
 
@@ -919,7 +919,7 @@ class AgentEngine:
         if failure_type == "parse":
             self.notes.append(f"Step {self.step}: No valid action parsed from LLM response")
             messages.append(
-                {"role": "user", "content": "Please respond with a valid JSON action. Only JSON, no other text."}
+                {"role": "user", "content": "Please respond with a valid JSON action. Only JSON, no other text."},
             )
 
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
@@ -935,7 +935,7 @@ class AgentEngine:
         return "continue"
 
     def _inject_llm_recovery_prompt(
-        self, failure_type: str, messages: list[dict[str, Any]]
+        self, failure_type: str, messages: list[dict[str, Any]],
     ) -> None:
         """Append a strongly-worded recovery hint for repeated LLM or parse failures."""
         if failure_type == "llm_call":
@@ -1164,7 +1164,7 @@ class AgentEngine:
             )
             self.notes.append(
                 f"LLM error at step {self.step} "
-                f"(after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
+                f"(after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}",
             )
             return True
         return False
@@ -1368,7 +1368,7 @@ class AgentEngine:
         return "\n".join(lines)
 
     def _add_vision_message(
-        self, messages: list[dict[str, Any]], screenshot_b64: str, text: str
+        self, messages: list[dict[str, Any]], screenshot_b64: str, text: str,
     ) -> None:
         """Add a vision message (screenshot + text) to the conversation.
 
@@ -1394,7 +1394,7 @@ class AgentEngine:
                     # Marker so _prune_old_screenshots can find image messages.
                     "_sentinel_has_image": True,
                     "_sentinel_step": self.step,
-                }
+                },
             )
         else:
             messages.append(
@@ -1411,7 +1411,7 @@ class AgentEngine:
                     ],
                     "_sentinel_has_image": True,
                     "_sentinel_step": self.step,
-                }
+                },
             )
 
     def _prune_old_screenshots(self, messages: list[dict[str, Any]]) -> None:
@@ -1531,7 +1531,7 @@ class AgentEngine:
                 "params": {k: v for k, v in action.items() if k != "action"},
                 "result": result,
                 "timestamp": datetime.now().isoformat(),
-            }
+            },
         )
 
     def _log_step_result(self, step: int, result: dict[str, Any]) -> None:
@@ -1625,6 +1625,6 @@ def _clean_messages_for_api(messages: list[dict[str, Any]]) -> list[dict[str, An
             cleaned.append(m)
             continue
         cleaned.append(
-            {k: v for k, v in m.items() if not (isinstance(k, str) and k.startswith("_sentinel_"))}
+            {k: v for k, v in m.items() if not (isinstance(k, str) and k.startswith("_sentinel_"))},
         )
     return cleaned

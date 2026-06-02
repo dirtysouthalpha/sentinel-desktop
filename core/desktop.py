@@ -268,7 +268,7 @@ class DesktopController:
         return None
 
     def wait_for_image(
-        self, template_path: str, timeout: float = 30, confidence: float = 0.8, interval: float = 1
+        self, template_path: str, timeout: float = 30, confidence: float = 0.8, interval: float = 1,
     ) -> tuple[int, int] | None:
         """Poll the screen until *template_path* appears or *timeout* expires.
 
@@ -295,7 +295,7 @@ class DesktopController:
         return None
 
     def click_image(
-        self, template_path: str, confidence: float = 0.8, button: str = "left"
+        self, template_path: str, confidence: float = 0.8, button: str = "left",
     ) -> bool:
         """Find a template on screen and click it.
 

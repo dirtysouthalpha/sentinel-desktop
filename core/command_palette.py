@@ -428,7 +428,7 @@ def _run_powershell_dialog(app: Any) -> None:
                 app.root.after(
                     0,
                     lambda: app.chat_display.configure(
-                        state="normal", text_color=app._t("text_primary", "#e6edf3")
+                        state="normal", text_color=app._t("text_primary", "#e6edf3"),
                     ),
                 )
                 app.root.after(
@@ -440,13 +440,13 @@ def _run_powershell_dialog(app: Any) -> None:
             app.root.after(
                 0,
                 lambda: app.chat_display.configure(
-                    state="normal", text_color=app._t("text_primary", "#e6edf3")
+                    state="normal", text_color=app._t("text_primary", "#e6edf3"),
                 ),
             )
             app.root.after(
                 0,
                 lambda: app.chat_display.insert(
-                    "end", f"\n[PS] > {cmd}\n{result.stdout or result.stderr}\n"
+                    "end", f"\n[PS] > {cmd}\n{result.stdout or result.stderr}\n",
                 ),
             )
 
@@ -467,7 +467,7 @@ def _run_it_script(app: Any, script_name: str) -> None:
             err_msg = str(exc)
             if hasattr(app, "notes_label"):
                 app.root.after(
-                    0, lambda: app.notes_label.configure(text=f"Script error: {err_msg}")
+                    0, lambda: app.notes_label.configure(text=f"Script error: {err_msg}"),
                 )
             return
         if hasattr(app, "notes_label"):

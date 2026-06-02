@@ -197,7 +197,7 @@ class HistoryTab(ctk.CTkFrame):
                         "status": "completed",
                         "steps": [],
                         "notes": notes,
-                    }
+                    },
                 )
 
         if not self.sessions:
@@ -207,7 +207,7 @@ class HistoryTab(ctk.CTkFrame):
                     "start": datetime.now().isoformat(),
                     "status": "empty",
                     "steps": [],
-                }
+                },
             )
 
         self._apply_filter()
@@ -250,7 +250,7 @@ class HistoryTab(ctk.CTkFrame):
 
             status = session.get("status", "unknown")
             icon = {"completed": "✅", "failed": "❌", "running": "🔄", "empty": "📭"}.get(
-                status, "❓"
+                status, "❓",
             )
             steps = len(session.get("steps", []))
             start = session.get("start", "")[:19].replace("T", " ")
