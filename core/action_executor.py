@@ -280,53 +280,81 @@ class ActionExecutor:
                 "error": "click_failed",
             }
 
+    def _try_ocr_click(self, *, text: str, button: str, fuzzy: bool) -> dict | None:
+        """Attempt OCR-based click on text.
+
+        Returns None if OCR fails to find the text.
+        """
+        pos = ocr.find_text(text, fuzzy=fuzzy)
+        if pos is None:
+            return None
+
+        x, y = pos
+        sx = x + self.click_offset[0]
+        sy = y + self.click_offset[1]
+
+        if self.stealth and stealth_input.is_available():
+            if stealth_input.post_click(sx, sy, button=button):
+                return {
+                    "success": True,
+                    "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
+                    "position": [sx, sy],
+                }
+
+        self._desktop.click(sx, sy, button=button)
+        return {
+            "success": True,
+            "output": f"Clicked text {text!r} at ({sx}, {sy})",
+            "position": [sx, sy],
+        }
+
+    def _try_uia_click(self, *, text: str, button: str) -> dict | None:
+        """Attempt UIAutomation click by name as fallback.
+
+        Returns None if UIA fails to find the control.
+        """
+        try:
+            ui_pos = ui_tree.click_control(name=text, button=button)
+            if ui_pos is not None:
+                return {
+                    "success": True,
+                    "output": f"Clicked text {text!r} via UIAutomation at {ui_pos}",
+                    "position": list(ui_pos),
+                    "fallback": "uia",
+                }
+        except Exception as exc:
+            logger.debug("click_text UIA fallback failed: %s", exc)
+        return None
+
+    def _click_text_not_found_response(self, *, text: str) -> dict:
+        """Return error response when text is not found."""
+        return {
+            "success": False,
+            "output": f"Text {text!r} not found via OCR or UIAutomation",
+            "error": "text_not_found",
+            "hint": (
+                "Try list_controls() to find the element, or use "
+                "click(x,y) with coordinates from the screenshot"
+            ),
+        }
+
     def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_) -> dict:
         """OCR-backed click: locate visible text and click its centre.
 
         Self-healing: if OCR fails, tries UIAutomation click by name.
         """
         try:
-            pos = ocr.find_text(text, fuzzy=fuzzy)
-            if pos is not None:
-                x, y = pos
-                sx = x + self.click_offset[0]
-                sy = y + self.click_offset[1]
-                if self.stealth and stealth_input.is_available():
-                    if stealth_input.post_click(sx, sy, button=button):
-                        return {
-                            "success": True,
-                            "output": f"Clicked text {text!r} at ({sx}, {sy}) — stealth",
-                            "position": [sx, sy],
-                        }
-                self._desktop.click(sx, sy, button=button)
-                return {
-                    "success": True,
-                    "output": f"Clicked text {text!r} at ({sx}, {sy})",
-                    "position": [sx, sy],
-                }
+            # Try OCR-based click
+            ocr_result = self._try_ocr_click(text=text, button=button, fuzzy=fuzzy)
+            if ocr_result is not None:
+                return ocr_result
 
-            # Fallback 1: UIAutomation click by name
-            try:
-                ui_pos = ui_tree.click_control(name=text, button=button)
-                if ui_pos is not None:
-                    return {
-                        "success": True,
-                        "output": f"Clicked text {text!r} via UIAutomation at {ui_pos}",
-                        "position": list(ui_pos),
-                        "fallback": "uia",
-                    }
-            except Exception as exc:
-                logger.debug("click_text UIA fallback failed: %s", exc)
+            # Try UIAutomation fallback
+            uia_result = self._try_uia_click(text=text, button=button)
+            if uia_result is not None:
+                return uia_result
 
-            return {
-                "success": False,
-                "output": f"Text {text!r} not found via OCR or UIAutomation",
-                "error": "text_not_found",
-                "hint": (
-                    "Try list_controls() to find the element, or use "
-                    "click(x,y) with coordinates from the screenshot"
-                ),
-            }
+            return self._click_text_not_found_response(text=text)
         except Exception as exc:
             return {
                 "success": False,

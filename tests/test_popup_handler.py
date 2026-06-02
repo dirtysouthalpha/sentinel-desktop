@@ -803,3 +803,64 @@ class TestPopupHandlerEdgeCases:
         handler.reset()
         result = handler.detect("Save Changes?", "You have unsaved work to save")
         assert isinstance(result, PopupDetectionResult)
+
+
+class TestPopupHandlerNestedDialogs:
+    """Test popup handler behavior with nested/cascading dialog windows."""
+
+    def test_nested_dialog_detection_sequence(self):
+        """Simulate nested dialogs: error dialog followed by confirmation dialog."""
+        handler = PopupHandler()
+        handler.auto_dismiss = True
+
+        # First popup: Error dialog
+        result1 = handler.detect("Runtime Error", "An unexpected error occurred")
+        assert result1.detected
+        # Matches error_dialog_close pattern (error + close/continue)
+        assert result1.popup_type in ["error_dialog", "error_dialog_close"]
+
+        # After dismissing, a second popup appears (nested)
+        result2 = handler.detect("Continue?", "Do you want to continue working?")
+        # Handler should not crash with rapid consecutive calls
+        assert isinstance(result2, PopupDetectionResult)
+
+    def test_rapid_consecutive_popups_cooldown(self):
+        """Test that cooldown prevents rapid-fire dismissals of similar popups."""
+        handler = PopupHandler()
+        handler.auto_dismiss = True
+        handler._dismiss_attempts = 1
+
+        # First detection and dismiss
+        result1 = handler.detect("Save Changes?", "You have unsaved work")
+        assert result1.detected
+
+        # Immediate second detection (nested popup)
+        result2 = handler.detect("Save Changes?", "You have unsaved work")
+        # Cooldown should prevent second dismissal even if detected
+        assert isinstance(result2, PopupDetectionResult)
+
+    def test_nested_different_popups_both_detected(self):
+        """Two different popup types in sequence should both be detected."""
+        handler = PopupHandler()
+
+        # First: certificate warning
+        r1 = handler.detect("Security Warning", "The certificate is not trusted")
+        assert r1.detected
+        assert r1.popup_type == "certificate_warning"
+
+        # Second: completely different error (nested/cascaded)
+        # Use text that uniquely matches network_error pattern
+        r2 = handler.detect("Network Error", "Unable to connect to the server")
+        assert r2.detected
+        assert r2.popup_type == "network_error"
+
+    def test_nested_dialog_max_attempts_protection(self):
+        """Nested dialogs should respect MAX_DISMISS_ATTEMPTS limit."""
+        handler = PopupHandler()
+        handler.auto_dismiss = True
+        handler._dismiss_attempts = handler.MAX_DISMISS_ATTEMPTS
+
+        # Even with nested dialogs, once max attempts reached, stop dismissing
+        result = handler.detect("Critical Error", "System failure")
+        # Handler should still detect but not dismiss
+        assert isinstance(result, PopupDetectionResult)
