@@ -145,6 +145,35 @@ class LLMClient:
             requests.RequestException: On network / HTTP errors.
 
         """
+        return self._route_chat_request(
+            provider=provider,
+            api_key=api_key,
+            model=model,
+            messages=messages,
+            tools=tools,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            custom_url=custom_url,
+            timeout=timeout,
+            max_retries=max_retries,
+            retry_base_delay=retry_base_delay,
+        )
+
+    def _route_chat_request(
+        self,
+        provider: str,
+        api_key: str,
+        model: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        max_tokens: int,
+        temperature: float,
+        custom_url: str | None,
+        timeout: int,
+        max_retries: int,
+        retry_base_delay: float,
+    ) -> str:
+        """Route chat request to appropriate provider implementation."""
         provider_config = PROVIDERS.get(provider)
         if not provider_config:
             raise ValueError(f"Unknown provider: {provider}")
@@ -308,28 +337,7 @@ class LLMClient:
             Assistant message content (plain text).
 
         """
-        provider_config = PROVIDERS.get(provider, {})
-
-        if provider_config.get("anthropic_native"):
-            vision_message = self._make_anthropic_vision_message(
-                image_base64,
-                prompt,
-            )
-        else:
-            vision_message = {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{image_base64}",
-                            "detail": "high",
-                        },
-                    },
-                ],
-            }
-
+        vision_message = self._make_vision_message(provider, image_base64, prompt)
         all_messages = messages + [vision_message]
         return self.chat(
             provider=provider,
@@ -340,6 +348,31 @@ class LLMClient:
             temperature=temperature,
             custom_url=custom_url,
         )
+
+    def _make_vision_message(self, provider: str, image_base64: str, prompt: str) -> dict[str, Any]:
+        """Construct a vision message for the given provider."""
+        provider_config = PROVIDERS.get(provider, {})
+
+        if provider_config.get("anthropic_native"):
+            return self._make_anthropic_vision_message(image_base64, prompt)
+
+        return self._make_openai_vision_message(image_base64, prompt)
+
+    def _make_openai_vision_message(self, image_base64: str, prompt: str) -> dict[str, Any]:
+        """Construct a vision message in OpenAI format."""
+        return {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{image_base64}",
+                        "detail": "high",
+                    },
+                },
+            ],
+        }
 
     def list_models(
         self,

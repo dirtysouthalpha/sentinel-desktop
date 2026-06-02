@@ -43,6 +43,10 @@ from core.workflow_builder import TEMPLATES, workflow_store
 
 logger = logging.getLogger(__name__)
 
+# Timeout constants for API operations (seconds)
+DEFAULT_API_TIMEOUT = 30
+LONG_OPERATION_TIMEOUT = 300  # 5 minutes for complex operations
+
 # Optional shared-secret auth. Set SENTINEL_API_TOKEN in the environment to
 # require an Authorization: Bearer <token> header on every request. Unset →
 # no auth (legacy behaviour, OK for localhost-only use).
@@ -398,7 +402,10 @@ class SentinelServer:
 
         try:
             # execute_sync() is blocking (may run desktop actions); offload to thread.
-            return await asyncio.to_thread(engine.executor.execute_sync, payload)
+            return await asyncio.wait_for(
+                asyncio.to_thread(engine.executor.execute_sync, payload),
+                timeout=DEFAULT_API_TIMEOUT,
+            )
         except (ValueError, KeyError) as exc:
             raise HTTPException(400, f"Invalid action payload: {exc}") from exc
         except OSError as exc:
@@ -406,6 +413,8 @@ class SentinelServer:
         except RuntimeError as exc:
             logger.exception("Unexpected error executing command")
             raise HTTPException(500, f"Internal error: {exc}") from exc
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Command execution timed out after {DEFAULT_API_TIMEOUT}s") from None
 
     async def _handle_stop(
         self, authorization: str | None = Header(default=None),
@@ -423,9 +432,14 @@ class SentinelServer:
     ) -> dict[str, str]:
         self._check_auth(authorization)
         try:
-            b64 = await asyncio.to_thread(capture_to_base64)
+            b64 = await asyncio.wait_for(
+                asyncio.to_thread(capture_to_base64),
+                timeout=DEFAULT_API_TIMEOUT,
+            )
         except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Screen capture failed: {exc}") from exc
+        except asyncio.TimeoutError:
+            raise HTTPException(504, f"Screenshot capture timed out after {DEFAULT_API_TIMEOUT}s") from None
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
     async def _handle_status(
@@ -537,10 +551,16 @@ class SentinelServer:
             # run_script() replays multi-step scripts with sleep() delays;
             # run in thread pool so the event loop stays responsive.
             async with asyncio.timeout(300):  # 5 minute timeout for script execution
-                result = await asyncio.to_thread(engine.run_script, safe_path, req.params)
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(engine.run_script, safe_path, req.params),
+                    timeout=LONG_OPERATION_TIMEOUT,
+                )
         except (OSError, ValueError) as exc:
             logger.exception("Script execution failed")
             raise HTTPException(500, f"Script execution failed: {exc}") from exc
+        except asyncio.TimeoutError:
+            logger.exception("Script execution timed out")
+            raise HTTPException(504, f"Script execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,
@@ -559,7 +579,10 @@ class SentinelServer:
             runner = get_default_runner()
             # run_command() is blocking (up to the runner's 300 s timeout);
             # offload to thread pool so the event loop stays responsive.
-            ps_result = await asyncio.to_thread(runner.run_command, req.command)
+            ps_result = await asyncio.wait_for(
+                asyncio.to_thread(runner.run_command, req.command),
+                timeout=LONG_OPERATION_TIMEOUT,
+            )
             return {
                 "success": ps_result.success,
                 "stdout": ps_result.stdout[:5000],
@@ -570,6 +593,9 @@ class SentinelServer:
         except (OSError, ValueError, RuntimeError) as exc:
             logger.exception("PowerShell execution failed")
             return {"success": False, "error": str(exc)}
+        except asyncio.TimeoutError:
+            logger.exception("PowerShell execution timed out")
+            return {"success": False, "error": f"PowerShell execution timed out after {LONG_OPERATION_TIMEOUT}s"}
 
     async def _handle_recorder_start(
         self, authorization: str | None = Header(default=None),
@@ -638,10 +664,16 @@ class SentinelServer:
         try:
             # run_workflow() replays multi-step workflows with delays; offload to thread.
             async with asyncio.timeout(300):  # 5 minute timeout for workflow execution
-                result = await asyncio.to_thread(wf.run_workflow, req.path, req.variables)
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(wf.run_workflow, req.path, req.variables),
+                    timeout=LONG_OPERATION_TIMEOUT,
+                )
         except (OSError, ValueError) as exc:
             logger.exception("Workflow execution failed")
             raise HTTPException(500, f"Workflow execution failed: {exc}") from exc
+        except asyncio.TimeoutError:
+            logger.exception("Workflow execution timed out")
+            raise HTTPException(504, f"Workflow execution timed out after {LONG_OPERATION_TIMEOUT}s") from None
         return {
             "success": result.success,
             "steps_completed": result.steps_completed,

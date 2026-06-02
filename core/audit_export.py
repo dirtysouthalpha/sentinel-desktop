@@ -416,13 +416,30 @@ class AuditExporter:
     @staticmethod
     def _css_components() -> str:
         """Return CSS styles for UI components (tables, badges, cards, etc)."""
+        parts = [
+            AuditExporter._css_table_styles(),
+            AuditExporter._css_badge_styles(),
+            AuditExporter._css_meta_card_styles(),
+            AuditExporter._css_summary_card_styles(),
+            AuditExporter._css_cell_styles(),
+            AuditExporter._css_action_list_styles(),
+        ]
+        return "\n".join(parts)
+
+    @staticmethod
+    def _css_table_styles() -> str:
+        """Return CSS styles for tables."""
         return """  table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
   th, td { text-align: left; padding: 0.55rem 0.75rem; border: 1px solid var(--border); }
   th { background: var(--surface); color: var(--accent); }
   tr:nth-child(even) td { background: rgba(22,27,34,0.6); }
   tr:nth-child(odd)  td { background: var(--bg); }
-  tr:hover td { background: rgba(88,166,255,0.07); }
-  .badge {
+  tr:hover td { background: rgba(88,166,255,0.07); }"""
+
+    @staticmethod
+    def _css_badge_styles() -> str:
+        """Return CSS styles for badges."""
+        return """  .badge {
     display: inline-block;
     padding: 0.15rem 0.55rem;
     border-radius: 12px;
@@ -431,8 +448,12 @@ class AuditExporter:
   }
   .badge-success { background: rgba(63,185,80,0.18); color: var(--success); }
   .badge-fail    { background: rgba(248,81,73,0.18); color: var(--fail); }
-  .badge-warn    { background: rgba(210,153,34,0.18); color: var(--warn); }
-  .meta-grid {
+  .badge-warn    { background: rgba(210,153,34,0.18); color: var(--warn); }"""
+
+    @staticmethod
+    def _css_meta_card_styles() -> str:
+        """Return CSS styles for meta cards and grid."""
+        return """  .meta-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 0.75rem;
@@ -445,8 +466,12 @@ class AuditExporter:
     padding: 0.75rem 1rem;
   }
   .meta-card .label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  .meta-card .value { color: var(--text); font-size: 0.95rem; margin-top: 0.15rem; word-break: break-word; }
-  .summary-grid {
+  .meta-card .value { color: var(--text); font-size: 0.95rem; margin-top: 0.15rem; word-break: break-word; }"""
+
+    @staticmethod
+    def _css_summary_card_styles() -> str:
+        """Return CSS styles for summary cards and grid."""
+        return """  .summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 0.75rem;
@@ -460,10 +485,18 @@ class AuditExporter:
     text-align: center;
   }
   .summary-card .num { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
-  .summary-card .lbl { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.2rem; }
-  .result-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .params-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; color: var(--text-dim); }
-  .action-list { list-style: none; padding: 0; }
+  .summary-card .lbl { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.2rem; }"""
+
+    @staticmethod
+    def _css_cell_styles() -> str:
+        """Return CSS styles for table cells."""
+        return """  .result-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .params-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; color: var(--text-dim); }"""
+
+    @staticmethod
+    def _css_action_list_styles() -> str:
+        """Return CSS styles for action lists."""
+        return """  .action-list { list-style: none; padding: 0; }
   .action-list li { padding: 0.2rem 0; }
   .action-list li::before { content: '▸ '; color: var(--accent); }"""
 
