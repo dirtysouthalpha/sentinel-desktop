@@ -1,4 +1,8 @@
-"""Window management: list, find, focus, resize, close windows."""
+"""Sentinel Desktop v3.0 — Window management utilities.
+
+Provides functions to list, find, focus, resize, and close windows.
+Cross-platform support with Windows-specific enhancements via win32gui.
+"""
 
 import logging
 import platform

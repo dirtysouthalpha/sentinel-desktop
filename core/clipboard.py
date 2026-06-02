@@ -1,4 +1,8 @@
-"""Clipboard read/write."""
+"""Sentinel Desktop v3.0 — Clipboard read/write utilities.
+
+Provides functions to read from and write to the system clipboard.
+Cross-platform clipboard operations with error handling.
+"""
 
 from __future__ import annotations
 

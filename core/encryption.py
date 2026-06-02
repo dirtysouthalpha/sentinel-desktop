@@ -1,4 +1,4 @@
-"""DPAPI Credential Vault for Sentinel Desktop.
+"""Sentinel Desktop v3.0 — DPAPI Credential Vault.
 
 Provides encrypted storage of sensitive credentials (API keys, tokens, etc.)
 using Windows DPAPI (Data Protection API) with automatic fallback to

@@ -1,4 +1,8 @@
-"""System information: CPU, memory, disk, network."""
+"""Sentinel Desktop v3.0 — System information utilities.
+
+Provides functions to retrieve CPU, memory, disk, and network information.
+Cross-platform system metrics collection with error handling.
+"""
 
 import logging
 import os
