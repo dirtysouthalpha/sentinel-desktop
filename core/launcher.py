@@ -85,6 +85,62 @@ def _is_safe_launch_token(token: str) -> bool:
     return bool(token) and bool(_UNKNOWN_NAME_RE.fullmatch(token))
 
 
+def _try_focus_existing_window(window_title: str) -> dict[str, Any] | None:
+    """Try to focus an existing window by title.
+
+    Args:
+        window_title: The title of the window to focus.
+
+    Returns:
+        Result dict if focusing succeeded, None otherwise.
+    """
+    try:
+        ok = wm.focus_window(window_title)
+    except (OSError, RuntimeError) as exc:
+        logger.warning("smart_open focus failed for %r: %s", window_title, exc)
+        return None
+
+    if ok:
+        return {
+            "success": True,
+            "output": f"Already open — focused window {window_title!r}",
+            "focused": True,
+            "window_title": window_title,
+        }
+    return None
+
+
+def _launch_new_app(name: str, launch_cmd: str) -> dict[str, Any]:
+    """Launch a new application instance.
+
+    Args:
+        name: The friendly name of the app.
+        launch_cmd: The command to launch the app.
+
+    Returns:
+        Result dict with launch status.
+    """
+    try:
+        subprocess.Popen(
+            ["cmd", "/c", "start", "", launch_cmd],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            shell=False,
+        )
+        return {
+            "success": True,
+            "output": f"Launched {name!r} via 'start {launch_cmd}'",
+            "focused": False,
+            "command": launch_cmd,
+        }
+    except (OSError, subprocess.SubprocessError, FileNotFoundError) as exc:
+        return {
+            "success": False,
+            "output": f"Failed to launch {name!r}: {exc}",
+            "error": "launch_failed",
+        }
+
+
 def smart_open(name: str) -> dict[str, Any]:
     """Focus or launch the named app. Returns ``{success, output, ...}``.
 
@@ -105,38 +161,11 @@ def smart_open(name: str) -> dict[str, Any]:
         existing = None
 
     if existing:
-        try:
-            ok = wm.focus_window(existing)
-        except (OSError, RuntimeError) as exc:
-            logger.warning("smart_open focus failed for %r: %s", existing, exc)
-            ok = False
-        if ok:
-            return {
-                "success": True,
-                "output": f"Already open — focused window {existing!r}",
-                "focused": True,
-                "window_title": existing,
-            }
+        result = _try_focus_existing_window(existing)
+        if result:
+            return result
 
-    try:
-        subprocess.Popen(
-            ["cmd", "/c", "start", "", launch_cmd],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            shell=False,
-        )
-        return {
-            "success": True,
-            "output": f"Launched {name!r} via 'start {launch_cmd}'",
-            "focused": False,
-            "command": launch_cmd,
-        }
-    except (OSError, subprocess.SubprocessError, FileNotFoundError) as exc:
-        return {
-            "success": False,
-            "output": f"Failed to launch {name!r}: {exc}",
-            "error": "launch_failed",
-        }
+    return _launch_new_app(name, launch_cmd)
 
 
 def _resolve_app(name: str) -> tuple[str, str] | dict[str, Any]:
