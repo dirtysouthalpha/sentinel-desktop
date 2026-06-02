@@ -151,11 +151,32 @@ def list_controls(
 
     _cache_stats["list_controls_misses"] += 1
 
+    result = _walk_controls_tree(window_title, max_depth, max_results)
+
+    # Cache the result (even if empty or partial)
+    _LIST_CONTROLS_CACHE[cache_key] = (result, now)
+    _evict_oldest_entry(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_MAX_SIZE)
+
+    return result
+
+
+def _walk_controls_tree(
+    window_title: str | None,
+    max_depth: int,
+    max_results: int,
+) -> list[dict[str, Any]]:
+    """Walk the UI tree and collect controls.
+
+    Args:
+        window_title: Partial title match. ``None`` uses the foreground window.
+        max_depth: Recursion limit.
+        max_results: Cap on returned controls.
+
+    Returns:
+        List of control dictionaries.
+    """
     root = _find_window(window_title)
     if root is None:
-        # Cache the empty result to avoid repeated failed lookups
-        _LIST_CONTROLS_CACHE[cache_key] = ([], now)
-        _evict_oldest_entry(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_MAX_SIZE)
         return []
 
     out: list[dict[str, Any]] = []
@@ -163,10 +184,6 @@ def list_controls(
         _walk(root, out, depth=0, max_depth=max_depth, max_results=max_results)
     except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.warning("list_controls failed: %s", exc)
-
-    # Cache the result (even if empty or partial)
-    _LIST_CONTROLS_CACHE[cache_key] = (out, now)
-    _evict_oldest_entry(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_MAX_SIZE)
 
     return out
 
