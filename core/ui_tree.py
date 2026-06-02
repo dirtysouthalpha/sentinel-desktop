@@ -25,12 +25,89 @@ from core.utils import get_uia_auto, have_uia
 
 logger = logging.getLogger(__name__)
 
-# Short-lived cache for repeated _find_control lookups.
-# UI scans are expensive (BFS over thousands of nodes); caching for 0.5 s
-# avoids redundant scans when the agent calls the same lookup in quick
-# succession (e.g. type-then-read on the same field).
+# Enhanced multi-layer UI element caching system with size limits and eviction
+# UI scans are expensive (BFS over thousands of nodes); multi-layer caching avoids
+# redundant scans when the agent performs similar operations in quick succession.
+
+# Layer 1: Control lookup cache (find_control results)
 _FIND_CONTROL_CACHE: dict[tuple[str | None, ...], tuple[Any, float]] = {}
 _FIND_CONTROL_TTL = 0.5  # seconds
+_FIND_CONTROL_MAX_SIZE = 100  # maximum cache entries
+
+# Layer 2: UI tree traversal cache (list_controls results)
+_LIST_CONTROLS_CACHE: dict[tuple[str | None, int, int], tuple[list[dict[str, Any]], float]] = {}
+_LIST_CONTROLS_TTL = 1.0  # seconds (longer TTL for tree walks)
+_LIST_CONTROLS_MAX_SIZE = 50  # maximum cache entries
+
+# Layer 3: Window discovery cache (_find_window results)
+_WINDOW_CACHE: dict[str | None, tuple[Any, float]] = {}
+_WINDOW_TTL = 2.0  # seconds (windows change infrequently)
+_WINDOW_MAX_SIZE = 20  # maximum cache entries
+
+# Cache statistics for monitoring effectiveness
+_cache_stats = {
+    "find_control_hits": 0,
+    "find_control_misses": 0,
+    "list_controls_hits": 0,
+    "list_controls_misses": 0,
+    "window_hits": 0,
+    "window_misses": 0,
+}
+
+
+def _evict_oldest_entry(
+    cache: dict, max_size: int
+) -> None:
+    """Evict the oldest entry from a cache when size limit is exceeded.
+
+    Args:
+        cache: The cache dictionary to evict from
+        max_size: Maximum size before eviction starts
+    """
+    if len(cache) > max_size:
+        # Find and remove the oldest entry (by timestamp)
+        oldest_key = min(cache.keys(), key=lambda k: cache[k][1])
+        del cache[oldest_key]
+
+
+def _clear_expired_entries(
+    cache: dict, ttl: float, current_time: float | None = None
+) -> None:
+    """Remove expired entries from a cache.
+
+    Args:
+        cache: The cache dictionary to clean
+        ttl: Time-to-live in seconds
+        current_time: Current monotonic time (optional)
+    """
+    if current_time is None:
+        current_time = time.monotonic()
+
+    expired_keys = [
+        key for key, (_, timestamp) in cache.items()
+        if current_time - timestamp >= ttl
+    ]
+    for key in expired_keys:
+        del cache[key]
+
+
+def get_cache_stats() -> dict[str, int]:
+    """Return cache hit/miss statistics for monitoring.
+
+    Returns:
+        Dictionary with cache statistics for each cache layer
+    """
+    return _cache_stats.copy()
+
+
+def clear_all_caches() -> None:
+    """Clear all UI element caches. Useful for testing or state resets."""
+    _FIND_CONTROL_CACHE.clear()
+    _LIST_CONTROLS_CACHE.clear()
+    _WINDOW_CACHE.clear()
+    # Reset statistics
+    for key in _cache_stats:
+        _cache_stats[key] = 0
 
 
 # ---------------------------------------------------------------------------
@@ -58,14 +135,39 @@ def list_controls(
     """
     if not have_uia():
         return []
+
+    # Check cache first
+    cache_key = (window_title, max_depth, max_results)
+    now = time.monotonic()
+
+    # Clean expired entries periodically
+    if len(_LIST_CONTROLS_CACHE) > _LIST_CONTROLS_MAX_SIZE // 2:
+        _clear_expired_entries(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_TTL, now)
+
+    cached = _LIST_CONTROLS_CACHE.get(cache_key)
+    if cached is not None and now - cached[1] < _LIST_CONTROLS_TTL:
+        _cache_stats["list_controls_hits"] += 1
+        return cached[0]
+
+    _cache_stats["list_controls_misses"] += 1
+
     root = _find_window(window_title)
     if root is None:
+        # Cache the empty result to avoid repeated failed lookups
+        _LIST_CONTROLS_CACHE[cache_key] = ([], now)
+        _evict_oldest_entry(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_MAX_SIZE)
         return []
+
     out: list[dict[str, Any]] = []
     try:
         _walk(root, out, depth=0, max_depth=max_depth, max_results=max_results)
     except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.warning("list_controls failed: %s", exc)
+
+    # Cache the result (even if empty or partial)
+    _LIST_CONTROLS_CACHE[cache_key] = (out, now)
+    _evict_oldest_entry(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_MAX_SIZE)
+
     return out
 
 
@@ -184,18 +286,44 @@ def set_text(
 
 
 def _find_window(window_title: str | None) -> Any | None:
-    """Return the root control for either the named window or the foreground."""
+    """Return the root control for either the named window or the foreground.
+
+    Results are cached for 2.0 s since window state changes infrequently.
+    """
     if get_uia_auto() is None:
         return None
+
+    # Check cache first
+    now = time.monotonic()
+
+    # Clean expired entries periodically
+    if len(_WINDOW_CACHE) > _WINDOW_MAX_SIZE // 2:
+        _clear_expired_entries(_WINDOW_CACHE, _WINDOW_TTL, now)
+
+    cached = _WINDOW_CACHE.get(window_title)
+    if cached is not None and now - cached[1] < _WINDOW_TTL:
+        _cache_stats["window_hits"] += 1
+        return cached[0]
+
+    _cache_stats["window_misses"] += 1
+
     try:
+        window = None
         if window_title:
             # WindowControl(searchDepth=1, Name=...) matches partial via 'searchFromControl'
             for w in get_uia_auto().GetRootControl().GetChildren():
                 title = (w.Name or "").lower()
                 if window_title.lower() in title:
-                    return w
-            return None
-        return get_uia_auto().GetForegroundControl()
+                    window = w
+                    break
+        else:
+            window = get_uia_auto().GetForegroundControl()
+
+        # Cache the result
+        _WINDOW_CACHE[window_title] = (window, now)
+        _evict_oldest_entry(_WINDOW_CACHE, _WINDOW_MAX_SIZE)
+
+        return window
     except (OSError, AttributeError, RuntimeError, TypeError) as exc:
         logger.debug("_find_window failed: %s", exc)
         return None
@@ -316,13 +444,22 @@ def _find_control(
     """
     cache_key = (name, automation_id, control_type, window_title)
     now = time.monotonic()
+
+    # Clean expired entries periodically
+    if len(_FIND_CONTROL_CACHE) > _FIND_CONTROL_MAX_SIZE // 2:
+        _clear_expired_entries(_FIND_CONTROL_CACHE, _FIND_CONTROL_TTL, now)
+
     cached = _FIND_CONTROL_CACHE.get(cache_key)
     if cached is not None and now - cached[1] < _FIND_CONTROL_TTL:
+        _cache_stats["find_control_hits"] += 1
         return cached[0]
+
+    _cache_stats["find_control_misses"] += 1
 
     root = _find_window(window_title)
     if root is None:
         _FIND_CONTROL_CACHE[cache_key] = (None, now)
+        _evict_oldest_entry(_FIND_CONTROL_CACHE, _FIND_CONTROL_MAX_SIZE)
         return None
 
     best = _bfs_best_match(
@@ -332,4 +469,5 @@ def _find_control(
         needle_type=(control_type or "").lower(),
     )
     _FIND_CONTROL_CACHE[cache_key] = (best, now)
+    _evict_oldest_entry(_FIND_CONTROL_CACHE, _FIND_CONTROL_MAX_SIZE)
     return best

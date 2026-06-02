@@ -4,8 +4,17 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from core import ui_tree
-from core import utils
+import pytest
+
+from core import ui_tree, utils
+
+
+@pytest.fixture(autouse=True)
+def clear_ui_tree_cache():
+    """Clear UI tree caches before each test to prevent interference."""
+    ui_tree.clear_all_caches()
+    yield
+    ui_tree.clear_all_caches()
 
 
 def _make_node(

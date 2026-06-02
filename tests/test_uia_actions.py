@@ -506,7 +506,6 @@ class TestUiaBounds:
 
     def test_cache_hit_skips_find_control(self, uia_only, monkeypatch):
         """Cached bounds are returned without calling _find_control again."""
-        import time
 
         import core.ui_tree as ui_tree_mod
 
