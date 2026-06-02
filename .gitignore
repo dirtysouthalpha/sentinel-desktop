@@ -48,6 +48,8 @@ forensic_*.json
 # AgentEngine instantiation; that file is per-deployment and contains
 # password hashes + API keys.
 /config/users.json
+# Scheduler stores runtime task state here
+/config/scheduled_tasks.json
 
 # Local screenshots / templates used for click_image
 screenshots/
