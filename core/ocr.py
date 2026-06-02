@@ -271,6 +271,38 @@ def _ocr_image_with_confidence(
         return (fallback_text, empty_conf)
 
 
+def _has_low_confidence_metrics(confidence_data: dict[str, Any]) -> bool:
+    """Check if confidence metrics indicate low OCR quality.
+
+    Args:
+        confidence_data: Dict from _ocr_image_with_confidence with
+            avg_confidence, low_confidence_words, word_count.
+
+    Returns:
+        True if confidence metrics are below thresholds.
+    """
+    avg_conf = confidence_data.get("avg_confidence", 0)
+    if avg_conf > 0 and avg_conf < _MIN_AVG_CONFIDENCE:
+        logger.debug(
+            "OCR low confidence: avg=%.1f (threshold=%.1f)",
+            avg_conf,
+            _MIN_AVG_CONFIDENCE,
+        )
+        return True
+
+    low_conf_words = confidence_data.get("low_confidence_words", [])
+    word_count = confidence_data.get("word_count", 0)
+    if word_count > 3 and len(low_conf_words) / max(word_count, 1) > 0.5:
+        logger.debug(
+            "OCR low confidence: %d/%d words below threshold",
+            len(low_conf_words),
+            word_count,
+        )
+        return True
+
+    return False
+
+
 def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = None) -> bool:
     """Heuristic: does this OCR output look like garbled junk?.
 
@@ -303,25 +335,8 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
         return True
 
     # Check confidence metrics if provided
-    if confidence_data:
-        avg_conf = confidence_data.get("avg_confidence", 0)
-        if avg_conf > 0 and avg_conf < _MIN_AVG_CONFIDENCE:
-            logger.debug(
-                "OCR low confidence: avg=%.1f (threshold=%.1f)",
-                avg_conf,
-                _MIN_AVG_CONFIDENCE,
-            )
-            return True
-
-        low_conf_words = confidence_data.get("low_confidence_words", [])
-        word_count = confidence_data.get("word_count", 0)
-        if word_count > 3 and len(low_conf_words) / max(word_count, 1) > 0.5:
-            logger.debug(
-                "OCR low confidence: %d/%d words below threshold",
-                len(low_conf_words),
-                word_count,
-            )
-            return True
+    if confidence_data and _has_low_confidence_metrics(confidence_data):
+        return True
 
     return False
 
