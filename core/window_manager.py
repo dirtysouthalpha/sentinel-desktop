@@ -36,6 +36,12 @@ else:
     _Win32Error = OSError  # type: ignore[misc,assignment]
 
 
+# Constants for window validation
+_MIN_WINDOW_SIZE = 200  # Minimum width/height for valid windows
+_MIN_COORDINATE = -32000  # Windows uses this for minimized/hidden windows
+_MIN_RECT_COMPONENTS = 4  # Expected number of components in a rectangle (x, y, w, h)
+
+
 def list_windows() -> list[dict[str, Any]]:
     """List all visible windows with title, position, size, focused state."""
     windows = []
@@ -235,7 +241,7 @@ def _collect_candidate_windows() -> list[dict[str, Any]]:
             title = w.get("title") or ""
             if not title or _is_self_window(title):
                 continue
-            if w.get("width", 0) <= 200 or w.get("height", 0) <= 200:
+            if w.get("width", 0) <= _MIN_WINDOW_SIZE or w.get("height", 0) <= _MIN_WINDOW_SIZE:
                 continue
             candidates.append(w)
     except (OSError, RuntimeError) as exc:
@@ -280,14 +286,12 @@ def _looks_minimized(rect: tuple[int, int, int, int] | None) -> bool:
 
     Also catches degenerate / zero-sized rectangles.
     """
-    if not rect or len(rect) < 4:
+    if not rect or len(rect) < _MIN_RECT_COMPONENTS:
         return True
     x, y, w, h = rect
     if w <= 0 or h <= 0:
         return True
-    if x <= -32000 or y <= -32000:
-        return True
-    return False
+    return bool(x <= _MIN_COORDINATE or y <= _MIN_COORDINATE)
 
 
 def restore_window_hwnd(hwnd: int) -> bool:
