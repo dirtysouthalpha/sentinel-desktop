@@ -67,9 +67,8 @@ def _parse_cron_field(field: str, value: int, ranges: tuple[int, int]) -> bool:
                 a, b = part.split("-", 1)
                 if int(a) <= value <= int(b):
                     return True
-            else:
-                if value == int(part):
-                    return True
+            elif value == int(part):
+                return True
         except (ValueError, ZeroDivisionError):
             continue
     return False
