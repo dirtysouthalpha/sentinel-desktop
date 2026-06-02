@@ -12,6 +12,8 @@ from typing import Any
 from core import clipboard as clip
 from core import desktop as desktop_mod
 from core import file_ops, launcher, ocr, stealth_input, ui_tree
+
+_FailSafeException = desktop_mod._FailSafeException
 from core import process_manager as pm
 from core import system_info as sysinfo
 from core import window_manager as wm
@@ -297,7 +299,7 @@ class ActionExecutor:
                 else "Clicked"
             )
             return {"success": True, "output": f"{desc} ({sx}, {sy})"}
-        except Exception as exc:
+        except (OSError, RuntimeError, _FailSafeException) as exc:
             return {
                 "success": False,
                 "output": f"click error at ({sx},{sy}): {exc}",
@@ -382,7 +384,7 @@ class ActionExecutor:
                 return uia_result
 
             return self._click_text_not_found_response(text=text)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError, _FailSafeException) as exc:
             return {
                 "success": False,
                 "output": f"click_text error: {exc}",
@@ -566,7 +568,7 @@ class ActionExecutor:
                 if not c.get("is_offscreen") and c.get("is_enabled", True)
             ]
             return {"success": True, "output": slim, "count": len(slim)}
-        except Exception as exc:
+        except (OSError, RuntimeError, KeyError, TypeError, AttributeError) as exc:
             return {
                 "success": False,
                 "output": f"list_controls error: {exc}",
@@ -602,7 +604,7 @@ class ActionExecutor:
             if ok:
                 return {"success": True, "output": f"Set text on {name or automation_id!r}"}
             return self._set_text_click_fallback(window_title, name, automation_id, text)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError, KeyError) as exc:
             return {
                 "success": False,
                 "output": f"set_text error: {exc}",
@@ -648,7 +650,7 @@ class ActionExecutor:
                     "output": f"Set text via click+type on control at ({sx},{sy})",
                     "fallback": "click_and_type",
                 }
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError, KeyError) as exc:
             logger.debug("set_text click+type fallback failed: %s", exc)
         return {
             "success": False,
@@ -677,7 +679,7 @@ class ActionExecutor:
                 "success": found,
                 "output": f"Template {'found and clicked' if found else 'not found'}",
             }
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError, IOError) as exc:
             return {
                 "success": False,
                 "output": f"click_image error: {exc}",
