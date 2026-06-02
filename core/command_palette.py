@@ -273,6 +273,14 @@ def _register_theme_commands(p: CommandPalette, app: SentinelApp) -> None:
     ]
     for name, kws in themes:
         def make_theme_setter(theme_name: str) -> callable:
+            """Create a theme setter function for command palette registration.
+
+            Args:
+                theme_name: Name of the theme to set.
+
+            Returns:
+                A callable that sets the theme when invoked.
+            """
             return lambda: app.set_theme(theme_name.lower())
         p.register(
             f"Theme: {name}",
