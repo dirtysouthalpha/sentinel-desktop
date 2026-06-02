@@ -21,12 +21,11 @@ Thread safety: All public methods are guarded by a reentrant lock.
 import base64
 import json
 import logging
-import platform
 import threading
 from pathlib import Path
 from typing import Any
 
-from core.utils import iso_now
+from core.utils import is_windows, iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ logger = logging.getLogger(__name__)
 # Windows DPAPI ctypes bindings
 # ---------------------------------------------------------------------------
 
-_IS_WINDOWS = platform.system() == "Windows"
+_IS_WINDOWS = is_windows()
 
 if _IS_WINDOWS:
     import ctypes
@@ -300,10 +299,9 @@ class CredentialVault:
         else:
             # Non-Windows fallback: base64 only (NOT secure)
             logger.warning(
-                "DPAPI unavailable on %s – credentials stored with base64 "
+                "DPAPI unavailable – credentials stored with base64 "
                 "encoding only (not encrypted).  Run on Windows for proper "
-                "DPAPI protection.",
-                platform.system(),
+                "DPAPI protection."
             )
             return base64.b64encode(plaintext)
 

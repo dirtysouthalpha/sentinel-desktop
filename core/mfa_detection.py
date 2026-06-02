@@ -19,7 +19,6 @@ analysis, pytesseract for OCR (optional), and uiautomation for UIA (optional).
 from __future__ import annotations
 
 import logging
-import platform
 import threading
 import time
 from collections.abc import Callable
@@ -28,7 +27,7 @@ from typing import Any
 
 from PIL import Image
 
-from core.utils import get_tesseract, get_uia_auto, have_tesseract, have_uia
+from core.utils import get_tesseract, get_uia_auto, have_tesseract, have_uia, is_windows
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ logger = logging.getLogger(__name__)
 # Platform gate
 # ---------------------------------------------------------------------------
 
-_IS_WINDOWS = platform.system() == "Windows"
+_IS_WINDOWS = is_windows()
 
 # ---------------------------------------------------------------------------
 # Integration constants

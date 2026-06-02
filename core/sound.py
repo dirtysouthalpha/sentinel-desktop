@@ -8,12 +8,13 @@ Windows (no external deps) or falls back to printing BEL character.
 from __future__ import annotations
 
 import logging
-import platform
 import threading
+
+from core.utils import is_windows
 
 logger = logging.getLogger(__name__)
 
-_IS_WINDOWS = platform.system() == "Windows"
+_IS_WINDOWS = is_windows()
 
 
 def play_sound(sound_type: str = "complete", blocking: bool = False) -> None:
