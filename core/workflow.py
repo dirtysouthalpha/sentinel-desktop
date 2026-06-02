@@ -17,6 +17,9 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Expected number of parts in a step reference (e.g., ["step", "s1", "output.field"])
+_STEP_REF_PARTS_MIN = 3
+
 
 class StepType(str, Enum):
     """Enumeration of workflow step types.
@@ -134,7 +137,7 @@ class WorkflowEngine:
                 parts = ref.split(".", 2)
                 step_id = parts[1]
                 step_data = step_outputs.get(step_id, {})
-                if len(parts) >= 3:
+                if len(parts) >= _STEP_REF_PARTS_MIN:
                     # Navigate nested keys
                     keys = parts[2].split(".")
                     val = step_data
