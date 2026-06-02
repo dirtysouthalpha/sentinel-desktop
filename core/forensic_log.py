@@ -199,6 +199,7 @@ class ForensicLog:
 
         Returns:
             Complete step dictionary with all metadata.
+
         """
         duration_ms = self._compute_step_duration(now)
         event_type = self._infer_event_type(result)

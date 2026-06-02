@@ -93,6 +93,7 @@ def _try_focus_existing_window(window_title: str) -> dict[str, Any] | None:
 
     Returns:
         Result dict if focusing succeeded, None otherwise.
+
     """
     try:
         ok = wm.focus_window(window_title)
@@ -119,6 +120,7 @@ def _launch_new_app(name: str, launch_cmd: str) -> dict[str, Any]:
 
     Returns:
         Result dict with launch status.
+
     """
     try:
         subprocess.Popen(

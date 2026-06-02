@@ -441,6 +441,7 @@ def _build_models_request(
 
     Returns:
         (url, headers) tuple, or (None, {}) if URL cannot be built.
+
     """
     base_url = get_base_url(provider_key, custom_url)
     if not base_url:

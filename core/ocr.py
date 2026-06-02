@@ -280,6 +280,7 @@ def _has_low_confidence_metrics(confidence_data: dict[str, Any]) -> bool:
 
     Returns:
         True if confidence metrics are below thresholds.
+
     """
     avg_conf = confidence_data.get("avg_confidence", 0)
     if avg_conf > 0 and avg_conf < _MIN_AVG_CONFIDENCE:
