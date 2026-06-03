@@ -1292,8 +1292,7 @@ class AgentEngine:
         ]
         if self.notes:
             lines.append("Notes:")
-            for n in self.notes[:10]:
-                lines.append(f"  - {n[:200]}")
+            lines.extend(f"  - {n[:200]}" for n in self.notes[:10])
         if errors:
             lines.append("Errors:")
             for e in errors[:5]:
@@ -1362,8 +1361,7 @@ class AgentEngine:
         ]
         if profile.quirks:
             lines.append("- Quirks:")
-            for q in profile.quirks:
-                lines.append(f"  - {q}")
+            lines.extend(f"  - {q}" for q in profile.quirks)
         if profile.strategies:
             lines.append("- Suggested strategies:")
             for task, strategy in profile.strategies.items():

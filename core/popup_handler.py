@@ -98,11 +98,10 @@ class PopupPattern:
 
         if has_title and has_body:
             return min(self.confidence_base + 0.10, 1.0)
-        elif has_title or has_body:
+        if has_title or has_body:
             return self.confidence_base
-        else:
-            # No regexes defined — wildcard pattern, lower confidence
-            return 0.3
+        # No regexes defined — wildcard pattern, lower confidence
+        return 0.3
 
 
 # ---------------------------------------------------------------------------

@@ -56,7 +56,7 @@ class RecorderPanel(ctk.CTkFrame):
     ) -> ctk.CTkButton:
         """Create a standard-height toolbar button."""
         font = ("Segoe UI", 11, "bold") if bold else ("Segoe UI", 11)
-        btn = ctk.CTkButton(
+        return ctk.CTkButton(
             self,
             text=text,
             width=width,
@@ -68,7 +68,6 @@ class RecorderPanel(ctk.CTkFrame):
             corner_radius=3,
             command=command,
         )
-        return btn
 
     def _build_toolbar(self) -> None:
         """Create Record, Stop, Play, Library buttons and status label."""

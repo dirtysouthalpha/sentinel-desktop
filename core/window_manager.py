@@ -71,18 +71,18 @@ def list_windows() -> list[dict[str, Any]]:
             logger.error("list_windows EnumWindows failed: %s", exc)
     elif HAS_PGW:
         try:
-            for w in pgw.getAllWindows():
-                if w.title:
-                    windows.append(
-                        {
-                            "title": w.title,
-                            "x": w.left,
-                            "y": w.top,
-                            "width": w.width,
-                            "height": w.height,
-                            "is_focused": w.isActive,
-                        },
-                    )
+            windows.extend(
+                {
+                    "title": w.title,
+                    "x": w.left,
+                    "y": w.top,
+                    "width": w.width,
+                    "height": w.height,
+                    "is_focused": w.isActive,
+                }
+                for w in pgw.getAllWindows()
+                if w.title
+            )
         except (OSError, RuntimeError) as e:
             logger.error("list_windows via pygetwindow failed: %s", e)
     else:
@@ -99,7 +99,7 @@ def focus_window(title: str) -> bool:
     """
     if HAS_WIN32:
         return _focus_window_win32(title)
-    elif HAS_PGW:
+    if HAS_PGW:
         return _focus_window_pgw(title)
     return False
 

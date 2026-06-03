@@ -296,14 +296,13 @@ class CredentialVault:
 
             return result
 
-        else:
-            # Non-Windows fallback: base64 only (NOT secure)
-            logger.warning(
-                "DPAPI unavailable – credentials stored with base64 "
-                "encoding only (not encrypted).  Run on Windows for proper "
-                "DPAPI protection."
-            )
-            return base64.b64encode(plaintext)
+        # Non-Windows fallback: base64 only (NOT secure)
+        logger.warning(
+            "DPAPI unavailable – credentials stored with base64 "
+            "encoding only (not encrypted).  Run on Windows for proper "
+            "DPAPI protection."
+        )
+        return base64.b64encode(plaintext)
 
     @staticmethod
     def _decrypt(ciphertext: bytes) -> bytes | None:
@@ -336,13 +335,12 @@ class CredentialVault:
 
             return result
 
-        else:
-            # Non-Windows fallback
-            try:
-                return base64.b64decode(ciphertext)
-            except ValueError:
-                logger.exception("base64 decode failed for non-Windows vault entry")
-                return None
+        # Non-Windows fallback
+        try:
+            return base64.b64decode(ciphertext)
+        except ValueError:
+            logger.exception("base64 decode failed for non-Windows vault entry")
+            return None
 
     # ------------------------------------------------------------------
     # Vault persistence helpers

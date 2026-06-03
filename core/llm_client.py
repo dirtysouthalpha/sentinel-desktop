@@ -533,6 +533,8 @@ class LLMClient:
             attempt += 1
 
         self._raise_retry_exhausted(last_status, last_body, last_exc, provider_label, max_retries)
+        # Unreachable - _raise_retry_exhausted always raises
+        return {}  # pragma: no cover
 
     @staticmethod
     def _log_request_exc(

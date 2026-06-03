@@ -423,15 +423,13 @@ class ActionRecorder:
         Canonical schema: ``action``, ``params``, ``description``,
         ``wait_after_ms``, ``screenshot_hash``.
         """
-        out: list[dict[str, Any]] = []
-        for step in steps:
-            out.append(
-                {
-                    "action": step.get("action", "unknown"),
-                    "params": step.get("params", {}),
-                    "description": step.get("description", ""),
-                    "wait_after_ms": step.get("wait_after_ms", 500),
-                    "screenshot_hash": step.get("screenshot_hash", ""),
-                },
-            )
-        return out
+        return [
+            {
+                "action": step.get("action", "unknown"),
+                "params": step.get("params", {}),
+                "description": step.get("description", ""),
+                "wait_after_ms": step.get("wait_after_ms", 500),
+                "screenshot_hash": step.get("screenshot_hash", ""),
+            }
+            for step in steps
+        ]

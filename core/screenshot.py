@@ -96,9 +96,8 @@ def _get_screenshot_from_cache(
             _screenshot_cache_stats["hits"] += 1
             logger.debug("Screenshot cache hit for key %s", cache_key)
             return img  # Return reference to maintain object identity
-        else:
-            # Expired — remove
-            del _SCREENSHOT_CACHE[cache_key]
+        # Expired — remove
+        del _SCREENSHOT_CACHE[cache_key]
     _screenshot_cache_stats["misses"] += 1
     return None
 

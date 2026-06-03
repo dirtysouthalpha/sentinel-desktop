@@ -402,10 +402,10 @@ class WorkflowEngine:
             result.error = f"Step {step.id} failed: {exc}"
             return None
 
-        elif step.error_policy == "skip":
+        if step.error_policy == "skip":
             return step.next_step
 
-        elif step.error_policy == "retry":
+        if step.error_policy == "retry":
             retries = 0
             retried = False
             while retries < step.max_retries:

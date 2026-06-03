@@ -421,9 +421,9 @@ class TaskScheduler:
         try:
             if task_type in ("script", "workflow"):
                 return self._exec_script(task)
-            elif task_type == "goal":
+            if task_type == "goal":
                 return self._exec_goal(task)
-            elif task_type == "powershell":
+            if task_type == "powershell":
                 return self._exec_powershell(task)
             base["error"] = f"Unknown task type: {task_type!r}"
         except (RuntimeError, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
@@ -549,12 +549,8 @@ class TaskScheduler:
 
     def _collect_due_tasks(self, now: datetime) -> list[dict[str, Any]]:
         """Collect all tasks that are due to run."""
-        tasks_to_run: list[dict[str, Any]] = []
         with self._lock:
-            for task in list(self._tasks.values()):
-                if self._is_task_due(task, now):
-                    tasks_to_run.append(dict(task))
-        return tasks_to_run
+            return [dict(task) for task in list(self._tasks.values()) if self._is_task_due(task, now)]
 
     def _is_task_due(self, task: dict[str, Any], now: datetime) -> bool:
         """Check if a task is enabled and due to run."""
