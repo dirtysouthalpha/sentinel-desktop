@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
 import subprocess
 from typing import Any
 
@@ -122,9 +123,17 @@ def _launch_new_app(name: str, launch_cmd: str) -> dict[str, Any]:
         Result dict with launch status.
 
     """
+    import platform
+    cmd_exe = shutil.which("cmd") if platform.system() == "Windows" else "cmd"
+    if not cmd_exe:
+        return {
+            "success": False,
+            "output": "cmd.exe not found on Windows",
+            "error": "cmd_not_found",
+        }
     try:
-        subprocess.Popen(
-            ["cmd", "/c", "start", "", launch_cmd],
+        subprocess.Popen(  # noqa: S603 - Intentional process execution for desktop automation
+            [cmd_exe, "/c", "start", "", launch_cmd],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             shell=False,

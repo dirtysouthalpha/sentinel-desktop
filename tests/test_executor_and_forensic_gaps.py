@@ -106,7 +106,8 @@ class TestSmartOpenPowerShellFallback:
 
     @patch("core.action_executor.launcher")
     @patch("subprocess.Popen")
-    def test_powershell_fallback_success(self, mock_popen, mock_launcher):
+    @patch("shutil.which", return_value="C:\\Windows\\System32\\powershell.exe")
+    def test_powershell_fallback_success(self, mock_which, mock_popen, mock_launcher):
         mock_launcher.smart_open.return_value = {"success": False, "error": "not found"}
         mock_popen.return_value = MagicMock()
         ex = ActionExecutor()
@@ -116,7 +117,8 @@ class TestSmartOpenPowerShellFallback:
 
     @patch("core.action_executor.launcher")
     @patch("subprocess.Popen")
-    def test_powershell_also_fails_returns_hint(self, mock_popen, mock_launcher):
+    @patch("shutil.which", return_value="C:\\Windows\\System32\\powershell.exe")
+    def test_powershell_also_fails_returns_hint(self, mock_which, mock_popen, mock_launcher):
         mock_launcher.smart_open.return_value = {"success": False, "error": "not found"}
         mock_popen.side_effect = OSError("denied")
         ex = ActionExecutor()

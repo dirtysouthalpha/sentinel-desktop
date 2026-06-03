@@ -38,7 +38,9 @@ def start_process(path: str, args: list[str] | None = None) -> int | None:
         cmd = [path] + (args or [])
         # Discard stderr so the pipe never fills and blocks; we only care
         # whether Popen() itself raises (command not found, permission, etc.).
-        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen(  # noqa: S603 - Intentional process execution for desktop automation
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         return proc.pid
     except (OSError, subprocess.SubprocessError, FileNotFoundError, ValueError):
         logger.exception("start_process(%s) failed", path)

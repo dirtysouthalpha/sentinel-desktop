@@ -85,10 +85,12 @@ class TestSmartOpen:
 
     def test_fallback_to_powershell(self, fake_executor, monkeypatch):
         from core import launcher
+        import shutil
 
         monkeypatch.setattr(
             launcher, "smart_open", lambda n: {"success": False, "output": "not found"}
         )
+        monkeypatch.setattr(shutil, "which", lambda x: "C:\\Windows\\System32\\powershell.exe")
         mock_popen = MagicMock()
         monkeypatch.setattr("subprocess.Popen", mock_popen)
         ex = fake_executor()

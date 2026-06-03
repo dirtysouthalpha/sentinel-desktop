@@ -986,11 +986,18 @@ class ActionExecutor:
             return result
 
         # Fallback: PowerShell Start-Process
+        import shutil
         import subprocess
 
+        ps_exe = shutil.which("powershell") or shutil.which("pwsh")
+        if not ps_exe:
+            logger.debug("PowerShell not found for smart_open fallback")
+            result["hint"] = "Try open_app() with the full executable path"
+            return result
+
         try:
-            subprocess.Popen(
-                ["powershell", "-Command", f"Start-Process '{name}'"],
+            subprocess.Popen(  # noqa: S603 - Intentional process execution for desktop automation
+                [ps_exe, "-Command", f"Start-Process '{name}'"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

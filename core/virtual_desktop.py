@@ -628,7 +628,7 @@ class _StubVirtualDesktop:
             cmd = [path]
             if args:
                 cmd.append(args)
-            proc = subprocess.Popen(
+            proc = subprocess.Popen(  # noqa: S603 - Intentional process execution for desktop automation
                 cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

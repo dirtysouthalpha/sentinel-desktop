@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import platform
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -95,10 +96,14 @@ def _get_disk_info() -> list[dict[str, Any]]:
 def _get_gpu_info() -> list[dict[str, Any]]:
     """Get GPU information (Windows only, uses nvidia-smi)."""
     gpus = []
+    nvidia_smi_path = shutil.which("nvidia-smi")
+    if not nvidia_smi_path:
+        logger.debug("nvidia-smi not found in PATH")
+        return []
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 - nvidia-smi is a trusted system utility for GPU monitoring
             [
-                "nvidia-smi",
+                nvidia_smi_path,
                 "--query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw",
                 "--format=csv,noheader,nounits",
             ],

@@ -438,14 +438,13 @@ class TestResolvePsExe:
         assert runner._ps_exe == "powershell.exe"
 
     @patch("core.powershell._is_windows", return_value=True)
-    @patch("subprocess.run", side_effect=FileNotFoundError("no where"))
-    def test_windows_no_where_falls_back(self, mock_run, mock_win):
+    @patch("shutil.which", return_value=None)
+    def test_windows_no_where_falls_back(self, mock_which, mock_win):
         runner = PowerShellRunner()
         assert runner._ps_exe == "powershell.exe"
 
     @patch("core.powershell._is_windows", return_value=True)
-    @patch("subprocess.run")
-    def test_windows_finds_pwsh(self, mock_run, mock_win):
-        mock_run.return_value = MagicMock(returncode=0, stdout="C:\\Program Files\\pwsh.exe\n")
+    @patch("shutil.which", return_value="C:\\Program Files\\pwsh.exe")
+    def test_windows_finds_pwsh(self, mock_which, mock_win):
         runner = PowerShellRunner()
         assert runner._ps_exe == "pwsh.exe"

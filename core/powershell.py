@@ -143,21 +143,12 @@ class PowerShellRunner:
 
     def _resolve_ps_exe(self) -> str:
         """Pick the best PowerShell executable (pwsh > powershell) on Windows."""
+        import shutil
         if not _is_windows():
             return self.POWERSHELL_EXE
         for candidate in (self.PS_CORE_EXE, self.POWERSHELL_EXE):
-            try:
-                r = subprocess.run(
-                    ["where", candidate],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                if r.returncode == 0 and r.stdout.strip():
-                    return candidate
-            except (OSError, subprocess.SubprocessError) as exc:
-                logger.debug("PowerShell candidate %s failed validation: %s", candidate, exc)
-                continue
+            if shutil.which(candidate):
+                return candidate
         return self.POWERSHELL_EXE
 
     def _build_env(self) -> dict[str, str]:
@@ -218,7 +209,7 @@ class PowerShellRunner:
         Handles TimeoutExpired, FileNotFoundError, and other process errors.
         """
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603 - Intentional execution of PowerShell commands for desktop automation
                 args,
                 capture_output=True,
                 text=True,
