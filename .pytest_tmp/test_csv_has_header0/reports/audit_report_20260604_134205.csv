@@ -1,3 +1,0 @@
-"step","timestamp","action","params","result","duration"
-"1","2025-01-01T00:00:00","click","{""x"": 100}","""ok""","0.5"
-"2","2025-01-01T00:00:01","type","{""password"": ""***""}","""ok""","0.3"

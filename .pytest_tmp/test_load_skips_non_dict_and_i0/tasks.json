@@ -1,1 +1,0 @@
-["not a dict", {"no_id": true}, {"id": "good", "name": "G", "type": "script", "cron_expr": "* * * * *"}]
