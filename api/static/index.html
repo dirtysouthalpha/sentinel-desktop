@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENTINEL PRIME — Master Control Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--accent:#00F0FF;--accent2:#00c8d4;--bg0:#050608;--bg1:#0A0C10;--bg2:#111418;
+--bg3:#1a1d23;--text:#e2e2e8;--text2:#b9cacb;--text3:#849495;
+--green:#95E400;--amber:#FBBC00;--red:#ff3b3b;--border:#3b494b;
+--sidebar-w:260px;--radius:8px;
+}
+html,body{height:100%;background:var(--bg0);color:var(--text);font-family:'SF Pro Display',-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;overflow:hidden}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+.mono{font-family:'SF Mono','Fira Code','Cascadia Code','JetBrains Mono',Consolas,monospace}
+
+#app{display:flex;height:100vh;width:100vw}
+
+#sidebar{
+width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg1);
+border-right:1px solid var(--border);display:flex;flex-direction:column;
+transition:margin-left .3s ease;z-index:100;position:relative;
+}
+#sidebar.collapsed{margin-left:calc(-1 * var(--sidebar-w))}
+
+.sidebar-logo{
+padding:20px 16px;border-bottom:1px solid var(--border);text-align:center;
+position:relative;overflow:hidden;
+}
+.sidebar-logo::before{
+content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+background:radial-gradient(ellipse at center,rgba(0,240,255,.06) 0%,transparent 70%);
+pointer-events:none;
+}
+.logo-text{
+font-size:18px;font-weight:800;letter-spacing:4px;color:var(--accent);
+text-shadow:0 0 20px rgba(0,240,255,.4);position:relative;
+animation:logoPulse 4s ease-in-out infinite;
+}
+@keyframes logoPulse{0%,100%{text-shadow:0 0 20px rgba(0,240,255,.4)}50%{text-shadow:0 0 30px rgba(0,240,255,.7)}}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:6px;margin-top:4px;text-transform:uppercase}
+
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-item{
+display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;
+color:var(--text2);transition:all .2s;border-left:3px solid transparent;font-size:14px;
+}
+.nav-item:hover{background:rgba(0,240,255,.05);color:var(--text)}
+.nav-item.active{color:var(--accent);background:rgba(0,240,255,.08);border-left-color:var(--accent)}
+.nav-item .icon{font-size:18px;width:24px;text-align:center}
+
+.sidebar-footer{
+padding:16px;border-top:1px solid var(--border);font-size:12px;
+}
+.status-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.online{background:var(--green);box-shadow:0 0 8px rgba(149,228,0,.6);animation:statusPulse 2s infinite}
+.status-dot.offline{background:var(--red)}
+@keyframes statusPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.hostname{color:var(--text3);font-size:11px}
+
+#main{
+flex:1;display:flex;flex-direction:column;overflow:hidden;
+background:var(--bg0);position:relative;
+}
+
+#topbar{
+height:48px;background:var(--bg1);border-bottom:1px solid var(--border);
+display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;
+}
+#menu-toggle{
+background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;
+padding:4px 8px;border-radius:4px;transition:all .2s;
+}
+#menu-toggle:hover{background:var(--bg2);color:var(--accent)}
+#topbar-title{font-size:14px;font-weight:600;color:var(--text2);letter-spacing:1px}
+.topbar-spacer{flex:1}
+.topbar-actions{display:flex;gap:8px}
+.topbar-btn{
+background:var(--bg2);border:1px solid var(--border);color:var(--text2);
+padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .2s;
+}
+.topbar-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+#content{flex:1;overflow-y:auto;padding:24px;position:relative}
+.section{display:none;animation:fadeIn .3s ease}
+.section.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card{
+background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);
+padding:20px;margin-bottom:16px;transition:border-color .2s;
+}
+.card:hover{border-color:rgba(0,240,255,.3)}
+.card-title{font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+.card-value{font-size:28px;font-weight:700;color:var(--text)}
+
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+
+.stat-ring{width:100px;height:100px;position:relative;margin:0 auto 8px}
+.stat-ring svg{transform:rotate(-90deg)}
+.stat-ring circle{fill:none;stroke-width:6}
+.stat-ring .bg{stroke:var(--bg2)}
+.stat-ring .fg{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .8s ease}
+.stat-ring .label{
+position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+font-size:20px;font-weight:700;color:var(--text);
+}
+
+.btn{
+background:transparent;border:1px solid var(--border);color:var(--text);
+padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;
+transition:all .2s;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 12px rgba(0,240,255,.15)}
+.btn-primary{background:var(--accent);color:var(--bg0);border-color:var(--accent);font-weight:600}
+.btn-primary:hover{background:var(--accent2);box-shadow:0 0 20px rgba(0,240,255,.3)}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:rgba(255,59,59,.1)}
+
+.quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+.progress-bar{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-bar .fill{height:100%;border-radius:3px;transition:width .8s ease}
+.progress-bar .fill.cyan{background:var(--accent)}
+.progress-bar .fill.green{background:var(--green)}
+.progress-bar .fill.amber{background:var(--amber)}
+.progress-bar .fill.red{background:var(--red)}
+
+#chat-section{display:flex;flex-direction:column;height:calc(100vh - 96px)}
+#chat-messages{
+flex:1;overflow-y:auto;padding:16px 0;display:flex;flex-direction:column;gap:16px;
+}
+.msg{display:flex;gap:12px;max-width:85%;animation:fadeIn .3s ease}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg-avatar{
+width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;
+align-items:center;justify-content:center;font-size:14px;font-weight:700;
+}
+.msg.sentinel .msg-avatar{background:rgba(0,240,255,.15);color:var(--accent);border:1px solid rgba(0,240,255,.3)}
+.msg.user .msg-avatar{background:rgba(149,228,0,.15);color:var(--green);border:1px solid rgba(149,228,0,.3)}
+.msg-body{flex:1}
+.msg-header{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.msg-name{font-size:12px;font-weight:600}
+.msg.sentinel .msg-name{color:var(--accent)}
+.msg.user .msg-name{color:var(--green)}
+.msg-time{font-size:10px;color:var(--text3)}
+.msg-content{
+background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);
+padding:12px 16px;font-size:14px;line-height:1.6;color:var(--text);
+}
+.msg.user .msg-content{background:var(--bg2);border-color:rgba(149,228,0,.15)}
+.msg-content code{
+background:var(--bg0);padding:2px 6px;border-radius:3px;font-size:13px;
+font-family:'SF Mono','Fira Code',monospace;color:var(--amber);
+}
+.msg-content pre{
+background:var(--bg0);border:1px solid var(--border);border-radius:6px;
+padding:12px;margin:8px 0;overflow-x:auto;font-size:13px;
+}
+
+.thinking-indicator{
+display:flex;gap:12px;max-width:85%;animation:fadeIn .3s ease;
+}
+.thinking-bubble{
+background:var(--bg1);border:1px solid rgba(0,240,255,.2);border-radius:var(--radius);
+padding:16px 20px;display:flex;align-items:center;gap:12px;
+box-shadow:0 0 20px rgba(0,240,255,.05);
+}
+.thinking-dots{display:flex;gap:4px}
+.thinking-dots span{
+width:6px;height:6px;border-radius:50%;background:var(--accent);
+animation:bounce 1.4s infinite;
+}
+.thinking-dots span:nth-child(2){animation-delay:.2s}
+.thinking-dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}
+.thinking-text{color:var(--accent);font-size:13px;font-weight:500}
+
+#chat-input-area{
+padding:16px 0;border-top:1px solid var(--border);margin-top:auto;
+}
+#chat-input-wrap{
+display:flex;gap:8px;align-items:flex-end;background:var(--bg1);
+border:1px solid var(--border);border-radius:12px;padding:8px 12px;
+transition:border-color .2s;
+}
+#chat-input-wrap:focus-within{border-color:var(--accent);box-shadow:0 0 12px rgba(0,240,255,.1)}
+#chat-input{
+flex:1;background:transparent;border:none;color:var(--text);font-size:14px;
+resize:none;outline:none;min-height:24px;max-height:200px;line-height:1.5;
+font-family:inherit;
+}
+#chat-input::placeholder{color:var(--text3)}
+.chat-btn{
+background:none;border:none;color:var(--text3);cursor:pointer;
+padding:4px;border-radius:4px;font-size:18px;transition:all .2s;
+}
+.chat-btn:hover{color:var(--accent)}
+.chat-btn.send{color:var(--accent);font-size:20px}
+.chat-btn.send:hover{color:var(--accent2);transform:scale(1.1)}
+
+#terminal-section{display:flex;flex-direction:column;height:calc(100vh - 96px)}
+.terminal-toolbar{
+display:flex;align-items:center;gap:8px;padding:8px 0;
+border-bottom:1px solid var(--border);margin-bottom:8px;
+}
+.terminal-toolbar .title{font-size:13px;font-weight:600;color:var(--text2)}
+.terminal-toolbar .conn-dot{width:8px;height:8px;border-radius:50%}
+.terminal-toolbar .conn-dot.on{background:var(--green);box-shadow:0 0 6px rgba(149,228,0,.5)}
+.terminal-toolbar .conn-dot.off{background:var(--red)}
+#terminal-output{
+flex:1;background:#000;border:1px solid var(--border);border-radius:var(--radius);
+padding:12px;font-family:'SF Mono','Fira Code','Cascadia Code',monospace;
+font-size:13px;line-height:1.5;color:var(--green);overflow-y:auto;
+white-space:pre-wrap;word-break:break-all;
+}
+.term-cursor{animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+.chart-container{position:relative;height:200px;background:var(--bg0);border-radius:var(--radius);overflow:hidden}
+.chart-container canvas{width:100%;height:100%}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:1px}
+td{padding:8px 12px;border-bottom:1px solid rgba(59,73,75,.3);color:var(--text2)}
+tr:hover td{background:rgba(0,240,255,.03)}
+
+.setting-group{margin-bottom:24px}
+.setting-label{font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+.setting-input{
+width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+padding:10px 12px;color:var(--text);font-size:14px;outline:none;transition:border-color .2s;
+}
+.setting-input:focus{border-color:var(--accent)}
+select.setting-input{cursor:pointer}
+.toggle{
+position:relative;width:44px;height:24px;background:var(--bg2);border-radius:12px;
+cursor:pointer;border:1px solid var(--border);transition:all .2s;
+}
+.toggle.on{background:rgba(0,240,255,.2);border-color:var(--accent)}
+.toggle::after{
+content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;
+border-radius:50%;background:var(--text3);transition:all .2s;
+}
+.toggle.on::after{left:22px;background:var(--accent)}
+
+.toast-container{position:fixed;top:60px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{
+padding:12px 20px;border-radius:8px;font-size:13px;animation:toastIn .3s ease;
+box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:360px;
+}
+.toast.success{background:rgba(149,228,0,.15);border:1px solid rgba(149,228,0,.3);color:var(--green)}
+.toast.error{background:rgba(255,59,59,.15);border:1px solid rgba(255,59,59,.3);color:var(--red)}
+.toast.info{background:rgba(0,240,255,.15);border:1px solid rgba(0,240,255,.3);color:var(--accent)}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+
+.activity-item{
+display:flex;align-items:center;gap:10px;padding:8px 0;
+border-bottom:1px solid rgba(59,73,75,.2);font-size:13px;
+}
+.activity-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.activity-time{color:var(--text3);font-size:11px;margin-left:auto;white-space:nowrap}
+
+.workflow-card{
+background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+padding:16px;display:flex;align-items:center;gap:12px;transition:all .2s;
+}
+.workflow-card:hover{border-color:rgba(0,240,255,.3)}
+.wf-info{flex:1}
+.wf-name{font-size:14px;font-weight:600;color:var(--text)}
+.wf-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.wf-actions{display:flex;gap:6px}
+</style>
+</head>
+<body>
+<div id="app">
+<aside id="sidebar">
+<div class="sidebar-logo">
+<div class="logo-text">SENTINEL PRIME</div>
+<div class="logo-sub">Master Control</div>
+</div>
+<nav class="sidebar-nav">
+<div class="nav-item active" data-section="overview"><span class="icon">&#x1F3E0;</span>Overview</div>
+<div class="nav-item" data-section="chat"><span class="icon">&#x1F4AC;</span>Chat</div>
+<div class="nav-item" data-section="terminal"><span class="icon">&#x1F5A5;</span>Terminal</div>
+<div class="nav-item" data-section="monitor"><span class="icon">&#x1F4CA;</span>System Monitor</div>
+<div class="nav-item" data-section="workflows"><span class="icon">&#x1F527;</span>Workflows</div>
+<div class="nav-item" data-section="logs"><span class="icon">&#x1F4DC;</span>Logs</div>
+<div class="nav-item" data-section="settings"><span class="icon">&#x2699;</span>Settings</div>
+</nav>
+<div class="sidebar-footer">
+<div class="status-row">
+<div class="status-dot online" id="status-dot"></div>
+<span id="status-text" style="color:var(--green);font-weight:600">ONLINE</span>
+</div>
+<div class="hostname" id="hostname">sentinel-nuke</div>
+</div>
+</aside>
+
+<main id="main">
+<div id="topbar">
+<button id="menu-toggle" title="Toggle sidebar">&#x2630;</button>
+<span id="topbar-title">OVERVIEW</span>
+<div class="topbar-spacer"></div>
+<div class="topbar-actions">
+<button class="topbar-btn" onclick="api.screenshot().then(()=>toast('Screenshot captured','success'))">&#x1F4F7; Screenshot</button>
+<button class="topbar-btn" onclick="api.getHealth().then(h=>toast('Health: '+h.status,'success'))">&#x2764; Health</button>
+</div>
+</div>
+
+<div id="content">
+<div id="overview" class="section active">
+<div class="grid grid-4" id="stat-cards"></div>
+<div class="quick-actions">
+<button class="btn btn-primary" onclick="navigateTo('chat')">&#x2728; New Goal</button>
+<button class="btn" onclick="takeScreenshot()">&#x1F4F7; Screenshot</button>
+<button class="btn" onclick="refreshOverview()">&#x1F504; Refresh</button>
+<button class="btn" onclick="api.getStatus().then(s=>toast('Agent: '+(s.running?'Running':'Idle'),'info'))">&#x2139; Status</button>
+</div>
+<div class="grid grid-2" style="margin-top:16px">
+<div class="card">
+<div class="card-title">Disk Usage</div>
+<div id="disk-bars"></div>
+</div>
+<div class="card">
+<div class="card-title">Recent Activity</div>
+<div id="activity-feed"><div style="color:var(--text3);font-size:13px">Waiting for events...</div></div>
+</div>
+</div>
+</div>
+
+<div id="chat" class="section">
+<div id="chat-section">
+<div id="chat-messages"></div>
+<div id="thinking" style="display:none" class="thinking-indicator">
+<div class="thinking-bubble">
+<div class="thinking-dots"><span></span><span></span><span></span></div>
+<span class="thinking-text" id="thinking-text">Sentinel Prime is thinking...</span>
+</div>
+</div>
+<div id="chat-input-area">
+<div id="chat-input-wrap">
+<textarea id="chat-input" rows="1" placeholder="Ask Sentinel Prime anything... (Ctrl+Enter to send)"></textarea>
+<button class="chat-btn" onclick="attachScreenshot()" title="Attach screenshot">&#x1F4F7;</button>
+<button class="chat-btn send" onclick="sendMessage()" title="Send">&#x27A4;</button>
+</div>
+</div>
+</div>
+</div>
+
+<div id="terminal" class="section">
+<div id="terminal-section">
+<div class="terminal-toolbar">
+<div class="conn-dot off" id="term-conn-dot"></div>
+<span class="title">NUKE Terminal</span>
+<div style="flex:1"></div>
+<button class="btn" style="font-size:11px;padding:4px 10px" onclick="connectTerminal()">Reconnect</button>
+<button class="btn" style="font-size:11px;padding:4px 10px" onclick="clearTerminal()">Clear</button>
+</div>
+<div id="terminal-output" tabindex="0"></div>
+</div>
+</div>
+
+<div id="monitor" class="section">
+<div class="grid grid-2">
+<div class="card">
+<div class="card-title">CPU Usage</div>
+<div class="chart-container"><canvas id="cpu-chart"></canvas></div>
+</div>
+<div class="card">
+<div class="card-title">Memory Usage</div>
+<div class="chart-container"><canvas id="mem-chart"></canvas></div>
+</div>
+</div>
+<div class="card" style="margin-top:16px">
+<div class="card-title">Top Processes</div>
+<table>
+<thead><tr><th>PID</th><th>Name</th><th>CPU %</th><th>Memory %</th></tr></thead>
+<tbody id="process-table"></tbody>
+</table>
+</div>
+</div>
+
+<div id="workflows" class="section">
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+<div class="card-title" style="margin:0">Workflows</div>
+<div style="flex:1"></div>
+<button class="btn btn-primary" onclick="toast('Use workflow builder API to create','info')">+ New</button>
+<button class="btn" onclick="refreshWorkflows()">Refresh</button>
+</div>
+<div id="workflow-list"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
+</div>
+
+<div id="logs" class="section">
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+<div class="card-title" style="margin:0">Forensic Log</div>
+<div style="flex:1"></div>
+<label style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">
+Auto-refresh <div class="toggle on" id="log-auto-toggle" onclick="this.classList.toggle('on')"></div>
+</label>
+<button class="btn" onclick="refreshLogs()">Refresh</button>
+</div>
+<div class="card" style="max-height:calc(100vh - 200px);overflow-y:auto">
+<table>
+<thead><tr><th>Time</th><th>Level</th><th>Message</th></tr></thead>
+<tbody id="log-table"></tbody>
+</table>
+</div>
+</div>
+
+<div id="settings" class="section">
+<div class="grid grid-2">
+<div class="card">
+<div class="card-title">LLM Provider</div>
+<div class="setting-group">
+<div class="setting-label">Provider</div>
+<select class="setting-input" id="set-provider">
+<option value="openai">OpenAI</option>
+<option value="anthropic">Anthropic</option>
+<option value="google">Google</option>
+<option value="xai">xAI</option>
+<option value="zai">Z.ai (GLM)</option>
+<option value="deepseek">DeepSeek</option>
+<option value="ollama">Ollama</option>
+<option value="custom">Custom</option>
+</select>
+</div>
+<div class="setting-group">
+<div class="setting-label">Model</div>
+<input class="setting-input" id="set-model" placeholder="e.g. gpt-4o">
+</div>
+<div class="setting-group">
+<div class="setting-label">API Key</div>
+<input class="setting-input" id="set-apikey" type="password" placeholder="sk-...">
+</div>
+<div class="setting-group">
+<div class="setting-label">Custom Base URL</div>
+<input class="setting-input" id="set-baseurl" placeholder="https://api.openai.com/v1">
+</div>
+</div>
+<div class="card">
+<div class="card-title">Agent Settings</div>
+<div class="setting-group">
+<div class="setting-label">Max Steps</div>
+<input class="setting-input" id="set-maxsteps" type="number" value="100" min="1" max="1000">
+</div>
+<div class="setting-group" style="display:flex;align-items:center;justify-content:space-between">
+<div>
+<div class="setting-label" style="margin:0">Approval Mode</div>
+<div style="font-size:11px;color:var(--text3)">Require approval before actions</div>
+</div>
+<div class="toggle on" id="set-approval" onclick="this.classList.toggle('on')"></div>
+</div>
+<div class="setting-group" style="display:flex;align-items:center;justify-content:space-between">
+<div>
+<div class="setting-label" style="margin:0">Autonomous Mode</div>
+<div style="font-size:11px;color:var(--text3)">Skip all approval prompts</div>
+</div>
+<div class="toggle" id="set-autonomous" onclick="this.classList.toggle('on')"></div>
+</div>
+<div class="setting-group">
+<div class="setting-label">Theme</div>
+<select class="setting-input" id="set-theme">
+<option value="sentinel">Sentinel (Cyberpunk)</option>
+<option value="matrix">Matrix</option>
+<option value="midnight">Midnight</option>
+<option value="dark">Dark</option>
+<option value="tron">Tron</option>
+</select>
+</div>
+<div style="margin-top:20px">
+<button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API_BASE=location.protocol+'//'+location.hostname+':8091';
+
+class SentinelAPI{
+constructor(base=API_BASE){this.base=base}
+async _get(path){const r=await fetch(this.base+path);if(!r.ok)throw new Error(r.status+' '+r.statusText);return r.json()}
+async _post(path,body){const r=await fetch(this.base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error(r.status+' '+r.statusText);return r.json()}
+async _put(path,body){const r=await fetch(this.base+path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error(r.status+' '+r.statusText);return r.json()}
+getOverview(){return this._get('/dashboard/overview')}
+getHealth(){return this._get('/dashboard/health')}
+getMetrics(){return this._get('/dashboard/metrics')}
+getScreenshot(){return this._get('/screenshot')}
+getStatus(){return this._get('/status')}
+getWindows(){return this._get('/windows')}
+getProcesses(){return this._get('/processes')}
+getSystem(){return this._get('/system')}
+getConfig(){return this._get('/config')}
+getLog(){return this._get('/log')}
+listWorkflows(){return this._get('/workflows')}
+listSchedule(){return this._get('/schedule')}
+listScripts(){return this._get('/scripts')}
+getWorkflowTemplates(){return this._get('/workflows/builder/templates')}
+startGoal(goal){return this._post('/goal',{goal})}
+stopAgent(){return this._post('/stop',{})}
+sendCommand(cmd){return this._post('/command',{command:cmd})}
+runWorkflow(path){return this._post('/workflows/run',{path})}
+runScript(path){return this._post('/scripts/run',{path})}
+updateConfig(data){return this._put('/config',data)}
+notify(title,message){return this._post('/notify',{title,message})}
+updateSettings(d){return this._put('/config',d)}
+}
+const api=new SentinelAPI();
+
+class WSManager{
+constructor(){
+this.ws=null;this.termWs=null;
+this.handlers={step:[],done:[],error:[],terminal_data:[],connected:[],disconnected:[]};
+this._reconnectTimer=null;
+}
+on(evt,fn){(this.handlers[evt]||(this.handlers[evt]=[])).push(fn)}
+_emit(evt,data){(this.handlers[evt]||[]).forEach(fn=>{try{fn(data)}catch(e){console.error(e)}})}
+connect(){
+if(this.ws&&this.ws.readyState===WebSocket.OPEN)return;
+try{
+this.ws=new WebSocket('ws://'+location.hostname+':8091/ws');
+this.ws.onopen=()=>{this._emit('connected',{});document.getElementById('status-dot').className='status-dot online';document.getElementById('status-text').textContent='ONLINE';document.getElementById('status-text').style.color='var(--green)'};
+this.ws.onmessage=e=>{try{const d=JSON.parse(e.data);this._emit(d.type||'step',d)}catch{}};
+this.ws.onclose=()=>{this._emit('disconnected',{});document.getElementById('status-dot').className='status-dot offline';document.getElementById('status-text').textContent='OFFLINE';document.getElementById('status-text').style.color='var(--red)';this._scheduleReconnect()};
+this.ws.onerror=()=>{};
+}catch{this._scheduleReconnect()}
+}
+_scheduleReconnect(){clearTimeout(this._reconnectTimer);this._reconnectTimer=setTimeout(()=>this.connect(),3000)}
+send(data){if(this.ws&&this.ws.readyState===WebSocket.OPEN)this.ws.send(JSON.stringify(data))}
+
+connectTerminal(){
+if(this.termWs&&this.termWs.readyState===WebSocket.OPEN)return;
+try{
+this.termWs=new WebSocket('ws://'+location.hostname+':8091/ws/terminal');
+this.termWs.onopen=()=>{
+this._emit('connected',{terminal:true});
+document.getElementById('term-conn-dot').className='conn-dot on';
+};
+this.termWs.onmessage=e=>{
+try{const d=JSON.parse(e.data);if(d.type==='data')this._emit('terminal_data',d.data)}
+catch{}
+};
+this.termWs.onclose=()=>{
+this._emit('disconnected',{terminal:true});
+document.getElementById('term-conn-dot').className='conn-dot off';
+};
+this.termWs.onerror=()=>{};
+}catch{toast('Terminal connection failed','error')}
+}
+sendTerminal(data){if(this.termWs&&this.termWs.readyState===WebSocket.OPEN)this.termWs.send(JSON.stringify(data))}
+terminalResize(rows,cols){this.sendTerminal({type:'resize',rows,cols})}
+}
+const ws=new WSManager();
+
+function toast(msg,type='info'){
+const c=document.getElementById('toasts');
+const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;
+c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},3500);
+}
+
+function navigateTo(section){
+document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+const el=document.getElementById(section);if(el)el.classList.add('active');
+const nav=document.querySelector(`.nav-item[data-section="${section}"]`);if(nav)nav.classList.add('active');
+document.getElementById('topbar-title').textContent=section.toUpperCase();
+if(section==='terminal'){connectTerminal();document.getElementById('terminal-output').focus()}
+if(section==='monitor')startMonitorCharts();
+if(section==='workflows')refreshWorkflows();
+if(section==='logs')refreshLogs();
+if(section==='settings')loadSettings();
+if(section==='chat'){setTimeout(()=>document.getElementById('chat-input').focus(),100)}
+}
+
+function connectTerminal(){ws.connectTerminal()}
+
+document.querySelectorAll('.nav-item').forEach(n=>{
+n.addEventListener('click',()=>navigateTo(n.dataset.section));
+});
+document.getElementById('menu-toggle').addEventListener('click',()=>{
+document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+let thinkingInterval=null;
+const thinkingPhrases=['Sentinel Prime is thinking...','Analyzing your request...','Processing...','Generating response...'];
+let thinkingIdx=0;
+
+function showThinking(){
+const el=document.getElementById('thinking');el.style.display='flex';
+thinkingIdx=0;
+document.getElementById('thinking-text').textContent=thinkingPhrases[0];
+thinkingInterval=setInterval(()=>{
+thinkingIdx=(thinkingIdx+1)%thinkingPhrases.length;
+document.getElementById('thinking-text').textContent=thinkingPhrases[thinkingIdx];
+},2500);
+}
+function hideThinking(){
+document.getElementById('thinking').style.display='none';
+clearInterval(thinkingInterval);
+}
+
+function addMessage(role,content){
+const c=document.getElementById('chat-messages');
+const m=document.createElement('div');
+m.className='msg '+role;
+const now=new Date().toLocaleTimeString();
+const avatar=role==='user'?'U':'S';
+const name=role==='user'?'You':'Sentinel Prime';
+m.innerHTML=`<div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="msg-header"><span class="msg-name">${name}</span><span class="msg-time">${now}</span></div><div class="msg-content">${formatContent(content)}</div></div>`;
+c.appendChild(m);
+c.scrollTop=c.scrollHeight;
+}
+
+function formatContent(text){
+if(!text)return '';
+let s=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+s=s.replace(/```([\s\S]*?)```/g,'<pre>$1</pre>');
+s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
+s=s.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+s=s.replace(/\n/g,'<br>');
+return s;
+}
+
+function sendMessage(){
+const input=document.getElementById('chat-input');
+const text=input.value.trim();
+if(!text)return;
+input.value='';
+input.style.height='auto';
+addMessage('user',text);
+showThinking();
+api.startGoal(text).then(r=>{
+toast('Agent started','success');
+}).catch(e=>{
+hideThinking();
+toast('Failed: '+e.message,'error');
+addMessage('sentinel','Error: '+e.message);
+});
+}
+
+document.getElementById('chat-input').addEventListener('keydown',e=>{
+if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();sendMessage()}
+});
+document.getElementById('chat-input').addEventListener('input',function(){
+this.style.height='auto';
+this.style.height=Math.min(this.scrollHeight,200)+'px';
+});
+
+ws.on('step',d=>{
+hideThinking();
+if(d.step)addMessage('sentinel',`**Step ${d.step}**: ${d.description||d.action||JSON.stringify(d)}`);
+});
+ws.on('done',d=>{
+hideThinking();
+addMessage('sentinel',`Task complete. ${d.result?d.result.summary||d.result.steps+' steps':'Done.'}`);
+});
+ws.on('error',d=>{
+hideThinking();
+addMessage('sentinel','Error: '+(d.message||'Unknown error'));
+toast('Agent error: '+d.message,'error');
+});
+
+async function takeScreenshot(){
+try{const r=await api.screenshot();toast('Screenshot captured ('+r.format+')','success')}
+catch(e){toast('Screenshot failed: '+e.message,'error')}
+}
+
+async function attachScreenshot(){
+try{
+const r=await api.screenshot();
+addMessage('user','[Screenshot attached - '+r.format.toUpperCase()+']');
+toast('Screenshot attached','success');
+}catch(e){toast('Screenshot failed','error')}
+}
+
+let termOutput='';
+ws.on('terminal_data',data=>{
+termOutput+=parseANSI(data);
+const el=document.getElementById('terminal-output');
+el.innerHTML=termOutput+'<span class="term-cursor">&#x2588;</span>';
+el.scrollTop=el.scrollHeight;
+});
+ws.on('connected',d=>{
+if(d.terminal){termOutput='';document.getElementById('terminal-output').innerHTML=''}
+});
+ws.on('disconnected',d=>{
+if(d.terminal){toast('Terminal disconnected','error')}
+});
+
+function parseANSI(s){
+return s.replace(/\x1b\[[0-9;]*m/g,'').replace(/\x1b\[[0-9;]*[A-HJKST]/g,'');
+}
+
+document.getElementById('terminal-output').addEventListener('keydown',e=>{
+if(e.key==='Tab'){e.preventDefault()}
+if(!ws.termWs||ws.termWs.readyState!==WebSocket.OPEN)return;
+if(e.ctrlKey){
+const cc=String.fromCharCode(e.keyCode-64);
+ws.sendTerminal({type:'input',data:String.fromCharCode(e.keyCode-64)});
+if(e.key!=='c'&&e.key!=='v')e.preventDefault();
+return;
+}
+if(e.key==='Enter'){ws.sendTerminal({type:'input',data:'\r'});e.preventDefault()}
+else if(e.key==='Backspace'){ws.sendTerminal({type:'input',data:'\x7f'});e.preventDefault()}
+else if(e.key==='Tab'){ws.sendTerminal({type:'input',data:'\t'});e.preventDefault()}
+else if(e.key==='ArrowUp'){ws.sendTerminal({type:'input',data:'\x1b[A'});e.preventDefault()}
+else if(e.key==='ArrowDown'){ws.sendTerminal({type:'input',data:'\x1b[B'});e.preventDefault()}
+else if(e.key==='ArrowRight'){ws.sendTerminal({type:'input',data:'\x1b[C'});e.preventDefault()}
+else if(e.key==='ArrowLeft'){ws.sendTerminal({type:'input',data:'\x1b[D'});e.preventDefault()}
+else if(e.key.length===1&&!e.metaKey){ws.sendTerminal({type:'input',data:e.key})}
+});
+
+function clearTerminal(){termOutput='';document.getElementById('terminal-output').innerHTML=''}
+
+async function refreshOverview(){
+try{
+const d=await api.getOverview();
+const sc=document.getElementById('stat-cards');
+const cpuPct=Math.round(d.cpu?.percent||0);
+const memPct=Math.round(d.memory?.percent||0);
+const memUsed=d.memory?.used_gb||0;
+const memTotal=d.memory?.total_gb||0;
+const uptime=d.system?.uptime||'0h 0m 0s';
+const cpuCircumference=2*Math.PI*42;
+const cpuOffset=cpuCircumference-(cpuPct/100)*cpuCircumference;
+const memOffset=cpuCircumference-(memPct/100)*cpuCircumference;
+sc.innerHTML=`
+<div class="card" style="text-align:center"><div class="card-title">CPU</div>
+<div class="stat-ring"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" cx="50" cy="50" r="42" stroke-dasharray="${cpuCircumference}" stroke-dashoffset="${cpuOffset}"/></svg><div class="label">${cpuPct}%</div></div>
+<div style="font-size:11px;color:var(--text3)">${d.cpu?.count_logical||'?'} cores @ ${d.cpu?.freq_current||'?'}MHz</div></div>
+<div class="card" style="text-align:center"><div class="card-title">Memory</div>
+<div class="stat-ring"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" cx="50" cy="50" r="42" stroke-dasharray="${cpuCircumference}" stroke-dashoffset="${memOffset}" style="stroke:var(--green)"/></svg><div class="label">${memPct}%</div></div>
+<div style="font-size:11px;color:var(--text3)">${memUsed} / ${memTotal} GB</div></div>
+<div class="card" style="text-align:center"><div class="card-title">Uptime</div>
+<div class="card-value" style="font-size:22px;margin-top:16px">${uptime}</div>
+<div style="font-size:11px;color:var(--text3);margin-top:4px">${d.system?.hostname||'sentinel-nuke'}</div></div>
+<div class="card" style="text-align:center"><div class="card-title">Health</div>
+<div class="card-value" style="font-size:22px;margin-top:16px;color:${d.health_checks?.[0]?.status==='healthy'?'var(--green)':'var(--amber)'}">${d.health_checks?.[0]?.status?.toUpperCase()||'N/A'}</div>
+<div style="font-size:11px;color:var(--text3);margin-top:4px">${(d.health_checks?.[0]?.issues||[]).join(', ')||'All systems nominal'}</div></div>`;
+
+const db=document.getElementById('disk-bars');
+db.innerHTML=(d.disks||[]).map(dk=>{
+const pct=Math.round(dk.percent);
+const clr=pct>90?'red':pct>70?'amber':'cyan';
+return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text2)">${dk.mount}</span><span style="color:var(--text3)">${dk.used_gb}/${dk.total_gb} GB (${pct}%)</span></div><div class="progress-bar"><div class="fill ${clr}" style="width:${pct}%"></div></div></div>`;
+}).join('')||'<div style="color:var(--text3);font-size:13px">No disk data</div>';
+
+document.getElementById('hostname').textContent=d.system?.hostname||'sentinel-nuke';
+}catch(e){toast('Overview failed: '+e.message,'error')}
+}
+
+let monitorInterval=null;
+let cpuHistory=[],memHistory=[];
+const MAX_POINTS=60;
+
+function startMonitorCharts(){
+if(monitorInterval)clearInterval(monitorInterval);
+cpuHistory=[];memHistory=[];
+drawChart('cpu-chart',cpuHistory,'CPU %','#00F0FF');
+drawChart('mem-chart',memHistory,'Mem %','#95E400');
+monitorInterval=setInterval(async()=>{
+try{
+const m=await api.getMetrics();
+cpuHistory.push(m.cpu_percent||0);if(cpuHistory.length>MAX_POINTS)cpuHistory.shift();
+memHistory.push(m.memory_percent||0);if(memHistory.length>MAX_POINTS)memHistory.shift();
+drawChart('cpu-chart',cpuHistory,'CPU %','#00F0FF');
+drawChart('mem-chart',memHistory,'Mem %','#95E400');
+}catch{}
+try{
+const p=await api.getProcesses();
+const tb=document.getElementById('process-table');
+tb.innerHTML=(p.processes||[]).slice(0,20).map(pr=>
+`<tr><td>${pr.pid}</td><td>${pr.name}</td><td>${pr.cpu_percent?.toFixed?.(1)||'-'}</td><td>${pr.memory_percent?.toFixed?.(1)||'-'}</td></tr>`
+).join('');
+}catch{}
+},2000);
+}
+
+function drawChart(id,data,label,color){
+const canvas=document.getElementById(id);
+if(!canvas)return;
+const ctx=canvas.getContext('2d');
+const rect=canvas.parentElement.getBoundingClientRect();
+canvas.width=rect.width*2;canvas.height=rect.height*2;
+ctx.scale(2,2);
+const w=rect.width,h=rect.height;
+ctx.clearRect(0,0,w,h);
+ctx.fillStyle='#050608';ctx.fillRect(0,0,w,h);
+for(let i=0;i<=4;i++){
+const y=h*0.1+(h*0.8)*(i/4);
+ctx.strokeStyle='rgba(59,73,75,0.3)';ctx.lineWidth=0.5;
+ctx.beginPath();ctx.moveTo(40,y);ctx.lineTo(w-10,y);ctx.stroke();
+ctx.fillStyle='#849495';ctx.font='10px system-ui';ctx.textAlign='right';
+ctx.fillText(Math.round(100-i*25)+'%',35,y+3);
+}
+if(data.length<2)return;
+ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineJoin='round';
+ctx.beginPath();
+const step=(w-50)/(MAX_POINTS-1);
+for(let i=0;i<data.length;i++){
+const x=40+i*step;
+const y=h*0.1+h*0.8*(1-data[i]/100);
+if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+}
+ctx.stroke();
+const grad=ctx.createLinearGradient(0,0,0,h);
+grad.addColorStop(0,color.replace(')',',0.15)').replace('rgb','rgba'));
+grad.addColorStop(1,'transparent');
+ctx.lineTo(40+(data.length-1)*step,h*0.9);
+ctx.lineTo(40,h*0.9);ctx.closePath();
+ctx.fillStyle=grad;ctx.fill();
+ctx.fillStyle=color;ctx.font='bold 11px system-ui';ctx.textAlign='left';
+ctx.fillText(label+': '+Math.round(data[data.length-1])+'%',45,20);
+}
+
+async function refreshWorkflows(){
+try{
+const r=await api.listWorkflows();
+const el=document.getElementById('workflow-list');
+const wfs=r.workflows||[];
+if(!wfs.length){el.innerHTML='<div style="color:var(--text3);font-size:13px">No workflows found</div>';return}
+el.innerHTML=wfs.map(wf=>`
+<div class="workflow-card" style="margin-bottom:10px">
+<div class="wf-info"><div class="wf-name">${wf.name||wf.path||'Untitled'}</div><div class="wf-meta">${wf.steps?.length||0} steps</div></div>
+<div class="wf-actions">
+<button class="btn" style="font-size:11px;padding:4px 10px" onclick="api.runWorkflow('${wf.path||wf.name}').then(()=>toast('Workflow started','success')).catch(e=>toast(e.message,'error'))">&#x25B6; Run</button>
+</div></div>`).join('');
+}catch(e){toast('Workflows failed: '+e.message,'error')}
+}
+
+async function refreshLogs(){
+try{
+const r=await api.getLog();
+const el=document.getElementById('log-table');
+const entries=Array.isArray(r)?r:(r.entries||r.logs||[]);
+if(!entries.length){el.innerHTML='<tr><td colspan="3" style="color:var(--text3)">No log entries</td></tr>';return}
+el.innerHTML=entries.slice(-100).reverse().map(e=>{
+const lvl=(e.level||e.type||'info').toLowerCase();
+const clr=lvl.includes('error')?'var(--red)':lvl.includes('warn')?'var(--amber)':'var(--text3)';
+return `<tr><td style="white-space:nowrap">${e.timestamp||e.time||''}</td><td style="color:${clr}">${lvl.toUpperCase()}</td><td>${e.message||e.msg||e.text||JSON.stringify(e)}</td></tr>`;
+}).join('');
+}catch(e){document.getElementById('log-table').innerHTML=`<tr><td colspan="3" style="color:var(--red)">Error: ${e.message}</td></tr>`}
+}
+
+async function loadSettings(){
+try{
+const c=await api.getConfig();
+document.getElementById('set-provider').value=c.provider||'openai';
+document.getElementById('set-model').value=c.model||'';
+document.getElementById('set-apikey').value=c.api_key||'';
+document.getElementById('set-baseurl').value=c.custom_base_url||'';
+document.getElementById('set-maxsteps').value=c.max_steps||100;
+document.getElementById('set-theme').value=c.theme||'sentinel';
+const appr=document.getElementById('set-approval');
+if(c.approval_mode===false)appr.classList.remove('on');else appr.classList.add('on');
+const auto=document.getElementById('set-autonomous');
+if(c.autonomous===true)auto.classList.add('on');else auto.classList.remove('on');
+}catch(e){toast('Config load failed: '+e.message,'error')}
+}
+
+async function saveSettings(){
+try{
+const data={
+provider:document.getElementById('set-provider').value,
+model:document.getElementById('set-model').value,
+api_key:document.getElementById('set-apikey').value,
+custom_base_url:document.getElementById('set-baseurl').value,
+max_steps:parseInt(document.getElementById('set-maxsteps').value)||100,
+theme:document.getElementById('set-theme').value,
+approval_mode:document.getElementById('set-approval').classList.contains('on'),
+autonomous:document.getElementById('set-autonomous').classList.contains('on'),
+};
+await api.updateSettings(data);
+toast('Settings saved','success');
+}catch(e){toast('Save failed: '+e.message,'error')}
+}
+
+let activities=[];
+ws.on('step',d=>{
+activities.unshift({text:'Step: '+(d.description||d.action||'executing'),time:new Date().toLocaleTimeString(),color:'var(--accent)'});
+if(activities.length>10)activities.pop();
+renderActivities();
+});
+ws.on('done',d=>{
+activities.unshift({text:'Agent completed ('+((d.result&&d.result.steps)||'?')+' steps)',time:new Date().toLocaleTimeString(),color:'var(--green)'});
+if(activities.length>10)activities.pop();
+renderActivities();
+});
+ws.on('error',d=>{
+activities.unshift({text:'Error: '+(d.message||'unknown'),time:new Date().toLocaleTimeString(),color:'var(--red)'});
+if(activities.length>10)activities.pop();
+renderActivities();
+});
+
+function renderActivities(){
+const el=document.getElementById('activity-feed');
+el.innerHTML=activities.map(a=>`<div class="activity-item"><div class="activity-dot" style="background:${a.color}"></div><span style="color:var(--text2)">${a.text}</span><span class="activity-time">${a.time}</span></div>`).join('');
+}
+
+refreshOverview();
+ws.connect();
+
+setInterval(()=>{
+const el=document.getElementById('log-auto-toggle');
+if(el&&el.classList.contains('on')&&document.getElementById('logs').classList.contains('active'))refreshLogs();
+},10000);
+
+setInterval(()=>refreshOverview(),15000);
+
+window.addEventListener('resize',()=>{
+if(document.getElementById('monitor').classList.contains('active')){
+drawChart('cpu-chart',cpuHistory,'CPU %','#00F0FF');
+drawChart('mem-chart',memHistory,'Mem %','#95E400');
+}
+const termEl=document.getElementById('terminal-output');
+if(termEl&&ws.termWs&&ws.termWs.readyState===WebSocket.OPEN){
+const r=termEl.getBoundingClientRect();
+ws.terminalResize(Math.floor(r.height/15),Math.floor(r.width/7.5));
+}
+});
+</script>
+</body>
+</html>
