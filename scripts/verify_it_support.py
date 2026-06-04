@@ -46,7 +46,7 @@ print(f"\n{'='*60}")
 print(f"Verified {len(list(scripts_dir.glob('*.json')))} script templates")
 
 if errors:
-    print(f"\n❌ Errors found:")
+    print("\n❌ Errors found:")
     for error in errors:
         print(f"  - {error}")
     sys.exit(1)
