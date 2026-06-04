@@ -29,6 +29,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+.claude/
 
 # Test / coverage
 .pytest_cache/
