@@ -6,7 +6,7 @@ Vision-driven desktop automation agent. Give it a goal in plain English, it sees
 **All priorities complete - project is production-ready ✅**
 
 All quality gates met:
-- ✅ 5,114 tests passing (117 IT support script tests included)
+- ✅ 4,973 tests passing (141 skipped on Linux - Windows-specific tests)
 - ✅ Zero lint errors (ruff check clean)
 - ✅ 99% test coverage (well above ≥80% target)
 - ✅ All API endpoints fully implemented (workflow builder complete)
