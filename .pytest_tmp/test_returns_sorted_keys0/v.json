@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "keys": {
+    "zebra": {
+      "encrypted": "ZWc9PQ==",
+      "created": "2026-06-04T17:42:25.087307+00:00"
+    },
+    "alpha": {
+      "encrypted": "WVE9PQ==",
+      "created": "2026-06-04T17:42:25.087377+00:00"
+    },
+    "middle": {
+      "encrypted": "YlE9PQ==",
+      "created": "2026-06-04T17:42:25.087442+00:00"
+    }
+  }
+}

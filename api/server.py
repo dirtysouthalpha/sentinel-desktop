@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — FastAPI Headless Control Server.
+"""Sentinel Desktop v3 — FastAPI Headless Control Server.
 
 Run with: python main.py --api
 Endpoints:
@@ -254,9 +254,9 @@ class SentinelServer:
             yield
 
         app = FastAPI(
-            title="Sentinel Desktop v2",
+            title="Sentinel Desktop v3",
             description="AI-powered Windows desktop automation API",
-            version="2.0.0",
+            version="3.1.0",
             lifespan=lifespan,
         )
 

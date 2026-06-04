@@ -1,0 +1,50 @@
+[
+  {
+    "id": "86c802014db3",
+    "name": "First",
+    "type": "script",
+    "path": "first.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:31.524284",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.523952"
+  },
+  {
+    "id": "adc25a30f235",
+    "name": "Second",
+    "type": "script",
+    "path": "second.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:31.524284",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.523995"
+  },
+  {
+    "id": "f6c767128c6d",
+    "name": "Third",
+    "type": "script",
+    "path": "third.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:31.524284",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.524035"
+  }
+]

@@ -1,1 +1,1 @@
-"""Sentinel Desktop v2 — GUI package."""
+"""Sentinel Desktop v3 — GUI package."""

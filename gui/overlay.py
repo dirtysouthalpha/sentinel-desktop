@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Action overlay.
+"""Sentinel Desktop v3 — Action overlay.
 
 Pops a transparent, click-through, always-on-top window for ~400ms at the
 location of every state-changing action. Visible feedback during automation

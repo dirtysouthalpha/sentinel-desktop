@@ -1,0 +1,34 @@
+[
+  {
+    "id": "bec9c39612ac",
+    "name": "A",
+    "type": "script",
+    "path": "a.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:31.510297",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.510086"
+  },
+  {
+    "id": "0352065fc3a8",
+    "name": "B",
+    "type": "script",
+    "path": "b.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:31.510297",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.510133"
+  }
+]

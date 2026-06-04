@@ -1,0 +1,18 @@
+[
+  {
+    "id": "7c7a4f0a7711",
+    "name": "T",
+    "type": "goal",
+    "path": null,
+    "goal": "Do it",
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:30.863059",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:30.863002"
+  }
+]

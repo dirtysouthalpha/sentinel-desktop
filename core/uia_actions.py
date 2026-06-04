@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — UIA-first action pipeline for non-interrupting desktop control.
+"""Sentinel Desktop v3 — UIA-first action pipeline for non-interrupting desktop control.
 
 Provides a three-tier fallback strategy for every user action:
 

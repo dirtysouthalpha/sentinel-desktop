@@ -1,0 +1,45 @@
+{
+  "header": "Sentinel Desktop — Audit Report",
+  "generated_at": "2026-06-04T17:42:05.398503+00:00",
+  "metadata": {
+    "goal": "Test goal",
+    "start_time": "2025-01-01T00:00:00",
+    "end_time": "2025-01-01T00:00:05",
+    "total_steps": 2,
+    "status": "completed"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "timestamp": "2025-01-01T00:00:00",
+      "action": "click",
+      "params": {
+        "x": 100
+      },
+      "result": "ok",
+      "duration": 0.5
+    },
+    {
+      "step": 2,
+      "timestamp": "2025-01-01T00:00:01",
+      "action": "type",
+      "params": {
+        "password": "***"
+      },
+      "result": "ok",
+      "duration": 0.3
+    }
+  ],
+  "summary": {
+    "total_steps": 2,
+    "success_count": 2,
+    "fail_count": 0,
+    "success_rate": 100.0,
+    "action_counts": {
+      "click": 1,
+      "type": 1
+    },
+    "total_duration": 0.8,
+    "status": "completed"
+  }
+}

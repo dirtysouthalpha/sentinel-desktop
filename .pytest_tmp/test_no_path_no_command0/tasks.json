@@ -1,0 +1,18 @@
+[
+  {
+    "id": "ca0497bf6023",
+    "name": "PS",
+    "type": "powershell",
+    "path": null,
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:31.488386",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.488287"
+  }
+]

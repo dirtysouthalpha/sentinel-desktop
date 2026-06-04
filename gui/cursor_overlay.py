@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Animated cursor overlay.
+"""Sentinel Desktop v3 — Animated cursor overlay.
 
 Renders a transparent, click-through, always-on-top ring that glides to
 the location of every agent action. This is the desktop equivalent of

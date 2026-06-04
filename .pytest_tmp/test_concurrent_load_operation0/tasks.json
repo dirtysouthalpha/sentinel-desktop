@@ -1,0 +1,18 @@
+[
+  {
+    "id": "6702d7c4e648",
+    "name": "Task1",
+    "type": "script",
+    "path": "task1.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": null,
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.004868"
+  }
+]

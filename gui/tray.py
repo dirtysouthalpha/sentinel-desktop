@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — System tray integration (legacy).
+"""Sentinel Desktop v3 — System tray integration (legacy).
 
 .. deprecated:: 3.1.0
     This module is superseded by :mod:`gui.system_tray` which provides a

@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Main GUI Application.
+"""Sentinel Desktop v3 — Main GUI Application.
 
 Dark-themed customtkinter interface with chat, live screenshot, and settings.
 """

@@ -1,0 +1,14 @@
+{
+  "id": "201248c4-7d64-49a8-ac7f-792d0f938484",
+  "timestamp": "2026-06-04T17:42:24.737726+00:00",
+  "goal": "goal",
+  "goal_preview": "goal",
+  "step_num": 1,
+  "status": "running",
+  "agent_memory": [],
+  "last_screenshot_path": "screen.png",
+  "config": {},
+  "messages": [],
+  "provider": "",
+  "model": ""
+}

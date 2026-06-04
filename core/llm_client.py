@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — LLM Client.
+"""Sentinel Desktop v3 — LLM Client.
 
 Unified chat client supporting 16+ providers via the OpenAI-compatible
 API pattern.  Supports:

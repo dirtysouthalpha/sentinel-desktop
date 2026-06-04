@@ -1,0 +1,1 @@
+{"id": "ed66138b-ba65-42d8-8cb2-be645fda20f2", "timestamp": "2026-06-04T15:42:24.656634+00:00", "goal": "Stale", "goal_preview": "Stale", "step_num": 1, "status": "running", "agent_memory": [{"role": "user", "content": "Stale"}], "last_screenshot_path": null, "config": {"provider": "openai", "model": "gpt-4o"}, "messages": [], "provider": "openai", "model": "gpt-4o"}

@@ -1,1 +1,1 @@
-"""Sentinel Desktop v2 — API package."""
+"""Sentinel Desktop v3 — API package."""

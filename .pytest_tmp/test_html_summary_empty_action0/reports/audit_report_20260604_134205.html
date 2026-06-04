@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel Desktop — Audit Report</title>
+<style>
+  /* ---- Dark Sentinel Theme ---- */
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --text: #c9d1d9;
+    --text-dim: #8b949e;
+    --success: #3fb950;
+    --fail: #f85149;
+    --warn: #d29922;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Consolas, 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem;
+    line-height: 1.6;
+  }
+  h1, h2, h3 { color: var(--accent); font-weight: 600; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.2rem;
+    margin: 1.5rem 0 0.75rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.35rem;
+  }
+  .timestamp { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+  th, td { text-align: left; padding: 0.55rem 0.75rem; border: 1px solid var(--border); }
+  th { background: var(--surface); color: var(--accent); }
+  tr:nth-child(even) td { background: rgba(22,27,34,0.6); }
+  tr:nth-child(odd)  td { background: var(--bg); }
+  tr:hover td { background: rgba(88,166,255,0.07); }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .badge-success { background: rgba(63,185,80,0.18); color: var(--success); }
+  .badge-fail    { background: rgba(248,81,73,0.18); color: var(--fail); }
+  .badge-warn    { background: rgba(210,153,34,0.18); color: var(--warn); }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .meta-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+  }
+  .meta-card .label {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .meta-card .value {
+    color: var(--text);
+    font-size: 0.95rem;
+    margin-top: 0.15rem;
+    word-break: break-word;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    text-align: center;
+  }
+  .summary-card .num { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .summary-card .lbl { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.2rem; }
+  .result-cell {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .params-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .action-list { list-style: none; padding: 0; }
+  .action-list li { padding: 0.2rem 0; }
+  .action-list li::before { content: '▸ '; color: var(--accent); }
+  @media print {
+    body { background: #fff; color: #000; padding: 1rem; }
+    h1, h2, h3 { color: #1a1a2e; }
+    th { background: #eee; color: #1a1a2e; }
+    td { border-color: #ccc; }
+    tr:nth-child(even) td { background: #f7f7f7; }
+    tr:nth-child(odd)  td { background: #fff; }
+    .badge { border: 1px solid #999; }
+    .meta-card, .summary-card { border-color: #ccc; background: #f9f9f9; }
+    .meta-card .label, .summary-card .lbl { color: #555; }
+    .meta-card .value, .summary-card .num { color: #111; }
+    .summary-card .num { color: #1a1a2e; }
+  }
+</style>
+</head>
+<body>
+<h1>Sentinel Desktop — Audit Report</h1>
+<div class="timestamp">Generated: 2026-06-04T17:42:05.413914+00:00</div>
+<h2>Session Metadata</h2>
+<div class="meta-grid">
+  <div class="meta-card"><div class="label">Goal</div><div class="value">test</div></div>
+  <div class="meta-card"><div class="label">Start Time</div><div class="value">N/A</div></div>
+  <div class="meta-card"><div class="label">End Time</div><div class="value">N/A</div></div>
+  <div class="meta-card"><div class="label">Total Steps</div><div class="value">0</div></div>
+  <div class="meta-card"><div class="label">Status</div><div class="value">ok</div></div>
+</div>
+<h2>Step Timeline</h2>
+<table>
+<thead><tr><th>#</th><th>Timestamp</th><th>Action</th><th>Params</th><th>Result</th><th>Duration</th></tr></thead>
+<tbody>
+
+</tbody>
+</table>
+<h2>Summary Statistics</h2>
+<div class="summary-grid">
+  <div class="summary-card"><div class="num">0</div><div class="lbl">Total Steps</div></div>
+  <div class="summary-card"><div class="num">0</div><div class="lbl">Successful</div></div>
+  <div class="summary-card"><div class="num">0</div><div class="lbl">Failed</div></div>
+  <div class="summary-card"><div class="num">0.0%</div><div class="lbl">Success Rate</div></div>
+  <div class="summary-card"><div class="num">0s</div><div class="lbl">Total Duration</div></div>
+  <div class="summary-card"><div class="num">ok</div><div class="lbl">Status</div></div>
+</div>
+<h2>Action Breakdown</h2>
+<ul class="action-list">
+
+</ul>
+<hr style="border:none;border-top:1px solid var(--border);margin:2rem 0 1rem;"><p style="color:var(--text-dim);font-size:0.78rem;">End of Report — Sentinel Desktop</p>
+</body>
+</html>

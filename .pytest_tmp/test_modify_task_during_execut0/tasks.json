@@ -1,0 +1,18 @@
+[
+  {
+    "id": "d6f99c4b7f94",
+    "name": "Modifiable",
+    "type": "script",
+    "path": "mod.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": false,
+    "last_run": "2026-06-04T13:42:30.879177",
+    "next_run": "2026-06-04T13:43:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:30.879028"
+  }
+]

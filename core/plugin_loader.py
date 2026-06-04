@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Plugin Loader.
+"""Sentinel Desktop v3 — Plugin Loader.
 
 Discovers, loads, and manages .py plugin files from a configurable plugin
 directory.  Each plugin is a regular Python module that exposes four module-

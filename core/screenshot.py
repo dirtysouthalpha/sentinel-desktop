@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Screenshot capture and analysis utilities.
+"""Sentinel Desktop v3 — Screenshot capture and analysis utilities.
 
 Multi-monitor support: when the optional ``mss`` library is installed, callers
 can pick which monitor to capture or capture the union of all monitors. mss is

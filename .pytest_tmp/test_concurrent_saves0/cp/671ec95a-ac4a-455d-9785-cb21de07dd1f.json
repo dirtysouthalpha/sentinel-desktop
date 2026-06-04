@@ -1,0 +1,22 @@
+{
+  "id": "671ec95a-ac4a-455d-9785-cb21de07dd1f",
+  "timestamp": "2026-06-04T17:42:24.715050+00:00",
+  "goal": "Thread 1",
+  "goal_preview": "Thread 1",
+  "step_num": 1,
+  "status": "running",
+  "agent_memory": [
+    {
+      "role": "user",
+      "content": "Thread 1"
+    }
+  ],
+  "last_screenshot_path": null,
+  "config": {
+    "provider": "openai",
+    "model": "gpt-4o"
+  },
+  "messages": [],
+  "provider": "openai",
+  "model": "gpt-4o"
+}

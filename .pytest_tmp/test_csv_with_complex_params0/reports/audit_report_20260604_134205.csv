@@ -1,0 +1,2 @@
+"step","timestamp","action","params","result","duration"
+"1","","type","{""nested"": {""key"": ""***""}}","""ok""","0.5"

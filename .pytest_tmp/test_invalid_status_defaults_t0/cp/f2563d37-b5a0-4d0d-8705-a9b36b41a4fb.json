@@ -1,0 +1,22 @@
+{
+  "id": "f2563d37-b5a0-4d0d-8705-a9b36b41a4fb",
+  "timestamp": "2026-06-04T17:42:24.596882+00:00",
+  "goal": "Test goal",
+  "goal_preview": "Test goal",
+  "step_num": 1,
+  "status": "running",
+  "agent_memory": [
+    {
+      "role": "user",
+      "content": "Test goal"
+    }
+  ],
+  "last_screenshot_path": null,
+  "config": {
+    "provider": "openai",
+    "model": "gpt-4o"
+  },
+  "messages": [],
+  "provider": "openai",
+  "model": "gpt-4o"
+}

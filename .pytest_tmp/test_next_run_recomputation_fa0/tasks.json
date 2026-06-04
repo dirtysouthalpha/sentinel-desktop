@@ -1,0 +1,18 @@
+[
+  {
+    "id": "df7a51e98829",
+    "name": "T",
+    "type": "script",
+    "path": "x.py",
+    "goal": null,
+    "command": null,
+    "schedule": "* * * * *",
+    "cron_expr": "* * * * *",
+    "enabled": true,
+    "last_run": "2026-06-04T13:42:31.509378",
+    "next_run": null,
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:31.509184"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "id": "dc4fe137-c2dc-4131-bf9d-0c910f3a95b4",
+  "timestamp": "2026-06-04T17:42:24.596339+00:00",
+  "goal": "Open Chrome",
+  "goal_preview": "Open Chrome",
+  "step_num": 5,
+  "status": "running",
+  "agent_memory": [
+    {
+      "role": "user",
+      "content": "Open Chrome"
+    }
+  ],
+  "last_screenshot_path": null,
+  "config": {
+    "provider": "openai",
+    "model": "gpt-4o"
+  },
+  "messages": [],
+  "provider": "openai",
+  "model": "gpt-4o"
+}

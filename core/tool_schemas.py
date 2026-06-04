@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Tool/function schemas for LLM tool-calling.
+"""Sentinel Desktop v3 — Tool/function schemas for LLM tool-calling.
 
 OpenAI and Anthropic both support structured tool calls; using them is far
 more reliable than asking the model to return JSON-as-text and regexing it

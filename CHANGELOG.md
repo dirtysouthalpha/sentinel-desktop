@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [3.1.0] - 2026-06-04
 
 ### Critical fixes
 - **GUI now actually launches** — `gui/themes.py` was missing the `THEMES` dict and `apply_theme()` function that `gui/app.py` imports. Added both, including the `midnight` / `ocean` / `ember` themes the README advertises.

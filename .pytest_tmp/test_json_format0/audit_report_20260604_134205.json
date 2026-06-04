@@ -1,0 +1,27 @@
+{
+  "header": "Sentinel Desktop — Audit Report",
+  "generated_at": "2026-06-04T17:42:05.414354+00:00",
+  "metadata": {
+    "goal": "test",
+    "status": "ok"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "action": "test",
+      "result": "ok",
+      "duration": 0.1
+    }
+  ],
+  "summary": {
+    "total_steps": 1,
+    "success_count": 1,
+    "fail_count": 0,
+    "success_rate": 100.0,
+    "action_counts": {
+      "test": 1
+    },
+    "total_duration": 0.1,
+    "status": "ok"
+  }
+}

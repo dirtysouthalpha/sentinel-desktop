@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Command palette (Ctrl+K).
+"""Sentinel Desktop v3 — Command palette (Ctrl+K).
 
 Fuzzy-searchable command palette matching Sentinel Override's ⌘K UX.
 Provides quick access to: New Chat, Export Log, Clear Chat, Toggle Theme,

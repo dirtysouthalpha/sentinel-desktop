@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "password_hash": "$2b$12$3DDWnNxNpzSyX1eVYMc5S.uqb8cdL4Z/wXeTKN.2.1OWl8hn8oS1u",
+      "salt": "",
+      "role": "admin",
+      "api_key": "7e724caa6708644b5de5711e7449f5bce1a1f9c87aed55a38041988202f84e00",
+      "created": 1780594933.1358283,
+      "last_login": null
+    },
+    {
+      "username": "op1",
+      "password_hash": "$2b$12$BB4c0Xdw.bwevbMviI7hDumEyiauRuau/qn/RB1BGh5G1N5MwuUmy",
+      "salt": "",
+      "role": "operator",
+      "api_key": "a170f1c53c20ab5d2d60becf90b2165dc317b398ccbcac15fc6df5824ffe642e",
+      "created": 1780594933.2991064,
+      "last_login": null
+    }
+  ]
+}

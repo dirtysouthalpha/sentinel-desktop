@@ -1,0 +1,18 @@
+[
+  {
+    "id": "eca395e40f7c",
+    "name": "Persist",
+    "type": "script",
+    "path": "x.py",
+    "goal": null,
+    "command": null,
+    "schedule": "*/5 * * * *",
+    "cron_expr": "*/5 * * * *",
+    "enabled": true,
+    "last_run": null,
+    "next_run": "2026-06-04T13:45:00",
+    "params": {},
+    "on_complete": null,
+    "created": "2026-06-04T13:42:30.859361"
+  }
+]

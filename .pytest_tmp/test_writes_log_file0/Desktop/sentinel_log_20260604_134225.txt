@@ -1,0 +1,15 @@
+Sentinel Desktop — Session Log
+==================================================
+Goal: export goal
+Status: completed
+Started: 2025-01-01T00:00:00
+Steps: 1
+==================================================
+
+Step 1: {
+  "step": {
+    "action": "click"
+  },
+  "ok": true
+}
+

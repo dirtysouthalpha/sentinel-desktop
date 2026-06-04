@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "password_hash": "$2b$12$oAPE6Eb4t1yTi6dpHlQBf.2ylRNcs2tGMwOWVt5QI3UVKCt5wtfLy",
+      "salt": "",
+      "role": "admin",
+      "api_key": "01c6b55a097a1babe5cbdcc972ec767cbad638f3b195d33080b3b9645558a177",
+      "created": 1780594930.8394177,
+      "last_login": null
+    }
+  ]
+}

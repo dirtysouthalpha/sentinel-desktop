@@ -1,4 +1,4 @@
-"""Sentinel Desktop v2 — Forensic run log.
+"""Sentinel Desktop v3 — Forensic run log.
 
 Provides a structured, per-step forensic audit trail — the desktop equivalent
 of Sentinel Override's forensic log. Every agent step is recorded with full

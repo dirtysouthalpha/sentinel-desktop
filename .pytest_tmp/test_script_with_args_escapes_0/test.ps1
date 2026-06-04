@@ -1,0 +1,1 @@
+param($Name) Write-Output $Name
