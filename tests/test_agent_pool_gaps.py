@@ -372,7 +372,10 @@ class TestAgentWorkerFullFlow:
         """Worker cleans up VirtualDesktop in finally block."""
         pool = AgentPool(max_agents=1, on_session_complete=MagicMock())
         try:
-            sid = pool.submit("Goal")
+            # Create session manually without submit to avoid dispatcher picking it up
+            session = AgentSession(id="test_cleanup_id", goal="Goal", config={})
+            pool._sessions["test_cleanup_id"] = session
+            sid = "test_cleanup_id"
 
             mock_vd = MagicMock()
             mock_vd.create.return_value = True
