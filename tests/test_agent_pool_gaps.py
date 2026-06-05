@@ -436,8 +436,12 @@ class TestAgentWorkerFullFlow:
         bad_callback = MagicMock(side_effect=RuntimeError("callback boom"))
         pool = AgentPool(max_agents=1, on_session_complete=bad_callback)
         try:
-            sid = pool.submit("Goal")
-            session = pool._sessions[sid]
+            # Create session manually to avoid dispatcher picking it up
+            # If we use submit(), the dispatcher will run it immediately with the real engine
+            # causing the callback to fire before we can apply our patches
+            session = AgentSession(id="manual_callback_id", goal="Goal", config={})
+            pool._sessions["manual_callback_id"] = session
+            sid = "manual_callback_id"
 
             mock_vd = MagicMock()
             mock_vd.create.return_value = True
