@@ -360,6 +360,147 @@ class SentinelServer:
 
     # ── Terminal WebSocket (PTY shell proxy) ────────────────────────────
 
+    def _setup_pty_child(self, slave_fd: int) -> NoReturn:
+        """Set up child process for PTY and exec bash."""
+        os.close(slave_fd)
+        os.setsid()
+
+        # Acquire controlling terminal
+        fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)
+
+        # Set initial terminal size
+        winsize = struct.pack("HHHH", 24, 80, 0, 0)
+        fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
+
+        # Set environment
+        env = os.environ.copy()
+        env["TERM"] = "xterm-256color"
+        env["COLUMNS"] = "80"
+        env["LINES"] = "24"
+        if "HOME" not in env:
+            env["HOME"] = str(Path.home())
+
+        os.dup2(slave_fd, 0)
+        os.dup2(slave_fd, 1)
+        os.dup2(slave_fd, 2)
+        if slave_fd > 2:
+            os.close(slave_fd)
+
+        try:
+            os.execvpe("/bin/bash", ["/bin/bash", "--login"], env)  # noqa: S606
+        except OSError:
+            os._exit(1)
+
+    def _configure_master_fd_nonblocking(self, master_fd: int) -> None:
+        """Set master_fd to non-blocking mode."""
+        flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
+        fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    async def _read_pty(self, master_fd: int, ws: WebSocket) -> None:
+        """Read PTY output and forward to WebSocket."""
+        while True:
+            try:
+                data = os.read(master_fd, 4096)
+                if not data:
+                    break
+                await asyncio.wait_for(
+                    ws.send_json({"type": "data", "data": data.decode("utf-8", errors="replace")}),
+                    timeout=5.0,
+                )
+            except (BlockingIOError, InterruptedError):
+                await asyncio.sleep(0.01)
+            except (OSError, ValueError):
+                break
+            except (asyncio.TimeoutError, ConnectionError, RuntimeError):
+                break
+
+    async def _handle_ws_timeout(self, ws: WebSocket) -> bool:
+        """Handle WebSocket timeout by sending keepalive ping."""
+        try:
+            await asyncio.wait_for(
+                ws.send_json({"type": "ping"}),
+                timeout=5.0,
+            )
+            return True
+        except (OSError, RuntimeError, ConnectionError):
+            return False
+
+    async def _handle_input_message(self, master_fd: int, msg: dict) -> bool:
+        """Handle input message from WebSocket."""
+        text = msg.get("data", "")
+        try:
+            os.write(master_fd, text.encode("utf-8"))
+            return True
+        except OSError:
+            return False
+
+    async def _handle_resize_message(self, master_fd: int, msg: dict) -> bool:
+        """Handle resize message from WebSocket."""
+        rows = int(msg.get("rows", 24))
+        cols = int(msg.get("cols", 80))
+        winsize = struct.pack("HHHH", rows, cols, 0, 0)
+        try:
+            fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
+            return True
+        except OSError:
+            return True  # Resize failure is not critical
+
+    async def _handle_ping_message(self, ws: WebSocket) -> bool:
+        """Handle ping message from WebSocket."""
+        try:
+            await asyncio.wait_for(
+                ws.send_json({"type": "pong"}),
+                timeout=5.0,
+            )
+            return True
+        except (OSError, RuntimeError, ConnectionError):
+            return False
+
+    async def _process_ws_message(self, master_fd: int, ws: WebSocket, msg: dict) -> bool:
+        """Process a single WebSocket message. Return False to break the loop."""
+        msg_type = msg.get("type", "")
+
+        if msg_type == "input":
+            return await self._handle_input_message(master_fd, msg)
+        elif msg_type == "resize":
+            return await self._handle_resize_message(master_fd, msg)
+        elif msg_type == "ping":
+            return await self._handle_ping_message(ws)
+        return True  # Unknown message type, continue
+
+    async def _read_ws(self, master_fd: int, ws: WebSocket) -> None:
+        """Read WebSocket messages and forward to PTY."""
+        while True:
+            try:
+                raw = await asyncio.wait_for(ws.receive_text(), timeout=60.0)
+                msg = json.loads(raw)
+            except asyncio.TimeoutError:
+                if not await self._handle_ws_timeout(ws):
+                    break
+                continue
+            except (json.JSONDecodeError, WebSocketDisconnect):
+                continue
+            except (ConnectionError, RuntimeError):
+                break
+
+            if not await self._process_ws_message(master_fd, ws, msg):
+                break
+
+    async def _cleanup_pty(self, child_pid: int, master_fd: int) -> None:
+        """Clean up PTY resources."""
+        try:
+            os.kill(child_pid, signal.SIGTERM)
+        except (ProcessLookupError, OSError):
+            pass
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+        try:
+            os.waitpid(child_pid, os.WNOHANG)
+        except (ChildProcessError, OSError):
+            pass
+
     async def _handle_terminal_ws(self, ws: WebSocket) -> None:
         """Spawn a PTY shell and proxy I/O over WebSocket."""
         await ws.accept()
@@ -369,111 +510,15 @@ class SentinelServer:
 
         if child_pid == 0:
             # ── Child process ──────────────────────────────────────────
-            os.close(master_fd)
-            os.setsid()
-
-            # Acquire controlling terminal
-            fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)
-
-            # Set initial terminal size
-            winsize = struct.pack("HHHH", 24, 80, 0, 0)
-            fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
-
-            # Set environment
-            env = os.environ.copy()
-            env["TERM"] = "xterm-256color"
-            env["COLUMNS"] = "80"
-            env["LINES"] = "24"
-            if "HOME" not in env:
-                env["HOME"] = str(Path.home())
-
-            os.dup2(slave_fd, 0)
-            os.dup2(slave_fd, 1)
-            os.dup2(slave_fd, 2)
-            if slave_fd > 2:
-                os.close(slave_fd)
-
-            try:
-                os.execvpe("/bin/bash", ["/bin/bash", "--login"], env)  # noqa: S606
-            except OSError:
-                os._exit(1)
+            self._setup_pty_child(slave_fd)
         else:
             # ── Parent process (async event loop) ──────────────────────
             os.close(slave_fd)
-
-            # Set master_fd non-blocking
-            flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
-            fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-
-            async def _read_pty() -> None:
-                """Read PTY output and forward to WebSocket."""
-                while True:
-                    try:
-                        data = os.read(master_fd, 4096)
-                        if not data:
-                            break
-                        await asyncio.wait_for(
-                            ws.send_json({"type": "data", "data": data.decode("utf-8", errors="replace")}),
-                            timeout=5.0,
-                        )
-                    except (BlockingIOError, InterruptedError):
-                        await asyncio.sleep(0.01)
-                    except (OSError, ValueError):
-                        break
-                    except (asyncio.TimeoutError, ConnectionError, RuntimeError):
-                        break
-
-            async def _read_ws() -> None:
-                """Read WebSocket messages and forward to PTY."""
-                while True:
-                    try:
-                        raw = await asyncio.wait_for(ws.receive_text(), timeout=60.0)
-                        msg = json.loads(raw)
-                    except asyncio.TimeoutError:
-                        # Send keepalive ping
-                        try:
-                            await asyncio.wait_for(
-                                ws.send_json({"type": "ping"}),
-                                timeout=5.0,
-                            )
-                        except (OSError, RuntimeError, ConnectionError):
-                            break
-                        continue
-                    except (json.JSONDecodeError, WebSocketDisconnect):
-                        continue
-                    except (ConnectionError, RuntimeError):
-                        break
-
-                    msg_type = msg.get("type", "")
-
-                    if msg_type == "input":
-                        text = msg.get("data", "")
-                        try:
-                            os.write(master_fd, text.encode("utf-8"))
-                        except OSError:
-                            break
-
-                    elif msg_type == "resize":
-                        rows = int(msg.get("rows", 24))
-                        cols = int(msg.get("cols", 80))
-                        winsize = struct.pack("HHHH", rows, cols, 0, 0)
-                        try:
-                            fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
-                        except OSError:
-                            pass
-
-                    elif msg_type == "ping":
-                        try:
-                            await asyncio.wait_for(
-                                ws.send_json({"type": "pong"}),
-                                timeout=5.0,
-                            )
-                        except (OSError, RuntimeError, ConnectionError):
-                            break
+            self._configure_master_fd_nonblocking(master_fd)
 
             try:
-                read_pty_task = asyncio.create_task(_read_pty())
-                read_ws_task = asyncio.create_task(_read_ws())
+                read_pty_task = asyncio.create_task(self._read_pty(master_fd, ws))
+                read_ws_task = asyncio.create_task(self._read_ws(master_fd, ws))
                 done, pending = await asyncio.wait(
                     [read_pty_task, read_ws_task],
                     return_when=asyncio.FIRST_COMPLETED,
@@ -483,18 +528,7 @@ class SentinelServer:
             except (WebSocketDisconnect, ConnectionError, RuntimeError):
                 pass
             finally:
-                try:
-                    os.kill(child_pid, signal.SIGTERM)
-                except (ProcessLookupError, OSError):
-                    pass
-                try:
-                    os.close(master_fd)
-                except OSError:
-                    pass
-                try:
-                    os.waitpid(child_pid, os.WNOHANG)
-                except (ChildProcessError, OSError):
-                    pass
+                await self._cleanup_pty(child_pid, master_fd)
 
     # ── Agent control ───────────────────────────────────────────────
 
