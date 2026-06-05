@@ -252,3 +252,31 @@ async def metrics() -> dict[str, Any]:
         "memory_percent": mem.get("percent", 0),
         "memory_used_gb": mem.get("used_gb", 0),
     }
+
+@router.post("/chat/sentinel-ai")
+async def sentinel_chat(message_request: dict) -> dict[str, Any]:
+    """Handle chat requests to Sentinel Agent using Ollama on port 11434"""
+    import httpx
+    try:
+        message = message_request.get("message", "")
+        if not message:
+            return {"error": "message is required"}
+        # Use Ollama API directly
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": "gemma4-12b",
+                    "prompt": message,
+                    "stream": False
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            return {"response": result.get("response", ""), "status": "success"}
+    except httpx.TimeoutException:
+        return {"error": "Model timeout", "status": "timeout"}
+    except httpx.HTTPError as e:
+        return {"error": f"Model error: {str(e)}", "status": "error"}
+    except Exception as e:
+        return {"error": f"Internal error: {str(e)}", "status": "error"}
