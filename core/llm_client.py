@@ -173,10 +173,18 @@ class LLMClient:
         max_retries: int,
         retry_base_delay: float,
     ) -> str:
-        """Route chat request to appropriate provider implementation."""
+        """Route chat request to appropriate provider implementation.
+
+        When the provider supports native computer-use (Anthropic computer_20250124,
+        OpenAI computer-use-preview), the tools list is replaced with the native
+        computer tool and the response is translated back to our JSON action format.
+        """
         provider_config = PROVIDERS.get(provider)
         if not provider_config:
             raise ValueError(f"Unknown provider: {provider}")
+
+        # Check for native computer-use support
+        computer_use_type = provider_config.get("computer_use")
 
         if provider_config.get("anthropic_native"):
             return self._chat_anthropic(
@@ -190,6 +198,7 @@ class LLMClient:
                 max_retries=max_retries,
                 retry_base_delay=retry_base_delay,
                 custom_url=custom_url,
+                computer_use_type=computer_use_type,
             )
 
         return self._chat_openai_compatible(
@@ -205,6 +214,7 @@ class LLMClient:
             timeout=timeout,
             max_retries=max_retries,
             retry_base_delay=retry_base_delay,
+            computer_use_type=computer_use_type,
         )
 
     def _chat_openai_compatible(
@@ -222,8 +232,13 @@ class LLMClient:
         timeout: int,
         max_retries: int,
         retry_base_delay: float,
+        computer_use_type: str | None = None,
     ) -> str:
-        """Send a chat request via the OpenAI-compatible endpoint."""
+        """Send a chat request via the OpenAI-compatible endpoint.
+
+        When computer_use_type is "openai", replaces tools with the native
+        computer-use-preview tool for screen control.
+        """
         base_url = get_base_url(provider, custom_url)
         chat_url = f"{base_url}{provider_config['chat_endpoint']}"
         headers = self._build_headers(provider_config, api_key)
@@ -233,15 +248,24 @@ class LLMClient:
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
-        if tools:
+
+        # Use native computer-use tools when available
+        if computer_use_type == "openai":
+            from core.computer_use import build_openai_tools
+
+            payload["tools"] = build_openai_tools(tools)
+            payload["tool_choice"] = "auto"
+        elif tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
+
         logger.info(
-            "chat → %s/%s (%d msgs, %d tools)",
+            "chat → %s/%s (%d msgs, %d tools)%s",
             provider,
             model,
             len(messages),
-            len(tools or []),
+            len(payload.get("tools") or []),
+            " [computer-use]" if computer_use_type else "",
         )
         data = self._post_with_retry(
             chat_url,
@@ -410,8 +434,13 @@ class LLMClient:
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
         custom_url: str | None = None,
+        computer_use_type: str | None = None,
     ) -> str:
-        """Send a chat request using Anthropic's native ``/messages`` API."""
+        """Send a chat request using Anthropic's native ``/messages`` API.
+
+        When computer_use_type is "anthropic", replaces the standard tools with
+        the native computer_20250124 tool for screen control.
+        """
         provider_config = PROVIDERS["anthropic"]
         base_url = get_base_url("anthropic", custom_url)
         chat_url = f"{base_url}{provider_config['chat_endpoint']}"
@@ -431,10 +460,16 @@ class LLMClient:
         }
         if system_msg.strip():
             payload["system"] = system_msg.strip()
-        if tools:
+
+        # Use native computer-use tools when available
+        if computer_use_type == "anthropic":
+            from core.computer_use import build_anthropic_tools
+
+            payload["tools"] = build_anthropic_tools(tools)
+        elif tools:
             payload["tools"] = self._convert_tools_to_anthropic(tools)
 
-        logger.info("chat → anthropic/%s", model)
+        logger.info("chat → anthropic/%s%s", model, " [computer-use]" if computer_use_type else "")
         data = self._post_with_retry(
             chat_url,
             headers,
@@ -444,6 +479,10 @@ class LLMClient:
             base_delay=retry_base_delay,
             provider_label="anthropic",
         )
+
+        # Parse response — translate computer tool actions to our format
+        if computer_use_type == "anthropic":
+            return self._parse_anthropic_computer_response(data)
         return self._parse_anthropic_response(data)
 
     @staticmethod
@@ -489,6 +528,44 @@ class LLMClient:
                 for tb in tool_use_blocks
             ]
             return json.dumps({"tool_calls": openai_tool_calls})
+
+        return "\n".join(text_parts).strip()
+
+    @staticmethod
+    def _parse_anthropic_computer_response(data: dict[str, Any]) -> str:
+        """Parse Anthropic response with native computer tool actions.
+
+        Translates computer_20250124 tool responses to our JSON action format
+        so the executor can handle them uniformly.
+        """
+        from core.computer_use import translate_anthropic_action
+
+        content_blocks = data.get("content", [])
+        text_parts: list[str] = []
+        actions: list[dict[str, Any]] = []
+
+        for block in content_blocks:
+            block_type = block.get("type", "")
+            if block_type == "text":
+                text_parts.append(block.get("text", ""))
+            elif block_type == "tool_use":
+                action = translate_anthropic_action(block)
+                if action:
+                    actions.append(action)
+
+        if actions:
+            # Return as tool_calls format so the engine picks it up
+            return json.dumps({"tool_calls": [
+                {
+                    "id": "computer_action",
+                    "type": "function",
+                    "function": {
+                        "name": action["action"],
+                        "arguments": json.dumps({k: v for k, v in action.items() if k != "action"}),
+                    },
+                }
+                for action in actions
+            ]})
 
         return "\n".join(text_parts).strip()
 

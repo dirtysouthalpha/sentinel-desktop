@@ -840,6 +840,26 @@ class ActionExecutor:
             logger.debug("hotkey failed for %s: %s", keys, exc)
             return {"success": False, "output": f"Hotkey failed: {exc}", "error": "hotkey_failed"}
 
+    def _mouse_move(
+        self,
+        *,
+        x: int,
+        y: int,
+        **_,
+    ) -> dict:
+        """Move the mouse cursor to screen coordinates without clicking."""
+        sx = int(x) + self.click_offset[0]
+        sy = int(y) + self.click_offset[1]
+        try:
+            self._desktop.move_to(sx, sy)
+            return {"success": True, "output": f"Moved to ({sx}, {sy})"}
+        except (OSError, RuntimeError, _FailSafeException) as exc:
+            return {
+                "success": False,
+                "output": f"mouse_move error to ({sx},{sy}): {exc}",
+                "error": "mouse_move_failed",
+            }
+
     def _drag(
         self,
         *,
@@ -1397,6 +1417,7 @@ class ActionExecutor:
         "press_key": _press_key,
         "hotkey": _hotkey,
         "scroll": _scroll,
+        "mouse_move": _mouse_move,
         "drag": _drag,
         "screenshot": _screenshot,
         "find_image": _find_image,

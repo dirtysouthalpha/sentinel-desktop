@@ -34,6 +34,7 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_header": "Authorization",
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
+        "computer_use": "openai",
         "manual_models": [
             "gpt-4.1",
             "gpt-4.1-mini",
@@ -53,6 +54,7 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_prefix": "",
         "chat_endpoint": "/messages",
         "anthropic_native": True,
+        "computer_use": "anthropic",
         "manual_models": [
             "claude-opus-4-7",
             "claude-sonnet-4-6",
