@@ -970,6 +970,7 @@ class TestHandlerTimeoutAsync:
 
     def test_timeout_returns_timeout_error(self, fake_executor, monkeypatch):
         import asyncio as asyncio_mod
+
         import core.action_executor as ae_mod
 
         ex = fake_executor()
@@ -1014,7 +1015,6 @@ class TestSetTextClickFallbackLoopContinue:
     """Branch 543->534: first control in loop doesn't match → loop continues."""
 
     def test_non_matching_control_skipped(self, monkeypatch):
-        import core.action_executor as ae_mod
         import core.ui_tree as ui_tree_mod
 
         non_match = {
@@ -1044,7 +1044,7 @@ class TestSetTextClickFallbackLoopContinue:
         monkeypatch.setattr(time, "sleep", lambda _: None)
 
         ex = _make_executor()
-        result = ex._set_text_click_fallback(None, "search box", None, "hello")
+        ex._set_text_click_fallback(None, "search box", None, "hello")
         # Should have clicked the matching control
         assert any(c[0] == "click" for c in ex._desktop.calls)
 
@@ -1104,6 +1104,7 @@ class TestDispatchActionAsyncTimeout:
     def test_dispatch_action_async_timeout(self, fake_executor, monkeypatch):
         """Test that _dispatch_action_async returns timeout error when handler times out."""
         import asyncio as asyncio_mod
+
         import core.action_executor as ae_mod
 
         ex = fake_executor()

@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 # Maximum number of screenshot messages kept in-context at once. Older
 # screenshots get rewritten to a short text stub so the token budget doesn't
 # grow unboundedly across long runs.
-DEFAULT_IMAGE_HISTORY = 3
+DEFAULT_IMAGE_HISTORY = 5
 
 # Actions the agent can request that we always show to the user before
 # executing when approval_mode is on. Read-only actions like screenshot,
@@ -86,7 +86,7 @@ APPROVAL_REQUIRED_ACTIONS = {
 # System prompt template
 # ---------------------------------------------------------------------------
 SYSTEM_PROMPT = """\
-You are a desktop automation agent. You see screenshots of a Windows desktop \
+You are a desktop automation agent. You see screenshots of the desktop \
 and take actions to accomplish the user's goal.
 
 ## Environment

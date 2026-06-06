@@ -84,8 +84,9 @@ class TestSmartOpen:
         assert out["success"] is True
 
     def test_fallback_to_powershell(self, fake_executor, monkeypatch):
-        from core import launcher
         import shutil
+
+        from core import launcher
 
         monkeypatch.setattr(
             launcher, "smart_open", lambda n: {"success": False, "output": "not found"}

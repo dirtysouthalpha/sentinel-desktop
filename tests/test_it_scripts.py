@@ -3,8 +3,9 @@
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, Mock
-from core.script_engine import ScriptEngine
+
 from core.action_executor import ActionExecutor
+from core.script_engine import ScriptEngine
 
 
 def test_all_it_scripts_can_execute():
@@ -21,7 +22,7 @@ def test_all_it_scripts_can_execute():
 
     for script_file in scripts_dir.glob('*.json'):
         try:
-            with open(script_file) as f:
+            with open(script_file, encoding="utf-8") as f:
                 template = json.load(f)
 
             # Try to execute the script (mock executor makes it safe)
@@ -45,7 +46,7 @@ def test_script_templates_have_required_fields():
     required_fields = ['name', 'description', 'category', 'steps']
 
     for script_file in scripts_dir.glob('*.json'):
-        with open(script_file) as f:
+        with open(script_file, encoding="utf-8") as f:
             template = json.load(f)
 
         # Check required fields

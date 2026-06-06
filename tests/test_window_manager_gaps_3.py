@@ -43,8 +43,12 @@ class TestFocusWindowAltTapError:
         ]
 
         # Make ctypes.windll.user32.keybd_event raise OSError
-        with patch("ctypes.windll") as mock_windll:
-            mock_windll.user32.keybd_event.side_effect = OSError("alt tap fail")
+        # Explicit attribute assignment prevents MagicMock auto-child recursion
+        mock_user32 = MagicMock()
+        mock_user32.keybd_event.side_effect = OSError("alt tap fail")
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
+        with patch("ctypes.windll", mock_windll):
             result = focus_window("Chrome")
         assert result is True
         mock_gui.SetForegroundWindow.assert_called_once_with(hwnd)

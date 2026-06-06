@@ -5,7 +5,10 @@ VirtualDesktop factory, _StubVirtualDesktop internals, helper functions,
 and module-level constants that the base test file doesn't exercise.
 """
 
+import sys
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.virtual_desktop import (
     STARTF_USESHOWWINDOW,
@@ -60,9 +63,7 @@ class TestGetCurrentDesktopName:
 
 
 class TestVirtualDesktopFactory:
-    def test_factory_creates_stub_on_linux(self):
-        vd = VirtualDesktop("TestVD")
-        assert isinstance(vd._impl, _StubVirtualDesktop)
+    """Cross-platform factory tests."""
 
     def test_factory_default_name(self):
         vd = VirtualDesktop()
@@ -71,6 +72,28 @@ class TestVirtualDesktopFactory:
     def test_factory_custom_name(self):
         vd = VirtualDesktop("CustomName")
         assert vd._name == "CustomName"
+
+    def test_factory_context_manager(self):
+        """Context manager should call create on enter, switch_back + close on exit."""
+        with VirtualDesktop("TestCtx") as vd:
+            assert isinstance(vd, VirtualDesktop)
+        # After exit, no exception should be raised
+
+    def test_factory_close_is_noop(self):
+        vd = VirtualDesktop("TestClose")
+        vd.close()  # should not raise
+
+    def test_factory_delegates_list_windows(self):
+        vd = VirtualDesktop("TestList")
+        windows = vd.list_windows()
+        assert isinstance(windows, list)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux stub fallback path")
+class TestVirtualDesktopFactoryOnLinux:
+    def test_factory_creates_stub_on_linux(self):
+        vd = VirtualDesktop("TestVD")
+        assert isinstance(vd._impl, _StubVirtualDesktop)
 
     def test_factory_repr_shows_impl_type(self):
         vd = VirtualDesktop("TestRepr")
@@ -110,21 +133,6 @@ class TestVirtualDesktopFactory:
             # Verify args were passed
             call_args = mock_popen.call_args[0][0]
             assert "hello" in call_args
-
-    def test_factory_delegates_list_windows(self):
-        vd = VirtualDesktop("TestList")
-        windows = vd.list_windows()
-        assert isinstance(windows, list)
-
-    def test_factory_context_manager(self):
-        """Context manager should call create on enter, switch_back + close on exit."""
-        with VirtualDesktop("TestCtx") as vd:
-            assert isinstance(vd, VirtualDesktop)
-        # After exit, no exception should be raised
-
-    def test_factory_close_is_noop(self):
-        vd = VirtualDesktop("TestClose")
-        vd.close()  # should not raise
 
 
 # ---------------------------------------------------------------------------

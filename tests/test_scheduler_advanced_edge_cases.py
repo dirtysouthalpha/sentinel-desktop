@@ -16,8 +16,6 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from core.scheduler import TaskScheduler
 
 
@@ -90,7 +88,7 @@ class TestConcurrentTaskModification:
     def test_modify_task_during_execution(self, tmp_path) -> None:
         """Test modifying task properties while it's executing."""
         ts = _scheduler(tmp_path)
-        task = ts.add_task("Modifiable", "script", "* * * * *", path="mod.py")
+        ts.add_task("Modifiable", "script", "* * * * *", path="mod.py")
 
         execution_count = 0
 

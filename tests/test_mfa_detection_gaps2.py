@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from PIL import Image
 
+import core.utils as utils
 from core.mfa_detection import (
     DetectionResult,
     MFADetector,
@@ -15,7 +16,6 @@ from core.mfa_detection import (
     _get_window_titles,
     _uia_check,
 )
-import core.utils as utils
 
 # -----------------------------------------------------------------------
 # Lines 119-120: utils.have_tesseract() success path

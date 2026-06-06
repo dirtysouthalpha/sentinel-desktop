@@ -17,6 +17,7 @@ That lets the agent run anywhere without crashing, and lets users opt in by
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections import deque
 from typing import Any
@@ -24,6 +25,9 @@ from typing import Any
 from core.utils import get_uia_auto, have_uia
 
 logger = logging.getLogger(__name__)
+
+# Thread lock for all UI element caches — agent pool can access concurrently.
+_ui_cache_lock = threading.Lock()
 
 # Enhanced multi-layer UI element caching system with size limits and eviction
 # UI scans are expensive (BFS over thousands of nodes); multi-layer caching avoids
@@ -58,7 +62,9 @@ _cache_stats = {
 def _evict_oldest_entry(
     cache: dict, max_size: int,
 ) -> None:
-    """Evict the oldest entry from a cache when size limit is exceeded.
+    """Evict the oldest entry from a cache when size limit is exceeded (thread-safe).
+
+    Must be called while holding ``_ui_cache_lock``.
 
     Args:
         cache: The cache dictionary to evict from
@@ -74,7 +80,9 @@ def _evict_oldest_entry(
 def _clear_expired_entries(
     cache: dict, ttl: float, current_time: float | None = None,
 ) -> None:
-    """Remove expired entries from a cache.
+    """Remove expired entries from a cache (thread-safe).
+
+    Must be called while holding ``_ui_cache_lock``.
 
     Args:
         cache: The cache dictionary to clean
@@ -104,13 +112,14 @@ def get_cache_stats() -> dict[str, int]:
 
 
 def clear_all_caches() -> None:
-    """Clear all UI element caches. Useful for testing or state resets."""
-    _FIND_CONTROL_CACHE.clear()
-    _LIST_CONTROLS_CACHE.clear()
-    _WINDOW_CACHE.clear()
-    # Reset statistics
-    for key in _cache_stats:
-        _cache_stats[key] = 0
+    """Clear all UI element caches (thread-safe). Useful for testing or state resets."""
+    with _ui_cache_lock:
+        _FIND_CONTROL_CACHE.clear()
+        _LIST_CONTROLS_CACHE.clear()
+        _WINDOW_CACHE.clear()
+        # Reset statistics
+        for key in _cache_stats:
+            _cache_stats[key] = 0
 
 
 # ---------------------------------------------------------------------------
@@ -139,26 +148,29 @@ def list_controls(
     if not have_uia():
         return []
 
-    # Check cache first
+    # Check cache first (thread-safe)
     cache_key = (window_title, max_depth, max_results)
     now = time.monotonic()
 
-    # Clean expired entries periodically
-    if len(_LIST_CONTROLS_CACHE) > _LIST_CONTROLS_MAX_SIZE // 2:
-        _clear_expired_entries(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_TTL, now)
+    with _ui_cache_lock:
+        # Clean expired entries periodically
+        if len(_LIST_CONTROLS_CACHE) > _LIST_CONTROLS_MAX_SIZE // 2:
+            _clear_expired_entries(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_TTL, now)
 
-    cached = _LIST_CONTROLS_CACHE.get(cache_key)
-    if cached is not None and now - cached[1] < _LIST_CONTROLS_TTL:
-        _cache_stats["list_controls_hits"] += 1
-        return cached[0]
+        cached = _LIST_CONTROLS_CACHE.get(cache_key)
+        if cached is not None and now - cached[1] < _LIST_CONTROLS_TTL:
+            _cache_stats["list_controls_hits"] += 1
+            return cached[0]
 
-    _cache_stats["list_controls_misses"] += 1
+        _cache_stats["list_controls_misses"] += 1
 
+    # Walk the tree outside the lock (expensive I/O)
     result = _walk_controls_tree(window_title, max_depth, max_results)
 
     # Cache the result (even if empty or partial)
-    _LIST_CONTROLS_CACHE[cache_key] = (result, now)
-    _evict_oldest_entry(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_MAX_SIZE)
+    with _ui_cache_lock:
+        _LIST_CONTROLS_CACHE[cache_key] = (result, now)
+        _evict_oldest_entry(_LIST_CONTROLS_CACHE, _LIST_CONTROLS_MAX_SIZE)
 
     return result
 
@@ -314,24 +326,25 @@ def _find_window(window_title: str | None) -> Any | None:
     if get_uia_auto() is None:
         return None
 
-    # Check cache first
+    # Check cache first (thread-safe)
     now = time.monotonic()
 
-    # Clean expired entries periodically
-    if len(_WINDOW_CACHE) > _WINDOW_MAX_SIZE // 2:
-        _clear_expired_entries(_WINDOW_CACHE, _WINDOW_TTL, now)
+    with _ui_cache_lock:
+        # Clean expired entries periodically
+        if len(_WINDOW_CACHE) > _WINDOW_MAX_SIZE // 2:
+            _clear_expired_entries(_WINDOW_CACHE, _WINDOW_TTL, now)
 
-    cached = _WINDOW_CACHE.get(window_title)
-    if cached is not None and now - cached[1] < _WINDOW_TTL:
-        _cache_stats["window_hits"] += 1
-        return cached[0]
+        cached = _WINDOW_CACHE.get(window_title)
+        if cached is not None and now - cached[1] < _WINDOW_TTL:
+            _cache_stats["window_hits"] += 1
+            return cached[0]
 
-    _cache_stats["window_misses"] += 1
+        _cache_stats["window_misses"] += 1
 
+    # Search outside the lock (expensive COM calls)
     try:
         window = None
         if window_title:
-            # WindowControl(searchDepth=1, Name=...) matches partial via 'searchFromControl'
             for w in get_uia_auto().GetRootControl().GetChildren():
                 title = (w.Name or "").lower()
                 if window_title.lower() in title:
@@ -340,9 +353,10 @@ def _find_window(window_title: str | None) -> Any | None:
         else:
             window = get_uia_auto().GetForegroundControl()
 
-        # Cache the result
-        _WINDOW_CACHE[window_title] = (window, now)
-        _evict_oldest_entry(_WINDOW_CACHE, _WINDOW_MAX_SIZE)
+        # Cache the result (thread-safe)
+        with _ui_cache_lock:
+            _WINDOW_CACHE[window_title] = (window, now)
+            _evict_oldest_entry(_WINDOW_CACHE, _WINDOW_MAX_SIZE)
 
         return window
     except (OSError, AttributeError, RuntimeError, TypeError) as exc:
@@ -466,21 +480,25 @@ def _find_control(
     cache_key = (name, automation_id, control_type, window_title)
     now = time.monotonic()
 
-    # Clean expired entries periodically
-    if len(_FIND_CONTROL_CACHE) > _FIND_CONTROL_MAX_SIZE // 2:
-        _clear_expired_entries(_FIND_CONTROL_CACHE, _FIND_CONTROL_TTL, now)
+    # Thread-safe cache lookup
+    with _ui_cache_lock:
+        # Clean expired entries periodically
+        if len(_FIND_CONTROL_CACHE) > _FIND_CONTROL_MAX_SIZE // 2:
+            _clear_expired_entries(_FIND_CONTROL_CACHE, _FIND_CONTROL_TTL, now)
 
-    cached = _FIND_CONTROL_CACHE.get(cache_key)
-    if cached is not None and now - cached[1] < _FIND_CONTROL_TTL:
-        _cache_stats["find_control_hits"] += 1
-        return cached[0]
+        cached = _FIND_CONTROL_CACHE.get(cache_key)
+        if cached is not None and now - cached[1] < _FIND_CONTROL_TTL:
+            _cache_stats["find_control_hits"] += 1
+            return cached[0]
 
-    _cache_stats["find_control_misses"] += 1
+        _cache_stats["find_control_misses"] += 1
 
+    # Expensive BFS walk outside the lock
     root = _find_window(window_title)
     if root is None:
-        _FIND_CONTROL_CACHE[cache_key] = (None, now)
-        _evict_oldest_entry(_FIND_CONTROL_CACHE, _FIND_CONTROL_MAX_SIZE)
+        with _ui_cache_lock:
+            _FIND_CONTROL_CACHE[cache_key] = (None, now)
+            _evict_oldest_entry(_FIND_CONTROL_CACHE, _FIND_CONTROL_MAX_SIZE)
         return None
 
     best = _bfs_best_match(
@@ -489,6 +507,7 @@ def _find_control(
         needle_id=(automation_id or "").lower(),
         needle_type=(control_type or "").lower(),
     )
-    _FIND_CONTROL_CACHE[cache_key] = (best, now)
-    _evict_oldest_entry(_FIND_CONTROL_CACHE, _FIND_CONTROL_MAX_SIZE)
+    with _ui_cache_lock:
+        _FIND_CONTROL_CACHE[cache_key] = (best, now)
+        _evict_oldest_entry(_FIND_CONTROL_CACHE, _FIND_CONTROL_MAX_SIZE)
     return best

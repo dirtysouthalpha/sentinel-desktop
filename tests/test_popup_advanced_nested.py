@@ -11,9 +11,8 @@ Covers:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from PIL import Image
 
 import core.popup_handler as ph
@@ -417,7 +416,7 @@ class TestUnusualWindowStates:
         with patch("core.screenshot.capture_screen", return_value=partial_image), \
              patch.object(ph, "_ocr_text", return_value="Error"), \
              patch.object(ph, "_get_foreground_window_title", return_value="Error"):
-            result = handler.check_and_dismiss()
+            handler.check_and_dismiss()
 
         # Should still attempt detection even with partial screenshot
         # (actual detection depends on OCR and pattern matching)

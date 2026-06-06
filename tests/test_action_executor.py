@@ -4,6 +4,7 @@
 # into pyautogui.
 
 import asyncio
+
 import pytest
 
 import core.desktop as desktop_mod

@@ -193,7 +193,11 @@ class TestFocusWindowWin32:
             wm.win32gui = mock_gui
             wm.win32con = mock_con
             wm._Win32Error = OSError
-            with patch("ctypes.windll", create=True):
+            # Explicit mock_user32 to prevent MagicMock auto-child recursion
+            mock_user32 = MagicMock()
+            mock_windll = MagicMock()
+            mock_windll.user32 = mock_user32
+            with patch("ctypes.windll", mock_windll, create=True):
                 result = wm.focus_window("Notepad")
             assert result is True
             mock_gui.ShowWindow.assert_called_once_with(42, 9)  # SW_RESTORE=9

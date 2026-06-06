@@ -12,12 +12,16 @@ import io
 import logging
 import os
 import sys
+import threading
 import time
 
 import pyautogui
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+# Thread lock for screenshot cache — shared by agent pool and concurrent access.
+_cache_lock = threading.Lock()
 
 # Try to load mss once; fall back to pyautogui if unavailable.
 try:
@@ -80,7 +84,7 @@ def _get_screenshot_from_cache(
     cache_key: str,
     current_time: float,
 ) -> Image.Image | None:
-    """Get a screenshot from cache if still valid.
+    """Get a screenshot from cache if still valid (thread-safe).
 
     Args:
         cache_key: The cache key to look up
@@ -90,14 +94,15 @@ def _get_screenshot_from_cache(
         Cached PIL Image if valid, None otherwise
 
     """
-    if cache_key in _SCREENSHOT_CACHE:
-        img, timestamp = _SCREENSHOT_CACHE[cache_key]
-        if current_time - timestamp < _SCREENSHOT_CACHE_TTL:
-            _screenshot_cache_stats["hits"] += 1
-            logger.debug("Screenshot cache hit for key %s", cache_key)
-            return img  # Return reference to maintain object identity
-        # Expired — remove
-        del _SCREENSHOT_CACHE[cache_key]
+    with _cache_lock:
+        if cache_key in _SCREENSHOT_CACHE:
+            img, timestamp = _SCREENSHOT_CACHE[cache_key]
+            if current_time - timestamp < _SCREENSHOT_CACHE_TTL:
+                _screenshot_cache_stats["hits"] += 1
+                logger.debug("Screenshot cache hit for key %s", cache_key)
+                return img  # Return reference to maintain object identity
+            # Expired — remove
+            del _SCREENSHOT_CACHE[cache_key]
     _screenshot_cache_stats["misses"] += 1
     return None
 
@@ -107,7 +112,7 @@ def _store_screenshot_in_cache(
     image: Image.Image,
     current_time: float,
 ) -> None:
-    """Store a screenshot in the cache with eviction management.
+    """Store a screenshot in the cache with eviction management (thread-safe).
 
     Args:
         cache_key: The cache key to store under
@@ -115,28 +120,29 @@ def _store_screenshot_in_cache(
         current_time: Current monotonic time for timestamp
 
     """
-    # Remove expired entries
-    expired_keys = [
-        k
-        for k, (_, ts) in _SCREENSHOT_CACHE.items()
-        if current_time - ts >= _SCREENSHOT_CACHE_TTL
-    ]
-    for k in expired_keys:
-        del _SCREENSHOT_CACHE[k]
+    with _cache_lock:
+        # Remove expired entries
+        expired_keys = [
+            k
+            for k, (_, ts) in _SCREENSHOT_CACHE.items()
+            if current_time - ts >= _SCREENSHOT_CACHE_TTL
+        ]
+        for k in expired_keys:
+            del _SCREENSHOT_CACHE[k]
 
-    # Evict oldest entries if cache exceeds max size
-    if len(_SCREENSHOT_CACHE) >= _SCREENSHOT_CACHE_MAX_SIZE:
-        oldest_key = min(_SCREENSHOT_CACHE.keys(), key=lambda k: _SCREENSHOT_CACHE[k][1])
-        del _SCREENSHOT_CACHE[oldest_key]
-        _screenshot_cache_stats["evictions"] += 1
+        # Evict oldest entries if cache exceeds max size
+        if len(_SCREENSHOT_CACHE) >= _SCREENSHOT_CACHE_MAX_SIZE:
+            oldest_key = min(_SCREENSHOT_CACHE.keys(), key=lambda k: _SCREENSHOT_CACHE[k][1])
+            del _SCREENSHOT_CACHE[oldest_key]
+            _screenshot_cache_stats["evictions"] += 1
 
-    # Store the screenshot (store reference to maintain object identity)
-    _SCREENSHOT_CACHE[cache_key] = (image, current_time)
-    logger.debug(
-        "Screenshot cached with key %s (cache size: %d)",
-        cache_key,
-        len(_SCREENSHOT_CACHE),
-    )
+        # Store the screenshot (store reference to maintain object identity)
+        _SCREENSHOT_CACHE[cache_key] = (image, current_time)
+        logger.debug(
+            "Screenshot cached with key %s (cache size: %d)",
+            cache_key,
+            len(_SCREENSHOT_CACHE),
+        )
 
 
 def get_screenshot_cache_stats() -> dict[str, int]:
@@ -151,7 +157,8 @@ def get_screenshot_cache_stats() -> dict[str, int]:
 
 def clear_screenshot_cache() -> None:
     """Clear all screenshot cache entries. Useful for testing or state resets."""
-    _SCREENSHOT_CACHE.clear()
+    with _cache_lock:
+        _SCREENSHOT_CACHE.clear()
     logger.debug("Screenshot cache cleared")
 
 
@@ -163,11 +170,12 @@ def invalidate_screenshot_cache(monitor: int | str | None = None) -> None:
                 for the specified monitor/index.
 
     """
-    if monitor is None:
-        _SCREENSHOT_CACHE.clear()
-    else:
-        cache_key = _screenshot_cache_key(monitor=monitor)
-        _SCREENSHOT_CACHE.pop(cache_key, None)
+    with _cache_lock:
+        if monitor is None:
+            _SCREENSHOT_CACHE.clear()
+        else:
+            cache_key = _screenshot_cache_key(monitor=monitor)
+            _SCREENSHOT_CACHE.pop(cache_key, None)
     logger.debug("Screenshot cache invalidated for monitor=%s", monitor)
 
 

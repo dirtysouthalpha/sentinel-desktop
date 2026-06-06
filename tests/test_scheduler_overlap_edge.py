@@ -125,7 +125,6 @@ class TestRapidStartStopCycles:
 
         # Multiple consecutive starts should be handled gracefully
         ts.start()
-        first_thread = ts._thread
         ts.start()  # Should be ignored or safe
         ts.start()  # Should be ignored or safe
 

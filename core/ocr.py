@@ -44,10 +44,13 @@ _MIN_ALNUM_PER_LINE_FOR_CONFIDENT = 6
 _MIN_AVG_CONFIDENCE = 60.0
 
 # Maximum screenshot resolution before downsampling for OCR.
-_MAX_OCR_RESOLUTION = (1920, 1080)
+# Raised from 1920x1080 to 3840x2160 to support 4K displays — small text
+# (status bars, tray icons) becomes unreadable when over-downsampled.
+_MAX_OCR_RESOLUTION = (3840, 2160)
 
-# Aggressive downsampling threshold: images above this resolution are always downsampled
-_AGGRESSIVE_DOWNSAMPLE_THRESHOLD = (2560, 1440)  # 2K resolution
+# Aggressive downsampling threshold: images above this resolution are always downsampled.
+# Raised to 5120x2880 (5K) — below this, we trust the resolution.
+_AGGRESSIVE_DOWNSAMPLE_THRESHOLD = (5120, 2880)
 
 # OCR result cache: (cache_key) → (text, confidence_data, timestamp)
 _ocr_cache: dict[str, tuple[str, dict[str, Any], float]] = {}
@@ -323,7 +326,9 @@ def looks_low_confidence(text: str, confidence_data: dict[str, Any] | None = Non
         return True
 
     lines = [ln for ln in text.splitlines() if ln.strip()]
-    if not lines:  # pragma: no cover
+    # pragma: no cover  # unreachable: non-empty text implies non-empty line
+    if not lines:
+        # pragma: no cover  # unreachable: non-empty text implies non-empty line
         return True
 
     total_alnum = sum(c.isalnum() for c in text)
@@ -440,6 +445,42 @@ def _get_screen_boxes(monitor: int | None) -> list[dict[str, Any]] | None:
     except (OSError, RuntimeError) as exc:
         logger.warning("OCR find_text failed: %s", exc)
         return None
+
+
+def find_text_boxes(image: Image.Image) -> list[dict[str, Any]]:
+    """Return OCR word-boxes for a given PIL Image.
+
+    Each box dict has: ``text``, ``x``, ``y``, ``w``, ``h``, ``confidence``.
+    The ``bbox`` field contains ``(x, y, x+w, y+h)`` for convenience.
+
+    Returns an empty list if Tesseract is unavailable or OCR fails.
+    """
+    if not have_tesseract():
+        return []
+    try:
+        img_small = _downsample_if_needed(image)
+        data: dict[str, list[Any]] = get_tesseract().image_to_data(  # type: ignore[union-attr]
+            img_small,
+            output_type=get_tesseract().Output.DICT,  # type: ignore[union-attr]
+        )
+        raw_boxes = _boxes_from_data(data)
+        # Convert to perception-friendly format
+        result: list[dict[str, Any]] = []
+        for box in raw_boxes:
+            x, y, w, h = box["x"], box["y"], box["w"], box["h"]
+            if w <= 0 or h <= 0:
+                continue
+            # Estimate confidence from the raw data (30+ threshold already applied)
+            conf = 70.0  # Default moderate confidence
+            result.append({
+                "text": box["text"],
+                "bbox": (x, y, x + w, y + h),
+                "confidence": conf,
+            })
+        return result
+    except (OSError, RuntimeError) as exc:
+        logger.debug("find_text_boxes failed: %s", exc)
+        return []
 
 
 def find_text(

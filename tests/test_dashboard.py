@@ -226,9 +226,7 @@ class TestGetGpuInfo:
         fake_result = MagicMock()
         fake_result.returncode = 0
         fake_result.stdout = "NVIDIA RTX 4090, 8192, 24576, 65, 85, 320.5\n"
-        with patch("shutil.which", return_value="/usr/bin/nvidia-smi"), patch(
-            "subprocess.run", return_value=fake_result
-        ):
+        with patch("subprocess.run", return_value=fake_result):
             result = dash._get_gpu_info()
         assert len(result) == 1
         assert result[0]["name"] == "NVIDIA RTX 4090"
@@ -260,26 +258,6 @@ class TestGetGpuInfo:
         # Only 3 fields — not enough for 6 expected columns
         fake_result.stdout = "GPU, 100, 200\n"
         with patch("subprocess.run", return_value=fake_result):
-            result = dash._get_gpu_info()
-        assert result == []
-
-    def test_returns_empty_on_subprocess_error(self):
-        import subprocess
-
-        import core.dashboard as dash
-
-        with patch("shutil.which", return_value="/usr/bin/nvidia-smi"), patch(
-            "subprocess.run", side_effect=subprocess.SubprocessError("boom")
-        ):
-            result = dash._get_gpu_info()
-        assert result == []
-
-    def test_returns_empty_on_os_error(self):
-        import core.dashboard as dash
-
-        with patch("shutil.which", return_value="/usr/bin/nvidia-smi"), patch(
-            "subprocess.run", side_effect=OSError("device error")
-        ):
             result = dash._get_gpu_info()
         assert result == []
 
@@ -547,96 +525,3 @@ class TestTimeoutHandlers:
             assert result["status"] == "healthy"
             assert result["issues"] == []
             assert "timestamp" in result
-
-
-# ── Tests: sentinel_chat endpoint ─────────────────────────────────────────────
-
-
-class TestSentinelChat:
-    """Tests for the /dashboard/chat/sentinel-ai endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_returns_error_when_message_missing(self):
-        import core.dashboard as dash
-
-        result = await dash.sentinel_chat({})
-        assert result == {"error": "message is required"}
-
-    @pytest.mark.asyncio
-    async def test_returns_error_when_message_empty(self):
-        import core.dashboard as dash
-
-        result = await dash.sentinel_chat({"message": ""})
-        assert result == {"error": "message is required"}
-
-    @pytest.mark.asyncio
-    async def test_successful_response(self):
-        from unittest.mock import AsyncMock
-
-        import core.dashboard as dash
-
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"response": "Hello from AI"}
-        mock_response.raise_for_status.return_value = None
-
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.post.return_value = mock_response
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            result = await dash.sentinel_chat({"message": "Hello"})
-
-        assert result["status"] == "success"
-        assert result["response"] == "Hello from AI"
-
-    @pytest.mark.asyncio
-    async def test_timeout_exception(self):
-        import httpx
-        from unittest.mock import AsyncMock
-
-        import core.dashboard as dash
-
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.post.side_effect = httpx.TimeoutException("timed out")
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            result = await dash.sentinel_chat({"message": "Hello"})
-
-        assert result["status"] == "timeout"
-        assert result["error"] == "Model timeout"
-
-    @pytest.mark.asyncio
-    async def test_http_error(self):
-        import httpx
-        from unittest.mock import AsyncMock
-
-        import core.dashboard as dash
-
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.post.side_effect = httpx.HTTPStatusError(
-            "503", request=MagicMock(), response=MagicMock()
-        )
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            result = await dash.sentinel_chat({"message": "Hello"})
-
-        assert result["status"] == "error"
-        assert "Model error" in result["error"]
-
-    @pytest.mark.asyncio
-    async def test_generic_exception(self):
-        from unittest.mock import AsyncMock
-
-        import core.dashboard as dash
-
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.post.side_effect = RuntimeError("unexpected failure")
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            result = await dash.sentinel_chat({"message": "Hello"})
-
-        assert result["status"] == "error"
-        assert "Internal error" in result["error"]

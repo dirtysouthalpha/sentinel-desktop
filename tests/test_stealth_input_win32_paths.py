@@ -67,9 +67,9 @@ class TestPostTextDelay:
     def test_post_text_with_delay(self, stealth_module):
         """post_text sleeps between characters when delay > 0."""
         si, mock_win32api, mock_win32gui, mock_win32con = stealth_module
-        mock_win32gui.GetForegroundWindow.return_value = 999
 
-        with patch("time.sleep") as mock_sleep:
+        with patch.object(si, "_get_focus_hwnd", return_value=None), \
+             patch("time.sleep") as mock_sleep:
             result = si.post_text("AB", delay=0.05, hwnd=100)
 
         assert result is True
@@ -80,7 +80,8 @@ class TestPostTextDelay:
         """post_text doesn't sleep when delay is 0."""
         si, mock_win32api, mock_win32gui, mock_win32con = stealth_module
 
-        with patch("time.sleep") as mock_sleep:
+        with patch.object(si, "_get_focus_hwnd", return_value=None), \
+             patch("time.sleep") as mock_sleep:
             result = si.post_text("A", delay=0, hwnd=100)
 
         assert result is True
@@ -90,7 +91,8 @@ class TestPostTextDelay:
         """post_text with default delay=0.005 sleeps between chars."""
         si, mock_win32api, mock_win32gui, mock_win32con = stealth_module
 
-        with patch("time.sleep") as mock_sleep:
+        with patch.object(si, "_get_focus_hwnd", return_value=None), \
+             patch("time.sleep") as mock_sleep:
             result = si.post_text("AB", hwnd=100)
 
         assert result is True
@@ -113,11 +115,16 @@ class TestGetFocusHwndWin32:
 
         mock_win32api.GetWindowThreadProcessId.return_value = (1234,)
 
-        # Create mock ctypes with windll
+        # Create mock ctypes with windll — explicit attr assignment to prevent
+        # MagicMock auto-child creation recursion on Python 3.13.
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.return_value = True
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         mock_ctypes = MagicMock()
         mock_ctypes.sizeof.return_value = 64
         mock_ctypes.byref.return_value = MagicMock()
-        mock_ctypes.windll.user32.GetGUIThreadInfo.return_value = True
+        mock_ctypes.windll = mock_windll
 
         # Mock _GUI_THREAD_INFO instance
         mock_info = MagicMock()
@@ -140,10 +147,14 @@ class TestGetFocusHwndWin32:
 
         mock_win32api.GetWindowThreadProcessId.return_value = (1234,)
 
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.return_value = False
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         mock_ctypes = MagicMock()
         mock_ctypes.sizeof.return_value = 64
         mock_ctypes.byref.return_value = MagicMock()
-        mock_ctypes.windll.user32.GetGUIThreadInfo.return_value = False
+        mock_ctypes.windll = mock_windll
 
         mock_info = MagicMock()
         mock_info.hwndFocus = 0
@@ -164,8 +175,12 @@ class TestGetFocusHwndWin32:
 
         mock_win32api.GetWindowThreadProcessId.return_value = (1234,)
 
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.side_effect = OSError("fail")
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.user32.GetGUIThreadInfo.side_effect = OSError("fail")
+        mock_ctypes.windll = mock_windll
 
         mock_info = MagicMock()
 
@@ -185,8 +200,12 @@ class TestGetFocusHwndWin32:
 
         mock_win32api.GetWindowThreadProcessId.return_value = (1234,)
 
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.side_effect = AttributeError("fail")
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.user32.GetGUIThreadInfo.side_effect = AttributeError("fail")
+        mock_ctypes.windll = mock_windll
 
         mock_info = MagicMock()
 
@@ -206,8 +225,12 @@ class TestGetFocusHwndWin32:
 
         mock_win32api.GetWindowThreadProcessId.return_value = (1234,)
 
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.side_effect = RuntimeError("fail")
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.user32.GetGUIThreadInfo.side_effect = RuntimeError("fail")
+        mock_ctypes.windll = mock_windll
 
         mock_info = MagicMock()
 
@@ -227,10 +250,14 @@ class TestGetFocusHwndWin32:
 
         mock_win32api.GetWindowThreadProcessId.return_value = (1234,)
 
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.return_value = True
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         mock_ctypes = MagicMock()
         mock_ctypes.sizeof.return_value = 64
         mock_ctypes.byref.return_value = MagicMock()
-        mock_ctypes.windll.user32.GetGUIThreadInfo.return_value = True
+        mock_ctypes.windll = mock_windll
 
         mock_info = MagicMock()
         mock_info.hwndFocus = 0

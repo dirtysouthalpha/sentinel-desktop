@@ -1,5 +1,6 @@
 """Gap tests for stealth_input.py — direct function coverage for post_click, post_text, post_key, post_named_key, post_hotkey, _get_focus_hwnd."""
 
+import importlib
 import sys
 
 import pytest
@@ -12,6 +13,14 @@ pytestmark = pytest.mark.skipif(
 from unittest.mock import patch
 
 from core import stealth_input
+
+
+@pytest.fixture(autouse=True)
+def _reload_stealth():
+    """Reload stealth_input before each test to avoid state pollution."""
+    importlib.reload(stealth_input)
+    yield
+    importlib.reload(stealth_input)
 
 
 class TestIsAvailable:

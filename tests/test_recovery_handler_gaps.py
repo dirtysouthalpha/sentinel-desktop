@@ -10,7 +10,7 @@ class TestHandlerExceptionFallback:
 
     def test_handler_valueerror_falls_to_generic(self) -> None:
         engine = RecoveryEngine()
-        original = _RECOVERY_HANDLERS["element_not_found"]
+        _RECOVERY_HANDLERS["element_not_found"]
 
         def bad_handler(action, error, context):
             raise ValueError("handler broke")

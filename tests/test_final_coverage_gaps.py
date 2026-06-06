@@ -9,15 +9,11 @@ import asyncio
 import importlib
 import json
 import os
-import sys
-import threading
 import types
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # core/action_executor.py  — async execute() dry-run and async handler
@@ -74,10 +70,10 @@ class TestCheckpointWindowsPath:
                 self._str = "/".join(str(a).rstrip("/") for a in args if a)
 
             @classmethod
-            def home(cls) -> "_SafePath":
+            def home(cls) -> _SafePath:
                 return cls(str(tmp_path))
 
-            def __truediv__(self, key: str) -> "_SafePath":
+            def __truediv__(self, key: str) -> _SafePath:
                 return _SafePath(self._str + "/" + str(key))
 
             def __str__(self) -> str:
@@ -147,10 +143,10 @@ class TestForensicLogDefaultDirWindows:
                 self._str = "/".join(str(a).rstrip("/") for a in args if a)
 
             @classmethod
-            def home(cls) -> "_SafePath":
+            def home(cls) -> _SafePath:
                 return cls(str(tmp_path))
 
-            def __truediv__(self, key: str) -> "_SafePath":
+            def __truediv__(self, key: str) -> _SafePath:
                 return _SafePath(self._str + "/" + str(key))
 
             def __str__(self) -> str:
@@ -215,7 +211,10 @@ class TestNotificationsWindowsToast:
                 if self._target:
                     self._target()
 
+        # Explicit mock_user32 to prevent MagicMock auto-child recursion
+        mock_user32 = MagicMock()
         mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
 
         with (
             patch.dict("sys.modules", {"win10toast": fake_win10toast}),
@@ -227,7 +226,7 @@ class TestNotificationsWindowsToast:
 
         assert ok is True
         assert "ctypes" in msg
-        mock_windll.user32.MessageBoxW.assert_called_once()
+        mock_user32.MessageBoxW.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +238,7 @@ class TestOcrLooksLowConfidenceAlnumPerLine:
     """Cover return True when avg_alnum_per_line < _MIN_ALNUM_PER_LINE_FOR_CONFIDENT."""
 
     def test_low_alnum_per_line_returns_true(self):
-        from core.ocr import _MIN_ALNUM_PER_LINE_FOR_CONFIDENT, looks_low_confidence
+        from core.ocr import looks_low_confidence
 
         # Need: total_alnum >= 20, but avg per line < threshold (default=6)
         # 4 alnum-only lines with 5 chars each = 20 total / 8 lines (4 punct lines) = 2.5 avg
@@ -512,6 +511,7 @@ class TestUiTreeHaveUiaSuccess:
 
     def test_have_uia_returns_true_with_fake_module(self):
         import platform
+
         import core.utils as utils
 
         fake_auto = types.ModuleType("uiautomation")
@@ -594,15 +594,17 @@ class TestVirtualDesktopGetThreadDesktopNull:
         from core.virtual_desktop import _get_current_desktop_name
 
         mock_user32 = MagicMock()
-        mock_user32.GetThreadDesktop.return_value = 0  # null handle → falsy
+        mock_user32.GetThreadDesktop.return_value = 0  # null handle -> falsy
 
         # ctypes.windll doesn't exist on Linux; patch it at the ctypes level
+        # with explicit attribute assignment to prevent auto-child recursion
         import ctypes
+        mock_windll = MagicMock()
 
         with (
             patch.object(mod, "_IS_WINDOWS", True),
             patch.object(mod, "_get_user32", return_value=mock_user32),
-            patch.object(ctypes, "windll", MagicMock(), create=True),
+            patch.object(ctypes, "windll", mock_windll, create=True),
         ):
             result = _get_current_desktop_name()
 

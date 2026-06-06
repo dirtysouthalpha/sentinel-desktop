@@ -54,7 +54,7 @@ def test_smart_open_launches_when_no_match(monkeypatch):
     assert result["success"] is True
     assert result.get("focused") is False
     # Spawned via 'cmd /c start "" <launcher>' so PATH + URI resolve.
-    assert spawned and spawned[0][:3] == ["cmd", "/c", "start"]
+    assert spawned and spawned[0][1:4] == ["/c", "start", ""]
     assert "outlook" in spawned[0]
 
 

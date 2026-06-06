@@ -1,5 +1,44 @@
 # Changelog
 
+## [6.0.0] - 2026-06-05
+
+### Dependency upgrades
+- **fastapi** 0.110 → 0.136 (major performance and typing improvements)
+- **uvicorn** 0.27 → 0.47 (HTTP/1.1 pipelining, improved websocket handling)
+- **httpx** 0.27 → 0.28
+- **pydantic** 2.5 → 2.13 (V2 mature, faster validation, better errors)
+- **websockets** 12.0 → 16.0 (major rewrite, faster, better API)
+- **bcrypt** 4.1 → 4.3
+- **pytest** 8.0 → 8.4
+- **pytest-asyncio** 0.23 → 0.26
+- **pytest-cov** 4.1 → 7.1
+- **ruff** 0.4 → 0.15 (massively faster, many new rules)
+- **mypy** 1.8 → 2.1
+
+### Lint fixes (36 errors → 0)
+- Restructured `api/server.py` imports to fix E402 (Unix-only PTY modules now after all stdlib/third-party imports)
+- Removed unused imports across `core/perception/`, `core/platform/`, `core/swarm/`
+- Fixed undefined `PlanStepStatus` → `StepStatus` in `core/control/loop.py`
+- Removed unused variables in `core/control/grounder.py` and `core/control/loop.py`
+- Added `usedforsecurity=False` to non-cryptographic `md5` calls in `core/control/verifier.py` and `core/perception/pipeline.py`
+- Added `strict=False` to `zip()` in `core/control/verifier.py`
+- Fixed `OSError, IOError` tuple → `OSError` in `core/perception/annotator.py`
+- Sorted import blocks across `core/control/`, `core/perception/`, `core/swarm/`
+
+### Test fixes
+- Fixed `test_it_scripts.py` — added `encoding="utf-8"` to JSON file reads (emoji characters in script templates)
+- Fixed `test_launcher.py` — subprocess resolves `cmd` to full path on Windows/Python 3.13
+- Fixed `test_notifications_gaps.py` — patch `ctypes.windll` on the actual `ctypes` module while calling `_show_box` thread target
+- Fixed `test_ocr_gaps2.py` — updated resolution thresholds to match 4K caps (3840x2160 / 5120x2880 aggressive)
+- Fixed `test_powershell_gaps.py` — added `@skipif(win32)` for Linux-only PowerShell behavior tests
+- Fixed `test_stealth_input.py` — added `@skipif(win32)` for Linux-only `post_named_key` test
+- Fixed `test_stealth_input_gaps.py` — added `autouse` reload fixture to prevent cross-test state pollution
+- Fixed `test_utils.py` — reset `_UIA_OK` cache before UIA availability test
+- Fixed `test_virtual_desktop.py` — added `@skipif(win32)` for tests using `/bin/true`, `/bin/echo`
+- Fixed `test_virtual_desktop_gaps.py` — split Linux-only stub factory tests into `@skipif(win32)` class
+- Fixed `test_popup_handler_gaps.py` — mock `window_manager.list_windows` in "all fail" test
+- Fixed `test_stealth_input_win32_paths.py` — patch `_get_focus_hwnd` to avoid ctypes mock recursion
+
 ## [3.1.0] - 2026-06-04
 
 ### Critical fixes

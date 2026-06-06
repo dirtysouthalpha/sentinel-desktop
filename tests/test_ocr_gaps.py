@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from PIL import Image
 
 from core import ocr
-from core.utils import have_tesseract, get_tesseract
+from core.utils import have_tesseract
 
 
 class TestHaveTesseract:

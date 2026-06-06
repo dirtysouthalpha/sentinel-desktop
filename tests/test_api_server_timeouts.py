@@ -15,8 +15,6 @@ the proper 504 HTTPException is raised with the correct timeout message.
 """
 
 import asyncio
-from unittest.mock import Mock
-from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request
@@ -54,7 +52,6 @@ def _fake_request():
 class TestHandleWindowsTimeout:
     def test_windows_timeout(self, monkeypatch):
         """Test _handle_windows raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()
@@ -77,7 +74,6 @@ class TestHandleWindowsTimeout:
 class TestHandleProcessesTimeout:
     def test_processes_timeout(self, monkeypatch):
         """Test _handle_processes raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()
@@ -100,7 +96,6 @@ class TestHandleProcessesTimeout:
 class TestHandleSystemTimeout:
     def test_system_timeout(self, monkeypatch):
         """Test _handle_system raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()
@@ -123,7 +118,6 @@ class TestHandleSystemTimeout:
 class TestHandleScheduleRunTimeout:
     def test_schedule_run_timeout(self, monkeypatch):
         """Test _handle_schedule_run raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()
@@ -149,7 +143,6 @@ class TestHandleScheduleRunTimeout:
 class TestHandleNotifyTimeout:
     def test_notify_timeout(self, monkeypatch):
         """Test _handle_notify raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()
@@ -176,7 +169,6 @@ class TestHandleNotifyTimeout:
 class TestHandlePluginsReloadTimeout:
     def test_plugins_reload_timeout(self, monkeypatch):
         """Test _handle_plugins_reload raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()
@@ -203,7 +195,6 @@ class TestHandlePluginsReloadTimeout:
 class TestHandleAuthLoginTimeout:
     def test_auth_login_timeout(self, monkeypatch):
         """Test _handle_auth_login raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()
@@ -232,7 +223,6 @@ class TestHandleAuthLoginTimeout:
 class TestHandleAuditExportTimeout:
     def test_audit_export_timeout(self, monkeypatch):
         """Test _handle_audit_export raises 504 on timeout."""
-        from fastapi import HTTPException
 
         def fake_wait_for(coro, timeout):
             raise asyncio.TimeoutError()

@@ -9,9 +9,8 @@ Covers:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from PIL import Image
 
 import core.popup_handler as ph
@@ -94,7 +93,7 @@ class TestAutoDismissFalseDoesNotDismiss:
              patch.object(ph, "_ocr_text", return_value="Error\nAn error has occurred."), \
              patch.object(ph, "_get_foreground_window_title", return_value="Error"), \
              patch.object(handler, "dismiss") as mock_dismiss:
-            result = handler.check_and_dismiss()
+            handler.check_and_dismiss()
 
         mock_dismiss.assert_not_called()
 

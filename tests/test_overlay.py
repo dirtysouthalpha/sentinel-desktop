@@ -276,18 +276,22 @@ class TestActionOverlay:
 
 class TestIndicator:
     def test_construct_with_label_draws_canvas(self):
-        ind = _Indicator(MagicMock(), x=100, y=200, label="click (1, 2)", kind="click")
+        # Patch _make_clickthrough to avoid ctypes.windll recursion on Windows
+        with patch.object(overlay_mod, "_make_clickthrough"):
+            ind = _Indicator(MagicMock(), x=100, y=200, label="click (1, 2)", kind="click")
         assert ind.win is not None
         assert ind.canvas is not None
         ind.destroy()
 
     def test_construct_without_label(self):
-        ind = _Indicator(MagicMock(), x=0, y=0, label="", kind="type_text")
+        with patch.object(overlay_mod, "_make_clickthrough"):
+            ind = _Indicator(MagicMock(), x=0, y=0, label="", kind="type_text")
         ind.destroy()
 
     def test_destroy_swallows_errors(self):
         fake = _patched_tk()
-        ind = _Indicator(MagicMock(), x=10, y=10, label="x", kind="hotkey")
+        with patch.object(overlay_mod, "_make_clickthrough"):
+            ind = _Indicator(MagicMock(), x=10, y=10, label="x", kind="hotkey")
         ind.win = MagicMock()
         ind.win.destroy.side_effect = fake.TclError("gone")
         with patch.object(overlay_mod, "tk", fake):
@@ -345,6 +349,7 @@ class TestIndicator:
         with (
             patch.dict(sys.modules, {"tkinter": fake}),
             patch.object(overlay_mod, "tk", fake),
+            patch.object(overlay_mod, "_make_clickthrough"),
         ):
             ind = _Indicator(MagicMock(), x=5, y=5, label="x", kind="click")
             ind.destroy()
@@ -362,8 +367,10 @@ class TestMakeClickthrough:
         fake_user32 = MagicMock()
         fake_user32.GetParent.return_value = 1234
         fake_user32.GetWindowLongW.return_value = 0
+        fake_windll = MagicMock()
+        fake_windll.user32 = fake_user32
         fake_ctypes = MagicMock()
-        fake_ctypes.windll.user32 = fake_user32
+        fake_ctypes.windll = fake_windll
         with (
             patch.object(sys, "platform", "win32"),
             patch.dict(sys.modules, {"ctypes": fake_ctypes}),
@@ -374,8 +381,10 @@ class TestMakeClickthrough:
     def test_returns_when_no_hwnd(self):
         fake_user32 = MagicMock()
         fake_user32.GetParent.return_value = 0  # falsy hwnd → early return
+        fake_windll = MagicMock()
+        fake_windll.user32 = fake_user32
         fake_ctypes = MagicMock()
-        fake_ctypes.windll.user32 = fake_user32
+        fake_ctypes.windll = fake_windll
         with (
             patch.object(sys, "platform", "win32"),
             patch.dict(sys.modules, {"ctypes": fake_ctypes}),
@@ -384,8 +393,12 @@ class TestMakeClickthrough:
         fake_user32.SetWindowLongW.assert_not_called()
 
     def test_swallows_oserror(self):
+        fake_user32 = MagicMock()
+        fake_user32.GetParent.side_effect = OSError("nope")
+        fake_windll = MagicMock()
+        fake_windll.user32 = fake_user32
         fake_ctypes = MagicMock()
-        fake_ctypes.windll.user32.GetParent.side_effect = OSError("nope")
+        fake_ctypes.windll = fake_windll
         with (
             patch.object(sys, "platform", "win32"),
             patch.dict(sys.modules, {"ctypes": fake_ctypes}),

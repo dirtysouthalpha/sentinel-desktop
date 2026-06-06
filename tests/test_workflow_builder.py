@@ -104,7 +104,7 @@ class TestWorkflow:
     def test_remove_step(self):
         """remove_step removes by ID and returns True."""
         wf = Workflow()
-        s1 = wf.add_step(action="keep")
+        wf.add_step(action="keep")
         s2 = wf.add_step(action="remove")
         result = wf.remove_step(s2.id)
         assert result is True

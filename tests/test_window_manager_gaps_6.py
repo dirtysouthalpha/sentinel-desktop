@@ -12,8 +12,11 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import sys
 import types
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import core.window_manager as wm
 from core.window_manager import (
@@ -149,9 +152,13 @@ class TestWin32InnerBranches:
         mock_gui = MagicMock()
         mock_con = MagicMock()
         mock_con.SW_RESTORE = 9
+        # Explicit attribute assignment to prevent MagicMock auto-child recursion
+        mock_user32 = MagicMock()
+        mock_user32.keybd_event.side_effect = OSError("no input desktop")
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         fake_ctypes = types.ModuleType("ctypes")
-        fake_ctypes.windll = MagicMock()
-        fake_ctypes.windll.user32.keybd_event.side_effect = OSError("no input desktop")
+        fake_ctypes.windll = mock_windll
 
         with patch("core.window_manager.HAS_WIN32", True), \
              patch("core.window_manager.win32gui", mock_gui, create=True), \
@@ -199,6 +206,7 @@ class TestWin32InnerBranches:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests import guard behavior when win32 missing")
 class TestWindowsImportGuards:
     def test_windows_with_failing_optional_imports(self):
         """On Windows with win32/pygetwindow missing but pywintypes present,

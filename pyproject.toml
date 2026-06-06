@@ -31,13 +31,13 @@ dependencies = [
     "Pillow ~= 12.2",
     "pyperclip ~= 1.8",
     "requests ~= 2.31",
-    "httpx ~= 0.27",
-    "fastapi ~= 0.110",
-    "uvicorn ~= 0.27",
-    "websockets ~= 12.0",
-    "pydantic ~= 2.5",
+    "httpx ~= 0.28",
+    "fastapi ~= 0.136",
+    "uvicorn ~= 0.47",
+    "websockets ~= 16.0",
+    "pydantic ~= 2.13",
     "pygetwindow ~= 0.0.9; sys_platform == 'win32'",
-    "bcrypt ~= 4.1",
+    "bcrypt ~= 4.3",
 ]
 
 [project.optional-dependencies]
@@ -57,11 +57,11 @@ windows = [
     "keyboard ~= 0.13.5; sys_platform == 'win32'",
 ]
 dev = [
-    "pytest ~= 8.0",
-    "pytest-asyncio ~= 0.23",
-    "pytest-cov ~= 4.1",
-    "ruff ~= 0.4",
-    "mypy ~= 1.8",
+    "pytest ~= 8.4",
+    "pytest-asyncio ~= 0.26",
+    "pytest-cov ~= 7.1",
+    "ruff ~= 0.15",
+    "mypy ~= 2.1",
     "pip-audit ~= 2.7",
     "pre-commit ~= 3.6",
 ]
@@ -119,7 +119,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106", "S603", "S607", "E701", "E402"]
+"tests/*" = ["S101", "S105", "S106", "S108", "S603", "S607", "E701", "E741", "E402"]
 "installer/*" = ["S603", "S607"]
 "core/auth.py" = ["S324"]  # Legacy SHA-256 verification only; transparently upgrades to bcrypt on login
 

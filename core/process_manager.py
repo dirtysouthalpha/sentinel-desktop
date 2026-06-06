@@ -12,6 +12,30 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
+# Dangerous command patterns that should never be passed to start_process.
+_DANGEROUS_CMD_PATTERNS = (
+    "rm -rf", "del /f /q", "format ", "diskpart",
+    "mkfs.", "dd if=/dev", "> /dev/sd",
+)
+
+
+def _sanitize_command(path: str, args: list[str] | None = None) -> None:
+    """Validate that a command path and arguments are safe to execute.
+
+    Raises ``ValueError`` if dangerous patterns are detected.
+    """
+    full_cmd = path + " " + " ".join(args or [])
+    lower = full_cmd.lower().strip()
+    for pattern in _DANGEROUS_CMD_PATTERNS:
+        if pattern in lower:
+            raise ValueError(
+                f"Command contains potentially dangerous pattern: '{pattern}'"
+            )
+    # Block shell metacharacters in the path itself
+    shell_chars = {"&", "|", ";", "`", "$", ">", "<"}
+    if any(c in path for c in shell_chars):
+        raise ValueError(f"Executable path contains shell metacharacters: '{path}'")
+
 
 def list_processes(sort_by: str = "cpu", limit: int = 50) -> list[dict[str, Any]]:
     """List running processes. Returns list of dicts."""
@@ -33,8 +57,12 @@ def list_processes(sort_by: str = "cpu", limit: int = 50) -> list[dict[str, Any]
 
 
 def start_process(path: str, args: list[str] | None = None) -> int | None:
-    """Start a process. Returns PID or None on failure."""
+    """Start a process. Returns PID or None on failure.
+
+    Validates the command against dangerous patterns before execution.
+    """
     try:
+        _sanitize_command(path, args)
         cmd = [path] + (args or [])
         # Discard stderr so the pipe never fills and blocks; we only care
         # whether Popen() itself raises (command not found, permission, etc.).

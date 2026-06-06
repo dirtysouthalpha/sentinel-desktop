@@ -7,6 +7,7 @@ so they run cross-platform.
 
 from __future__ import annotations
 
+import sys
 import threading
 from unittest.mock import MagicMock, patch
 
@@ -363,6 +364,7 @@ class TestWin32ContextManager:
 # VirtualDesktop factory — repr
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux stub repr")
 class TestVirtualDesktopRepr:
     """Test VirtualDesktop.__repr__."""
 

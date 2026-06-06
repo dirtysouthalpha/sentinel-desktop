@@ -19,15 +19,12 @@ Endpoints:
 """
 
 import asyncio
-import fcntl
 import hmac
 import json
 import logging
 import os
-import pty
 import signal
 import struct
-import termios
 import threading
 import time
 from collections import defaultdict
@@ -50,6 +47,19 @@ from core.dashboard import router as dashboard_router
 from core.engine import AgentEngine
 from core.screenshot import capture_to_base64
 from core.workflow_builder import TEMPLATES, workflow_store
+
+# Unix-only modules for PTY terminal support (not available on Windows).
+# The terminal WebSocket endpoint gracefully degrades on Windows.
+_HAS_PTY = False
+try:
+    import fcntl  # type: ignore[import-not-found]
+    import pty  # type: ignore[import-not-found]  # noqa: F811
+    import termios  # type: ignore[import-not-found]
+    _HAS_PTY = True
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
+    pty = None  # type: ignore[assignment]  # noqa: F811
+    termios = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -360,8 +370,12 @@ class SentinelServer:
 
     # ── Terminal WebSocket (PTY shell proxy) ────────────────────────────
 
-    def _setup_pty_child(self, slave_fd: int) -> NoReturn:  # pragma: no cover
-        """Set up child process for PTY and exec bash."""
+    def _setup_pty_child(self, slave_fd: int) -> NoReturn:
+        """Set up child process for PTY and exec the platform-appropriate shell.
+
+        Only called when _HAS_PTY is True (Unix only).
+        """
+        assert _HAS_PTY, "_setup_pty_child called without PTY support"
         os.close(slave_fd)
         os.setsid()
 
@@ -386,15 +400,30 @@ class SentinelServer:
         if slave_fd > 2:
             os.close(slave_fd)
 
+        # Find the best available shell for this platform
+        shell_candidates = ["/bin/bash", "/bin/zsh", "/bin/sh"]
+        # On some systems, bash is at /usr/bin/bash
+        if os.name != "nt":
+            import shutil
+            for candidate in [shutil.which("bash"), shutil.which("zsh"), shutil.which("sh")]:
+                if candidate and candidate not in shell_candidates:
+                    shell_candidates.insert(0, candidate)
+
         try:
-            os.execvpe("/bin/bash", ["/bin/bash", "--login"], env)  # noqa: S606
+            for shell in shell_candidates:
+                if os.path.isfile(shell):
+                    os.execvpe(shell, [shell, "--login"], env)  # noqa: S606
+            # Last resort: just /bin/sh
+            os.execvpe("/bin/sh", ["/bin/sh"], env)  # noqa: S606
         except OSError:
             os._exit(1)
 
     def _configure_master_fd_nonblocking(self, master_fd: int) -> None:
-        """Set master_fd to non-blocking mode."""
-        flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
-        fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        """Set master_fd to non-blocking mode (Unix only)."""
+        if not _HAS_PTY:
+            return
+        flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)  # type: ignore[union-attr]
+        fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)  # type: ignore[union-attr]
 
     async def _read_pty(self, master_fd: int, ws: WebSocket) -> None:
         """Read PTY output and forward to WebSocket."""
@@ -501,11 +530,23 @@ class SentinelServer:
         except (ChildProcessError, OSError):
             pass
 
-    async def _handle_terminal_ws(self, ws: WebSocket) -> None:  # pragma: no cover
-        """Spawn a PTY shell and proxy I/O over WebSocket."""
+    async def _handle_terminal_ws(self, ws: WebSocket) -> None:
+        """Spawn a PTY shell and proxy I/O over WebSocket.
+
+        Only available on Unix (Linux/macOS). On Windows, returns an
+        error message since PTY is not supported.
+        """
         await ws.accept()
 
-        master_fd, slave_fd = pty.openpty()
+        if not _HAS_PTY:
+            await ws.send_json({
+                "type": "error",
+                "data": "Terminal not available on Windows — PTY requires Unix",
+            })
+            await ws.close()
+            return
+
+        master_fd, slave_fd = pty.openpty()  # type: ignore[union-attr]
         child_pid = os.fork()
 
         if child_pid == 0:

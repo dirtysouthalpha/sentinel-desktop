@@ -6,6 +6,7 @@ and repr which are platform-agnostic.
 """
 
 import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -125,6 +126,7 @@ class TestStubContextManager:
 # VirtualDesktop wrapper — delegation tests (works on Linux via stub)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux stub delegation behavior")
 class TestVirtualDesktopWrapper:
     """VirtualDesktop delegates to _StubVirtualDesktop on Linux."""
 
@@ -205,6 +207,7 @@ class TestVirtualDesktopWrapper:
 # _get_user32 / _get_kernel32 — non-Windows paths
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux ctypes failure behavior")
 class TestLazyCtypes:
     """Lazy ctypes handles — on Linux, windll doesn't exist."""
 

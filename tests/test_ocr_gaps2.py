@@ -142,11 +142,11 @@ class TestDownsampleIfNeeded:
     """Cover lines 130-134: image actually gets downsampled when oversized."""
 
     def test_downsamples_oversized_image(self):
-        # Create a 4K image (exceeds 1920x1080)
-        big = Image.new("RGB", (3840, 2160), "white")
+        # Create a 6K image (exceeds 3840x2160 cap AND 5120x2880 aggressive threshold)
+        big = Image.new("RGB", (6000, 3375), "white")
         result = ocr._downsample_if_needed(big)
         w, h = result.size
-        # 4K images are aggressively downsampled to 720p for performance
+        # 6K+ images are aggressively downsampled to 720p for performance
         assert w <= 1280
         assert h <= 720
         # Should maintain aspect ratio (16:9)
@@ -158,24 +158,24 @@ class TestDownsampleIfNeeded:
         assert result.size == (800, 600)
 
     def test_downsamples_height_only_exceeds(self):
-        # Width OK but height exceeds
-        tall = Image.new("RGB", (1000, 2000), "white")
+        # Width OK but height exceeds 4K cap (3840x2160)
+        tall = Image.new("RGB", (1000, 4000), "white")
         result = ocr._downsample_if_needed(tall)
         w, h = result.size
-        assert h <= 1080
-        assert w <= 1920
+        assert h <= 2160
+        assert w <= 3840
 
     def test_downsamples_medium_resolution_image(self):
-        # Image between 1080p and 2K (e.g., 2000x1200)
-        # Should use standard 1080p target, not aggressive 720p
-        medium = Image.new("RGB", (2000, 1200), "white")
+        # Image between 4K and 5K (e.g., 4000x2400)
+        # Should use standard 4K target (3840x2160), not aggressive 720p
+        medium = Image.new("RGB", (4000, 2400), "white")
         result = ocr._downsample_if_needed(medium)
         w, h = result.size
-        # Should be downsampled to 1080p target
-        assert w <= 1920
-        assert h <= 1080
+        # Should be downsampled to 4K target
+        assert w <= 3840
+        assert h <= 2160
         # Should maintain aspect ratio
-        assert abs(w / h - 2000 / 1200) < 0.01
+        assert abs(w / h - 4000 / 2400) < 0.01
 
 
 # ---------------------------------------------------------------------------

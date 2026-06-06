@@ -86,6 +86,44 @@ if _IS_WINDOWS:
     CRYPTPROTECT_UI_FORBIDDEN = 0x01
 
 # ---------------------------------------------------------------------------
+# Cross-platform XOR encryption fallback (non-Windows)
+# ---------------------------------------------------------------------------
+
+
+def _get_machine_key() -> bytes:
+    """Derive a machine-specific key from hostname + username.
+
+    This is a simple obfuscation layer — not cryptographically strong,
+    but prevents credentials from being stored as plaintext on non-Windows.
+    DPAPI on Windows is always preferred.
+    """
+    import hashlib
+    import os
+    import platform
+
+    identity = f"{platform.node()}-{os.getuid() if hasattr(os, 'getuid') else os.getenv('USERNAME', 'user')}"
+    return hashlib.sha256(identity.encode()).digest()
+
+
+def _xor_encrypt(plaintext: bytes) -> bytes:
+    """XOR plaintext with a repeating machine-specific key, then base64-encode."""
+    key = _get_machine_key()
+    xored = bytes(plaintext[i] ^ key[i % len(key)] for i in range(len(plaintext)))
+    return base64.b64encode(xored)
+
+
+def _xor_decrypt(ciphertext: bytes) -> bytes | None:
+    """Reverse of _xor_encrypt: base64-decode then XOR with machine key."""
+    try:
+        xored = base64.b64decode(ciphertext)
+    except ValueError:
+        logger.exception("base64 decode failed for non-Windows vault entry")
+        return None
+    key = _get_machine_key()
+    return bytes(xored[i] ^ key[i % len(key)] for i in range(len(xored)))
+
+
+# ---------------------------------------------------------------------------
 # Vault constants
 # ---------------------------------------------------------------------------
 
@@ -264,8 +302,9 @@ class CredentialVault:
     def _encrypt(plaintext: bytes) -> bytes | None:
         """Encrypt *plaintext* using DPAPI (CurrentUser scope).
 
-        On non-Windows platforms the data is merely base64-encoded and a
-        warning is emitted.
+        On non-Windows platforms, uses a machine-specific XOR key derived
+        from the hostname and username. This is NOT as strong as DPAPI but
+        prevents credentials from being stored as plaintext.
         """
         if _IS_WINDOWS:
             blob_in = _DATA_BLOB()
@@ -296,13 +335,8 @@ class CredentialVault:
 
             return result
 
-        # Non-Windows fallback: base64 only (NOT secure)
-        logger.warning(
-            "DPAPI unavailable – credentials stored with base64 "
-            "encoding only (not encrypted).  Run on Windows for proper "
-            "DPAPI protection."
-        )
-        return base64.b64encode(plaintext)
+        # Non-Windows fallback: XOR with machine-specific key
+        return _xor_encrypt(plaintext)
 
     @staticmethod
     def _decrypt(ciphertext: bytes) -> bytes | None:
@@ -336,11 +370,7 @@ class CredentialVault:
             return result
 
         # Non-Windows fallback
-        try:
-            return base64.b64decode(ciphertext)
-        except ValueError:
-            logger.exception("base64 decode failed for non-Windows vault entry")
-            return None
+        return _xor_decrypt(ciphertext)
 
     # ------------------------------------------------------------------
     # Vault persistence helpers

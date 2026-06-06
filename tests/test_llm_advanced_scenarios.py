@@ -19,7 +19,6 @@ import requests as req
 
 from core.llm_client import LLMClient, LLMError
 
-
 # ---------------------------------------------------------------------------
 # Connection errors and network failures
 # ---------------------------------------------------------------------------

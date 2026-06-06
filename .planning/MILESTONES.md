@@ -2,6 +2,14 @@
 
 Project milestones and their release dates.
 
+## v6.0.0 — Dependency Upgrades + Cleanup (2026-06-06)
+
+**Shipped:**
+- 11 dependency version bumps (fastapi, uvicorn, pydantic, websockets, httpx, bcrypt, pytest, ruff, mypy, pytest-asyncio, pytest-cov)
+- 36 lint errors fixed (zero remaining)
+- 12 test files fixed for Windows/Python 3.13 compatibility
+- Version bumped to 6.0.0
+
 ## v3.1.0 — Production Foundation (2026-06-04)
 
 **Shipped:**

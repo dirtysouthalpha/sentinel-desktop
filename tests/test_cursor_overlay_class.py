@@ -143,11 +143,15 @@ class TestClickThrough:
         ov = CursorOverlay()
         ov._root = MagicMock()
         ov._root.winfo_id.return_value = 4321
+        fake_user32 = MagicMock()
+        fake_user32.GetWindowLongW.return_value = 0
+        fake_windll = MagicMock()
+        fake_windll.user32 = fake_user32
         fake_ctypes = MagicMock()
-        fake_ctypes.windll.user32.GetWindowLongW.return_value = 0
+        fake_ctypes.windll = fake_windll
         with patch.dict(sys.modules, {"ctypes": fake_ctypes}):
             ov._make_click_through()
-        fake_ctypes.windll.user32.SetWindowLongW.assert_called_once()
+        fake_user32.SetWindowLongW.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

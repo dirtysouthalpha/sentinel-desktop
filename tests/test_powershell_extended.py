@@ -1,7 +1,7 @@
 """Extended tests for core/powershell.py — runner config, helpers, JSON parsing, platform guards."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

@@ -402,7 +402,6 @@ class TestCacheMaintenance:
 
     def test_evict_oldest_entry_removes_oldest(self):
         """_evict_oldest_entry removes the entry with the oldest timestamp."""
-        import core.ui_tree as _m
         from core.ui_tree import _evict_oldest_entry
 
         cache = {
@@ -417,7 +416,6 @@ class TestCacheMaintenance:
 
     def test_evict_oldest_entry_does_nothing_when_under_limit(self):
         """_evict_oldest_entry does nothing when cache size is under max_size."""
-        import core.ui_tree as _m
         from core.ui_tree import _evict_oldest_entry
 
         cache = {
@@ -483,8 +481,8 @@ class TestCacheMaintenance:
 
     def test_get_cache_stats_returns_copy(self):
         """get_cache_stats returns a copy of stats, not the original."""
-        from core.ui_tree import get_cache_stats, _cache_stats
         import core.ui_tree as _m
+        from core.ui_tree import get_cache_stats
 
         stats = get_cache_stats()
         # Modify the returned dict

@@ -710,8 +710,6 @@ class TestPopupHandlerEdgeCases:
         handler._last_detection_time = 999999999.0  # far future sentinel
 
         # Monkeypatch time.monotonic so the cooldown fires
-        import time as _time
-        original_monotonic = _time.monotonic
 
         import core.popup_handler as _ph
         _ph_time_backup = _ph.time
@@ -790,7 +788,8 @@ class TestPopupHandlerEdgeCases:
         """If OCR raises during check_and_dismiss, the method must not propagate the error."""
         handler = PopupHandler()
         img = Image.new("RGB", (100, 100), color=(30, 30, 30))
-        with patch("core.popup_handler._ocr_text", side_effect=RuntimeError("OCR down")):
+        with patch("core.popup_handler._ocr_text", side_effect=RuntimeError("OCR down")), \
+             patch("core.popup_handler._get_foreground_window_title", return_value=""):
             result = handler.check_and_dismiss(img)
         assert isinstance(result, PopupDetectionResult)
         assert result.detected is False

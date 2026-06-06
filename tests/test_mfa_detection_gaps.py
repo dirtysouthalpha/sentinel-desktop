@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
+import core.utils as utils
 from core.mfa_detection import (
     DetectionResult,
     MFADetector,
@@ -17,7 +18,6 @@ from core.mfa_detection import (
     _ocr_check,
     _uia_check,
 )
-import core.utils as utils
 
 
 class TestHaveTesseractProbe:

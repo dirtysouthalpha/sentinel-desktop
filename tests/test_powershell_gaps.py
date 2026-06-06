@@ -6,7 +6,10 @@ built-in helpers on non-Windows, PSResult edge cases, and the module-level
 get_default_runner() factory.
 """
 
+import sys
 from unittest.mock import patch
+
+import pytest
 
 from core.powershell import (
     PowerShellRunner,
@@ -23,9 +26,11 @@ from core.powershell import (
 
 
 class TestPlatformHelpers:
+    @pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux behavior")
     def test_is_windows_on_linux(self):
         assert _is_windows() is False
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Tests non-Windows result")
     def test_non_windows_result(self):
         r = _non_windows_result()
         assert r.success is False
@@ -119,6 +124,7 @@ class TestRunnerInternals:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests non-Windows PowerShell behavior")
 class TestRunOnLinux:
     def test_run_returns_non_windows_result(self):
         runner = PowerShellRunner()
@@ -168,7 +174,7 @@ class TestRunScriptGaps:
         with patch.object(runner, "_run") as mock_run:
             mock_run.return_value = PSResult(success=True, exit_code=0, stdout="ok", stderr="", objects=[])
             # Value with null byte → _ps_escape raises ValueError → falls back to ''
-            result = runner.run_script(str(script), args={"Key": "bad\x00val"})
+            runner.run_script(str(script), args={"Key": "bad\x00val"})
             call_args = mock_run.call_args[0][0]
             assert "-Key ''" in call_args
 

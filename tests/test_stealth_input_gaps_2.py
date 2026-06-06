@@ -9,20 +9,21 @@ from core import stealth_input
 
 
 class TestGetFocusHwndCtypesPaths:
-    """_get_focus_hwnd with ctypes — success and failure paths (lines 251-258)."""
+    """_get_focus_hwnd with ctypes -- success and failure paths (lines 251-258)."""
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific ctypes.windll test")
     @patch.object(stealth_input, "_HAS_WIN32", True)
     def test_ctypes_success_returns_focus(self):
         """When GetGUIThreadInfo succeeds and hwndFocus is nonzero, returns it."""
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.return_value = True
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         with patch("core.stealth_input.win32api") as mock_api:
             mock_api.GetWindowThreadProcessId.return_value = (1234,)
-            # We need the real _GUI_THREAD_INFO ctypes struct for sizeof to work
-            # Patch ctypes.sizeof to avoid needing the real struct
             with patch("ctypes.sizeof", return_value=64):
                 with patch("ctypes.byref"):
-                    with patch("ctypes.windll") as mock_windll:
-                        mock_windll.user32.GetGUIThreadInfo.return_value = True
+                    with patch("ctypes.windll", mock_windll):
                         # Create a mock info object that behaves like the real one
                         mock_info = MagicMock()
                         mock_info.hwndFocus = 999
@@ -39,13 +40,16 @@ class TestGetFocusHwndCtypesPaths:
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific ctypes.windll test")
     @patch.object(stealth_input, "_HAS_WIN32", True)
     def test_ctypes_returns_zero_focus_returns_none(self):
-        """When hwndFocus is 0, returns None (line 254 — int(0) or None)."""
+        """When hwndFocus is 0, returns None (line 254 -- int(0) or None)."""
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.return_value = True
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         with patch("core.stealth_input.win32api") as mock_api:
             mock_api.GetWindowThreadProcessId.return_value = (1234,)
             with patch("ctypes.sizeof", return_value=64):
                 with patch("ctypes.byref"):
-                    with patch("ctypes.windll") as mock_windll:
-                        mock_windll.user32.GetGUIThreadInfo.return_value = True
+                    with patch("ctypes.windll", mock_windll):
                         mock_info = MagicMock()
                         mock_info.hwndFocus = 0
                         mock_info.cbSize = 64
@@ -61,12 +65,15 @@ class TestGetFocusHwndCtypesPaths:
     @patch.object(stealth_input, "_HAS_WIN32", True)
     def test_ctypes_get_gui_thread_info_fails_returns_none(self):
         """When GetGUIThreadInfo returns False, falls through to return None (line 258)."""
+        mock_user32 = MagicMock()
+        mock_user32.GetGUIThreadInfo.return_value = False
+        mock_windll = MagicMock()
+        mock_windll.user32 = mock_user32
         with patch("core.stealth_input.win32api") as mock_api:
             mock_api.GetWindowThreadProcessId.return_value = (1234,)
             with patch("ctypes.sizeof", return_value=64):
                 with patch("ctypes.byref"):
-                    with patch("ctypes.windll") as mock_windll:
-                        mock_windll.user32.GetGUIThreadInfo.return_value = False
+                    with patch("ctypes.windll", mock_windll):
                         mock_info = MagicMock()
                         mock_info.cbSize = 64
                         original = stealth_input._GUI_THREAD_INFO

@@ -161,7 +161,7 @@ class TestWorkflowStoreEdgeCases:
         """duplicate copies condition and on_failure from source steps."""
         store = WorkflowStore()
         original = store.create("Original")
-        step = original.add_step(
+        original.add_step(
             action="click",
             condition="variables.debug",
             on_failure="skip",

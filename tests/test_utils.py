@@ -177,10 +177,15 @@ class TestGetUIAAuto:
 
     def test_returns_module_or_none(self):
         """Verify get_uia_auto returns module or None."""
-        result = get_uia_auto()
+        # Ensure cache is fresh — previous tests may have cleared it
+        import core.utils
+        core.utils._UIA_OK = None
         if have_uia():
+            # Re-populate _auto via have_uia's import path
+            result = get_uia_auto()
             assert result is not None
         else:
+            result = get_uia_auto()
             assert result is None
 
     def test_consistent_with_have_uia(self):

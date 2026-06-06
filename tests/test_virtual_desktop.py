@@ -1,5 +1,6 @@
 """Tests for core/virtual_desktop.py — constants, stub, factory, and edge cases."""
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -123,6 +124,7 @@ class TestStubVirtualDesktop:
             stub = _StubVirtualDesktop("TestDesktop")
             assert stub.screenshot() is None
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Uses /bin/true (Linux-only)")
     def test_launch_app_valid_command(self):
         """Launching a real command should succeed and return a PID."""
         stub = _StubVirtualDesktop("TestDesktop")
@@ -132,6 +134,7 @@ class TestStubVirtualDesktop:
         assert result["pid"] > 0
         assert "fallback" in result["output"]
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Uses /bin/echo (Linux-only)")
     def test_launch_app_with_args(self):
         """launch_app should accept and pass through args."""
         stub = _StubVirtualDesktop("TestDesktop")
@@ -139,6 +142,7 @@ class TestStubVirtualDesktop:
         assert result["success"] is True
         assert isinstance(result["pid"], int)
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Uses /bin/true (Linux-only)")
     def test_launch_app_returns_output_with_path(self):
         """Output message should mention the launched path."""
         stub = _StubVirtualDesktop("TestDesktop")
@@ -226,6 +230,7 @@ class TestVirtualDesktopFactory:
             assert vd is not None
             assert vd._name == "CtxTest"
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Uses /bin/true (Linux-only)")
     def test_launch_app_delegates(self):
         vd = VirtualDesktop("TestVD")
         result = vd.launch_app("/bin/true")

@@ -41,23 +41,34 @@ class TestImportStoreFailure:
 
 
 class TestNonWindowsEncryptFallback:
-    """_encrypt falls back to base64 on non-Windows."""
+    """_encrypt falls back to XOR+base64 on non-Windows."""
 
     @patch("core.encryption._IS_WINDOWS", False)
-    def test_non_windows_encrypt_uses_base64(self) -> None:
+    def test_non_windows_encrypt_returns_bytes(self) -> None:
         data = b"hello world"
         result = CredentialVault._encrypt(data)
         assert result is not None
-        assert base64.b64decode(result) == data
+        # Should be base64-encoded (valid b64 characters)
+        base64.b64decode(result)  # Should not raise
+
+    @patch("core.encryption._IS_WINDOWS", False)
+    def test_non_windows_encrypt_decrypt_roundtrip(self) -> None:
+        data = b"hello world"
+        encrypted = CredentialVault._encrypt(data)
+        assert encrypted is not None
+        decrypted = CredentialVault._decrypt(encrypted)
+        assert decrypted == data
 
 
 class TestNonWindowsDecryptFallback:
-    """_decrypt falls back to base64 on non-Windows."""
+    """_decrypt falls back to XOR+base64 on non-Windows."""
 
     @patch("core.encryption._IS_WINDOWS", False)
-    def test_non_windows_decrypt_succeeds(self) -> None:
-        data = base64.b64encode(b"hello world")
-        result = CredentialVault._decrypt(data)
+    def test_non_windows_decrypt_roundtrip(self) -> None:
+        data = b"hello world"
+        encrypted = CredentialVault._encrypt(data)
+        assert encrypted is not None
+        result = CredentialVault._decrypt(encrypted)
         assert result == b"hello world"
 
     @patch("core.encryption._IS_WINDOWS", False)

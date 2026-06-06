@@ -486,7 +486,7 @@ class TestSchedulerEdgeCases:
         path = str(tmp_path / "tasks.json")
         ts = TaskScheduler(engine=None, tasks_path=path)
         bad = ts.add_task("BadCron", "script", "* * * * *", path="x.py")
-        good = ts.add_task("GoodCron", "script", "* * * * *", path="y.py")
+        ts.add_task("GoodCron", "script", "* * * * *", path="y.py")
 
         # Force the bad task to have an unparseable cron expression
         with ts._lock:

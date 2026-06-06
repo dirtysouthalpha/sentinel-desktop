@@ -285,7 +285,6 @@ def test_list_processes_limit_cuts():
 
 def test_start_process_running_process_no_warning():
     """start_process with a still-running process (poll()=None) should not log a warning."""
-    import subprocess
 
     mock_proc = MagicMock()
     mock_proc.pid = 42

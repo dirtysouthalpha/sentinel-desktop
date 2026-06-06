@@ -12,18 +12,15 @@ from __future__ import annotations
 
 import threading
 import time
-from unittest.mock import patch
 
 import pytest
 
 from core.recovery import (
     _RECOVERY_HANDLERS,
-    _compiled_patterns,
     RecoveryEngine,
     RecoverySuggestion,
     _match_pattern,
 )
-
 
 # ---------------------------------------------------------------------------
 # Cascading failure scenarios
@@ -258,7 +255,7 @@ class TestRecoverySuggestionValidation:
 
     def test_all_handlers_return_valid_suggestions(self):
         """Test that all recovery handlers return valid RecoverySuggestion objects."""
-        engine = RecoveryEngine()
+        RecoveryEngine()
         test_action = {"action": "click", "x": 100, "y": 100}
         test_error = "test error"
         test_context = {}

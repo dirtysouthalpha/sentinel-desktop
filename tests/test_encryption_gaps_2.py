@@ -52,18 +52,28 @@ class TestNonWindowsEncryptDecrypt:
     """Lines 264-290, 306-331: _encrypt/_decrypt non-Windows fallback."""
 
     @patch("core.encryption._IS_WINDOWS", False)
-    def test_encrypt_uses_base64(self) -> None:
-        """Non-Windows encrypt uses base64."""
+    def test_encrypt_returns_valid_base64(self) -> None:
+        """Non-Windows encrypt produces valid base64 output."""
         data = b"secret data"
         result = CredentialVault._encrypt(data)
         assert result is not None
-        assert base64.b64decode(result) == data
+        base64.b64decode(result)  # Should not raise
 
     @patch("core.encryption._IS_WINDOWS", False)
-    def test_decrypt_base64_success(self) -> None:
-        """Non-Windows decrypt reverses base64."""
+    def test_encrypt_decrypt_roundtrip(self) -> None:
+        """Non-Windows encrypt/decrypt is a valid roundtrip."""
+        data = b"secret data"
+        encrypted = CredentialVault._encrypt(data)
+        assert encrypted is not None
+        decrypted = CredentialVault._decrypt(encrypted)
+        assert decrypted == data
+
+    @patch("core.encryption._IS_WINDOWS", False)
+    def test_decrypt_xor_roundtrip(self) -> None:
+        """Non-Windows decrypt reverses the XOR+base64 encryption."""
         original = b"hello world"
-        encrypted = base64.b64encode(original)
+        encrypted = CredentialVault._encrypt(original)
+        assert encrypted is not None
         result = CredentialVault._decrypt(encrypted)
         assert result == original
 

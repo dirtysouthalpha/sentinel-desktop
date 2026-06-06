@@ -49,6 +49,21 @@ def _mock_kernel32():
     return m
 
 
+def _make_mock_ctypes(**extra_attrs):
+    """Create a mock ctypes with explicit windll attribute assignment.
+
+    Prevents MagicMock auto-child creation that causes stack overflow on
+    Python 3.13 when code accesses ctypes.windll.kernel32.* or
+    ctypes.windll.user32.*.
+    """
+    mock_windll = MagicMock()
+    mock_ctypes = MagicMock()
+    mock_ctypes.windll = mock_windll
+    for k, v in extra_attrs.items():
+        setattr(mock_ctypes, k, v)
+    return mock_ctypes, mock_windll
+
+
 @pytest.fixture(autouse=True)
 def _reset_globals():
     """Reset module-level caches between tests."""
@@ -101,8 +116,10 @@ class TestLazyCtypesLoaders:
 
     def test_get_user32_loads_when_none(self):
         """_get_user32 loads ctypes.windll.user32 when cache is None."""
+        mock_windll = MagicMock()
+        mock_windll.user32 = "fresh_user32"
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.user32 = "fresh_user32"
+        mock_ctypes.windll = mock_windll
         vd._user32 = None
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
             result = vd._get_user32()
@@ -111,8 +128,10 @@ class TestLazyCtypesLoaders:
 
     def test_get_kernel32_loads_when_none(self):
         """_get_kernel32 loads ctypes.windll.kernel32 when cache is None."""
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = "fresh_kernel32"
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.kernel32 = "fresh_kernel32"
+        mock_ctypes.windll = mock_windll
         vd._kernel32 = None
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
             result = vd._get_kernel32()
@@ -130,24 +149,36 @@ class TestRaiseLastError:
 
     def test_raises_os_error(self):
         """_raise_last_error raises OSError with GetLastError value."""
+        mock_kernel32 = MagicMock()
+        mock_kernel32.GetLastError.return_value = 42
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.kernel32.GetLastError.return_value = 42
+        mock_ctypes.windll = mock_windll
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
             with pytest.raises(OSError, match=r"SomeAPI failed.*Win32 error 42"):
                 vd._raise_last_error("SomeAPI")
 
     def test_raises_os_error_with_zero(self):
         """_raise_last_error works even when GetLastError returns 0."""
+        mock_kernel32 = MagicMock()
+        mock_kernel32.GetLastError.return_value = 0
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.kernel32.GetLastError.return_value = 0
+        mock_ctypes.windll = mock_windll
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
             with pytest.raises(OSError, match="Win32 error 0"):
                 vd._raise_last_error("TestAPI")
 
     def test_raises_os_error_with_access_denied(self):
         """_raise_last_error includes the API name in the message."""
+        mock_kernel32 = MagicMock()
+        mock_kernel32.GetLastError.return_value = 5
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
-        mock_ctypes.windll.kernel32.GetLastError.return_value = 5
+        mock_ctypes.windll = mock_windll
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
             with pytest.raises(OSError, match="CreateDesktopW"):
                 vd._raise_last_error("CreateDesktopW")
@@ -161,10 +192,18 @@ class TestRaiseLastError:
 class TestGetCurrentDesktopNameWin32:
     """Test _get_current_desktop_name() on the Win32 code path."""
 
+    def _make_ctypes_with_kernel32(self, kernel32_mock):
+        """Build a mock ctypes with explicit windll.kernel32 assignment."""
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = kernel32_mock
+        mock_ctypes = MagicMock()
+        mock_ctypes.windll = mock_windll
+        return mock_ctypes
+
     def test_win32_success_path(self):
         """Returns the desktop name from GetUserObjectInformationW."""
         user32 = _mock_user32()
-        kernel32 = _mock_kernel32()
+        _mock_kernel32()
 
         # Build a fake ctypes-compatible buffer
         mock_buf = MagicMock()
@@ -174,12 +213,16 @@ class TestGetCurrentDesktopNameWin32:
         mock_wintypes = MagicMock()
         mock_wintypes.DWORD = MagicMock
 
-        # Build a fake ctypes that has windll
+        # Build a fake ctypes that has windll with explicit kernel32
+        mock_kernel32 = MagicMock()
+        mock_kernel32.GetCurrentThreadId.return_value = 42
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
         mock_ctypes.create_unicode_buffer.return_value = mock_buf
         mock_ctypes.sizeof.return_value = 512
         mock_ctypes.byref.return_value = MagicMock()
-        mock_ctypes.windll.kernel32.GetCurrentThreadId.return_value = 42
+        mock_ctypes.windll = mock_windll
 
         with patch.object(vd, "_IS_WINDOWS", True), \
              patch.object(vd, "_get_user32", return_value=user32), \
@@ -206,16 +249,20 @@ class TestGetCurrentDesktopNameWin32:
         """Returns 'Default' when GetUserObjectInformationW returns False."""
         user32 = _mock_user32()
         user32.GetUserObjectInformationW.return_value = False
-        kernel32 = _mock_kernel32()
+        _mock_kernel32()
 
         mock_buf = MagicMock()
         mock_buf.value = ""
 
+        mock_kernel32 = MagicMock()
+        mock_kernel32.GetCurrentThreadId.return_value = 42
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
         mock_ctypes.create_unicode_buffer.return_value = mock_buf
         mock_ctypes.sizeof.return_value = 512
         mock_ctypes.byref.return_value = MagicMock()
-        mock_ctypes.windll.kernel32.GetCurrentThreadId.return_value = 42
+        mock_ctypes.windll = mock_windll
 
         mock_wintypes = MagicMock()
 
@@ -232,16 +279,20 @@ class TestGetCurrentDesktopNameWin32:
         """Returns 'Default' when buffer value is empty string."""
         user32 = _mock_user32()
         user32.GetUserObjectInformationW.return_value = True
-        kernel32 = _mock_kernel32()
+        _mock_kernel32()
 
         mock_buf = MagicMock()
         mock_buf.value = ""
 
+        mock_kernel32 = MagicMock()
+        mock_kernel32.GetCurrentThreadId.return_value = 42
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
         mock_ctypes.create_unicode_buffer.return_value = mock_buf
         mock_ctypes.sizeof.return_value = 512
         mock_ctypes.byref.return_value = MagicMock()
-        mock_ctypes.windll.kernel32.GetCurrentThreadId.return_value = 42
+        mock_ctypes.windll = mock_windll
 
         mock_wintypes = MagicMock()
 
@@ -462,7 +513,7 @@ class TestWin32LaunchApp:
         # We replace ctypes.byref so the mock receives the raw object
         # and can set its fields.
         def fake_create_process(*args):
-            # args[9] is ctypes.byref(pi) — with our patched byref
+            # args[9] is ctypes.byref(pi) -- with our patched byref
             # it's the actual pi object
             pi_obj = args[9]
             pi_obj.dwProcessId = 5678
@@ -1029,7 +1080,7 @@ class TestWin32ListWindowsWin32:
         try:
             with patch.object(vd, "_IS_WINDOWS", True), \
                  patch.object(vd, "_get_user32", return_value=user32):
-                result = win_vd.list_windows()
+                win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig

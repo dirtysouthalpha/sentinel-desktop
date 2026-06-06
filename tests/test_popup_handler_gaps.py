@@ -101,7 +101,7 @@ class TestOcrText:
         utils._pytesseract = mock_ts
 
         processed_img = Image.new("L", (100, 50))
-        with patch("core.popup_handler.preprocess_for_ocr", create=True) as mock_pp:
+        with patch("core.popup_handler.preprocess_for_ocr", create=True):
             # We need to actually import from core.ocr
             with patch.dict(sys.modules, {"core.ocr": MagicMock(preprocess_for_ocr=MagicMock(return_value=processed_img))}):
                 # The function does `from core.ocr import preprocess_for_ocr`
@@ -174,7 +174,8 @@ class TestGetForegroundWindowTitle:
         mock_wingui = MagicMock()
         mock_wingui.GetForegroundWindow.side_effect = OSError("fail")
         with patch.object(ph, "_IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": mock_wingui}):
+             patch.dict(sys.modules, {"win32gui": mock_wingui}), \
+             patch("core.window_manager.list_windows", side_effect=OSError("fail"), create=True):
             assert ph._get_foreground_window_title() == ""
 
 
@@ -269,12 +270,12 @@ class TestCheckAndDismiss:
 
             # Second call: attempt 2
             handler._last_detection_time = 0
-            r2 = handler.check_and_dismiss(screenshot=img)
+            handler.check_and_dismiss(screenshot=img)
             assert handler._dismiss_attempts == 2
 
             # Third call: at max, no more dismiss (attempts stays at 2)
             handler._last_detection_time = 0
-            r3 = handler.check_and_dismiss(screenshot=img)
+            handler.check_and_dismiss(screenshot=img)
             assert handler._dismiss_attempts == 2  # didn't increase
 
     def test_no_dismiss_when_not_detected(self):

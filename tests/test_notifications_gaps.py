@@ -115,25 +115,27 @@ class TestToastCtypesMessageBoxW:
         """MessageBoxW is invoked with message, title, and icon flag."""
         nm = NotificationManager({"toast_enabled": True})
 
-        import ctypes as real_ctypes
-
         mock_message_box = MagicMock()
         mock_user32 = MagicMock()
         mock_user32.MessageBoxW = mock_message_box
         mock_windll = MagicMock()
         mock_windll.user32 = mock_user32
 
+        # ctypes is imported locally in _send_toast, so patch the stdlib module directly
+        import ctypes as real_ctypes
+
         with patch.dict("sys.modules", {"win10toast": None}):
             with patch.object(real_ctypes, "windll", mock_windll):
                 ok, detail = nm._send_toast("MyTitle", "MyMessage", "warning")
 
+                # Thread was created — extract the target function and call it
+                # while windll is still patched
+                mock_thread.assert_called_once()
+                target_fn = mock_thread.call_args[1]["target"]
+                target_fn()
+
         assert ok is True
         assert "ctypes" in detail
-
-        # Thread was created — extract the target function and call it
-        mock_thread.assert_called_once()
-        target_fn = mock_thread.call_args[1]["target"]
-        target_fn()
 
         # Verify MessageBoxW was called with expected args
         mock_message_box.assert_called_once_with(0, "MyMessage", "Sentinel — MyTitle", 0x40)

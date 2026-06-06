@@ -1,5 +1,7 @@
 """Tests for stealth-input routing through ActionExecutor."""
 
+import sys
+
 import pytest
 
 import core.desktop as desktop_mod
@@ -152,6 +154,7 @@ def test_post_named_key_unknown_key_returns_false(monkeypatch):
     assert stealth_input.post_named_key("unknown_key") is False
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="On Windows post_text succeeds")
 def test_post_named_key_single_char_falls_back_to_post_text(monkeypatch):
     """Single-character key name falls through to post_text path."""
     # On Linux, win32gui is not imported so we can't fully test the path,

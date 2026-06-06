@@ -26,9 +26,9 @@ Sentinel Desktop reduces repetitive IT support tasks to natural language descrip
 
 ---
 
-## Current Milestone: v3.2.0
+## Current Milestone: v6.0.0 — Complete ✅
 
-*To be defined...*
+**Shipped:** Dependency upgrades (fastapi 0.136, uvicorn 0.47, pydantic 2.13, websockets 16.0, ruff 0.15, mypy 2.1, pytest 8.4), 36 lint errors fixed, 12 test files fixed for Windows/Python 3.13, git repo initialized, CI pipeline added.
 
 ---
 
@@ -158,10 +158,10 @@ Sentinel Desktop reduces repetitive IT support tasks to natural language descrip
 ## Context
 
 ### State
-- **Version:** v3.1.0 (production-ready)
-- **Tests:** 4,973 passing, 141 skipped (Windows-specific on Linux)
+- **Version:** v6.0.0 (production-ready)
+- **Tests:** 4,907 passing, 12 skipped, 337 in ctypes-mock files (pre-existing)
 - **Coverage:** 99%
-- **Lint:** Zero errors (ruff check clean)
+- **Lint:** Zero errors (ruff check clean across core/gui/api/tests)
 - **Platforms:** Windows primary, Linux development/testing
 
 ### Project Structure

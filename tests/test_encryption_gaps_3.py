@@ -30,11 +30,14 @@ class TestDpapiEncryptWindowsPath:
 
     def _make_mock_ctypes(self, string_at_return=b"encrypted_output"):
         """Create a mock ctypes module with needed attributes."""
+        mock_kernel32 = MagicMock()
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
         mock_ctypes.c_byte = MagicMock()
         mock_ctypes.byref = MagicMock(return_value="ref_ptr")
         mock_ctypes.string_at = MagicMock(return_value=string_at_return)
-        mock_ctypes.windll = MagicMock()
+        mock_ctypes.windll = mock_windll
         return mock_ctypes
 
     def _make_mock_blob(self):
@@ -124,11 +127,14 @@ class TestDpapiDecryptWindowsPath:
                     pass
 
     def _make_mock_ctypes(self, string_at_return=b"decrypted_output"):
+        mock_kernel32 = MagicMock()
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
         mock_ctypes = MagicMock()
         mock_ctypes.c_byte = MagicMock()
         mock_ctypes.byref = MagicMock(return_value="ref_ptr")
         mock_ctypes.string_at = MagicMock(return_value=string_at_return)
-        mock_ctypes.windll = MagicMock()
+        mock_ctypes.windll = mock_windll
         return mock_ctypes
 
     def _make_mock_blob(self):
@@ -202,17 +208,23 @@ class TestRoundTripWindowsDPAPI:
         # For decrypt: return some "decrypted" data
         mock_crypt_unprotect = MagicMock(return_value=1)
 
+        mock_kernel32_encrypt = MagicMock()
+        mock_windll_encrypt = MagicMock()
+        mock_windll_encrypt.kernel32 = mock_kernel32_encrypt
         mock_ctypes_encrypt = MagicMock()
         mock_ctypes_encrypt.c_byte = MagicMock()
         mock_ctypes_encrypt.byref = MagicMock(return_value="ref")
         mock_ctypes_encrypt.string_at = MagicMock(return_value=b"encrypted_blob")
-        mock_ctypes_encrypt.windll = MagicMock()
+        mock_ctypes_encrypt.windll = mock_windll_encrypt
 
+        mock_kernel32_decrypt = MagicMock()
+        mock_windll_decrypt = MagicMock()
+        mock_windll_decrypt.kernel32 = mock_kernel32_decrypt
         mock_ctypes_decrypt = MagicMock()
         mock_ctypes_decrypt.c_byte = MagicMock()
         mock_ctypes_decrypt.byref = MagicMock(return_value="ref")
         mock_ctypes_decrypt.string_at = MagicMock(return_value=b"my_secret_value")
-        mock_ctypes_decrypt.windll = MagicMock()
+        mock_ctypes_decrypt.windll = mock_windll_decrypt
 
         vault_path = str(tmp_path / "vault.json")
 
@@ -247,7 +259,11 @@ class TestWindowsDpapiBindingsImport:
     """
 
     def test_windows_bindings_are_set_up_on_import(self):
-        with patch("ctypes.windll", MagicMock(), create=True):
+        # Explicit mock_kernel32 to prevent MagicMock auto-child recursion
+        mock_kernel32 = MagicMock()
+        mock_windll = MagicMock()
+        mock_windll.kernel32 = mock_kernel32
+        with patch("ctypes.windll", mock_windll, create=True):
             try:
                 with patch("platform.system", return_value="Windows"):
                     reloaded = importlib.reload(enc_mod)
@@ -262,5 +278,7 @@ class TestWindowsDpapiBindingsImport:
                     assert field_names == ["cbData", "pbData"]
             finally:
                 importlib.reload(enc_mod)
-        # Back to the Linux defaults for the rest of the session.
-        assert enc_mod._IS_WINDOWS is False
+        # After reload, _IS_WINDOWS reflects the actual platform.
+        # On Windows it stays True; on Linux it goes back to False.
+        import platform as _plat
+        assert enc_mod._IS_WINDOWS is (_plat.system() == "Windows")

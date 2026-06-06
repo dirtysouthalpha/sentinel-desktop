@@ -861,7 +861,7 @@ class TestWorkflowCreationNameValidation:
     def test_workflow_name_truncated_if_over_100_chars(self):
         """Cover line 1019: workflow name longer than 100 chars is truncated."""
         server = _make_server()
-        app = server.create_app()
+        server.create_app()
         long_name = "a" * 150
         result = _run(
             server._handle_workflow_builder_create(
@@ -874,7 +874,7 @@ class TestWorkflowCreationNameValidation:
     def test_empty_workflow_name_defaults_to_new_workflow(self):
         """Cover line 1021: empty workflow name defaults to 'New Workflow'."""
         server = _make_server()
-        app = server.create_app()
+        server.create_app()
         result = _run(
             server._handle_workflow_builder_create(
                 name="   ", description="Test workflow", authorization=None
@@ -885,7 +885,7 @@ class TestWorkflowCreationNameValidation:
     def test_none_workflow_name_defaults_to_new_workflow(self):
         """Cover line 1021: None workflow name defaults to 'New Workflow'."""
         server = _make_server()
-        app = server.create_app()
+        server.create_app()
         result = _run(
             server._handle_workflow_builder_create(
                 name=None, description="Test workflow", authorization=None
@@ -903,7 +903,7 @@ class TestWorkflowAddStepValidation:
     def test_add_step_raises_400_when_action_missing(self):
         """Cover line 1052: missing action type raises HTTPException 400."""
         server = _make_server()
-        app = server.create_app()
+        server.create_app()
         wf = server._workflow_store.create(name="WF")
 
         with pytest.raises(HTTPException) as exc:
@@ -918,7 +918,7 @@ class TestWorkflowAddStepValidation:
     def test_add_step_raises_400_when_action_is_whitespace_only(self):
         """Cover line 1052: whitespace-only action raises HTTPException 400."""
         server = _make_server()
-        app = server.create_app()
+        server.create_app()
         wf = server._workflow_store.create(name="WF")
 
         with pytest.raises(HTTPException) as exc:
@@ -933,7 +933,7 @@ class TestWorkflowAddStepValidation:
     def test_add_step_accepts_valid_action(self):
         """Verify that valid actions are still accepted after validation."""
         server = _make_server()
-        app = server.create_app()
+        server.create_app()
         wf = server._workflow_store.create(name="WF")
         result = _run(
             server._handle_workflow_add_step(

@@ -125,7 +125,7 @@ def _launch_new_app(name: str, launch_cmd: str) -> dict[str, Any]:
     """
     import platform
     cmd_exe = shutil.which("cmd") if platform.system() == "Windows" else "cmd"
-    if not cmd_exe:  # pragma: no cover
+    if not cmd_exe:
         return {
             "success": False,
             "output": "cmd.exe not found on Windows",

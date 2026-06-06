@@ -13,8 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from core.recovery import RecoveryEngine, _RECOVERY_HANDLERS, _match_pattern
-
+from core.recovery import _RECOVERY_HANDLERS, RecoveryEngine, _match_pattern
 
 # ---------------------------------------------------------------------------
 # analyze_failure — exception in handler falls back to generic
