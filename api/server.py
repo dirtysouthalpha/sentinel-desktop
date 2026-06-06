@@ -780,12 +780,13 @@ class SentinelServer:
         engine = ScriptEngine(self.engine.executor)
         try:
             # run_script() replays multi-step scripts with sleep() delays;
-            # run in thread pool so the event loop stays responsive.
-            async with asyncio.timeout(300):  # 5 minute timeout for script execution
-                result = await asyncio.wait_for(
-                    asyncio.to_thread(engine.run_script, safe_path, req.params),
-                    timeout=LONG_OPERATION_TIMEOUT,
-                )
+            # run in thread pool so the event loop stays responsive. wait_for
+            # enforces the timeout and is available on Python 3.10 (unlike
+            # asyncio.timeout, which is 3.11+).
+            result = await asyncio.wait_for(
+                asyncio.to_thread(engine.run_script, safe_path, req.params),
+                timeout=LONG_OPERATION_TIMEOUT,
+            )
         except asyncio.TimeoutError:
             logger.exception("Script execution timed out")
             timeout_msg = f"Script execution timed out after {LONG_OPERATION_TIMEOUT}s"
@@ -903,12 +904,13 @@ class SentinelServer:
 
         wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
         try:
-            # run_workflow() replays multi-step workflows with delays; offload to thread.
-            async with asyncio.timeout(300):  # 5 minute timeout for workflow execution
-                result = await asyncio.wait_for(
-                    asyncio.to_thread(wf.run_workflow, req.path, req.variables),
-                    timeout=LONG_OPERATION_TIMEOUT,
-                )
+            # run_workflow() replays multi-step workflows with delays; offload to
+            # thread. wait_for enforces the timeout and works on Python 3.10
+            # (asyncio.timeout is 3.11+).
+            result = await asyncio.wait_for(
+                asyncio.to_thread(wf.run_workflow, req.path, req.variables),
+                timeout=LONG_OPERATION_TIMEOUT,
+            )
         except asyncio.TimeoutError:
             logger.exception("Workflow execution timed out")
             timeout_msg = f"Workflow execution timed out after {LONG_OPERATION_TIMEOUT}s"
