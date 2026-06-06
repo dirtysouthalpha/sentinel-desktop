@@ -60,8 +60,12 @@ dev = [
     "pytest ~= 8.0",
     "pytest-asyncio ~= 0.23",
     "pytest-cov ~= 4.1",
-    "ruff ~= 0.4",
-    "mypy ~= 1.8",
+    "pytest-timeout ~= 2.3",
+    # Lint/type tools are pinned exactly: their output (format style, lint
+    # rules, type inference) changes between releases, so a floating spec
+    # silently re-breaks CI when a new version ships. Bump deliberately.
+    "ruff == 0.15.8",
+    "mypy == 1.19.1",
     "pip-audit ~= 2.7",
     "pre-commit ~= 3.6",
 ]
@@ -119,7 +123,12 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106", "S603", "S607", "E701", "E402"]
+"tests/*" = [
+    "S101", "S105", "S106", "S603", "S607", "E701", "E402",
+    "S108",  # hardcoded /tmp paths are fine in throwaway test fixtures
+    "F841",  # unused locals (e.g. ``result = call()``) are common in tests
+    "E741",  # single-letter loop/lambda vars are acceptable in test helpers
+]
 "installer/*" = ["S603", "S607"]
 "core/auth.py" = ["S324"]  # Legacy SHA-256 verification only; transparently upgrades to bcrypt on login
 
