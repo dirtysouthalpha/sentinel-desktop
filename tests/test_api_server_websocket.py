@@ -18,8 +18,7 @@ import os
 import signal
 import struct
 import termios
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -381,7 +380,11 @@ class TestReadWs:
         srv = _make_server()
         ws = _make_ws()
 
-        with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError), \
+        async def always_timeout(coro, timeout):
+            coro.close()
+            raise asyncio.TimeoutError
+
+        with patch("asyncio.wait_for", new=always_timeout), \
              patch.object(srv, "_handle_ws_timeout", new_callable=AsyncMock, return_value=False):
             await srv._read_ws(99, ws)
 
@@ -394,11 +397,12 @@ class TestReadWs:
         async def fake_wait_for(coro, timeout):
             nonlocal call_count
             call_count += 1
+            coro.close()
             if call_count <= 2:
                 raise asyncio.TimeoutError
             raise ConnectionError("done")
 
-        with patch("asyncio.wait_for", side_effect=fake_wait_for), \
+        with patch("asyncio.wait_for", new=fake_wait_for), \
              patch.object(srv, "_handle_ws_timeout", new_callable=AsyncMock, return_value=True):
             await srv._read_ws(99, ws)
 
@@ -408,16 +412,15 @@ class TestReadWs:
         ws = _make_ws()
         call_count = 0
 
-        original_wait_for = asyncio.wait_for
-
         async def fake_wait_for(coro, timeout):
             nonlocal call_count
             call_count += 1
+            coro.close()
             if call_count == 1:
                 return "not json {"
             raise ConnectionError("done")
 
-        with patch("asyncio.wait_for", side_effect=fake_wait_for):
+        with patch("asyncio.wait_for", new=fake_wait_for):
             await srv._read_ws(99, ws)
 
     @pytest.mark.asyncio
@@ -425,7 +428,11 @@ class TestReadWs:
         srv = _make_server()
         ws = _make_ws()
 
-        with patch("asyncio.wait_for", side_effect=ConnectionError("closed")):
+        async def conn_error(coro, timeout):
+            coro.close()
+            raise ConnectionError("closed")
+
+        with patch("asyncio.wait_for", new=conn_error):
             await srv._read_ws(99, ws)
 
 
