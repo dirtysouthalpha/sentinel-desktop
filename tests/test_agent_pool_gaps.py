@@ -219,6 +219,10 @@ class TestAgentWorkerFullFlow:
             sid = pool.submit("Do stuff", config={"model": "test"})
             session = pool._sessions[sid]
 
+            # Prevent dispatcher from picking up this session (we test the worker directly)
+            session.status = STATUS_RUNNING
+            session.desktop_name = "SentinelAgent-1"
+
             mock_vd = MagicMock()
             mock_vd.create.return_value = True
             mock_engine_instance = MagicMock()
