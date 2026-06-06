@@ -507,7 +507,8 @@ class AuthManager:
 
         """
         return [
-            u for u in self._users.values()
+            u
+            for u in self._users.values()
             if _verify_password(DEFAULT_ADMIN_PASSWORD, u.password_hash, u.salt)
         ]
 

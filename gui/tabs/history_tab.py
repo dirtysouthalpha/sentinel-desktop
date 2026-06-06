@@ -250,7 +250,8 @@ class HistoryTab(ctk.CTkFrame):
 
             status = session.get("status", "unknown")
             icon = {"completed": "✅", "failed": "❌", "running": "🔄", "empty": "📭"}.get(
-                status, "❓",
+                status,
+                "❓",
             )
             steps = len(session.get("steps", []))
             start = session.get("start", "")[:19].replace("T", " ")
@@ -331,12 +332,17 @@ class HistoryTab(ctk.CTkFrame):
             row.pack(fill="x", pady=1)
             row.pack_propagate(False)
             ctk.CTkLabel(
-                row, text=f"  {icon} Step {i + 1}: {action}",
-                font=("Consolas", 11), text_color=color, anchor="w",
+                row,
+                text=f"  {icon} Step {i + 1}: {action}",
+                font=("Consolas", 11),
+                text_color=color,
+                anchor="w",
             ).pack(side="left")
             ctk.CTkLabel(
-                row, text=ts,
-                font=("Consolas", 9), text_color=self._t("text_secondary", "#b9cacb"),
+                row,
+                text=ts,
+                font=("Consolas", 9),
+                text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(side="right")
 
     def _render_session_output(self, session: dict) -> None:

@@ -156,8 +156,14 @@ class CheckpointManager:
 
         checkpoint_id = str(uuid.uuid4())
         record = self._build_checkpoint_record(
-            checkpoint_id, goal, step_num, status, agent_memory,
-            last_screenshot_path, config, messages,
+            checkpoint_id,
+            goal,
+            step_num,
+            status,
+            agent_memory,
+            last_screenshot_path,
+            config,
+            messages,
         )
         return (
             checkpoint_id
@@ -193,7 +199,11 @@ class CheckpointManager:
         }
 
     def _persist_checkpoint(
-        self, record: dict[str, Any], checkpoint_id: str, step_num: int, status: str,
+        self,
+        record: dict[str, Any],
+        checkpoint_id: str,
+        step_num: int,
+        status: str,
     ) -> bool:
         """Write checkpoint record to disk. Returns True on success."""
         dest = self._dir / f"{checkpoint_id}.json"

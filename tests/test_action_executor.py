@@ -4,6 +4,7 @@
 # into pyautogui.
 
 import asyncio
+
 import pytest
 
 import core.desktop as desktop_mod
@@ -111,6 +112,7 @@ def test_dispatch_has_new_uia_and_ocr_handlers(fake_executor):
 
 # ---- _contains_sensitive edge cases ----
 
+
 def test_sensitive_password_keyword(fake_executor):
     ex = fake_executor()
     out = ex.execute_sync({"action": "type_text", "text": "enter password here"})
@@ -154,6 +156,7 @@ def test_not_sensitive_similar_words(fake_executor):
 
 def test_contains_sensitive_token_keyword():
     from core.action_executor import _contains_sensitive
+
     assert _contains_sensitive("bearer token for auth") is True
     assert _contains_sensitive("hello world") is False
     assert _contains_sensitive("credit_card=4111") is True
@@ -163,13 +166,16 @@ def test_contains_sensitive_token_keyword():
 
 def test_contains_sensitive_empty_string():
     from core.action_executor import _contains_sensitive
+
     assert _contains_sensitive("") is False
 
 
 # ---- _sanitize_params edge cases ----
 
+
 def test_sanitize_truncates_long_strings():
     from core.action_executor import _sanitize_params
+
     params = {"text": "x" * 500}
     result = _sanitize_params(params)
     assert len(result["text"]) == 203  # 200 + "..."
@@ -178,6 +184,7 @@ def test_sanitize_truncates_long_strings():
 
 def test_sanitize_preserves_short_strings():
     from core.action_executor import _sanitize_params
+
     params = {"key": "short", "num": 42}
     result = _sanitize_params(params)
     assert result == {"key": "short", "num": 42}
@@ -185,6 +192,7 @@ def test_sanitize_preserves_short_strings():
 
 def test_sanitize_large_list():
     from core.action_executor import _sanitize_params
+
     params = {"items": list(range(1000))}
     result = _sanitize_params(params)
     assert isinstance(result["items"], str)
@@ -193,6 +201,7 @@ def test_sanitize_large_list():
 
 def test_sanitize_large_dict():
     from core.action_executor import _sanitize_params
+
     params = {"data": {f"k{i}": f"v{i}" for i in range(200)}}
     result = _sanitize_params(params)
     assert isinstance(result["data"], str)
@@ -201,8 +210,10 @@ def test_sanitize_large_dict():
 
 # ---- _dry_run_result helper ----
 
+
 def test_dry_run_result_format():
     from core.action_executor import _dry_run_result
+
     result = _dry_run_result("click", {"x": 1, "y": 2})
     assert result["success"] is True
     assert result["dry_run"] is True
@@ -212,6 +223,7 @@ def test_dry_run_result_format():
 
 def test_dry_run_result_truncates_long_params():
     from core.action_executor import _dry_run_result
+
     params = {"data": "x" * 500}
     result = _dry_run_result("type_text", params)
     assert result["success"] is True
@@ -220,6 +232,7 @@ def test_dry_run_result_truncates_long_params():
 
 
 # ---- Action log tracking ----
+
 
 def test_action_log_tracks_executions(fake_executor):
     ex = fake_executor()
@@ -241,14 +254,18 @@ def test_action_log_is_a_copy(fake_executor):
 
 # ---- Dry-run for all state-changing actions ----
 
-@pytest.mark.parametrize("action", [
-    {"action": "click", "x": 1, "y": 2},
-    {"action": "type_text", "text": "hi"},
-    {"action": "press_key", "key": "enter"},
-    {"action": "hotkey", "keys": ["ctrl", "c"]},
-    {"action": "scroll", "amount": 3},
-    {"action": "drag", "from_x": 0, "from_y": 0, "to_x": 100, "to_y": 100},
-])
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        {"action": "click", "x": 1, "y": 2},
+        {"action": "type_text", "text": "hi"},
+        {"action": "press_key", "key": "enter"},
+        {"action": "hotkey", "keys": ["ctrl", "c"]},
+        {"action": "scroll", "amount": 3},
+        {"action": "drag", "from_x": 0, "from_y": 0, "to_x": 100, "to_y": 100},
+    ],
+)
 def test_dry_run_blocks_state_changing_actions(fake_executor, action):
     ex = fake_executor(dry_run=True)
     out = ex.execute_sync(action)
@@ -259,8 +276,10 @@ def test_dry_run_blocks_state_changing_actions(fake_executor, action):
 
 # ---- Read-only actions still run in dry-run ----
 
+
 def test_dry_run_screenshot_still_runs(fake_executor, monkeypatch):
     from core import screenshot as ss
+
     monkeypatch.setattr(ss, "capture_to_base64", lambda **kw: "fake_base64")
     ex = fake_executor(dry_run=True)
     out = ex.execute_sync({"action": "screenshot"})
@@ -279,6 +298,7 @@ def test_dry_run_read_file_still_runs(fake_executor, tmp_path):
 
 def test_dry_run_system_info_still_runs(fake_executor, monkeypatch):
     from core import system_info as si
+
     monkeypatch.setattr(si, "system_info", lambda: {"os": "test"})
     ex = fake_executor(dry_run=True)
     out = ex.execute_sync({"action": "system_info"})
@@ -288,12 +308,15 @@ def test_dry_run_system_info_still_runs(fake_executor, monkeypatch):
 
 # ---- Exception handling in handlers ----
 
+
 def test_handler_exception_returns_error(fake_executor, monkeypatch):
     """If a handler throws internally and catches, returns error dict."""
     ex = fake_executor()
+
     # The hotkey handler catches exceptions and returns hotkey_failed
     def boom_hotkey(*keys):
         raise RuntimeError("keyboard exploded")
+
     ex._desktop.hotkey = boom_hotkey
     out = ex.execute_sync({"action": "hotkey", "keys": ["ctrl", "c"]})
     assert out["success"] is False
@@ -301,6 +324,7 @@ def test_handler_exception_returns_error(fake_executor, monkeypatch):
 
 
 # ---- Empty/missing action key ----
+
 
 def test_empty_action_string(fake_executor):
     ex = fake_executor()
@@ -317,12 +341,10 @@ def test_missing_action_key(fake_executor):
 
 # ---- Multiple sequential actions maintain log ----
 
+
 def test_sequential_actions_log_in_order(fake_executor):
     ex = fake_executor()
-    actions = [
-        {"action": "click", "x": i, "y": i}
-        for i in range(5)
-    ]
+    actions = [{"action": "click", "x": i, "y": i} for i in range(5)]
     for a in actions:
         ex.execute_sync(a)
     log = ex.log
@@ -333,6 +355,7 @@ def test_sequential_actions_log_in_order(fake_executor):
 
 
 # ---- Approval callback timeout handling ----
+
 
 def test_approval_callback_timeout_returns_error(fake_executor):
     """Test that approval callback timeout is handled gracefully."""
@@ -347,6 +370,7 @@ def test_approval_callback_timeout_returns_error(fake_executor):
         ex = fake_executor(approval_callback=never_approve)
         # Monkey patch the timeout to be very short for testing
         from core import action_executor
+
         original_timeout = action_executor.APPROVAL_CALLBACK_TIMEOUT
         action_executor.APPROVAL_CALLBACK_TIMEOUT = 0.1  # 100ms
 
@@ -364,6 +388,7 @@ def test_approval_callback_timeout_returns_error(fake_executor):
 
 def test_approval_callback_rejection_returns_error(fake_executor):
     """Test that rejected approval returns proper error."""
+
     async def always_reject(_action):
         return False
 
@@ -379,6 +404,7 @@ def test_approval_callback_rejection_returns_error(fake_executor):
 
 def test_approval_callback_acceptance_allows_action(fake_executor):
     """Test that approved actions execute normally."""
+
     async def always_approve(_action):
         return True
 

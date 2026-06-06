@@ -87,8 +87,10 @@ class TestGetCaptureOffsetWithMss:
             {"left": 0, "top": 0, "width": 1920, "height": 1080},
             {"left": 1920, "top": 0, "width": 1080, "height": 1920},
         ]
-        with patch("core.screenshot.resolve_monitor", return_value=2), \
-             patch("core.screenshot.mss") as mock_mss_mod:
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=2),
+            patch("core.screenshot.mss") as mock_mss_mod,
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(return_value=mock_sct)
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.get_capture_offset(2)
@@ -96,8 +98,10 @@ class TestGetCaptureOffsetWithMss:
 
     @patch("core.screenshot._HAS_MSS", True)
     def test_returns_zero_on_mss_error(self):
-        with patch("core.screenshot.resolve_monitor", return_value=1), \
-             patch("core.screenshot.mss") as mock_mss_mod:
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=1),
+            patch("core.screenshot.mss") as mock_mss_mod,
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("fail"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.get_capture_offset(1)
@@ -110,8 +114,10 @@ class TestGetCaptureOffsetWithMss:
             {"left": 0, "top": 0, "width": 1920, "height": 1080},
             {"left": 0, "top": 0, "width": 1920, "height": 1080},
         ]
-        with patch("core.screenshot.resolve_monitor", return_value=99), \
-             patch("core.screenshot.mss") as mock_mss_mod:
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=99),
+            patch("core.screenshot.mss") as mock_mss_mod,
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(return_value=mock_sct)
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             # len(mons) is 2, so 99 >= 2 -> returns (0,0) from the default path
@@ -198,9 +204,11 @@ class TestCaptureScreenWithMss:
         ]
         mock_sct.grab.return_value = mock_raw
 
-        with patch("core.screenshot.resolve_monitor", return_value=1), \
-             patch("core.screenshot.mss") as mock_mss_mod, \
-             patch("core.screenshot.Image") as mock_image_cls:
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=1),
+            patch("core.screenshot.mss") as mock_mss_mod,
+            patch("core.screenshot.Image") as mock_image_cls,
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(return_value=mock_sct)
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             mock_image_cls.frombytes.return_value = fake_img
@@ -217,9 +225,11 @@ class TestCaptureScreenWithMss:
         ]
         fake_img = Image.new("RGB", (50, 50))
 
-        with patch("core.screenshot.resolve_monitor", return_value=5), \
-             patch("core.screenshot.mss") as mock_mss_mod, \
-             patch.object(sc.pyautogui, "screenshot", return_value=fake_img):
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=5),
+            patch("core.screenshot.mss") as mock_mss_mod,
+            patch.object(sc.pyautogui, "screenshot", return_value=fake_img),
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(return_value=mock_sct)
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.capture_screen(monitor=5)
@@ -230,9 +240,11 @@ class TestCaptureScreenWithMss:
         """mss failure falls back to pyautogui.screenshot."""
         fake_img = Image.new("RGB", (50, 50))
 
-        with patch("core.screenshot.resolve_monitor", return_value=1), \
-             patch("core.screenshot.mss") as mock_mss_mod, \
-             patch.object(sc.pyautogui, "screenshot", return_value=fake_img):
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=1),
+            patch("core.screenshot.mss") as mock_mss_mod,
+            patch.object(sc.pyautogui, "screenshot", return_value=fake_img),
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("mss fail"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.capture_screen(monitor=1)
@@ -244,16 +256,20 @@ class TestCaptureScreenFallback:
 
     @patch("core.screenshot._HAS_MSS", False)
     def test_pyautogui_failure_raises_oserror(self):
-        with patch("core.screenshot.resolve_monitor", return_value=None), \
-             patch.object(sc.pyautogui, "screenshot", side_effect=OSError("no screen")):
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=None),
+            patch.object(sc.pyautogui, "screenshot", side_effect=OSError("no screen")),
+        ):
             with pytest.raises(OSError, match="All screen capture methods failed"):
                 sc.capture_screen()
 
     @patch("core.screenshot._HAS_MSS", True)
     def test_all_methods_fail_raises_oserror(self):
-        with patch("core.screenshot.resolve_monitor", return_value=1), \
-             patch("core.screenshot.mss") as mock_mss_mod, \
-             patch.object(sc.pyautogui, "screenshot", side_effect=RuntimeError("nope")):
+        with (
+            patch("core.screenshot.resolve_monitor", return_value=1),
+            patch("core.screenshot.mss") as mock_mss_mod,
+            patch.object(sc.pyautogui, "screenshot", side_effect=RuntimeError("nope")),
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("mss fail"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             with pytest.raises(OSError, match="All screen capture methods failed"):
@@ -278,8 +294,10 @@ class TestCaptureRegionWithMss:
         mock_sct = MagicMock()
         mock_sct.grab.return_value = mock_raw
 
-        with patch("core.screenshot.mss") as mock_mss_mod, \
-             patch("core.screenshot.Image") as mock_image_cls:
+        with (
+            patch("core.screenshot.mss") as mock_mss_mod,
+            patch("core.screenshot.Image") as mock_image_cls,
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(return_value=mock_sct)
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             mock_image_cls.frombytes.return_value = fake_img
@@ -292,8 +310,10 @@ class TestCaptureRegionWithMss:
         """mss failure falls back to pyautogui.screenshot."""
         fake_img = Image.new("RGB", (30, 30))
 
-        with patch("core.screenshot.mss") as mock_mss_mod, \
-             patch.object(sc.pyautogui, "screenshot", return_value=fake_img):
+        with (
+            patch("core.screenshot.mss") as mock_mss_mod,
+            patch.object(sc.pyautogui, "screenshot", return_value=fake_img),
+        ):
             mock_mss_mod.mss.return_value.__enter__ = MagicMock(side_effect=OSError("fail"))
             mock_mss_mod.mss.return_value.__exit__ = MagicMock(return_value=False)
             result = sc.capture_region(0, 0, 30, 30)
@@ -346,8 +366,10 @@ class TestFindTemplate:
         mock_np.array.return_value = MagicMock()
         mock_np.array.return_value.convert.return_value = MagicMock()
 
-        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}), \
-             patch("core.screenshot.capture_screen", return_value=fake_img):
+        with (
+            patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}),
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+        ):
             result = sc.find_template("/fake/template.png", confidence=0.8)
         assert result is not None
         # Should be center coords
@@ -371,8 +393,10 @@ class TestFindTemplate:
         mock_np.array.return_value = MagicMock()
         mock_np.array.return_value.convert.return_value = MagicMock()
 
-        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}), \
-             patch("core.screenshot.capture_screen", return_value=fake_img):
+        with (
+            patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}),
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+        ):
             result = sc.find_template("/fake/template.png", confidence=0.8)
         assert result is None
 
@@ -390,8 +414,10 @@ class TestFindTemplate:
         mock_np.array.return_value = MagicMock()
         mock_np.array.return_value.convert.return_value = MagicMock()
 
-        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}), \
-             patch("core.screenshot.capture_screen", return_value=fake_img):
+        with (
+            patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}),
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+        ):
             result = sc.find_template("/nonexistent.png")
         assert result is None
 
@@ -407,8 +433,10 @@ class TestFindTemplate:
         mock_np.array.return_value = MagicMock()
 
         fake_img = Image.new("RGB", (100, 100))
-        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}), \
-             patch("core.screenshot.capture_screen", return_value=fake_img):
+        with (
+            patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}),
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+        ):
             result = sc.find_template("/fake.png")
         assert result is None
 
@@ -422,8 +450,7 @@ class TestWaitForTemplate:
         assert result == (50, 50)
 
     def test_times_out(self):
-        with patch("core.screenshot.find_template", return_value=None), \
-             patch("time.sleep"):
+        with patch("core.screenshot.find_template", return_value=None), patch("time.sleep"):
             result = sc.wait_for_template("/fake.png", timeout=0.1, poll_interval=0.01)
         assert result is None
 
@@ -437,8 +464,7 @@ class TestWaitForTemplate:
                 return (100, 200)
             return None
 
-        with patch("core.screenshot.find_template", side_effect=mock_find), \
-             patch("time.sleep"):
+        with patch("core.screenshot.find_template", side_effect=mock_find), patch("time.sleep"):
             result = sc.wait_for_template("/fake.png", timeout=5, poll_interval=0.1)
         assert result == (100, 200)
 

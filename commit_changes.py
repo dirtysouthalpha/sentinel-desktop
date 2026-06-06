@@ -4,11 +4,18 @@
 import subprocess
 import sys
 
+
 def run_command(cmd, check=True):
     """Run a command and return the result."""
     print(f"Running: {' '.join(cmd)}")
     try:
-        result = subprocess.run(cmd, check=check, capture_output=True, text=True, cwd='/home/dad/Projects/sentinel-desktop')
+        result = subprocess.run(
+            cmd,
+            check=check,
+            capture_output=True,
+            text=True,
+            cwd="/home/dad/Projects/sentinel-desktop",
+        )
         if result.stdout:
             print(result.stdout)
         if result.stderr:
@@ -22,11 +29,12 @@ def run_command(cmd, check=True):
             print("STDERR:", e.stderr)
         raise
 
+
 def main():
     """Commit all pending changes."""
     # Stage all changes
     print("Staging all changes...")
-    run_command(['git', 'add', '-A'])
+    run_command(["git", "add", "-A"])
 
     # Create commit message
     commit_msg = """feat: add v3.1.0 features - API enhancements, GUI improvements, and testing infrastructure
@@ -44,16 +52,17 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
     # Commit
     print("Creating commit...")
-    run_command(['git', 'commit', '-m', commit_msg])
+    run_command(["git", "commit", "-m", commit_msg])
 
     # Show status
     print("\nGit status after commit:")
-    run_command(['git', 'status'])
+    run_command(["git", "status"])
 
     print("\nLatest commit:")
-    run_command(['git', 'log', '-1', '--stat'])
+    run_command(["git", "log", "-1", "--stat"])
 
     print("\n✅ Changes committed successfully!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

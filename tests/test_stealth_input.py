@@ -103,6 +103,7 @@ def test_stealth_press_named_key(fake_executor, monkeypatch):
 
 # ---- Stealth input: non-Windows / no-win32 fallback ----
 
+
 def test_is_available_false_without_win32(monkeypatch):
     """On Linux/non-Windows, is_available returns False."""
     monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
@@ -157,6 +158,7 @@ def test_post_named_key_single_char_falls_back_to_post_text(monkeypatch):
     # On Linux, win32gui is not imported so we can't fully test the path,
     # but we can verify that a single char doesn't hit VK_NAMES lookup
     from core.stealth_input import VK_NAMES
+
     assert "a" not in VK_NAMES  # single chars aren't in the lookup table
     # post_named_key("a") will try post_text, which returns False on Linux
     result = stealth_input.post_named_key("a")
@@ -165,11 +167,26 @@ def test_post_named_key_single_char_falls_back_to_post_text(monkeypatch):
 
 # ---- VK_NAMES mapping completeness ----
 
+
 def test_vk_names_has_common_keys():
     from core.stealth_input import VK_NAMES
-    for key in ["enter", "tab", "escape", "space", "backspace", "delete",
-                "up", "down", "left", "right", "home", "end",
-                "f1", "f12"]:
+
+    for key in [
+        "enter",
+        "tab",
+        "escape",
+        "space",
+        "backspace",
+        "delete",
+        "up",
+        "down",
+        "left",
+        "right",
+        "home",
+        "end",
+        "f1",
+        "f12",
+    ]:
         assert key in VK_NAMES, f"missing VK_NAMES entry for {key}"
 
 
@@ -180,16 +197,18 @@ def test_vk_names_values_are_ints():
 
 def test_mod_vk_has_standard_modifiers():
     from core.stealth_input import _MOD_VK
+
     for mod in ["ctrl", "shift", "alt", "win"]:
         assert mod in _MOD_VK, f"missing modifier: {mod}"
 
 
 # ---- Stealth hotkey through executor ----
 
+
 def test_stealth_hotkey_uses_post_hotkey(fake_executor, monkeypatch):
     monkeypatch.setattr(stealth_input, "is_available", lambda: True)
     calls = []
-    monkeypatch.setattr(stealth_input, "post_hotkey", lambda keys, **kw: (calls.append(keys) or True))
+    monkeypatch.setattr(stealth_input, "post_hotkey", lambda keys, **kw: calls.append(keys) or True)
     ex = fake_executor(stealth=True)
     out = ex.execute_sync({"action": "hotkey", "keys": ["ctrl", "c"]})
     assert calls == [["ctrl", "c"]]

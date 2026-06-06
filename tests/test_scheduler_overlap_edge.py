@@ -32,8 +32,10 @@ class TestMultipleTasksInOneTick:
             executed.append(task["name"])
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         assert set(executed) == {"A", "B"}
@@ -48,8 +50,10 @@ class TestDisabledTaskSkipped:
         tid = task["id"]
         ts._tasks[tid]["enabled"] = False
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task") as mock_exec:
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task") as mock_exec,
+        ):
             ts._tick()
 
         mock_exec.assert_not_called()
@@ -63,8 +67,10 @@ class TestOnTaskCompleteCallbackException:
         ts._on_task_complete = MagicMock(side_effect=RuntimeError("callback boom"))
         ts.add_task("Y", "script", "* * * * *", path="y.py")
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", return_value={"status": "success"}):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", return_value={"status": "success"}),
+        ):
             ts._tick()  # Should not raise
 
         ts._on_task_complete.assert_called_once()
@@ -77,8 +83,10 @@ class TestTickNoTasksSaveNotCalled:
         ts = _scheduler(tmp_path)
         ts.add_task("Z", "script", "* * * * *", path="z.py")
 
-        with patch("core.scheduler.cron_matches", return_value=False), \
-             patch.object(ts, "save") as mock_save:
+        with (
+            patch("core.scheduler.cron_matches", return_value=False),
+            patch.object(ts, "save") as mock_save,
+        ):
             ts._tick()
 
         mock_save.assert_not_called()
@@ -213,8 +221,10 @@ class TestOverlappingTimeWindows:
             return {"status": "success"}
 
         # All tasks should execute when their time windows overlap
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         # All three tasks should have executed
@@ -270,8 +280,10 @@ class TestOverlappingTimeWindows:
             execution_order.append(task["name"])
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         # All tasks should execute

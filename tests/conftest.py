@@ -75,62 +75,159 @@ def _install_headless_stubs() -> None:
         class _Var:
             def __init__(self, *a, **kw):
                 self._value = None
+
             def get(self):
                 return self._value
+
             def set(self, v):
                 self._value = v
+
             def trace_add(self, *a, **kw):
                 pass
 
         class _Tk:
-            def __init__(self, *a, **kw): pass
-            def mainloop(self): pass
-            def quit(self): pass
-            def destroy(self): pass
-            def after(self, *a, **kw): pass
-            def after_cancel(self, *a): pass
-            def bind(self, *a, **kw): pass
-            def unbind(self, *a, **kw): pass
-            def configure(self, *a, **kw): pass
+            def __init__(self, *a, **kw):
+                pass
+
+            def mainloop(self):
+                pass
+
+            def quit(self):
+                pass
+
+            def destroy(self):
+                pass
+
+            def after(self, *a, **kw):
+                pass
+
+            def after_cancel(self, *a):
+                pass
+
+            def bind(self, *a, **kw):
+                pass
+
+            def unbind(self, *a, **kw):
+                pass
+
+            def configure(self, *a, **kw):
+                pass
+
             config = configure
-            def cget(self, key, default=None): return default
-            def grid(self, *a, **kw): pass
-            def grid_remove(self, *a, **kw): pass
-            def grid_forget(self, *a, **kw): pass
-            def grid_columnconfigure(self, *a, **kw): pass
-            def grid_rowconfigure(self, *a, **kw): pass
-            def pack(self, *a, **kw): pass
-            def pack_forget(self, *a, **kw): pass
-            def place(self, *a, **kw): pass
-            def place_forget(self, *a, **kw): pass
-            def overrideredirect(self, *a, **kw): pass
-            def attributes(self, *a, **kw): pass
-            def wm_attributes(self, *a, **kw): pass
-            def geometry(self, *a, **kw): pass
-            def title(self, *a, **kw): pass
-            def lift(self, *a, **kw): pass
-            def lower(self, *a, **kw): pass
-            def withdraw(self, *a, **kw): pass
-            def deiconify(self, *a, **kw): pass
-            def iconify(self, *a, **kw): pass
-            def state(self, *a, **kw): return "normal"
-            def protocol(self, *a, **kw): pass
-            def focus_set(self, *a, **kw): pass
-            def focus_force(self, *a, **kw): pass
-            def update(self, *a, **kw): pass
-            def update_idletasks(self, *a, **kw): pass
-            def winfo_id(self): return 0
-            def winfo_children(self): return []
-            def winfo_exists(self): return True
-            def winfo_width(self): return 100
-            def winfo_height(self): return 100
-            def winfo_x(self): return 0
-            def winfo_y(self): return 0
-            def winfo_rootx(self): return 0
-            def winfo_rooty(self): return 0
-            def winfo_screenwidth(self): return 1920
-            def winfo_screenheight(self): return 1080
-            def winfo_ismapped(self): return True
+
+            def cget(self, key, default=None):
+                return default
+
+            def grid(self, *a, **kw):
+                pass
+
+            def grid_remove(self, *a, **kw):
+                pass
+
+            def grid_forget(self, *a, **kw):
+                pass
+
+            def grid_columnconfigure(self, *a, **kw):
+                pass
+
+            def grid_rowconfigure(self, *a, **kw):
+                pass
+
+            def pack(self, *a, **kw):
+                pass
+
+            def pack_forget(self, *a, **kw):
+                pass
+
+            def place(self, *a, **kw):
+                pass
+
+            def place_forget(self, *a, **kw):
+                pass
+
+            def overrideredirect(self, *a, **kw):
+                pass
+
+            def attributes(self, *a, **kw):
+                pass
+
+            def wm_attributes(self, *a, **kw):
+                pass
+
+            def geometry(self, *a, **kw):
+                pass
+
+            def title(self, *a, **kw):
+                pass
+
+            def lift(self, *a, **kw):
+                pass
+
+            def lower(self, *a, **kw):
+                pass
+
+            def withdraw(self, *a, **kw):
+                pass
+
+            def deiconify(self, *a, **kw):
+                pass
+
+            def iconify(self, *a, **kw):
+                pass
+
+            def state(self, *a, **kw):
+                return "normal"
+
+            def protocol(self, *a, **kw):
+                pass
+
+            def focus_set(self, *a, **kw):
+                pass
+
+            def focus_force(self, *a, **kw):
+                pass
+
+            def update(self, *a, **kw):
+                pass
+
+            def update_idletasks(self, *a, **kw):
+                pass
+
+            def winfo_id(self):
+                return 0
+
+            def winfo_children(self):
+                return []
+
+            def winfo_exists(self):
+                return True
+
+            def winfo_width(self):
+                return 100
+
+            def winfo_height(self):
+                return 100
+
+            def winfo_x(self):
+                return 0
+
+            def winfo_y(self):
+                return 0
+
+            def winfo_rootx(self):
+                return 0
+
+            def winfo_rooty(self):
+                return 0
+
+            def winfo_screenwidth(self):
+                return 1920
+
+            def winfo_screenheight(self):
+                return 1080
+
+            def winfo_ismapped(self):
+                return True
 
         # Canvas adds item-creation helpers; each returns a fake item id.
         _canvas_extra = {
@@ -189,9 +286,26 @@ def _install_headless_stubs() -> None:
         _tk.S = "s"
         _tk.CENTER = "center"
         _tk.constants = types.ModuleType("tkinter.constants")
-        for _attr in ("BOTTOM", "TOP", "LEFT", "RIGHT", "BOTH", "X", "Y",
-                       "END", "NORMAL", "DISABLED", "HORIZONTAL", "VERTICAL",
-                       "NSEW", "W", "E", "N", "S", "CENTER"):
+        for _attr in (
+            "BOTTOM",
+            "TOP",
+            "LEFT",
+            "RIGHT",
+            "BOTH",
+            "X",
+            "Y",
+            "END",
+            "NORMAL",
+            "DISABLED",
+            "HORIZONTAL",
+            "VERTICAL",
+            "NSEW",
+            "W",
+            "E",
+            "N",
+            "S",
+            "CENTER",
+        ):
             setattr(_tk.constants, _attr, getattr(_tk, _attr))
         sys.modules["tkinter"] = _tk
         sys.modules["tkinter.constants"] = _tk.constants
@@ -204,102 +318,298 @@ def _install_headless_stubs() -> None:
 
         class _CTkBase:
             """Stub base for all CTk widgets — accepts any constructor args."""
+
             def __init__(self, *a, **kw):
                 for k, v in kw.items():
                     setattr(self, k, v)
-            def grid(self, *a, **kw): pass
-            def grid_forget(self, *a, **kw): pass
-            def pack(self, *a, **kw): pass
-            def pack_forget(self, *a, **kw): pass
-            def place(self, *a, **kw): pass
-            def place_forget(self, *a, **kw): pass
-            def configure(self, *a, **kw): pass
+
+            def grid(self, *a, **kw):
+                pass
+
+            def grid_forget(self, *a, **kw):
+                pass
+
+            def pack(self, *a, **kw):
+                pass
+
+            def pack_forget(self, *a, **kw):
+                pass
+
+            def place(self, *a, **kw):
+                pass
+
+            def place_forget(self, *a, **kw):
+                pass
+
+            def configure(self, *a, **kw):
+                pass
+
             config = configure
-            def cget(self, key, default=None): return getattr(self, key, default)
-            def bind(self, *a, **kw): pass
-            def unbind(self, *a, **kw): pass
-            def after(self, *a, **kw): return ""
-            def after_cancel(self, *a): pass
-            def destroy(self): pass
+
+            def cget(self, key, default=None):
+                return getattr(self, key, default)
+
+            def bind(self, *a, **kw):
+                pass
+
+            def unbind(self, *a, **kw):
+                pass
+
+            def after(self, *a, **kw):
+                return ""
+
+            def after_cancel(self, *a):
+                pass
+
+            def destroy(self):
+                pass
+
             # text/entry widget helpers
-            def insert(self, *a, **kw): pass
-            def delete(self, *a, **kw): pass
-            def get(self, *a, **kw): return ""
-            def set(self, *a, **kw): pass
-            def see(self, *a, **kw): pass
-            def index(self, *a, **kw): return "1.0"
-            def icursor(self, *a, **kw): pass
-            def select_range(self, *a, **kw): pass
-            def focus(self, *a, **kw): pass
-            def focus_set(self, *a, **kw): pass
-            def focus_force(self, *a, **kw): pass
-            def yview(self, *a, **kw): pass
-            def yview_moveto(self, *a, **kw): pass
-            def xview(self, *a, **kw): pass
-            def tag_add(self, *a, **kw): pass
-            def tag_config(self, *a, **kw): pass
-            def tag_configure(self, *a, **kw): pass
-            def tag_remove(self, *a, **kw): pass
-            def tag_bind(self, *a, **kw): pass
+            def insert(self, *a, **kw):
+                pass
+
+            def delete(self, *a, **kw):
+                pass
+
+            def get(self, *a, **kw):
+                return ""
+
+            def set(self, *a, **kw):
+                pass
+
+            def see(self, *a, **kw):
+                pass
+
+            def index(self, *a, **kw):
+                return "1.0"
+
+            def icursor(self, *a, **kw):
+                pass
+
+            def select_range(self, *a, **kw):
+                pass
+
+            def focus(self, *a, **kw):
+                pass
+
+            def focus_set(self, *a, **kw):
+                pass
+
+            def focus_force(self, *a, **kw):
+                pass
+
+            def yview(self, *a, **kw):
+                pass
+
+            def yview_moveto(self, *a, **kw):
+                pass
+
+            def xview(self, *a, **kw):
+                pass
+
+            def tag_add(self, *a, **kw):
+                pass
+
+            def tag_config(self, *a, **kw):
+                pass
+
+            def tag_configure(self, *a, **kw):
+                pass
+
+            def tag_remove(self, *a, **kw):
+                pass
+
+            def tag_bind(self, *a, **kw):
+                pass
+
             # toplevel/window helpers
-            def title(self, *a, **kw): pass
-            def geometry(self, *a, **kw): pass
-            def resizable(self, *a, **kw): pass
-            def minsize(self, *a, **kw): pass
-            def maxsize(self, *a, **kw): pass
-            def transient(self, *a, **kw): pass
-            def grab_set(self, *a, **kw): pass
-            def grab_release(self, *a, **kw): pass
-            def wait_window(self, *a, **kw): pass
-            def protocol(self, *a, **kw): pass
-            def overrideredirect(self, *a, **kw): pass
-            def attributes(self, *a, **kw): pass
-            def wm_attributes(self, *a, **kw): pass
-            def lift(self, *a, **kw): pass
-            def lower(self, *a, **kw): pass
-            def deiconify(self, *a, **kw): pass
-            def withdraw(self, *a, **kw): pass
-            def iconify(self, *a, **kw): pass
-            def state(self, *a, **kw): return "normal"
-            def winfo_children(self): return []
-            def winfo_exists(self): return True
-            def winfo_toplevel(self): return self
-            def winfo_width(self): return 100
-            def winfo_height(self): return 100
-            def winfo_x(self): return 0
-            def winfo_y(self): return 0
-            def winfo_rootx(self): return 0
-            def winfo_rooty(self): return 0
-            def winfo_reqwidth(self): return 100
-            def winfo_reqheight(self): return 100
-            def winfo_screenwidth(self): return 1920
-            def winfo_screenheight(self): return 1080
-            def winfo_ismapped(self): return True
-            def grid_remove(self): pass
-            def grid_columnconfigure(self, *a, **kw): pass
-            def grid_rowconfigure(self, *a, **kw): pass
-            def pack_propagate(self, flag=False): pass
-            def grid_propagate(self, flag=False): pass
-            def update_idletasks(self): pass
-            def update(self): pass
+            def title(self, *a, **kw):
+                pass
+
+            def geometry(self, *a, **kw):
+                pass
+
+            def resizable(self, *a, **kw):
+                pass
+
+            def minsize(self, *a, **kw):
+                pass
+
+            def maxsize(self, *a, **kw):
+                pass
+
+            def transient(self, *a, **kw):
+                pass
+
+            def grab_set(self, *a, **kw):
+                pass
+
+            def grab_release(self, *a, **kw):
+                pass
+
+            def wait_window(self, *a, **kw):
+                pass
+
+            def protocol(self, *a, **kw):
+                pass
+
+            def overrideredirect(self, *a, **kw):
+                pass
+
+            def attributes(self, *a, **kw):
+                pass
+
+            def wm_attributes(self, *a, **kw):
+                pass
+
+            def lift(self, *a, **kw):
+                pass
+
+            def lower(self, *a, **kw):
+                pass
+
+            def deiconify(self, *a, **kw):
+                pass
+
+            def withdraw(self, *a, **kw):
+                pass
+
+            def iconify(self, *a, **kw):
+                pass
+
+            def state(self, *a, **kw):
+                return "normal"
+
+            def winfo_children(self):
+                return []
+
+            def winfo_exists(self):
+                return True
+
+            def winfo_toplevel(self):
+                return self
+
+            def winfo_width(self):
+                return 100
+
+            def winfo_height(self):
+                return 100
+
+            def winfo_x(self):
+                return 0
+
+            def winfo_y(self):
+                return 0
+
+            def winfo_rootx(self):
+                return 0
+
+            def winfo_rooty(self):
+                return 0
+
+            def winfo_reqwidth(self):
+                return 100
+
+            def winfo_reqheight(self):
+                return 100
+
+            def winfo_screenwidth(self):
+                return 1920
+
+            def winfo_screenheight(self):
+                return 1080
+
+            def winfo_ismapped(self):
+                return True
+
+            def grid_remove(self):
+                pass
+
+            def grid_columnconfigure(self, *a, **kw):
+                pass
+
+            def grid_rowconfigure(self, *a, **kw):
+                pass
+
+            def pack_propagate(self, flag=False):
+                pass
+
+            def grid_propagate(self, flag=False):
+                pass
+
+            def update_idletasks(self):
+                pass
+
+            def update(self):
+                pass
 
         # Provide all commonly-used CTk widget classes
         for _name in (
-            "CTk", "CTkFrame", "CTkLabel", "CTkButton", "CTkEntry",
-            "CTkTextbox", "CTkScrollableFrame", "CTkOptionMenu",
-            "CTkToplevel", "CTkCheckBox", "CTkComboBox", "CTkProgressBar",
-            "CTkRadioButton", "CTkSlider", "CTkSwitch", "CTkTabview",
-            "CTkImage", "CTkCanvas", "CTkSegmentedButton",
+            "CTk",
+            "CTkFrame",
+            "CTkLabel",
+            "CTkButton",
+            "CTkEntry",
+            "CTkTextbox",
+            "CTkScrollableFrame",
+            "CTkOptionMenu",
+            "CTkToplevel",
+            "CTkCheckBox",
+            "CTkComboBox",
+            "CTkProgressBar",
+            "CTkRadioButton",
+            "CTkSlider",
+            "CTkSwitch",
+            "CTkTabview",
+            "CTkImage",
+            "CTkCanvas",
+            "CTkSegmentedButton",
         ):
             setattr(_ctk, _name, type(_name, (_CTkBase,), {}))
 
         # CTkFont is a plain callable (not a widget), just accept any kwargs
         _ctk.CTkFont = lambda *a, **kw: None
 
-        _ctk.StringVar = type("StringVar", (), {"__init__": lambda s, *a, **kw: None, "get": lambda s: "", "set": lambda s, v: None, "trace_add": lambda s, *a, **kw: None})
-        _ctk.IntVar = type("IntVar", (), {"__init__": lambda s, *a, **kw: None, "get": lambda s: 0, "set": lambda s, v: None, "trace_add": lambda s, *a, **kw: None})
-        _ctk.DoubleVar = type("DoubleVar", (), {"__init__": lambda s, *a, **kw: None, "get": lambda s: 0.0, "set": lambda s, v: None, "trace_add": lambda s, *a, **kw: None})
-        _ctk.BooleanVar = type("BooleanVar", (), {"__init__": lambda s, *a, **kw: None, "get": lambda s: False, "set": lambda s, v: None, "trace_add": lambda s, *a, **kw: None})
+        _ctk.StringVar = type(
+            "StringVar",
+            (),
+            {
+                "__init__": lambda s, *a, **kw: None,
+                "get": lambda s: "",
+                "set": lambda s, v: None,
+                "trace_add": lambda s, *a, **kw: None,
+            },
+        )
+        _ctk.IntVar = type(
+            "IntVar",
+            (),
+            {
+                "__init__": lambda s, *a, **kw: None,
+                "get": lambda s: 0,
+                "set": lambda s, v: None,
+                "trace_add": lambda s, *a, **kw: None,
+            },
+        )
+        _ctk.DoubleVar = type(
+            "DoubleVar",
+            (),
+            {
+                "__init__": lambda s, *a, **kw: None,
+                "get": lambda s: 0.0,
+                "set": lambda s, v: None,
+                "trace_add": lambda s, *a, **kw: None,
+            },
+        )
+        _ctk.BooleanVar = type(
+            "BooleanVar",
+            (),
+            {
+                "__init__": lambda s, *a, **kw: None,
+                "get": lambda s: False,
+                "set": lambda s, v: None,
+                "trace_add": lambda s, *a, **kw: None,
+            },
+        )
         _ctk.set_appearance_mode = lambda *a, **kw: None
         _ctk.set_default_color_theme = lambda *a, **kw: None
         _ctk.set_widget_scaling = lambda *a, **kw: None

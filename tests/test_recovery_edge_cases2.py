@@ -13,8 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from core.recovery import RecoveryEngine, _RECOVERY_HANDLERS, _match_pattern
-
+from core.recovery import _RECOVERY_HANDLERS, RecoveryEngine, _match_pattern
 
 # ---------------------------------------------------------------------------
 # analyze_failure — exception in handler falls back to generic
@@ -30,7 +29,12 @@ class TestHandlerExceptionFallback:
 
     @pytest.mark.parametrize(
         "exc_type",
-        [ValueError("bad value"), KeyError("missing key"), RuntimeError("runtime boom"), OSError("os fail")],
+        [
+            ValueError("bad value"),
+            KeyError("missing key"),
+            RuntimeError("runtime boom"),
+            OSError("os fail"),
+        ],
     )
     def test_handler_exception_returns_generic(self, exc_type: Exception) -> None:
         engine = RecoveryEngine()
@@ -63,7 +67,9 @@ class TestContextNone:
 
     def test_context_none_unknown_error_generic(self) -> None:
         engine = RecoveryEngine()
-        suggestion = engine.analyze_failure({"action": "type"}, "completely unknown failure", context=None)
+        suggestion = engine.analyze_failure(
+            {"action": "type"}, "completely unknown failure", context=None
+        )
         assert suggestion.pattern == "generic"
 
 

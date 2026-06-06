@@ -42,7 +42,7 @@ for script_file in sorted(scripts_dir.glob("*.json")):
         errors.append(f"{script_file.name}: {e}")
         print(f"✗ {script_file.name}: {e}")
 
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print(f"Verified {len(list(scripts_dir.glob('*.json')))} script templates")
 
 if errors:

@@ -204,8 +204,10 @@ class TestCancelEdgeCases:
         """wait_for_change resets the cancel flag before starting — verify _reset_cancel is called."""
         sw = SmartWait()
         sw.cancel()
-        with patch("core.smart_wait._crop_to_region") as mock_capture, \
-             patch("core.smart_wait.time.sleep"):
+        with (
+            patch("core.smart_wait._crop_to_region") as mock_capture,
+            patch("core.smart_wait.time.sleep"),
+        ):
             mock_capture.return_value = Image.new("RGB", (50, 50))
             sw.wait_for_change(timeout=0.01, interval=0.001)
             assert not sw._cancelled()  # _reset_cancel was called

@@ -322,9 +322,7 @@ class TestHandleGetConfig:
 
         # Monkeypatch config.load to return a dict with api_key
         server.config.load = lambda: {"api_key": "supersecret", "model": "gpt-4o"}
-        result = asyncio.run(
-            server._handle_get_config(authorization=None)
-        )
+        result = asyncio.run(server._handle_get_config(authorization=None))
         assert result["api_key"] == "***"
         assert result["model"] == "gpt-4o"
 
@@ -343,9 +341,7 @@ class TestHandleCommand:
 
         monkeypatch.setattr(mod, "AgentEngine", FakeAE)
         req = mod.CommandRequest(command='{"action": "click", "x": 10, "y": 20}')
-        result = asyncio.run(
-            server._handle_command(req, authorization=None)
-        )
+        result = asyncio.run(server._handle_command(req, authorization=None))
         assert result["success"] is True
 
     def test_text_command_becomes_note(self, monkeypatch):
@@ -382,9 +378,7 @@ class TestHandleCommand:
         monkeypatch.setattr(mod, "AgentEngine", FakeAE)
         req = mod.CommandRequest(command='{"bad json')
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(
-                server._handle_command(req, authorization=None)
-            )
+            asyncio.run(server._handle_command(req, authorization=None))
         assert exc_info.value.status_code == 400
 
     def test_json_without_action_key_raises(self, monkeypatch):
@@ -401,9 +395,7 @@ class TestHandleCommand:
         monkeypatch.setattr(mod, "AgentEngine", FakeAE)
         req = mod.CommandRequest(command='{"x": 1}')
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(
-                server._handle_command(req, authorization=None)
-            )
+            asyncio.run(server._handle_command(req, authorization=None))
         assert exc_info.value.status_code == 400
 
 
@@ -416,9 +408,7 @@ class TestHandlePutConfig:
         saved = {}
         server.config.save = lambda cfg: saved.update(cfg)
         req = mod.ConfigUpdate(model="claude-3.5-sonnet")
-        result = asyncio.run(
-            server._handle_put_config(req, authorization=None)
-        )
+        result = asyncio.run(server._handle_put_config(req, authorization=None))
         assert result["status"] == "saved"
         assert saved["model"] == "claude-3.5-sonnet"
 
@@ -429,9 +419,7 @@ class TestScheduleHandlers:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.run(
-            server._handle_schedule_list(authorization=None)
-        )
+        result = asyncio.run(server._handle_schedule_list(authorization=None))
         assert result["tasks"] == []
 
     def test_schedule_add(self):
@@ -440,9 +428,7 @@ class TestScheduleHandlers:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.ScheduleAddRequest(name="test", goal="do thing")
-        result = asyncio.run(
-            server._handle_schedule_add(req, authorization=None)
-        )
+        result = asyncio.run(server._handle_schedule_add(req, authorization=None))
         assert result["task_id"] == "t1"
 
     def test_schedule_remove(self):
@@ -451,9 +437,7 @@ class TestScheduleHandlers:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.ScheduleRemoveRequest(task_id="t1")
-        result = asyncio.run(
-            server._handle_schedule_remove(req, authorization=None)
-        )
+        result = asyncio.run(server._handle_schedule_remove(req, authorization=None))
         assert result["status"] == "removed"
 
 
@@ -464,9 +448,7 @@ class TestHandleNotify:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.NotifyRequest(message="test")
-        result = asyncio.run(
-            server._handle_notify(req, authorization=None)
-        )
+        result = asyncio.run(server._handle_notify(req, authorization=None))
         assert result["success"] is True
 
 
@@ -476,9 +458,7 @@ class TestHandleAgents:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.run(
-            server._handle_agents_list(authorization=None)
-        )
+        result = asyncio.run(server._handle_agents_list(authorization=None))
         assert result["sessions"] == []
 
     def test_agents_submit(self):
@@ -487,9 +467,7 @@ class TestHandleAgents:
         server = _make_server()
         server.engine = _FakeEngine()
         req = mod.AgentSubmitRequest(goal="test")
-        result = asyncio.run(
-            server._handle_agents_submit(req, authorization=None)
-        )
+        result = asyncio.run(server._handle_agents_submit(req, authorization=None))
         assert result["session_id"] == "s1"
 
 
@@ -499,9 +477,7 @@ class TestHandleAuthUsers:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.run(
-            server._handle_auth_users(authorization=None)
-        )
+        result = asyncio.run(server._handle_auth_users(authorization=None))
         assert result["users"] == []
 
 
@@ -511,9 +487,7 @@ class TestHandlePluginsList:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.run(
-            server._handle_plugins_list(authorization=None)
-        )
+        result = asyncio.run(server._handle_plugins_list(authorization=None))
         assert result["plugins"] == []
 
 
@@ -523,9 +497,7 @@ class TestHandleVaultKeys:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.run(
-            server._handle_vault_keys(authorization=None)
-        )
+        result = asyncio.run(server._handle_vault_keys(authorization=None))
         assert result["keys"] == []
 
 
@@ -535,9 +507,7 @@ class TestHandleAuditExport:
 
         server = _make_server()
         server.engine = _FakeEngine()
-        result = asyncio.run(
-            server._handle_audit_export(authorization=None)
-        )
+        result = asyncio.run(server._handle_audit_export(authorization=None))
         assert "path" in result
 
 

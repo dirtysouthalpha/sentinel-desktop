@@ -100,7 +100,9 @@ def _extract_required_params(script: dict[str, Any]) -> set[str]:
 
 
 def _validate_script(
-    script: dict[str, Any], params: dict[str, Any] | None, executor: Any,
+    script: dict[str, Any],
+    params: dict[str, Any] | None,
+    executor: Any,
 ) -> list[str]:
     """Return a list of validation error strings (empty == valid)."""
     errors: list[str] = []

@@ -611,7 +611,10 @@ class MFADetector:
             self._monitor_stop.wait(timeout=self._interval)
 
     def _handle_poll_result(
-        self, result: DetectionResult, now: float, was_detected: bool,
+        self,
+        result: DetectionResult,
+        now: float,
+        was_detected: bool,
     ) -> bool:
         """Process one poll result; update state and invoke callback. Returns new was_detected."""
         if result.detected:

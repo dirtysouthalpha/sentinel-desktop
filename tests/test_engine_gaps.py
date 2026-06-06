@@ -1707,7 +1707,7 @@ class TestPruneOldScreenshotsMissingBranches:
         messages = [
             {
                 "role": "user",
-                "content": [],          # <-- empty list → loop body never runs
+                "content": [],  # <-- empty list → loop body never runs
                 "_sentinel_has_image": True,
                 "_sentinel_step": 1,
             },
@@ -1797,7 +1797,7 @@ class TestPruneOldScreenshotsMissingBranches:
         messages = [
             {
                 "role": "user",
-                "content": None,        # <-- not list, not str → falls through
+                "content": None,  # <-- not list, not str → falls through
                 "_sentinel_has_image": True,
                 "_sentinel_step": 1,
             },

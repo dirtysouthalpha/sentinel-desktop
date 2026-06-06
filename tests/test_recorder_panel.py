@@ -387,9 +387,10 @@ def test_on_stop_not_recording_noop(panel):
 
 def test_on_stop_raises_shows_error(panel):
     panel.app.recorder = _Recorder(is_recording=True, raise_on={"stop": OSError("io")})
-    with mock.patch.object(rp.messagebox, "showerror") as err, mock.patch.object(
-        panel, "_set_ready"
-    ) as ready:
+    with (
+        mock.patch.object(rp.messagebox, "showerror") as err,
+        mock.patch.object(panel, "_set_ready") as ready,
+    ):
         panel._on_stop()
     err.assert_called_once()
     ready.assert_called_once()
@@ -399,9 +400,10 @@ def test_on_stop_no_steps_info(panel):
     rec = _Recorder(is_recording=True)
     rec._stop_script = _Script(steps=[])
     panel.app.recorder = rec
-    with mock.patch.object(rp.messagebox, "showinfo") as info, mock.patch.object(
-        panel, "_set_ready"
-    ) as ready:
+    with (
+        mock.patch.object(rp.messagebox, "showinfo") as info,
+        mock.patch.object(panel, "_set_ready") as ready,
+    ):
         panel._on_stop()
     info.assert_called_once()
     ready.assert_called_once()
@@ -497,9 +499,7 @@ def test_on_play_no_params_runs(panel, tmp_path):
 
 def test_on_play_with_params_cancelled(panel, tmp_path):
     good = tmp_path / "p.json"
-    good.write_text(
-        json.dumps({"steps": [], "parameters": [{"name": "x"}]}), encoding="utf-8"
-    )
+    good.write_text(json.dumps({"steps": [], "parameters": [{"name": "x"}]}), encoding="utf-8")
     with mock.patch.object(rp.filedialog, "askopenfilename", return_value=str(good)):
         with mock.patch.object(panel, "_show_param_dialog", return_value=None):
             with mock.patch.object(panel, "_run_script") as run:
@@ -600,9 +600,10 @@ def test_run_script_worker_exception(panel):
             self._target()
 
     with mock.patch.object(rp.threading, "Thread", _SyncThread):
-        with mock.patch.object(rp.messagebox, "showerror") as err, mock.patch.object(
-            panel, "_set_ready"
-        ) as ready:
+        with (
+            mock.patch.object(rp.messagebox, "showerror") as err,
+            mock.patch.object(panel, "_set_ready") as ready,
+        ):
             panel._run_script("p.json", {}, {"steps": [{}]})
     err.assert_called_once()
     ready.assert_called_once()

@@ -66,9 +66,7 @@ class TestNoneContent:
     def test_content_none_returns_empty(self, _url: MagicMock, mock_post: MagicMock) -> None:
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(
-                return_value={"choices": [{"message": {"content": None}}]}
-            ),
+            json=MagicMock(return_value={"choices": [{"message": {"content": None}}]}),
         )
         client = LLMClient()
         result = client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "hi"}])
@@ -157,9 +155,7 @@ class TestToolCallMissingFunctionKey:
             status_code=200,
             json=MagicMock(
                 return_value={
-                    "choices": [
-                        {"message": {"tool_calls": [{"id": "tc_1", "type": "function"}]}}
-                    ]
+                    "choices": [{"message": {"tool_calls": [{"id": "tc_1", "type": "function"}]}}]
                 }
             ),
         )
@@ -191,7 +187,9 @@ class TestRetryThenSuccess:
 
         client = LLMClient()
         result = client.chat(
-            "openai", "sk-test", "gpt-4o",
+            "openai",
+            "sk-test",
+            "gpt-4o",
             [{"role": "user", "content": "hi"}],
             max_retries=2,
         )
@@ -210,7 +208,9 @@ class TestRetryThenSuccess:
 
         client = LLMClient()
         result = client.chat(
-            "openai", "sk-test", "gpt-4o",
+            "openai",
+            "sk-test",
+            "gpt-4o",
             [{"role": "user", "content": "hi"}],
             max_retries=2,
         )
@@ -259,14 +259,18 @@ class TestAnthropicEmptyContent:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.anthropic.com/v1")
-    def test_empty_content_blocks(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_empty_content_blocks(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         mock_post.return_value = MagicMock(
             status_code=200,
             json=MagicMock(return_value={"content": []}),
         )
         client = LLMClient()
         result = client.chat(
-            "anthropic", "sk-ant-test", "claude-3-5-sonnet-20241022",
+            "anthropic",
+            "sk-ant-test",
+            "claude-3-5-sonnet-20241022",
             [{"role": "user", "content": "hi"}],
         )
         assert result == ""
@@ -278,7 +282,9 @@ class TestAnthropicToolUse:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.anthropic.com/v1")
-    def test_tool_use_normalised(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_tool_use_normalised(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         mock_post.return_value = MagicMock(
             status_code=200,
             json=MagicMock(
@@ -297,7 +303,9 @@ class TestAnthropicToolUse:
         )
         client = LLMClient()
         result = client.chat(
-            "anthropic", "sk-ant-test", "claude-3-5-sonnet-20241022",
+            "anthropic",
+            "sk-ant-test",
+            "claude-3-5-sonnet-20241022",
             [{"role": "user", "content": "click the button"}],
         )
         parsed = json.loads(result)
@@ -314,16 +322,18 @@ class TestAnthropicSystemPromptExtraction:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.anthropic.com/v1")
-    def test_system_prompt_in_payload(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_system_prompt_in_payload(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(
-                return_value={"content": [{"type": "text", "text": "done"}]}
-            ),
+            json=MagicMock(return_value={"content": [{"type": "text", "text": "done"}]}),
         )
         client = LLMClient()
         result = client.chat(
-            "anthropic", "sk-ant-test", "claude-3-5-sonnet-20241022",
+            "anthropic",
+            "sk-ant-test",
+            "claude-3-5-sonnet-20241022",
             [
                 {"role": "system", "content": "You are helpful."},
                 {"role": "user", "content": "hi"},
@@ -332,7 +342,13 @@ class TestAnthropicSystemPromptExtraction:
         assert result == "done"
         # Verify the system field was in the payload
         call_args = mock_post.call_args
-        payload = call_args[1]["json"] if "json" in call_args[1] else call_args[0][2] if len(call_args[0]) > 2 else None
+        payload = (
+            call_args[1]["json"]
+            if "json" in call_args[1]
+            else call_args[0][2]
+            if len(call_args[0]) > 2
+            else None
+        )
         if payload is None:
             # kwargs style
             payload = call_args.kwargs.get("json", {})

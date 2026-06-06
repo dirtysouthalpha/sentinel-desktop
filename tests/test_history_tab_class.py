@@ -392,9 +392,9 @@ class TestFinalizeSessionBranches:
         tab, _ = _make_tab(with_engine=False)
         now = datetime.now().isoformat()
         session = {
-            "goal": "Explicit Goal",   # already set -> False branch at line 221
-            "start": now,              # already set -> False branch at line 223
-            "status": "completed",     # already set -> False branch at line 225
+            "goal": "Explicit Goal",  # already set -> False branch at line 221
+            "start": now,  # already set -> False branch at line 223
+            "status": "completed",  # already set -> False branch at line 225
             "steps": [{"goal": "step goal", "timestamp": "other", "ok": True}],
         }
         tab._finalize_session(session)
@@ -410,8 +410,8 @@ class TestFinalizeSessionBranches:
         tab, _ = _make_tab(with_engine=False)
         now = datetime.now().isoformat()
         session = {
-            "goal": "",               # empty -> line 221 True branch (derives goal)
-            "start": now,             # non-empty -> line 223 False branch (kept as-is)
+            "goal": "",  # empty -> line 221 True branch (derives goal)
+            "start": now,  # non-empty -> line 223 False branch (kept as-is)
             "status": "completed",
             "steps": [{"goal": "derived goal", "timestamp": "other_ts", "ok": True}],
         }

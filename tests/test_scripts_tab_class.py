@@ -52,7 +52,7 @@ class _SyncThread:
 
 def _sync_after(app):
     """Make app.root.after(delay, cb) execute cb immediately."""
-    app.root.after = lambda delay, cb=None: (cb() if cb else None)
+    app.root.after = lambda delay, cb=None: cb() if cb else None
 
 
 # ---------------------------------------------------------------------------
@@ -155,9 +155,7 @@ class TestSelectScript:
 
     def test_select_bad_date_kept_as_is(self, tmp_path):
         tab, _ = _make_tab(tmp_path)
-        tab._scripts = [
-            {"_path": "/y.json", "name": "BadDate", "created": "not-a-date"}
-        ]
+        tab._scripts = [{"_path": "/y.json", "name": "BadDate", "created": "not-a-date"}]
         tab._meta_label = MagicMock()
         tab.select_script("/y.json")
         meta = tab._meta_label.configure.call_args.kwargs["text"]
@@ -198,7 +196,10 @@ class TestBuildParamFields:
                 super().__init__()
                 captured_entries.append(self)
 
-        with patch.object(st.ctk, "CTkEntry", _Entry), patch.object(st.ctk, "CTkLabel", MagicMock()):
+        with (
+            patch.object(st.ctk, "CTkEntry", _Entry),
+            patch.object(st.ctk, "CTkLabel", MagicMock()),
+        ):
             tab._build_param_fields(
                 {
                     "parameters": [

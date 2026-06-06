@@ -79,7 +79,9 @@ class ScriptsTab:
 
     def _build_left_panel(self) -> None:
         left = ctk.CTkFrame(
-            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5,
+            self.frame,
+            fg_color=self._t("bg_secondary", "#0A0C10"),
+            corner_radius=5,
         )
         left.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 4))
         left.grid_columnconfigure(0, weight=1)
@@ -116,7 +118,9 @@ class ScriptsTab:
 
     def _build_right_panel(self) -> None:
         right = ctk.CTkFrame(
-            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5,
+            self.frame,
+            fg_color=self._t("bg_secondary", "#0A0C10"),
+            corner_radius=5,
         )
         right.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(4, 0))
         right.grid_columnconfigure(0, weight=1)
@@ -129,27 +133,40 @@ class ScriptsTab:
     def _build_script_info_labels(self, parent: Any) -> None:
         """Build name, description, and metadata labels."""
         self._name_label = ctk.CTkLabel(
-            parent, text="Select a script", font=("Segoe UI", 18, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"), anchor="w",
+            parent,
+            text="Select a script",
+            font=("Segoe UI", 18, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            anchor="w",
         )
         self._name_label.grid(row=0, column=0, sticky="ew", padx=16, pady=(16, 2))
         self._desc_label = ctk.CTkLabel(
-            parent, text="", font=("Segoe UI", 12),
+            parent,
+            text="",
+            font=("Segoe UI", 12),
             text_color=self._t("text_secondary", "#b9cacb"),
-            wraplength=500, justify="left", anchor="w",
+            wraplength=500,
+            justify="left",
+            anchor="w",
         )
         self._desc_label.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 4))
         self._meta_label = ctk.CTkLabel(
-            parent, text="", font=("Segoe UI", 10),
-            text_color=self._t("text_secondary", "#b9cacb"), anchor="w",
+            parent,
+            text="",
+            font=("Segoe UI", 10),
+            text_color=self._t("text_secondary", "#b9cacb"),
+            anchor="w",
         )
         self._meta_label.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 8))
 
     def _build_params_section(self, parent: Any) -> None:
         """Build the parameters header label and dynamic fields container."""
         self._params_label = ctk.CTkLabel(
-            parent, text="Parameters", font=("Segoe UI", 12, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"), anchor="w",
+            parent,
+            text="Parameters",
+            font=("Segoe UI", 12, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            anchor="w",
         )
         self._params_label.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 2))
         self._params_frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -161,31 +178,49 @@ class ScriptsTab:
         btn_row = ctk.CTkFrame(parent, fg_color="transparent")
         btn_row.grid(row=5, column=0, sticky="nw", padx=16, pady=(4, 4))
         self._run_btn = ctk.CTkButton(
-            btn_row, text="▶ Run Script", width=140, height=38,
+            btn_row,
+            text="▶ Run Script",
+            width=140,
+            height=38,
             font=("Segoe UI", 13, "bold"),
             fg_color=self._t("accent", "#00F0FF"),
             hover_color=self._t("accent_hover", "#00c8d4"),
-            text_color="#ffffff", corner_radius=4, command=self.run_selected_script,
+            text_color="#ffffff",
+            corner_radius=4,
+            command=self.run_selected_script,
         )
         self._run_btn.pack(side="left", padx=(0, 8))
         ctk.CTkButton(
-            btn_row, text="⏺ Record New", width=140, height=38, font=("Segoe UI", 13),
+            btn_row,
+            text="⏺ Record New",
+            width=140,
+            height=38,
+            font=("Segoe UI", 13),
             fg_color=self._t("bg_input", "#111418"),
             hover_color=self._t("bg_hover", "#333539"),
             text_color=self._t("text_primary", "#e2e2e8"),
-            corner_radius=4, command=self._open_recorder,
+            corner_radius=4,
+            command=self._open_recorder,
         ).pack(side="left")
 
     def _build_output_section(self, parent: Any) -> None:
         """Build the output header and scrollable textbox."""
         ctk.CTkLabel(
-            parent, text="Output", font=("Segoe UI", 12, "bold"),
-            text_color=self._t("text_primary", "#e2e2e8"), anchor="w",
+            parent,
+            text="Output",
+            font=("Segoe UI", 12, "bold"),
+            text_color=self._t("text_primary", "#e2e2e8"),
+            anchor="w",
         ).grid(row=6, column=0, sticky="ew", padx=16, pady=(8, 2))
         self._output_box = ctk.CTkTextbox(
-            parent, height=120, font=("Consolas", 11), wrap="word", state="disabled",
+            parent,
+            height=120,
+            font=("Consolas", 11),
+            wrap="word",
+            state="disabled",
             fg_color=self._t("bg_input", "#111418"),
-            text_color=self._t("text_primary", "#e2e2e8"), corner_radius=4,
+            text_color=self._t("text_primary", "#e2e2e8"),
+            corner_radius=4,
         )
         self._output_box.grid(row=7, column=0, sticky="ew", padx=16, pady=(0, 16))
 
@@ -396,13 +431,18 @@ class ScriptsTab:
                 self._append_output(f"\n❌ Exception: {exc}")
             finally:
                 self.app.root.after(
-                    0, lambda: self._run_btn.configure(state="normal", text="▶ Run Script"),
+                    0,
+                    lambda: self._run_btn.configure(state="normal", text="▶ Run Script"),
                 )
 
         threading.Thread(target=_run, daemon=True).start()
 
     def _on_script_progress(
-        self, step_num: int, total: int, action: str, result: dict[str, Any],
+        self,
+        step_num: int,
+        total: int,
+        action: str,
+        result: dict[str, Any],
     ) -> None:
         """Progress callback from ScriptEngine (worker thread)."""
         ok = result.get("success", False)

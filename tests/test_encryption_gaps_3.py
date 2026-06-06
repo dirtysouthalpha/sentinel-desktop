@@ -20,8 +20,13 @@ class TestDpapiEncryptWindowsPath:
     def _cleanup_module_attrs(self):
         """Ensure no leftover module attributes between tests."""
         yield
-        for attr in ("ctypes", "_DATA_BLOB", "_CryptProtectData",
-                      "_CryptUnprotectData", "CRYPTPROTECT_UI_FORBIDDEN"):
+        for attr in (
+            "ctypes",
+            "_DATA_BLOB",
+            "_CryptProtectData",
+            "_CryptUnprotectData",
+            "CRYPTPROTECT_UI_FORBIDDEN",
+        ):
             if hasattr(enc_mod, attr) and attr not in ("ctypes",):
                 try:
                     delattr(enc_mod, attr)
@@ -52,11 +57,13 @@ class TestDpapiEncryptWindowsPath:
         mock_crypt = MagicMock(return_value=1)  # non-zero = success
         mock_ctypes = self._make_mock_ctypes(b"encrypted_result")
 
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes, create=True),
+        ):
             result = CredentialVault._encrypt(b"secret_data")
 
         assert result == b"encrypted_result"
@@ -68,11 +75,13 @@ class TestDpapiEncryptWindowsPath:
         mock_crypt = MagicMock(return_value=0)  # failure
         mock_ctypes = self._make_mock_ctypes()
 
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes, create=True),
+        ):
             result = CredentialVault._encrypt(b"secret_data")
 
         assert result is None
@@ -83,11 +92,13 @@ class TestDpapiEncryptWindowsPath:
         mock_crypt = MagicMock(return_value=1)
         mock_ctypes = self._make_mock_ctypes(b"")
 
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes, create=True),
+        ):
             result = CredentialVault._encrypt(b"")
 
         assert result == b""
@@ -98,11 +109,13 @@ class TestDpapiEncryptWindowsPath:
         mock_crypt = MagicMock(return_value=1)
         mock_ctypes = self._make_mock_ctypes(b"data")
 
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptProtectData", mock_crypt, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes, create=True),
+        ):
             CredentialVault._encrypt(b"test")
 
         # LocalFree is called in the finally block to release blob_out.pbData
@@ -115,8 +128,13 @@ class TestDpapiDecryptWindowsPath:
     @pytest.fixture(autouse=True)
     def _cleanup_module_attrs(self):
         yield
-        for attr in ("ctypes", "_DATA_BLOB", "_CryptProtectData",
-                      "_CryptUnprotectData", "CRYPTPROTECT_UI_FORBIDDEN"):
+        for attr in (
+            "ctypes",
+            "_DATA_BLOB",
+            "_CryptProtectData",
+            "_CryptUnprotectData",
+            "CRYPTPROTECT_UI_FORBIDDEN",
+        ):
             if hasattr(enc_mod, attr) and attr not in ("ctypes",):
                 try:
                     delattr(enc_mod, attr)
@@ -145,11 +163,13 @@ class TestDpapiDecryptWindowsPath:
         mock_crypt = MagicMock(return_value=1)
         mock_ctypes = self._make_mock_ctypes(b"decrypted_result")
 
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptUnprotectData", mock_crypt, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptUnprotectData", mock_crypt, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes, create=True),
+        ):
             result = CredentialVault._decrypt(b"ciphertext")
 
         assert result == b"decrypted_result"
@@ -161,11 +181,13 @@ class TestDpapiDecryptWindowsPath:
         mock_crypt = MagicMock(return_value=0)
         mock_ctypes = self._make_mock_ctypes()
 
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptUnprotectData", mock_crypt, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptUnprotectData", mock_crypt, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes, create=True),
+        ):
             result = CredentialVault._decrypt(b"ciphertext")
 
         assert result is None
@@ -176,11 +198,13 @@ class TestDpapiDecryptWindowsPath:
         mock_crypt = MagicMock(return_value=1)
         mock_ctypes = self._make_mock_ctypes(b"data")
 
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptUnprotectData", mock_crypt, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptUnprotectData", mock_crypt, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes, create=True),
+        ):
             CredentialVault._decrypt(b"ciphertext")
 
         mock_ctypes.windll.kernel32.LocalFree.assert_called_once()
@@ -217,20 +241,24 @@ class TestRoundTripWindowsDPAPI:
         vault_path = str(tmp_path / "vault.json")
 
         # Store
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptProtectData", mock_crypt_protect, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes_encrypt, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptProtectData", mock_crypt_protect, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes_encrypt, create=True),
+        ):
             vault = CredentialVault(vault_path)
             assert vault.store("test_key", "my_secret_value") is True
 
         # Retrieve (need same _DATA_BLOB since file has encrypted data)
-        with patch.object(enc_mod, "_IS_WINDOWS", True), \
-             patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True), \
-             patch.object(enc_mod, "_CryptUnprotectData", mock_crypt_unprotect, create=True), \
-             patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True), \
-             patch.object(enc_mod, "ctypes", mock_ctypes_decrypt, create=True):
+        with (
+            patch.object(enc_mod, "_IS_WINDOWS", True),
+            patch.object(enc_mod, "_DATA_BLOB", mock_blob, create=True),
+            patch.object(enc_mod, "_CryptUnprotectData", mock_crypt_unprotect, create=True),
+            patch.object(enc_mod, "CRYPTPROTECT_UI_FORBIDDEN", 0x01, create=True),
+            patch.object(enc_mod, "ctypes", mock_ctypes_decrypt, create=True),
+        ):
             vault2 = CredentialVault(vault_path)
             result = vault2.retrieve("test_key")
 

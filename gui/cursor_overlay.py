@@ -141,13 +141,28 @@ class CursorOverlay:
         )
         self._canvas.pack()
         self._ring_id = self._canvas.create_oval(
-            -100, -100, -100, -100, outline=self._accent, width=3,
+            -100,
+            -100,
+            -100,
+            -100,
+            outline=self._accent,
+            width=3,
         )
         self._inner_id = self._canvas.create_oval(
-            -100, -100, -100, -100, fill=self._accent, outline="",
+            -100,
+            -100,
+            -100,
+            -100,
+            fill=self._accent,
+            outline="",
         )
         self._label_id = self._canvas.create_text(
-            -100, -100, text="", fill="white", font=("Segoe UI", 9, "bold"), anchor="s",
+            -100,
+            -100,
+            text="",
+            fill="white",
+            font=("Segoe UI", 9, "bold"),
+            anchor="s",
         )
 
     def _make_click_through(self) -> None:
@@ -209,7 +224,11 @@ class CursorOverlay:
             self._canvas.coords(self._ring_id, cx - r, cy - r, cx + r, cy + r)
             inner_r = r * 0.3
             self._canvas.coords(
-                self._inner_id, cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r,
+                self._inner_id,
+                cx - inner_r,
+                cy - inner_r,
+                cx + inner_r,
+                cy + inner_r,
             )
             self._canvas.itemconfig(self._inner_id, fill=ring_color, stipple="gray50")
             self._canvas.itemconfig(self._ring_id, outline=ring_color)

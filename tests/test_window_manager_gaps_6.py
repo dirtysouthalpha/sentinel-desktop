@@ -129,9 +129,14 @@ class TestGetWindowRectMinimized:
         }
         # First call lists the minimized window; the refetch lists only an
         # unrelated window (240->239 keeps looping, 239->243 ends the loop).
-        list_results = [[minimized], [{"title": "Calculator", "x": 0, "y": 0, "width": 10, "height": 10}]]
-        with patch("core.window_manager.list_windows", side_effect=list_results), \
-             patch("core.window_manager.restore_window_hwnd") as mock_restore:
+        list_results = [
+            [minimized],
+            [{"title": "Calculator", "x": 0, "y": 0, "width": 10, "height": 10}],
+        ]
+        with (
+            patch("core.window_manager.list_windows", side_effect=list_results),
+            patch("core.window_manager.restore_window_hwnd") as mock_restore,
+        ):
             rect = get_window_rect("notepad")
         mock_restore.assert_called_once_with(4242)
         assert rect == (-32000, -32000, 200, 100)
@@ -153,11 +158,15 @@ class TestWin32InnerBranches:
         fake_ctypes.windll = MagicMock()
         fake_ctypes.windll.user32.keybd_event.side_effect = OSError("no input desktop")
 
-        with patch("core.window_manager.HAS_WIN32", True), \
-             patch("core.window_manager.win32gui", mock_gui, create=True), \
-             patch("core.window_manager.win32con", mock_con, create=True), \
-             patch("core.window_manager.list_windows", return_value=[{"title": "Chrome", "hwnd": 77}]), \
-             patch.dict("sys.modules", {"ctypes": fake_ctypes}):
+        with (
+            patch("core.window_manager.HAS_WIN32", True),
+            patch("core.window_manager.win32gui", mock_gui, create=True),
+            patch("core.window_manager.win32con", mock_con, create=True),
+            patch(
+                "core.window_manager.list_windows", return_value=[{"title": "Chrome", "hwnd": 77}]
+            ),
+            patch.dict("sys.modules", {"ctypes": fake_ctypes}),
+        ):
             result = focus_window("chrome")
 
         assert result is True
@@ -169,9 +178,11 @@ class TestWin32InnerBranches:
         mock_gui = MagicMock()
         mock_gui.GetForegroundWindow.return_value = 0
         other = {"title": "Editor", "x": 5, "y": 6, "width": 640, "height": 480}
-        with patch("core.window_manager.HAS_WIN32", True), \
-             patch("core.window_manager.win32gui", mock_gui, create=True), \
-             patch("core.window_manager.list_windows", return_value=[other]):
+        with (
+            patch("core.window_manager.HAS_WIN32", True),
+            patch("core.window_manager.win32gui", mock_gui, create=True),
+            patch("core.window_manager.list_windows", return_value=[other]),
+        ):
             result = get_target_window_rect()
         assert result == (5, 6, 640, 480, "Editor")
 
@@ -186,9 +197,11 @@ class TestWin32InnerBranches:
             callback(123, None)
 
         mock_gui.EnumWindows.side_effect = fake_enum
-        with patch("core.window_manager.HAS_WIN32", True), \
-             patch("core.window_manager.win32gui", mock_gui, create=True), \
-             patch("core.window_manager.win32con", mock_con, create=True):
+        with (
+            patch("core.window_manager.HAS_WIN32", True),
+            patch("core.window_manager.win32gui", mock_gui, create=True),
+            patch("core.window_manager.win32con", mock_con, create=True),
+        ):
             result = close_window("Anything")
         assert result is False
         mock_gui.PostMessage.assert_not_called()
@@ -221,8 +234,10 @@ class TestWindowsImportGuards:
             return real_import(name, *args, **kwargs)
 
         try:
-            with patch("platform.system", return_value="Windows"), \
-                 patch("builtins.__import__", side_effect=fake_import):
+            with (
+                patch("platform.system", return_value="Windows"),
+                patch("builtins.__import__", side_effect=fake_import),
+            ):
                 reloaded = importlib.reload(wm)
                 assert reloaded.HAS_WIN32 is False
                 assert reloaded.HAS_PGW is False
@@ -255,8 +270,10 @@ class TestWindowsImportGuards:
             return real_import(name, *args, **kwargs)
 
         try:
-            with patch("platform.system", return_value="Windows"), \
-                 patch("builtins.__import__", side_effect=fake_import):
+            with (
+                patch("platform.system", return_value="Windows"),
+                patch("builtins.__import__", side_effect=fake_import),
+            ):
                 reloaded = importlib.reload(wm)
                 assert reloaded.HAS_WIN32 is True
                 assert reloaded.HAS_PGW is True

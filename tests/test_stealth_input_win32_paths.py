@@ -41,6 +41,7 @@ def stealth_module():
 
     # Force reload so the try/except succeeds
     import core.stealth_input as si
+
     importlib.reload(si)
 
     yield si, mock_win32api, mock_win32gui, mock_win32con

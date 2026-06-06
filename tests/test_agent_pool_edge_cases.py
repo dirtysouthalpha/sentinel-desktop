@@ -124,6 +124,7 @@ class TestWorkerImportError:
 
         # Patch the import to raise ImportError
         import builtins
+
         real_import = builtins.__import__
 
         def _fake_import(name, *args, **kwargs):
@@ -146,6 +147,7 @@ class TestWorkerImportError:
         pool._dispatcher_event.clear()
 
         import builtins
+
         real_import = builtins.__import__
 
         def _fake_import(name, *args, **kwargs):
@@ -179,9 +181,14 @@ class TestWorkerTypeError:
                 pass
 
         # Use a more direct approach: patch the module-level import
-        with patch.dict("sys.modules", {"core.engine": MagicMock(
-            AgentEngine=MagicMock(side_effect=TypeError("config has wrong type"))
-        )}):
+        with patch.dict(
+            "sys.modules",
+            {
+                "core.engine": MagicMock(
+                    AgentEngine=MagicMock(side_effect=TypeError("config has wrong type"))
+                )
+            },
+        ):
             pool._agent_worker(session_id, "TestDesktop")
 
         assert session.status == STATUS_FAILED
@@ -195,9 +202,14 @@ class TestWorkerTypeError:
         session_id = pool.submit("test goal")
         session = pool._sessions[session_id]
 
-        with patch.dict("sys.modules", {"core.engine": MagicMock(
-            AgentEngine=MagicMock(side_effect=AttributeError("no attribute 'run'"))
-        )}):
+        with patch.dict(
+            "sys.modules",
+            {
+                "core.engine": MagicMock(
+                    AgentEngine=MagicMock(side_effect=AttributeError("no attribute 'run'"))
+                )
+            },
+        ):
             pool._agent_worker(session_id, "TestDesktop")
 
         assert session.status == STATUS_FAILED

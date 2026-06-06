@@ -77,7 +77,10 @@ class TestExecNotifySuccess:
         step = WorkflowStep(id="s1", type="notify", message="Hello world", level="info")
         mock_nm = MagicMock()
         mock_nm.notify.return_value = True
-        with patch.dict("sys.modules", {"core.notifications": MagicMock(NotificationManager=MagicMock(return_value=mock_nm))}):
+        with patch.dict(
+            "sys.modules",
+            {"core.notifications": MagicMock(NotificationManager=MagicMock(return_value=mock_nm))},
+        ):
             # The import happens inside _exec_notify, so we patch the import
             with patch("builtins.__import__", side_effect=ImportError("mocked")):
                 result = engine._exec_notify(step)
@@ -104,18 +107,20 @@ class TestBuildStepsDefaults:
         assert [s.id for s in steps] == ["s1", "s2", "s3"]
 
     def test_preserves_all_fields(self) -> None:
-        steps_data = [{
-            "id": "custom",
-            "type": "condition",
-            "check": "true",
-            "true_next": "s2",
-            "false_next": "s3",
-            "error_policy": "skip",
-            "max_retries": 5,
-            "delay_seconds": 2.5,
-            "message": "hello",
-            "level": "warning",
-        }]
+        steps_data = [
+            {
+                "id": "custom",
+                "type": "condition",
+                "check": "true",
+                "true_next": "s2",
+                "false_next": "s3",
+                "error_policy": "skip",
+                "max_retries": 5,
+                "delay_seconds": 2.5,
+                "message": "hello",
+                "level": "warning",
+            }
+        ]
         steps = WorkflowEngine._build_steps(steps_data)
         assert steps[0].id == "custom"
         assert steps[0].type == "condition"
@@ -147,17 +152,20 @@ class TestParseListEdgeCases:
 
     def test_integer_value(self) -> None:
         from core.workflow import WorkflowEngine
+
         result = WorkflowEngine._parse_list(42)
         assert result == [42]
 
     def test_json_list_string(self) -> None:
         from core.workflow import WorkflowEngine
-        result = WorkflowEngine._parse_list('[1, 2, 3]')
+
+        result = WorkflowEngine._parse_list("[1, 2, 3]")
         assert result == [1, 2, 3]
 
     def test_json_non_list_string(self) -> None:
         """JSON string that isn't a list falls back to comma split."""
         from core.workflow import WorkflowEngine
+
         result = WorkflowEngine._parse_list('{"key": "value"}')
         # Falls back to comma split since parsed isn't a list
         assert result == ['{"key": "value"}']
@@ -165,11 +173,13 @@ class TestParseListEdgeCases:
     def test_zero_value(self) -> None:
         """0 is falsy, so _parse_list returns empty list."""
         from core.workflow import WorkflowEngine
+
         result = WorkflowEngine._parse_list(0)
         assert result == []  # 0 is falsy → returns []
 
     def test_false_value(self) -> None:
         """False is falsy, so _parse_list returns empty list."""
         from core.workflow import WorkflowEngine
+
         result = WorkflowEngine._parse_list(False)
         assert result == []  # False is falsy → returns []

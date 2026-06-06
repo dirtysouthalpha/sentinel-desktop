@@ -533,7 +533,9 @@ class SentinelServer:
     # ── Agent control ───────────────────────────────────────────────
 
     async def _handle_goal(
-        self, req: GoalRequest, authorization: str | None = Header(default=None),
+        self,
+        req: GoalRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine and self.engine.running:
@@ -578,7 +580,9 @@ class SentinelServer:
         return {"status": "started", "goal": req.goal}
 
     async def _handle_command(
-        self, req: CommandRequest, authorization: str | None = Header(default=None),
+        self,
+        req: CommandRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         cfg = self.config.load()
@@ -613,7 +617,8 @@ class SentinelServer:
             raise HTTPException(500, f"Internal error: {exc}") from exc
 
     async def _handle_stop(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         self._check_auth(authorization)
         if self.engine and self.engine.running:
@@ -624,7 +629,8 @@ class SentinelServer:
     # ── Information endpoints ───────────────────────────────────────
 
     async def _handle_screenshot(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         self._check_auth(authorization)
         try:
@@ -640,7 +646,8 @@ class SentinelServer:
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
     async def _handle_status(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine:
@@ -653,7 +660,8 @@ class SentinelServer:
         return {"running": False, "step": 0}
 
     async def _handle_windows(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
@@ -669,7 +677,8 @@ class SentinelServer:
         return {"windows": windows}
 
     async def _handle_processes(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
@@ -685,7 +694,8 @@ class SentinelServer:
         return {"processes": processes}
 
     async def _handle_system(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
@@ -701,7 +711,8 @@ class SentinelServer:
         return {"system": info}
 
     async def _handle_get_config(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         # Never leak the API key over the wire.
@@ -711,7 +722,9 @@ class SentinelServer:
         return cfg
 
     async def _handle_put_config(
-        self, req: ConfigUpdate, authorization: str | None = Header(default=None),
+        self,
+        req: ConfigUpdate,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         self._check_auth(authorization)
         cfg = self.config.load()
@@ -734,7 +747,8 @@ class SentinelServer:
     # ── Script / Recorder / PowerShell endpoints ──────────────────────
 
     async def _handle_scripts_list(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """List all available scripts in the scripts/ directory."""
         self._check_auth(authorization)
@@ -750,7 +764,9 @@ class SentinelServer:
             return {"scripts": scripts}
 
     async def _handle_script_run(
-        self, req: ScriptRunRequest, authorization: str | None = Header(default=None),
+        self,
+        req: ScriptRunRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """Run a script by path with optional parameters."""
         self._check_auth(authorization)
@@ -785,7 +801,9 @@ class SentinelServer:
         }
 
     async def _handle_powershell(
-        self, req: PowerShellRequest, authorization: str | None = Header(default=None),
+        self,
+        req: PowerShellRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """Run a PowerShell command."""
         self._check_auth(authorization)
@@ -815,7 +833,8 @@ class SentinelServer:
             return {"success": False, "error": str(exc)}
 
     async def _handle_recorder_start(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Start recording actions."""
         self._check_auth(authorization)
@@ -828,7 +847,9 @@ class SentinelServer:
         return {"status": "recording"}
 
     async def _handle_recorder_stop(
-        self, req: RecorderStopRequest, authorization: str | None = Header(default=None),
+        self,
+        req: RecorderStopRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """Stop recording and save the script."""
         self._check_auth(authorization)
@@ -855,7 +876,8 @@ class SentinelServer:
     # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
 
     async def _handle_workflows_list(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """List available workflows."""
         self._check_auth(authorization)
@@ -869,7 +891,9 @@ class SentinelServer:
             return {"workflows": [], "error": str(exc)}
 
     async def _handle_workflow_run(
-        self, req: WorkflowRunRequest, authorization: str | None = Header(default=None),
+        self,
+        req: WorkflowRunRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """Run a workflow."""
         self._check_auth(authorization)
@@ -901,7 +925,8 @@ class SentinelServer:
         }
 
     async def _handle_schedule_list(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """List scheduled tasks."""
         self._check_auth(authorization)
@@ -910,7 +935,9 @@ class SentinelServer:
         return {"tasks": self.engine.scheduler.list_tasks()}
 
     async def _handle_schedule_add(
-        self, req: ScheduleAddRequest, authorization: str | None = Header(default=None),
+        self,
+        req: ScheduleAddRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Add a scheduled task."""
         self._check_auth(authorization)
@@ -923,7 +950,9 @@ class SentinelServer:
         return {"status": "added", "task_id": task_id}
 
     async def _handle_schedule_remove(
-        self, req: ScheduleRemoveRequest, authorization: str | None = Header(default=None),
+        self,
+        req: ScheduleRemoveRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Remove a scheduled task."""
         self._check_auth(authorization)
@@ -936,7 +965,9 @@ class SentinelServer:
         return {"status": "removed" if removed else "not_found"}
 
     async def _handle_schedule_run(
-        self, req: ScheduleRunRequest, authorization: str | None = Header(default=None),
+        self,
+        req: ScheduleRunRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """Run a scheduled task immediately."""
         self._check_auth(authorization)
@@ -955,7 +986,9 @@ class SentinelServer:
             raise HTTPException(500, f"Failed to run task: {exc}") from exc
 
     async def _handle_notify(
-        self, req: NotifyRequest, authorization: str | None = Header(default=None),
+        self,
+        req: NotifyRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, bool]:
         """Send a notification."""
         self._check_auth(authorization)
@@ -978,7 +1011,8 @@ class SentinelServer:
         return {"success": success}
 
     async def _handle_plugins_list(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """List loaded plugins."""
         self._check_auth(authorization)
@@ -991,7 +1025,9 @@ class SentinelServer:
         return {"plugins": plugins}
 
     async def _handle_plugins_reload(
-        self, req: PluginReloadRequest, authorization: str | None = Header(default=None),
+        self,
+        req: PluginReloadRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """Reload a plugin."""
         self._check_auth(authorization)
@@ -1014,7 +1050,8 @@ class SentinelServer:
     # ── v3.0 Phase 3+4 endpoints ──────────────────────────────────────
 
     async def _handle_agents_list(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """List all agent pool sessions."""
         self._check_auth(authorization)
@@ -1023,7 +1060,9 @@ class SentinelServer:
         return {"sessions": self.engine.agent_pool.list_sessions()}
 
     async def _handle_agents_submit(
-        self, req: AgentSubmitRequest, authorization: str | None = Header(default=None),
+        self,
+        req: AgentSubmitRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Submit a goal to the agent pool."""
         self._check_auth(authorization)
@@ -1040,7 +1079,9 @@ class SentinelServer:
         return {"session_id": session_id, "status": "queued"}
 
     async def _handle_agents_cancel(
-        self, req: AgentCancelRequest, authorization: str | None = Header(default=None),
+        self,
+        req: AgentCancelRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, bool]:
         """Cancel an agent session."""
         self._check_auth(authorization)
@@ -1053,7 +1094,9 @@ class SentinelServer:
         return {"success": success}
 
     async def _handle_agent_status(
-        self, session_id: str, authorization: str | None = Header(default=None),
+        self,
+        session_id: str,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """Get status of a specific agent session."""
         self._check_auth(authorization)
@@ -1090,7 +1133,9 @@ class SentinelServer:
             # authenticate() runs bcrypt verification (CPU-intensive); offload to thread.
             user = await asyncio.wait_for(
                 asyncio.to_thread(
-                    self.engine.auth_manager.authenticate, req.username, req.password,
+                    self.engine.auth_manager.authenticate,
+                    req.username,
+                    req.password,
                 ),
                 timeout=DEFAULT_API_TIMEOUT,
             )
@@ -1108,7 +1153,9 @@ class SentinelServer:
         return {"token": token, "role": user.role.value, "username": user.username}
 
     async def _handle_auth_logout(
-        self, req: AuthLogoutRequest, authorization: str | None = Header(default=None),
+        self,
+        req: AuthLogoutRequest,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, str]:
         """Revoke a session token."""
         self._check_auth(authorization)
@@ -1122,7 +1169,8 @@ class SentinelServer:
         return {"status": "logged_out"}
 
     async def _handle_auth_users(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """List users (admin only)."""
         self._check_auth(authorization)
@@ -1135,7 +1183,9 @@ class SentinelServer:
             raise HTTPException(500, f"Failed to list users: {exc}") from exc
 
     async def _handle_audit_export(
-        self, authorization: str | None = Header(default=None), format: str = "html",
+        self,
+        authorization: str | None = Header(default=None),
+        format: str = "html",
     ) -> dict[str, str]:
         """Export audit log as HTML/JSON/CSV/Text."""
         self._check_auth(authorization)
@@ -1162,7 +1212,8 @@ class SentinelServer:
             raise HTTPException(500, f"Audit export failed: {exc}") from exc
 
     async def _handle_vault_keys(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         """List credential vault keys."""
         self._check_auth(authorization)
@@ -1287,7 +1338,8 @@ class SentinelServer:
     # ── Workflow Builder (v3.1) ───────────────────────────────────────────
 
     async def _handle_workflow_builder_list(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         workflows = self._workflow_store.list_all()
@@ -1316,7 +1368,8 @@ class SentinelServer:
         return wf.to_dict()
 
     async def _handle_workflow_templates(
-        self, authorization: str | None = Header(default=None),
+        self,
+        authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         self._check_auth(authorization)
         return {"templates": self._workflow_templates}

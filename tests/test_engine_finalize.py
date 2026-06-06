@@ -8,6 +8,7 @@ from core.engine import AgentEngine
 # _finalize_run
 # ---------------------------------------------------------------------------
 
+
 class TestFinalizeRun:
     """Tests for AgentEngine._finalize_run (lines 1072-1097)."""
 
@@ -162,6 +163,7 @@ class TestFinalizeRun:
 # _validate_run_config
 # ---------------------------------------------------------------------------
 
+
 class TestValidateRunConfig:
     """Tests for AgentEngine._validate_run_config (lines 656-684)."""
 
@@ -173,18 +175,22 @@ class TestValidateRunConfig:
         return eng
 
     def test_valid_config_returns_none(self):
-        eng = self._make_engine({
-            "provider": "openai",
-            "api_key": "sk-test123",
-            "model": "gpt-4",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "openai",
+                "api_key": "sk-test123",
+                "model": "gpt-4",
+            }
+        )
         assert eng._validate_run_config() is None
 
     def test_missing_api_key_returns_error(self):
-        eng = self._make_engine({
-            "provider": "openai",
-            "model": "gpt-4",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "openai",
+                "model": "gpt-4",
+            }
+        )
         result = eng._validate_run_config()
 
         assert result is not None
@@ -192,88 +198,108 @@ class TestValidateRunConfig:
         assert result["steps"] == 0
 
     def test_missing_api_key_stops_running(self):
-        eng = self._make_engine({
-            "provider": "openai",
-            "model": "gpt-4",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "openai",
+                "model": "gpt-4",
+            }
+        )
         eng._validate_run_config()
 
         assert eng.running is False
 
     def test_missing_api_key_sets_notes(self):
-        eng = self._make_engine({
-            "provider": "openai",
-            "model": "gpt-4",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "openai",
+                "model": "gpt-4",
+            }
+        )
         eng._validate_run_config()
 
         assert len(eng.notes) == 1
         assert "API key" in eng.notes[0]
 
     def test_ollama_no_api_key_is_ok(self):
-        eng = self._make_engine({
-            "provider": "ollama",
-            "model": "llama3",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "ollama",
+                "model": "llama3",
+            }
+        )
         assert eng._validate_run_config() is None
 
     def test_lmstudio_no_api_key_is_ok(self):
-        eng = self._make_engine({
-            "provider": "lmstudio",
-            "model": "local-model",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "lmstudio",
+                "model": "local-model",
+            }
+        )
         assert eng._validate_run_config() is None
 
     def test_custom_no_api_key_is_ok(self):
-        eng = self._make_engine({
-            "provider": "custom",
-            "model": "my-model",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "custom",
+                "model": "my-model",
+            }
+        )
         assert eng._validate_run_config() is None
 
     def test_missing_provider_returns_error(self):
-        eng = self._make_engine({
-            "api_key": "sk-test",
-            "model": "gpt-4",
-        })
+        eng = self._make_engine(
+            {
+                "api_key": "sk-test",
+                "model": "gpt-4",
+            }
+        )
         result = eng._validate_run_config()
 
         assert result is not None
         assert result["error"] == "provider_missing"
 
     def test_missing_provider_stops_running(self):
-        eng = self._make_engine({
-            "api_key": "sk-test",
-            "model": "gpt-4",
-        })
+        eng = self._make_engine(
+            {
+                "api_key": "sk-test",
+                "model": "gpt-4",
+            }
+        )
         eng._validate_run_config()
 
         assert eng.running is False
 
     def test_missing_model_returns_error(self):
-        eng = self._make_engine({
-            "provider": "openai",
-            "api_key": "sk-test",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "openai",
+                "api_key": "sk-test",
+            }
+        )
         result = eng._validate_run_config()
 
         assert result is not None
         assert result["error"] == "model_missing"
 
     def test_missing_model_stops_running(self):
-        eng = self._make_engine({
-            "provider": "openai",
-            "api_key": "sk-test",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "openai",
+                "api_key": "sk-test",
+            }
+        )
         eng._validate_run_config()
 
         assert eng.running is False
 
     def test_missing_model_mentions_provider(self):
-        eng = self._make_engine({
-            "provider": "anthropic",
-            "api_key": "sk-test",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "anthropic",
+                "api_key": "sk-test",
+            }
+        )
         eng._validate_run_config()
 
         assert "anthropic" in eng.notes[0]
@@ -289,11 +315,13 @@ class TestValidateRunConfig:
         assert result["error"] == "api_key_missing"
 
     def test_all_empty_strings(self):
-        eng = self._make_engine({
-            "provider": "",
-            "api_key": "",
-            "model": "",
-        })
+        eng = self._make_engine(
+            {
+                "provider": "",
+                "api_key": "",
+                "model": "",
+            }
+        )
         result = eng._validate_run_config()
 
         assert result is not None
@@ -304,6 +332,7 @@ class TestValidateRunConfig:
 # ---------------------------------------------------------------------------
 # _build_initial_messages
 # ---------------------------------------------------------------------------
+
 
 class TestBuildInitialMessages:
     """Tests for AgentEngine._build_initial_messages (lines 686-716)."""

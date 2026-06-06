@@ -25,8 +25,10 @@ class TestRunExceptions:
     def test_run_timeout_expired(self):
         """_run returns PSResult with exit_code=-2 on TimeoutExpired."""
         runner = self._make_runner()
-        with patch("core.powershell._is_windows", return_value=True), \
-             patch("subprocess.run", side_effect=subprocess.TimeoutExpired("ps", 10)):
+        with (
+            patch("core.powershell._is_windows", return_value=True),
+            patch("subprocess.run", side_effect=subprocess.TimeoutExpired("ps", 10)),
+        ):
             result = runner._run("Get-Date")
 
         assert result.success is False
@@ -36,8 +38,10 @@ class TestRunExceptions:
     def test_run_file_not_found(self):
         """_run returns PSResult with exit_code=-3 on FileNotFoundError."""
         runner = self._make_runner()
-        with patch("core.powershell._is_windows", return_value=True), \
-             patch("subprocess.run", side_effect=FileNotFoundError("no pwsh")):
+        with (
+            patch("core.powershell._is_windows", return_value=True),
+            patch("subprocess.run", side_effect=FileNotFoundError("no pwsh")),
+        ):
             result = runner._run("Get-Date")
 
         assert result.success is False
@@ -47,8 +51,10 @@ class TestRunExceptions:
     def test_run_os_error(self):
         """_run returns PSResult with exit_code=-4 on OSError."""
         runner = self._make_runner()
-        with patch("core.powershell._is_windows", return_value=True), \
-             patch("subprocess.run", side_effect=OSError("broken")):
+        with (
+            patch("core.powershell._is_windows", return_value=True),
+            patch("subprocess.run", side_effect=OSError("broken")),
+        ):
             result = runner._run("Get-Date")
 
         assert result.success is False
@@ -58,8 +64,10 @@ class TestRunExceptions:
     def test_run_subprocess_error(self):
         """_run returns PSResult with exit_code=-4 on SubprocessError."""
         runner = self._make_runner()
-        with patch("core.powershell._is_windows", return_value=True), \
-             patch("subprocess.run", side_effect=subprocess.SubprocessError("sub error")):
+        with (
+            patch("core.powershell._is_windows", return_value=True),
+            patch("subprocess.run", side_effect=subprocess.SubprocessError("sub error")),
+        ):
             result = runner._run("Get-Date")
 
         assert result.success is False
@@ -69,8 +77,10 @@ class TestRunExceptions:
     def test_run_runtime_error(self):
         """_run returns PSResult with exit_code=-4 on RuntimeError."""
         runner = self._make_runner()
-        with patch("core.powershell._is_windows", return_value=True), \
-             patch("subprocess.run", side_effect=RuntimeError("oops")):
+        with (
+            patch("core.powershell._is_windows", return_value=True),
+            patch("subprocess.run", side_effect=RuntimeError("oops")),
+        ):
             result = runner._run("Get-Date")
 
         assert result.success is False
@@ -116,11 +126,13 @@ class TestRunElevatedOutputReadFailure:
                 raise OSError("permission denied")
             return original_open(self_path, *args, **kwargs)
 
-        with patch("core.powershell._is_windows", return_value=True), \
-             patch("subprocess.run", return_value=mock_cp), \
-             patch.object(Path, "is_file", mock_is_file), \
-             patch.object(Path, "open", mock_open), \
-             patch.object(Path, "unlink"):
+        with (
+            patch("core.powershell._is_windows", return_value=True),
+            patch("subprocess.run", return_value=mock_cp),
+            patch.object(Path, "is_file", mock_is_file),
+            patch.object(Path, "open", mock_open),
+            patch.object(Path, "unlink"),
+        ):
             result = runner._run(cmd_with_tmp)
 
         # Should still return a result, with empty stdout since read failed
@@ -138,7 +150,12 @@ class TestGetServiceStatusObjectsPath:
     def test_returns_first_object_on_success(self):
         """get_service_status returns objects[0] when result has objects."""
         runner = PowerShellRunner(timeout=10)
-        expected = {"Name": "wuauserv", "Status": "Running", "StartType": "Manual", "DisplayName": "Windows Update"}
+        expected = {
+            "Name": "wuauserv",
+            "Status": "Running",
+            "StartType": "Manual",
+            "DisplayName": "Windows Update",
+        }
 
         with patch.object(runner, "_run") as mock_run:
             mock_run.return_value = PSResult(

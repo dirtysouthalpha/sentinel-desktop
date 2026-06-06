@@ -157,9 +157,7 @@ class TestSettingsTabReloadPlugins:
 class TestSettingsTabAddFieldUnknownType:
     def test_unknown_field_type_returns_without_widget(self, settings_tab):
         before = dict(settings_tab._vars)
-        settings_tab._add_field(
-            settings_tab.scroll, "Label", "mystery", "", field_type="bogus"
-        )
+        settings_tab._add_field(settings_tab.scroll, "Label", "mystery", "", field_type="bogus")
         # No var registered for an unrecognised field type.
         assert settings_tab._vars == before
 

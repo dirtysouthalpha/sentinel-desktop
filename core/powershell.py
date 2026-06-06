@@ -144,6 +144,7 @@ class PowerShellRunner:
     def _resolve_ps_exe(self) -> str:
         """Pick the best PowerShell executable (pwsh > powershell) on Windows."""
         import shutil
+
         if not _is_windows():
             return self.POWERSHELL_EXE
         for candidate in (self.PS_CORE_EXE, self.POWERSHELL_EXE):
@@ -225,17 +226,32 @@ class PowerShellRunner:
                 stdout = self._read_elevated_output(command, stdout)
 
             objects = self._parse_json_output(stdout)
-            return PSResult(success=(exit_code == 0), exit_code=exit_code,
-                            stdout=stdout, stderr=stderr, objects=objects)
+            return PSResult(
+                success=(exit_code == 0),
+                exit_code=exit_code,
+                stdout=stdout,
+                stderr=stderr,
+                objects=objects,
+            )
 
         except subprocess.TimeoutExpired:
             logger.warning("PowerShell timed out after %ds", self.timeout)
-            return PSResult(success=False, exit_code=-2, stdout="",
-                            stderr=f"Process timed out after {self.timeout} seconds.", objects=[])
+            return PSResult(
+                success=False,
+                exit_code=-2,
+                stdout="",
+                stderr=f"Process timed out after {self.timeout} seconds.",
+                objects=[],
+            )
         except FileNotFoundError:
             logger.error("PowerShell not found: %s", self._ps_exe)
-            return PSResult(success=False, exit_code=-3, stdout="",
-                            stderr=f"PowerShell executable not found: {self._ps_exe}", objects=[])
+            return PSResult(
+                success=False,
+                exit_code=-3,
+                stdout="",
+                stderr=f"PowerShell executable not found: {self._ps_exe}",
+                objects=[],
+            )
         except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
             logger.exception("Unexpected error running PowerShell")
             return PSResult(success=False, exit_code=-4, stdout="", stderr=str(exc), objects=[])

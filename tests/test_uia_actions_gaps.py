@@ -1255,9 +1255,7 @@ class TestUiaMenuWalk:
 class TestTypeIntoFieldReturnsFalse:
     """Covers branches where set_text/post_text return False (not raise)."""
 
-    def test_set_text_returns_false_falls_to_postmessage(
-        self, pipe, all_tiers, monkeypatch
-    ):
+    def test_set_text_returns_false_falls_to_postmessage(self, pipe, all_tiers, monkeypatch):
         """Branch 211->217: set_text returns False, falls to PostMessage tier."""
         import core.stealth_input as si
         import core.ui_tree as ui_tree_mod
@@ -1269,9 +1267,7 @@ class TestTypeIntoFieldReturnsFalse:
         assert r["success"] is True
         assert r["method_used"] == "postmessage"
 
-    def test_post_text_returns_false_falls_to_physical(
-        self, pipe, all_tiers, monkeypatch
-    ):
+    def test_post_text_returns_false_falls_to_physical(self, pipe, all_tiers, monkeypatch):
         """Branch 223->229: post_text returns False, falls to physical tier."""
         import core.stealth_input as si
         import core.ui_tree as ui_tree_mod
@@ -1343,9 +1339,7 @@ class TestTypeTextReturnsFalse:
 class TestPressKeyReturnsFalse:
     """Branch 385->391: post_named_key returns False, falls to physical."""
 
-    def test_post_named_key_false_falls_to_physical(
-        self, pipe, postmsg_only, monkeypatch
-    ):
+    def test_post_named_key_false_falls_to_physical(self, pipe, postmsg_only, monkeypatch):
         import core.stealth_input as si
 
         monkeypatch.setattr(si, "post_named_key", lambda key, **kw: False)
@@ -1411,9 +1405,7 @@ class TestInvokeMenuItemPatternNone:
                 return [FakeMenuBar()]
 
         monkeypatch.setattr(mod, "_auto", MagicMock())
-        monkeypatch.setattr(
-            ui_tree_mod, "_find_window", lambda wt=None: FakeRoot()
-        )
+        monkeypatch.setattr(ui_tree_mod, "_find_window", lambda wt=None: FakeRoot())
         r = pipe._uia_menu_walk(["Save"])
         assert r is True
 

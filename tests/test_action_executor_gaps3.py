@@ -970,9 +970,11 @@ class TestHandlerTimeoutAsync:
 
     def test_timeout_returns_timeout_error(self, fake_executor, monkeypatch):
         import asyncio as asyncio_mod
+
         import core.action_executor as ae_mod
 
         ex = fake_executor()
+
         # Inject a coroutine handler that waits longer than the timeout
         async def _slow_handler(self_ref, **_):
             await asyncio_mod.sleep(0.5)
@@ -1014,7 +1016,6 @@ class TestSetTextClickFallbackLoopContinue:
     """Branch 543->534: first control in loop doesn't match → loop continues."""
 
     def test_non_matching_control_skipped(self, monkeypatch):
-        import core.action_executor as ae_mod
         import core.ui_tree as ui_tree_mod
 
         non_match = {
@@ -1041,6 +1042,7 @@ class TestSetTextClickFallbackLoopContinue:
         monkeypatch.setattr(ui_tree_mod, "set_text", lambda t, **kw: False)
 
         import time
+
         monkeypatch.setattr(time, "sleep", lambda _: None)
 
         ex = _make_executor()
@@ -1088,9 +1090,7 @@ class TestPressKeyStealthReturnsFalse:
         import core.action_executor as ae_mod
 
         monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
-        monkeypatch.setattr(
-            ae_mod.stealth_input, "post_named_key", MagicMock(return_value=False)
-        )
+        monkeypatch.setattr(ae_mod.stealth_input, "post_named_key", MagicMock(return_value=False))
 
         ex = _make_executor(stealth=True)
         result = ex._press_key(key="enter")
@@ -1104,6 +1104,7 @@ class TestDispatchActionAsyncTimeout:
     def test_dispatch_action_async_timeout(self, fake_executor, monkeypatch):
         """Test that _dispatch_action_async returns timeout error when handler times out."""
         import asyncio as asyncio_mod
+
         import core.action_executor as ae_mod
 
         ex = fake_executor()

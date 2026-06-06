@@ -36,9 +36,7 @@ class TestCheckPopupDismiss:
 
     def test_no_popup_detected(self):
         eng = _make_engine()
-        eng._popup_handler.check_and_dismiss.return_value = MagicMock(
-            detected=False
-        )
+        eng._popup_handler.check_and_dismiss.return_value = MagicMock(detected=False)
         with patch("core.screenshot.capture_screen", return_value="screen"):
             eng._check_popup_dismiss()
 
@@ -139,8 +137,8 @@ class TestCheckMfaPause:
         )
         # Side effect: initial call returns mfa_result, recheck returns not detected
         eng.mfa_detector.check_window_titles.side_effect = [
-            mfa_result,                   # initial check
-            MagicMock(detected=False),     # recheck — clears
+            mfa_result,  # initial check
+            MagicMock(detected=False),  # recheck — clears
         ]
 
         with patch("core.engine.time") as mock_time:
@@ -149,11 +147,14 @@ class TestCheckMfaPause:
 
         assert eng._mfa_paused is False  # cleared after recheck
         # Actual code uses "prompt" and "window" keys
-        eng.logger.log_event.assert_any_call("mfa_pause", {
-            "type": "uac",
-            "prompt": "Do you want to allow this app?",
-            "window": "User Account Control",
-        })
+        eng.logger.log_event.assert_any_call(
+            "mfa_pause",
+            {
+                "type": "uac",
+                "prompt": "Do you want to allow this app?",
+                "window": "User Account Control",
+            },
+        )
         eng.logger.log_event.assert_any_call("mfa_resume", {"msg": "Auth prompt dismissed"})
 
     def test_mfa_detected_from_screenshot_fallback(self):
@@ -176,11 +177,14 @@ class TestCheckMfaPause:
             with patch("core.screenshot.capture_screen", return_value="screen"):
                 eng._check_mfa_pause()
 
-        eng.logger.log_event.assert_any_call("mfa_pause", {
-            "type": "mfa",
-            "prompt": "Enter your authenticator code",
-            "window": None,
-        })
+        eng.logger.log_event.assert_any_call(
+            "mfa_pause",
+            {
+                "type": "mfa",
+                "prompt": "Enter your authenticator code",
+                "window": None,
+            },
+        )
 
     def test_mfa_screenshot_failure_falls_through(self):
         eng = _make_engine()
@@ -196,14 +200,17 @@ class TestCheckMfaPause:
     def test_mfa_sets_paused_flag(self):
         eng = _make_engine()
         mfa_result = MagicMock(
-            detected=True, type="mfa", prompt_text="code", window_title="Auth",
+            detected=True,
+            type="mfa",
+            prompt_text="code",
+            window_title="Auth",
         )
         # Initial detected, then all rechecks stay detected (user hasn't dismissed)
         eng.mfa_detector.check_window_titles.side_effect = [
-            mfa_result,       # initial check
-            mfa_result,       # recheck 1
-            mfa_result,       # recheck 2
-            mfa_result,       # recheck 3
+            mfa_result,  # initial check
+            mfa_result,  # recheck 1
+            mfa_result,  # recheck 2
+            mfa_result,  # recheck 3
         ]
 
         with patch("core.engine.time") as mock_time:
@@ -216,7 +223,10 @@ class TestCheckMfaPause:
     def test_mfa_stops_polling_if_not_running(self):
         eng = _make_engine()
         mfa_result = MagicMock(
-            detected=True, type="uac", prompt_text="allow?", window_title="UAC",
+            detected=True,
+            type="uac",
+            prompt_text="allow?",
+            window_title="UAC",
         )
         call_count = 0
 
@@ -226,8 +236,8 @@ class TestCheckMfaPause:
             eng.running = False  # simulate stop
 
         eng.mfa_detector.check_window_titles.side_effect = [
-            mfa_result,                   # initial check
-            MagicMock(detected=True),     # recheck (won't get here due to running=False)
+            mfa_result,  # initial check
+            MagicMock(detected=True),  # recheck (won't get here due to running=False)
         ]
 
         with patch("core.engine.time") as mock_time:
@@ -241,11 +251,14 @@ class TestCheckMfaPause:
         callback = MagicMock()
         eng = _make_engine(on_step_callback=callback)
         mfa_result = MagicMock(
-            detected=True, type="mfa", prompt_text="Enter code", window_title="Auth",
+            detected=True,
+            type="mfa",
+            prompt_text="Enter code",
+            window_title="Auth",
         )
         eng.mfa_detector.check_window_titles.side_effect = [
-            mfa_result,                   # initial check
-            MagicMock(detected=False),     # recheck — clears
+            mfa_result,  # initial check
+            MagicMock(detected=False),  # recheck — clears
         ]
 
         with patch("core.engine.time") as mock_time:
@@ -261,11 +274,14 @@ class TestCheckMfaPause:
         callback = MagicMock(side_effect=RuntimeError("GUI gone"))
         eng = _make_engine(on_step_callback=callback)
         mfa_result = MagicMock(
-            detected=True, type="mfa", prompt_text="code", window_title="Auth",
+            detected=True,
+            type="mfa",
+            prompt_text="code",
+            window_title="Auth",
         )
         eng.mfa_detector.check_window_titles.side_effect = [
-            mfa_result,                   # initial check
-            MagicMock(detected=False),     # recheck
+            mfa_result,  # initial check
+            MagicMock(detected=False),  # recheck
         ]
 
         with patch("core.engine.time") as mock_time:
@@ -276,11 +292,14 @@ class TestCheckMfaPause:
     def test_mfa_no_step_callback_when_none(self):
         eng = _make_engine(on_step_callback=None)
         mfa_result = MagicMock(
-            detected=True, type="mfa", prompt_text="code", window_title="Auth",
+            detected=True,
+            type="mfa",
+            prompt_text="code",
+            window_title="Auth",
         )
         eng.mfa_detector.check_window_titles.side_effect = [
-            mfa_result,                   # initial check
-            MagicMock(detected=False),     # recheck
+            mfa_result,  # initial check
+            MagicMock(detected=False),  # recheck
         ]
 
         with patch("core.engine.time") as mock_time:

@@ -407,8 +407,12 @@ def _fetch_models_raw(url: str, headers: dict[str, str], provider_key: str) -> o
 
 def _extract_model_ids(data: object, provider_key: str) -> list[str] | None:
     """Return sorted model ID strings parsed from *data*, or None if unparseable."""
-    models_list = data if isinstance(data, list) else (
-        data.get("data", data.get("models", [])) if isinstance(data, dict) else None  # type: ignore[union-attr]
+    models_list = (
+        data
+        if isinstance(data, list)
+        else (
+            data.get("data", data.get("models", [])) if isinstance(data, dict) else None  # type: ignore[union-attr]
+        )
     )
     if not isinstance(models_list, list):
         logger.warning("fetch_models(%s): unexpected response shape", provider_key)

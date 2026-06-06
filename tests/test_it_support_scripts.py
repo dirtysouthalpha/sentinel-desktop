@@ -72,9 +72,7 @@ class TestTemplate:
         declared = {p.get("name") for p in data.get("parameters", [])}
         used = _extract_required_params(data)
         undeclared = used - declared
-        assert not undeclared, (
-            f"{path.name} uses undeclared parameters: {sorted(undeclared)}"
-        )
+        assert not undeclared, f"{path.name} uses undeclared parameters: {sorted(undeclared)}"
 
     def test_all_actions_are_known(self, path, known_actions):
         data = json.loads(path.read_text(encoding="utf-8"))

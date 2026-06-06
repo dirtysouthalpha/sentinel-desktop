@@ -15,8 +15,10 @@ class TestOcrImageNoPreprocess:
     def test_preprocess_false_skips_preprocess_for_ocr(self):
         mock_tesseract = MagicMock()
         mock_tesseract.image_to_string.return_value = "raw text"
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             ocr._ocr_cache.clear()
             img = Image.new("RGB", (10, 10))
             with patch("core.ocr.preprocess_for_ocr") as mock_pp:
@@ -27,8 +29,10 @@ class TestOcrImageNoPreprocess:
     def test_preprocess_true_calls_preprocess_for_ocr(self):
         mock_tesseract = MagicMock()
         mock_tesseract.image_to_string.return_value = "preprocessed text"
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             ocr._ocr_cache.clear()
             img = Image.new("RGB", (10, 10))
             with patch("core.ocr.preprocess_for_ocr", return_value=img) as mock_pp:
@@ -60,10 +64,12 @@ class TestFindTextFuzzyFalse:
             "line_num": [1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract), \
-             patch("core.ocr.capture_screen", return_value=Image.new("RGB", (100, 100))), \
-             patch("core.ocr.get_capture_offset", return_value=(0, 0)):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+            patch("core.ocr.capture_screen", return_value=Image.new("RGB", (100, 100))),
+            patch("core.ocr.get_capture_offset", return_value=(0, 0)),
+        ):
             # fuzzy=False should skip fuzzy matching and return None
             result = ocr.find_text("Settings", fuzzy=False)
         assert result is None
@@ -83,10 +89,12 @@ class TestFindTextFuzzyFalse:
             "line_num": [1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract), \
-             patch("core.ocr.capture_screen", return_value=Image.new("RGB", (100, 100))), \
-             patch("core.ocr.get_capture_offset", return_value=(10, 20)):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+            patch("core.ocr.capture_screen", return_value=Image.new("RGB", (100, 100))),
+            patch("core.ocr.get_capture_offset", return_value=(10, 20)),
+        ):
             result = ocr.find_text("Submit", fuzzy=False)
         assert result is not None
         # Offset should be applied
@@ -116,9 +124,11 @@ class TestFindTextMonitorOffset:
             "line_num": [1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract), \
-             patch("core.ocr.capture_screen", return_value=Image.new("RGB", (100, 100))) as mock_cap, \
-             patch("core.ocr.get_capture_offset", return_value=(0, 0)):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+            patch("core.ocr.capture_screen", return_value=Image.new("RGB", (100, 100))) as mock_cap,
+            patch("core.ocr.get_capture_offset", return_value=(0, 0)),
+        ):
             ocr.find_text("Hello", monitor=1)
         mock_cap.assert_called_once_with(monitor=1)

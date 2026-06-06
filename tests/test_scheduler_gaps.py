@@ -163,8 +163,10 @@ class TestSchedulerLoopException:
                 raise RuntimeError("tick failed")
             ts._stop_event.set()
 
-        with patch.object(ts, "_tick", side_effect=fake_tick), \
-             patch.object(ts._stop_event, "wait", return_value=False):
+        with (
+            patch.object(ts, "_tick", side_effect=fake_tick),
+            patch.object(ts._stop_event, "wait", return_value=False),
+        ):
             ts._scheduler_loop()
         assert call_count == 2
 

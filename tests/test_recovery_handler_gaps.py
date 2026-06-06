@@ -88,9 +88,7 @@ class TestGenericSuggestionFormat:
 
     def test_action_name_included(self) -> None:
         engine = RecoveryEngine()
-        suggestion = engine.analyze_failure(
-            {"action": "special_move"}, "unknown failure"
-        )
+        suggestion = engine.analyze_failure({"action": "special_move"}, "unknown failure")
         assert "special_move" in suggestion.recovery_prompt
 
     def test_generic_is_not_deterministic_auto_apply(self) -> None:

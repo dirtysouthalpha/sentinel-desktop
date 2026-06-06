@@ -56,7 +56,8 @@ _cache_stats = {
 
 
 def _evict_oldest_entry(
-    cache: dict, max_size: int,
+    cache: dict,
+    max_size: int,
 ) -> None:
     """Evict the oldest entry from a cache when size limit is exceeded.
 
@@ -72,7 +73,9 @@ def _evict_oldest_entry(
 
 
 def _clear_expired_entries(
-    cache: dict, ttl: float, current_time: float | None = None,
+    cache: dict,
+    ttl: float,
+    current_time: float | None = None,
 ) -> None:
     """Remove expired entries from a cache.
 
@@ -85,10 +88,7 @@ def _clear_expired_entries(
     if current_time is None:
         current_time = time.monotonic()
 
-    expired_keys = [
-        key for key, (_, timestamp) in cache.items()
-        if current_time - timestamp >= ttl
-    ]
+    expired_keys = [key for key, (_, timestamp) in cache.items() if current_time - timestamp >= ttl]
     for key in expired_keys:
         del cache[key]
 
@@ -351,7 +351,11 @@ def _find_window(window_title: str | None) -> Any | None:
 
 
 def _walk(
-    node: Any, out: list[dict[str, Any]], depth: int, max_depth: int, max_results: int,
+    node: Any,
+    out: list[dict[str, Any]],
+    depth: int,
+    max_depth: int,
+    max_results: int,
 ) -> None:
     """Recursively collect UI node properties up to *max_depth* / *max_results*."""
     if len(out) >= max_results or depth > max_depth:

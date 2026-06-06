@@ -19,7 +19,6 @@ import requests as req
 
 from core.llm_client import LLMClient, LLMError
 
-
 # ---------------------------------------------------------------------------
 # Connection errors and network failures
 # ---------------------------------------------------------------------------
@@ -31,7 +30,9 @@ class TestConnectionErrors:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
-    def test_connection_error_retries(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_connection_error_retries(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Connection errors should trigger retries and eventually raise LLMError."""
         mock_post.side_effect = req.exceptions.ConnectionError("network unreachable")
 
@@ -45,24 +46,36 @@ class TestConnectionErrors:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.anthropic.com/v1")
-    def test_dns_error_handling(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_dns_error_handling(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """DNS resolution errors should be handled gracefully."""
         mock_post.side_effect = req.exceptions.ConnectionError("DNS lookup failed")
 
         client = LLMClient()
         with pytest.raises(LLMError, match="network|connection|dns|DNS"):
-            client.chat("anthropic", "sk-ant-test", "claude-3-5-sonnet-20241022", [{"role": "user", "content": "test"}], max_retries=2)
+            client.chat(
+                "anthropic",
+                "sk-ant-test",
+                "claude-3-5-sonnet-20241022",
+                [{"role": "user", "content": "test"}],
+                max_retries=2,
+            )
 
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.example.com/v1")
-    def test_connection_reset_during_request(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_connection_reset_during_request(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Connection reset during request should trigger retries."""
         mock_post.side_effect = req.exceptions.ConnectionError("Connection reset by peer")
 
         client = LLMClient()
         with pytest.raises(LLMError):
-            client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2)
+            client.chat(
+                "openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2
+            )
 
         # Should have attempted retries
         assert mock_post.call_count >= 2
@@ -81,8 +94,7 @@ class TestMalformedJsonResponses:
     def test_invalid_json_response(self, _url: MagicMock, mock_post: MagicMock) -> None:
         """Invalid JSON in response should raise LLMError."""
         mock_post.return_value = MagicMock(
-            status_code=200,
-            json=MagicMock(side_effect=json.JSONDecodeError("Invalid JSON", "", 0))
+            status_code=200, json=MagicMock(side_effect=json.JSONDecodeError("Invalid JSON", "", 0))
         )
 
         client = LLMClient()
@@ -95,7 +107,9 @@ class TestMalformedJsonResponses:
         """Truncated JSON response should raise appropriate error."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(side_effect=json.JSONDecodeError("Expecting value", '{"choices": [{"', 10))
+            json=MagicMock(
+                side_effect=json.JSONDecodeError("Expecting value", '{"choices": [{"', 10)
+            ),
         )
 
         client = LLMClient()
@@ -108,7 +122,11 @@ class TestMalformedJsonResponses:
         """JSON with syntax errors should raise LLMError."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(side_effect=json.JSONDecodeError("Extra data", '{"valid": "json"} {"extra": "data"}', 20))
+            json=MagicMock(
+                side_effect=json.JSONDecodeError(
+                    "Extra data", '{"valid": "json"} {"extra": "data"}', 20
+                )
+            ),
         )
 
         client = LLMClient()
@@ -131,11 +149,13 @@ class TestLargeResponseHandling:
         large_content = "x" * 100000  # 100KB of text
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": large_content}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": large_content}}]}),
         )
 
         client = LLMClient()
-        result = client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "generate long text"}])
+        result = client.chat(
+            "openai", "sk-test", "gpt-4o", [{"role": "user", "content": "generate long text"}]
+        )
         assert len(result) == 100000
 
     @patch("core.llm_client.requests.post")
@@ -144,8 +164,7 @@ class TestLargeResponseHandling:
         """Response with many choices should use first one."""
         choices = [{"message": {"content": f"Choice {i}"}} for i in range(100)]
         mock_post.return_value = MagicMock(
-            status_code=200,
-            json=MagicMock(return_value={"choices": choices})
+            status_code=200, json=MagicMock(return_value={"choices": choices})
         )
 
         client = LLMClient()
@@ -158,22 +177,18 @@ class TestLargeResponseHandling:
         """Deeply nested response structure should be handled correctly."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={
-                "choices": [
-                    {
-                        "message": {
-                            "content": "nested content",
-                            "extra": {
-                                "nested": {
-                                    "deep": {
-                                        "value": "ignored"
-                                    }
-                                }
+            json=MagicMock(
+                return_value={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": "nested content",
+                                "extra": {"nested": {"deep": {"value": "ignored"}}},
                             }
                         }
-                    }
-                ]
-            })
+                    ]
+                }
+            ),
         )
 
         client = LLMClient()
@@ -192,23 +207,29 @@ class TestTimeoutEdgeCases:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
-    def test_timeout_then_success(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_timeout_then_success(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Timeout followed by success should work after retry."""
         error_resp = req.exceptions.Timeout("Request timed out")
         success_resp = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": "success"}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": "success"}}]}),
         )
         mock_post.side_effect = [error_resp, success_resp]
 
         client = LLMClient()
-        result = client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2)
+        result = client.chat(
+            "openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2
+        )
         assert result == "success"
 
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
-    def test_timeout_with_long_response_time(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_timeout_with_long_response_time(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Timeout after long processing time should still trigger retries."""
         mock_post.side_effect = req.exceptions.Timeout("Request timeout after 120 seconds")
 
@@ -219,14 +240,18 @@ class TestTimeoutEdgeCases:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
-    def test_read_timeout_vs_connect_timeout(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_read_timeout_vs_connect_timeout(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Different types of timeouts should both be handled."""
         # Provide enough timeout exceptions to exhaust all retries
         mock_post.side_effect = [req.exceptions.ReadTimeout("Read timeout")] * 10
 
         client = LLMClient()
         with pytest.raises(LLMError, match="timeout"):
-            client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=5)
+            client.chat(
+                "openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=5
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +268,7 @@ class TestUnusualContentStructures:
         """Content as integer should be returned as-is (or converted to string)."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": 42}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": 42}}]}),
         )
 
         client = LLMClient()
@@ -257,7 +282,7 @@ class TestUnusualContentStructures:
         """Content as float should be returned as-is (or converted to string)."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": 3.14159}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": 3.14159}}]}),
         )
 
         client = LLMClient()
@@ -271,7 +296,7 @@ class TestUnusualContentStructures:
         """Content as boolean should be returned as-is (or converted to string)."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": True}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": True}}]}),
         )
 
         client = LLMClient()
@@ -285,19 +310,21 @@ class TestUnusualContentStructures:
         """Content as list with mixed types should be concatenated."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={
-                "choices": [
-                    {
-                        "message": {
-                            "content": [
-                                {"type": "text", "text": "Hello "},
-                                {"type": "text", "text": 123},
-                                {"type": "text", "text": " World"}
-                            ]
+            json=MagicMock(
+                return_value={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": [
+                                    {"type": "text", "text": "Hello "},
+                                    {"type": "text", "text": 123},
+                                    {"type": "text", "text": " World"},
+                                ]
+                            }
                         }
-                    }
-                ]
-            })
+                    ]
+                }
+            ),
         )
 
         client = LLMClient()
@@ -317,48 +344,62 @@ class TestRateLimitingEdgeCases:
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
-    def test_rate_limit_then_success(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_rate_limit_then_success(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Rate limit response followed by success should work."""
-        rate_limit_resp = MagicMock(status_code=429, text="Rate limit exceeded", headers={"Retry-After": "1"})
+        rate_limit_resp = MagicMock(
+            status_code=429, text="Rate limit exceeded", headers={"Retry-After": "1"}
+        )
         success_resp = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": "success"}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": "success"}}]}),
         )
         mock_post.side_effect = [rate_limit_resp, success_resp]
 
         client = LLMClient()
-        result = client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2)
+        result = client.chat(
+            "openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2
+        )
         assert result == "success"
 
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
-    def test_persistent_rate_limit(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_persistent_rate_limit(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Persistent rate limiting should eventually raise LLMError."""
-        mock_post.return_value = MagicMock(status_code=429, text="Rate limit exceeded", headers={"Retry-After": "60"})
+        mock_post.return_value = MagicMock(
+            status_code=429, text="Rate limit exceeded", headers={"Retry-After": "60"}
+        )
 
         client = LLMClient()
         with pytest.raises(LLMError, match="Rate limit|rate limit"):
-            client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2)
+            client.chat(
+                "openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2
+            )
 
     @patch("core.llm_client.time.sleep")
     @patch("core.llm_client.requests.post")
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
-    def test_rate_limit_with_retry_after_header(self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock) -> None:
+    def test_rate_limit_with_retry_after_header(
+        self, _url: MagicMock, mock_post: MagicMock, _sleep: MagicMock
+    ) -> None:
         """Rate limit with Retry-After header should use it for backoff."""
         rate_limit_resp = MagicMock(
-            status_code=429,
-            text="Rate limit exceeded",
-            headers={"Retry-After": "5"}
+            status_code=429, text="Rate limit exceeded", headers={"Retry-After": "5"}
         )
         success_resp = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": "success"}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": "success"}}]}),
         )
         mock_post.side_effect = [rate_limit_resp, success_resp]
 
         client = LLMClient()
-        result = client.chat("openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2)
+        result = client.chat(
+            "openai", "sk-test", "gpt-4o", [{"role": "user", "content": "test"}], max_retries=2
+        )
         assert result == "success"
 
 
@@ -374,10 +415,7 @@ class TestRequestResponseEdgeCases:
     @patch("core.llm_client.get_base_url", return_value="https://api.openai.com/v1")
     def test_empty_response_body(self, _url: MagicMock, mock_post: MagicMock) -> None:
         """Empty response body should raise appropriate error."""
-        mock_post.return_value = MagicMock(
-            status_code=200,
-            json=MagicMock(return_value={})
-        )
+        mock_post.return_value = MagicMock(status_code=200, json=MagicMock(return_value={}))
 
         client = LLMClient()
         with pytest.raises(LLMError, match="no 'choices'"):
@@ -389,12 +427,14 @@ class TestRequestResponseEdgeCases:
         """Response with extra unknown fields should be handled gracefully."""
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={
-                "choices": [{"message": {"content": "test"}}],
-                "unknown_field": "value",
-                "another_unknown": 123,
-                "nested": {"unknown": "data"}
-            })
+            json=MagicMock(
+                return_value={
+                    "choices": [{"message": {"content": "test"}}],
+                    "unknown_field": "value",
+                    "another_unknown": 123,
+                    "nested": {"unknown": "data"},
+                }
+            ),
         )
 
         client = LLMClient()
@@ -408,7 +448,7 @@ class TestRequestResponseEdgeCases:
         unicode_content = "Hello 世界 🌍 Привед мир"
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": unicode_content}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": unicode_content}}]}),
         )
 
         client = LLMClient()
@@ -422,7 +462,7 @@ class TestRequestResponseEdgeCases:
         special_content = "Test\n\t\r\x00\x1b[0m"
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=MagicMock(return_value={"choices": [{"message": {"content": special_content}}]})
+            json=MagicMock(return_value={"choices": [{"message": {"content": special_content}}]}),
         )
 
         client = LLMClient()

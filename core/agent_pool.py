@@ -329,9 +329,7 @@ class AgentPool:
         self._dispatcher_thread.join(timeout=timeout)
         with self._lock:
             running = [
-                s
-                for s in self._sessions.values()
-                if s.thread is not None and s.thread.is_alive()
+                s for s in self._sessions.values() if s.thread is not None and s.thread.is_alive()
             ]
         for s in running:
             s.thread.join(timeout=timeout)
@@ -412,7 +410,10 @@ class AgentPool:
         )
 
     def _mark_session_failed(
-        self, session: AgentSession, error: str, error_type: str,
+        self,
+        session: AgentSession,
+        error: str,
+        error_type: str,
     ) -> None:
         """Thread-safe helper to mark a session as failed with error metadata."""
         with self._lock:
@@ -421,7 +422,9 @@ class AgentPool:
             session.end_time = datetime.now(timezone.utc)
 
     def _setup_virtual_desktop(
-        self, session_id: str, desktop_name: str,
+        self,
+        session_id: str,
+        desktop_name: str,
     ) -> VirtualDesktop | None:
         """Create and switch to an isolated virtual desktop for a session.
 
@@ -449,7 +452,10 @@ class AgentPool:
         return vd
 
     def _cleanup_virtual_desktop(
-        self, vd: VirtualDesktop, session_id: str, desktop_name: str,
+        self,
+        vd: VirtualDesktop,
+        session_id: str,
+        desktop_name: str,
     ) -> None:
         """Switch back from and close a session's virtual desktop.
 
@@ -492,7 +498,8 @@ class AgentPool:
             from core.engine import AgentEngine
         except ImportError as exc:
             logger.exception(
-                "Worker: failed to import engine/virtual_desktop for session %s", session_id,
+                "Worker: failed to import engine/virtual_desktop for session %s",
+                session_id,
             )
             with self._lock:
                 session = self._sessions.get(session_id)

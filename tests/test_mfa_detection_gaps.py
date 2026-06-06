@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
+import core.utils as utils
 from core.mfa_detection import (
     DetectionResult,
     MFADetector,
@@ -17,7 +18,6 @@ from core.mfa_detection import (
     _ocr_check,
     _uia_check,
 )
-import core.utils as utils
 
 
 class TestHaveTesseractProbe:
@@ -68,8 +68,10 @@ class TestHaveUiaProbe:
         """Lines 139-140: a successful uiautomation import caches the module."""
         fake_uia = MagicMock()
         try:
-            with patch.dict(sys.modules, {"uiautomation": fake_uia}), \
-                 patch("core.utils.platform.system", return_value="Windows"):
+            with (
+                patch.dict(sys.modules, {"uiautomation": fake_uia}),
+                patch("core.utils.platform.system", return_value="Windows"),
+            ):
                 assert utils.have_uia() is True
             assert utils._auto is fake_uia
             assert utils._UIA_OK is True
@@ -164,7 +166,9 @@ class TestOcrCheck:
 
         utils._TESSERACT_OK = True
         utils._pytesseract = MagicMock()
-        utils._pytesseract.image_to_string.return_value = "User Account Control: Do you want to allow"
+        utils._pytesseract.image_to_string.return_value = (
+            "User Account Control: Do you want to allow"
+        )
         with patch("core.ocr.preprocess_for_ocr", return_value=Image.new("RGB", (10, 10))):
             result = _ocr_check(Image.new("RGB", (10, 10)))
         assert result is not None
@@ -619,12 +623,14 @@ class TestGetWindowTitlesWin32Fallback:
     def test_enum_error_falls_back_to_window_manager(self):
         fake_win32gui = MagicMock()
         fake_win32gui.EnumWindows.side_effect = OSError("EnumWindows blew up")
-        with patch("core.mfa_detection._IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": fake_win32gui}), \
-             patch(
-                 "core.window_manager.list_windows",
-                 return_value=[{"title": "Chrome"}, {"title": ""}],
-             ):
+        with (
+            patch("core.mfa_detection._IS_WINDOWS", True),
+            patch.dict(sys.modules, {"win32gui": fake_win32gui}),
+            patch(
+                "core.window_manager.list_windows",
+                return_value=[{"title": "Chrome"}, {"title": ""}],
+            ),
+        ):
             titles = _get_window_titles()
         # The empty-title window is skipped (the ``if t:`` false branch).
         assert titles == ["Chrome"]
@@ -632,9 +638,11 @@ class TestGetWindowTitlesWin32Fallback:
     def test_enum_and_window_manager_both_fail(self):
         fake_win32gui = MagicMock()
         fake_win32gui.EnumWindows.side_effect = OSError("EnumWindows blew up")
-        with patch("core.mfa_detection._IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": fake_win32gui}), \
-             patch("core.window_manager.list_windows", side_effect=OSError("wm dead")):
+        with (
+            patch("core.mfa_detection._IS_WINDOWS", True),
+            patch.dict(sys.modules, {"win32gui": fake_win32gui}),
+            patch("core.window_manager.list_windows", side_effect=OSError("wm dead")),
+        ):
             titles = _get_window_titles()
         assert titles == []
 

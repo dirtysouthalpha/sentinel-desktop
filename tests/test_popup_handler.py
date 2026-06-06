@@ -711,9 +711,11 @@ class TestPopupHandlerEdgeCases:
 
         # Monkeypatch time.monotonic so the cooldown fires
         import time as _time
+
         original_monotonic = _time.monotonic
 
         import core.popup_handler as _ph
+
         _ph_time_backup = _ph.time
 
         try:
@@ -730,6 +732,7 @@ class TestPopupHandlerEdgeCases:
     def test_cooldown_blocks_same_popup_type(self):
         """A detected popup of the same type within cooldown window must not re-dismiss."""
         import time
+
         handler = PopupHandler()
         handler.auto_dismiss = True
         handler._last_popup_type = "save_changes"

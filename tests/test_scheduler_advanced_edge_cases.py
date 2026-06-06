@@ -16,8 +16,6 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from core.scheduler import TaskScheduler
 
 
@@ -47,8 +45,10 @@ class TestConcurrentTaskModification:
                 ts.add_task("AddedDuring", "script", "* * * * *", path="new.py")
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         # Original task should execute
@@ -75,8 +75,10 @@ class TestConcurrentTaskModification:
                 ts.remove_task(task2["id"])
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         # All original tasks should execute
@@ -102,8 +104,10 @@ class TestConcurrentTaskModification:
                 ts._tasks[task["id"]]["enabled"] = False
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
             ts._tick()  # Second tick
 
@@ -134,8 +138,10 @@ class TestTaskExecutionOrderOverlaps:
             execution_order.append(task["name"])
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         # Should maintain insertion order
@@ -159,12 +165,16 @@ class TestTaskExecutionOrderOverlaps:
             second_tick_order.append(task["name"])
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec2):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec2),
+        ):
             ts._tick()
 
         # Order should be consistent across ticks
@@ -194,8 +204,10 @@ class TestResourceExhaustionScenarios:
             execution_count += 1
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         # All tasks should execute
@@ -217,8 +229,10 @@ class TestResourceExhaustionScenarios:
             execution_times[task["name"]] = time.time() - start
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
 
         # Both tasks should execute
@@ -383,6 +397,7 @@ class TestTaskStateConsistency:
 
         # Corrupt the tasks file by removing required fields from one task
         import json
+
         tasks_path = Path(tmp_path) / "tasks.json"
         with tasks_path.open("r") as f:
             data = json.load(f)

@@ -60,8 +60,6 @@ def _default_log_dir() -> str:
 # ---------------------------------------------------------------------------
 
 
-
-
 def _redact_params(params: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of *params* with sensitive values replaced.
 
@@ -252,7 +250,11 @@ class ForensicLog:
 
         logger.debug(
             "Step %d %s → %s  target=%r  step_id=%s",
-            step_num, action_type, result, target, step_id[:8],
+            step_num,
+            action_type,
+            result,
+            target,
+            step_id[:8],
         )
         self._auto_save()
         return step_id
@@ -407,8 +409,15 @@ class ForensicLog:
         Returns ``True`` on success.
         """
         columns = [
-            "run_id", "step_num", "timestamp", "action_type", "target",
-            "params_preview", "result_preview", "success", "event_type",
+            "run_id",
+            "step_num",
+            "timestamp",
+            "action_type",
+            "target",
+            "params_preview",
+            "result_preview",
+            "success",
+            "event_type",
         ]
         with self._lock:
             steps = [dict(s) for s in self._steps]
@@ -481,5 +490,6 @@ class ForensicLog:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
         except (OSError, TypeError):
             logger.exception(
-                "Forensic auto-save failed for run %s", self._run.get("run_id", "???")[:8],
+                "Forensic auto-save failed for run %s",
+                self._run.get("run_id", "???")[:8],
             )

@@ -61,9 +61,12 @@ def test_tool_parameters_are_well_formed():
 
 # ========== Extended tool schema validation tests ==========
 
+
 def test_tool_names_are_unique():
     names = [t["function"]["name"] for t in TOOLS]
-    assert len(names) == len(set(names)), f"Duplicate tool names: {[n for n in names if names.count(n) > 1]}"
+    assert len(names) == len(set(names)), (
+        f"Duplicate tool names: {[n for n in names if names.count(n) > 1]}"
+    )
 
 
 def test_tool_count_sanity():
@@ -95,9 +98,7 @@ def test_every_parameter_has_type_and_optional_description():
         fn = tool["function"]
         props = fn.get("parameters", {}).get("properties", {})
         for pname, pdef in props.items():
-            assert "type" in pdef, (
-                f"Tool '{fn['name']}' param '{pname}' missing type field"
-            )
+            assert "type" in pdef, f"Tool '{fn['name']}' param '{pname}' missing type field"
 
 
 def test_required_params_exist_in_properties():
@@ -106,9 +107,7 @@ def test_required_params_exist_in_properties():
         params = fn.get("parameters", {})
         props = set(params.get("properties", {}).keys())
         for req in params.get("required", []):
-            assert req in props, (
-                f"Tool '{fn['name']}' requires '{req}' but it's not in properties"
-            )
+            assert req in props, f"Tool '{fn['name']}' requires '{req}' but it's not in properties"
 
 
 def test_enum_params_have_at_least_two_values():
@@ -176,8 +175,18 @@ def test_smart_open_requires_name():
 
 
 def test_specific_tools_exist():
-    expected = ["wait", "screenshot", "read_text", "drag", "finish", "note",
-                "clipboard_read", "clipboard_write", "list_windows", "close_window"]
+    expected = [
+        "wait",
+        "screenshot",
+        "read_text",
+        "drag",
+        "finish",
+        "note",
+        "clipboard_read",
+        "clipboard_write",
+        "list_windows",
+        "close_window",
+    ]
     names = {t["function"]["name"] for t in TOOLS}
     for name in expected:
         assert name in names, f"Expected tool '{name}' not found in TOOLS"

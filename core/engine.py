@@ -512,7 +512,12 @@ class AgentEngine:
                 self.step += 1
                 logger.info("Step %d/%d", self.step, self.max_steps)
                 outcome, screenshot_b64 = self._run_one_step(
-                    provider, api_key, model, goal, messages, screenshot_b64,
+                    provider,
+                    api_key,
+                    model,
+                    goal,
+                    messages,
+                    screenshot_b64,
                 )
                 if outcome == "abort":
                     break
@@ -582,7 +587,11 @@ class AgentEngine:
         tools = ACTION_TOOLS if use_tools else None
 
         response_text = self._call_llm_with_retry(
-            provider=provider, api_key=api_key, model=model, messages=messages, tools=tools,
+            provider=provider,
+            api_key=api_key,
+            model=model,
+            messages=messages,
+            tools=tools,
         )
         if response_text is None:
             result = self._handle_consecutive_failure("llm_call", messages)
@@ -673,7 +682,12 @@ class AgentEngine:
 
         self._consecutive_failures = 0
         new_screenshot = self._handle_post_action_success(
-            action, action_name, result, goal, messages, screenshot_b64,
+            action,
+            action_name,
+            result,
+            goal,
+            messages,
+            screenshot_b64,
         )
         return "ok", new_screenshot
 
@@ -842,18 +856,23 @@ class AgentEngine:
         self._consecutive_failures += 1
         logger.warning(
             "Action '%s' failed (consecutive_failures=%d): %s",
-            action_name, self._consecutive_failures, error_msg[:200],
+            action_name,
+            self._consecutive_failures,
+            error_msg[:200],
         )
 
         suggestion = self._recovery_engine.analyze_failure(
-            action, error_msg,
+            action,
+            error_msg,
             {"step": self.step, "consecutive_failures": self._consecutive_failures},
         )
         self.logger.log_event(
             "recovery_suggestion",
             {
-                "pattern": suggestion.pattern, "strategy": suggestion.strategy,
-                "confidence": suggestion.confidence, "action": action_name,
+                "pattern": suggestion.pattern,
+                "strategy": suggestion.strategy,
+                "confidence": suggestion.confidence,
+                "action": action_name,
             },
         )
 
@@ -865,7 +884,9 @@ class AgentEngine:
         return self._check_action_failure_threshold(error_msg, messages)
 
     def _check_action_failure_threshold(
-        self, error_msg: str, messages: list[dict[str, Any]],
+        self,
+        error_msg: str,
+        messages: list[dict[str, Any]],
     ) -> str | None:
         """Return "abort", "recover", or None based on current consecutive failure count."""
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
@@ -942,7 +963,9 @@ class AgentEngine:
         return "continue"
 
     def _inject_llm_recovery_prompt(
-        self, failure_type: str, messages: list[dict[str, Any]],
+        self,
+        failure_type: str,
+        messages: list[dict[str, Any]],
     ) -> None:
         """Append a strongly-worded recovery hint for repeated LLM or parse failures."""
         if failure_type == "llm_call":
@@ -1211,7 +1234,13 @@ class AgentEngine:
         }
 
         report["text"] = self._build_report_text(
-            report, goal, elapsed, success, errors, provider, model,
+            report,
+            goal,
+            elapsed,
+            success,
+            errors,
+            provider,
+            model,
         )
         return report
 
@@ -1373,7 +1402,10 @@ class AgentEngine:
         return "\n".join(lines)
 
     def _add_vision_message(
-        self, messages: list[dict[str, Any]], screenshot_b64: str, text: str,
+        self,
+        messages: list[dict[str, Any]],
+        screenshot_b64: str,
+        text: str,
     ) -> None:
         """Add a vision message (screenshot + text) to the conversation.
 

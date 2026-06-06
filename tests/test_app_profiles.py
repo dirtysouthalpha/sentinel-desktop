@@ -171,9 +171,21 @@ class TestGetProfile:
 
     def test_returns_all_builtin_profiles(self):
         expected = [
-            "chrome", "edge", "firefox", "excel", "word", "outlook",
-            "notepad", "vscode", "live2d_cubism", "file_explorer",
-            "teams", "cmd", "powershell", "task_manager", "settings",
+            "chrome",
+            "edge",
+            "firefox",
+            "excel",
+            "word",
+            "outlook",
+            "notepad",
+            "vscode",
+            "live2d_cubism",
+            "file_explorer",
+            "teams",
+            "cmd",
+            "powershell",
+            "task_manager",
+            "settings",
         ]
         for name in expected:
             assert get_profile(name) is not None, f"Missing profile: {name}"

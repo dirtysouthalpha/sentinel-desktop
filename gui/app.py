@@ -96,10 +96,13 @@ class SentinelApp:
         header.pack_propagate(False)
 
         ctk.CTkLabel(header, text="⬡ Sentinel Desktop", font=("Segoe UI", 16, "bold")).pack(
-            side="left", padx=12,
+            side="left",
+            padx=12,
         )
         self.status_label = ctk.CTkLabel(
-            header, text="● IDLE", font=("Segoe UI", 12),
+            header,
+            text="● IDLE",
+            font=("Segoe UI", 12),
             text_color=self._t("status_idle", "#849495"),
         )
         self.status_label.pack(side="left", padx=20)
@@ -109,12 +112,15 @@ class SentinelApp:
         provider = self.cfg.get("provider", "none")
         model = self.cfg.get("model", "none")
         self.provider_label = ctk.CTkLabel(
-            header, text=f"{provider} / {model}",
-            font=("Segoe UI", 10), text_color=self._t("text_secondary", "#849495"),
+            header,
+            text=f"{provider} / {model}",
+            font=("Segoe UI", 10),
+            text_color=self._t("text_secondary", "#849495"),
         )
         self.provider_label.pack(side="right", padx=12)
         ctk.CTkButton(header, text="⚙", width=32, height=32, command=self._open_settings).pack(
-            side="right", padx=4,
+            side="right",
+            padx=4,
         )
 
     def _build_mode_badges(self, header: Any) -> None:
@@ -128,8 +134,13 @@ class SentinelApp:
             badges.append(("STEALTH", "#ffffff", self._t("accent", "#00F0FF")))
         for text, fg, bg in badges:
             ctk.CTkLabel(
-                header, text=text, font=("Segoe UI", 11, "bold"),
-                text_color=fg, fg_color=bg, corner_radius=3, padx=8,
+                header,
+                text=text,
+                font=("Segoe UI", 11, "bold"),
+                text_color=fg,
+                fg_color=bg,
+                corner_radius=3,
+                padx=8,
             ).pack(side="left", padx=10)
 
     # ── Tabbed Layout ──────────────────────────────────────────────────
@@ -167,6 +178,7 @@ class SentinelApp:
         """Import a tab class and instantiate it; show an error label on ImportError."""
         try:
             import importlib
+
             mod = importlib.import_module(module_path)
             setattr(self, attr, getattr(mod, class_name)(parent, self))
         except ImportError:
@@ -205,7 +217,11 @@ class SentinelApp:
         right.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(right, text="Live View", font=("Segoe UI", 12, "bold")).grid(
-            row=0, column=0, sticky="w", padx=8, pady=4,
+            row=0,
+            column=0,
+            sticky="w",
+            padx=8,
+            pady=4,
         )
 
         self.screenshot_label = ctk.CTkLabel(right, text="No screenshot")
@@ -255,11 +271,15 @@ class SentinelApp:
         for preset in (self.cfg.get("quick_actions") or [])[:6]:
             short = preset if len(preset) <= 36 else preset[:33] + "…"
             ctk.CTkButton(
-                chips, text=short, height=24, font=("Segoe UI", 10),
+                chips,
+                text=short,
+                height=24,
+                font=("Segoe UI", 10),
                 fg_color=self._t("bg_input", "#111418"),
                 hover_color=self._t("bg_hover", "#333539"),
                 text_color=self._t("text_primary", "#e2e2e8"),
-                corner_radius=6, command=lambda p=preset: self._set_prompt(p),
+                corner_radius=6,
+                command=lambda p=preset: self._set_prompt(p),
             ).pack(side="left", padx=2, pady=2)
 
     def _build_recent_dropdown(self, parent: Any) -> None:
@@ -270,14 +290,23 @@ class SentinelApp:
         recent_short = [(r if len(r) <= 50 else r[:47] + "…") for r in recent[:10]]
         self.recent_var = ctk.StringVar(value="↻ Recent")
         ctk.CTkOptionMenu(
-            parent, variable=self.recent_var, values=recent_short,
-            width=140, height=28, font=("Segoe UI", 10), command=self._on_recent_pick,
+            parent,
+            variable=self.recent_var,
+            values=recent_short,
+            width=140,
+            height=28,
+            font=("Segoe UI", 10),
+            command=self._on_recent_pick,
         ).grid(row=1, column=0, sticky="e", padx=(0, 4), pady=(4, 0))
 
     def _build_prompt_textbox(self, parent: Any) -> None:
         """Build the multi-line prompt textbox with placeholder and keyboard bindings."""
         self.goal_entry = ctk.CTkTextbox(
-            parent, height=80, font=("Segoe UI", 13), wrap="word", corner_radius=4,
+            parent,
+            height=80,
+            font=("Segoe UI", 13),
+            wrap="word",
+            corner_radius=4,
         )
         self.goal_entry.grid(row=2, column=0, sticky="ew", padx=8, pady=(4, 8))
         self._placeholder_text = (
@@ -293,12 +322,20 @@ class SentinelApp:
     def _build_run_stop_buttons(self, parent: Any) -> None:
         """Build the ▶ Run and ■ Stop buttons."""
         ctk.CTkButton(
-            parent, text="▶ Run", width=80, height=80,
-            font=("Segoe UI", 13, "bold"), command=self._on_submit,
+            parent,
+            text="▶ Run",
+            width=80,
+            height=80,
+            font=("Segoe UI", 13, "bold"),
+            command=self._on_submit,
         ).grid(row=2, column=1, padx=(0, 4), pady=(4, 8))
         ctk.CTkButton(
-            parent, text="■ Stop", width=80, height=80,
-            font=("Segoe UI", 13, "bold"), command=self._on_stop,
+            parent,
+            text="■ Stop",
+            width=80,
+            height=80,
+            font=("Segoe UI", 13, "bold"),
+            command=self._on_stop,
             fg_color=self._t("status_error", "#ff3b3b"),
             hover_color=self._t("tag_error", "#ff3b3b"),
         ).grid(row=2, column=2, padx=(0, 8), pady=(4, 8))
@@ -418,10 +455,12 @@ class SentinelApp:
         )
         self.engine.on_step_callback = self._on_engine_step
         self.status_label.configure(
-            text="● RUNNING", text_color=self._t("status_running", "#95E400"),
+            text="● RUNNING",
+            text_color=self._t("status_running", "#95E400"),
         )
         self.engine_thread = threading.Thread(
-            target=lambda: self._agent_run_thread(goal), daemon=True,
+            target=lambda: self._agent_run_thread(goal),
+            daemon=True,
         )
         self.engine_thread.start()
 
@@ -502,9 +541,7 @@ class SentinelApp:
         tb = traceback.format_exc()
         self._add_chat(f"❌ {type(exc).__name__}: {exc}", "error")
         log_path = (
-            Path(os.environ.get("APPDATA", str(Path.home())))
-            / "SentinelDesktop"
-            / "last_error.log"
+            Path(os.environ.get("APPDATA", str(Path.home()))) / "SentinelDesktop" / "last_error.log"
         )
         try:
             log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -550,12 +587,16 @@ class SentinelApp:
             params = {k: v for k, v in action.items() if k != "action"}
 
             ctk.CTkLabel(
-                top, text=f"The agent wants to run: {action_name}",
+                top,
+                text=f"The agent wants to run: {action_name}",
                 font=("Segoe UI", 13, "bold"),
             ).pack(anchor="w", padx=16, pady=(16, 4))
             ctk.CTkLabel(
-                top, text=json.dumps(params, indent=2)[:600],
-                font=("Consolas", 10), justify="left", anchor="w",
+                top,
+                text=json.dumps(params, indent=2)[:600],
+                font=("Consolas", 10),
+                justify="left",
+                anchor="w",
             ).pack(fill="both", expand=True, padx=16, pady=4)
 
             self._add_approval_buttons(top, decision, event)
@@ -584,12 +625,16 @@ class SentinelApp:
             top.destroy()
 
         ctk.CTkButton(
-            btn_frame, text="✓ Approve", command=_approve,
+            btn_frame,
+            text="✓ Approve",
+            command=_approve,
             fg_color=self._t("status_running", "#95E400"),
             hover_color=self._t("tag_assistant", "#95E400"),
         ).pack(side="right", padx=4)
         ctk.CTkButton(
-            btn_frame, text="✗ Reject", command=_reject,
+            btn_frame,
+            text="✗ Reject",
+            command=_reject,
             fg_color=self._t("status_error", "#ff3b3b"),
             hover_color=self._t("tag_error", "#ff3b3b"),
         ).pack(side="right", padx=4)
@@ -797,7 +842,9 @@ class SentinelApp:
             # Combine side by side
             total_w = before_img.width + after_img.width + 4
             combined = Image.new(
-                "RGB", (total_w, max(before_img.height, after_img.height) + 20), (30, 30, 30),
+                "RGB",
+                (total_w, max(before_img.height, after_img.height) + 20),
+                (30, 30, 30),
             )
             combined.paste(before_img, (0, 0))
             combined.paste(after_img, (before_img.width + 4, 0))
@@ -891,7 +938,11 @@ class SettingsWindow:
     """Settings modal for provider/API key configuration."""
 
     def __init__(
-        self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None,
+        self,
+        parent: ctk.CTk,
+        config: Config,
+        on_save: Any = None,
+        app: Any = None,
     ) -> None:
         """Initialize the settings modal.
 
@@ -926,17 +977,23 @@ class SettingsWindow:
         from core.provider_registry import PROVIDERS, get_provider_names
 
         ctk.CTkLabel(self.win, text="Provider", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(20, 4),
+            anchor="w",
+            padx=20,
+            pady=(20, 4),
         )
         self.provider_var = ctk.StringVar(value=self.cfg.get("provider", "openai"))
         self.provider_menu = ctk.CTkOptionMenu(
-            self.win, variable=self.provider_var,
-            values=get_provider_names(), command=self._on_provider_change,
+            self.win,
+            variable=self.provider_var,
+            values=get_provider_names(),
+            command=self._on_provider_change,
         )
         self.provider_menu.pack(fill="x", padx=20, pady=4)
 
         ctk.CTkLabel(self.win, text="Base URL", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4),
+            anchor="w",
+            padx=20,
+            pady=(12, 4),
         )
         url_frame = ctk.CTkFrame(self.win)
         url_frame.pack(fill="x", padx=20, pady=4)
@@ -944,12 +1001,18 @@ class SettingsWindow:
         catalog_url = PROVIDERS.get(self.provider_var.get(), {}).get("base_url", "")
         self.base_url_var = ctk.StringVar(value=self.cfg.get("custom_base_url") or catalog_url)
         self.base_url_entry = ctk.CTkEntry(
-            url_frame, textvariable=self.base_url_var, height=36,
+            url_frame,
+            textvariable=self.base_url_var,
+            height=36,
             placeholder_text="Override the provider's base URL (optional)",
         )
         self.base_url_entry.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         ctk.CTkButton(
-            url_frame, text="↺ Reset", width=90, height=36, command=self._reset_base_url,
+            url_frame,
+            text="↺ Reset",
+            width=90,
+            height=36,
+            command=self._reset_base_url,
         ).grid(row=0, column=1)
         ctk.CTkLabel(
             self.win,
@@ -957,46 +1020,66 @@ class SettingsWindow:
                 "Leave as the catalog default for most providers. For Z.ai's "
                 "Max Coding Plan use: https://api.z.ai/api/coding/paas/v4"
             ),
-            font=("Segoe UI", 10), text_color="#b9cacb", wraplength=540, justify="left",
+            font=("Segoe UI", 10),
+            text_color="#b9cacb",
+            wraplength=540,
+            justify="left",
         ).pack(anchor="w", padx=20, pady=(2, 4))
 
     def _build_credentials_section(self) -> None:
         """Build API key and model name entry fields."""
         ctk.CTkLabel(self.win, text="API Key", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4),
+            anchor="w",
+            padx=20,
+            pady=(12, 4),
         )
         self.api_key_entry = ctk.CTkEntry(
-            self.win, show="•", height=36, placeholder_text="Paste your API key…",
+            self.win,
+            show="•",
+            height=36,
+            placeholder_text="Paste your API key…",
         )
         self.api_key_entry.pack(fill="x", padx=20, pady=4)
         if self.cfg.get("api_key"):
             self.api_key_entry.insert(0, self.cfg["api_key"])
 
         ctk.CTkLabel(self.win, text="Model", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4),
+            anchor="w",
+            padx=20,
+            pady=(12, 4),
         )
         model_frame = ctk.CTkFrame(self.win)
         model_frame.pack(fill="x", padx=20, pady=4)
         model_frame.grid_columnconfigure(0, weight=1)
         self.model_var = ctk.StringVar(value=self.cfg.get("model", ""))
         self.model_entry = ctk.CTkEntry(
-            model_frame, textvariable=self.model_var, height=36,
+            model_frame,
+            textvariable=self.model_var,
+            height=36,
             placeholder_text="Model name or auto-detect…",
         )
         self.model_entry.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         ctk.CTkButton(
-            model_frame, text="🔍 Detect", width=90, height=36, command=self._detect_models,
+            model_frame,
+            text="🔍 Detect",
+            width=90,
+            height=36,
+            command=self._detect_models,
         ).grid(row=0, column=1)
 
     def _build_theme_section(self) -> None:
         """Build the theme dropdown."""
         ctk.CTkLabel(self.win, text="Theme", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4),
+            anchor="w",
+            padx=20,
+            pady=(12, 4),
         )
         self.theme_var = ctk.StringVar(value=self.cfg.get("theme", "sentinel"))
         ctk.CTkOptionMenu(
-            self.win, variable=self.theme_var,
-            values=list(THEMES.keys()), command=self._on_theme_change,
+            self.win,
+            variable=self.theme_var,
+            values=list(THEMES.keys()),
+            command=self._on_theme_change,
         ).pack(fill="x", padx=20, pady=4)
 
     def _on_theme_change(self, choice: str) -> None:
@@ -1014,7 +1097,10 @@ class SettingsWindow:
         self._build_run_mode_section()
         self._build_step_budget_section()
         ctk.CTkButton(
-            self.win, text="💾 Save Settings", height=40, command=self._save,
+            self.win,
+            text="💾 Save Settings",
+            height=40,
+            command=self._save,
         ).pack(fill="x", padx=20, pady=(20, 20))
 
     def _build_monitor_section(self) -> None:
@@ -1022,7 +1108,9 @@ class SettingsWindow:
         from core.screenshot import list_monitors
 
         ctk.CTkLabel(self.win, text="Monitor", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4),
+            anchor="w",
+            padx=20,
+            pady=(12, 4),
         )
         monitor_choices: list[str] = ["auto — monitor with focused window (recommended)"]
         try:
@@ -1047,16 +1135,21 @@ class SettingsWindow:
         )
         self.monitor_var = ctk.StringVar(value=default_label)
         ctk.CTkOptionMenu(
-            self.win, variable=self.monitor_var, values=monitor_choices,
+            self.win,
+            variable=self.monitor_var,
+            values=monitor_choices,
         ).pack(fill="x", padx=20, pady=4)
 
     def _build_run_mode_section(self) -> None:
         """Build the run-mode toggle switches."""
+
         def _t(key: str, fb: str = "") -> str:
             return (self.app.current_theme.get(key, fb)) if self.app else fb
 
         ctk.CTkLabel(self.win, text="Run mode", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4),
+            anchor="w",
+            padx=20,
+            pady=(12, 4),
         )
         toggles = [
             ("autonomous_var", "autonomous", "Fully autonomous (no approval prompts)"),
@@ -1073,7 +1166,11 @@ class SettingsWindow:
             var = ctk.BooleanVar(value=bool(self.cfg.get(cfg_key)))
             setattr(self, attr, var)
             ctk.CTkSwitch(
-                self.win, text=label, variable=var, onvalue=True, offvalue=False,
+                self.win,
+                text=label,
+                variable=var,
+                onvalue=True,
+                offvalue=False,
             ).pack(anchor="w", padx=20, pady=4)
         ctk.CTkLabel(
             self.win,
@@ -1092,7 +1189,9 @@ class SettingsWindow:
     def _build_step_budget_section(self) -> None:
         """Build the step-budget entry field."""
         ctk.CTkLabel(self.win, text="Step Budget", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4),
+            anchor="w",
+            padx=20,
+            pady=(12, 4),
         )
         self.steps_entry = ctk.CTkEntry(self.win, height=36, placeholder_text="100")
         self.steps_entry.pack(fill="x", padx=20, pady=4)

@@ -9,15 +9,11 @@ import asyncio
 import importlib
 import json
 import os
-import sys
-import threading
 import types
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # core/action_executor.py  — async execute() dry-run and async handler
@@ -74,10 +70,10 @@ class TestCheckpointWindowsPath:
                 self._str = "/".join(str(a).rstrip("/") for a in args if a)
 
             @classmethod
-            def home(cls) -> "_SafePath":
+            def home(cls) -> _SafePath:
                 return cls(str(tmp_path))
 
-            def __truediv__(self, key: str) -> "_SafePath":
+            def __truediv__(self, key: str) -> _SafePath:
                 return _SafePath(self._str + "/" + str(key))
 
             def __str__(self) -> str:
@@ -147,10 +143,10 @@ class TestForensicLogDefaultDirWindows:
                 self._str = "/".join(str(a).rstrip("/") for a in args if a)
 
             @classmethod
-            def home(cls) -> "_SafePath":
+            def home(cls) -> _SafePath:
                 return cls(str(tmp_path))
 
-            def __truediv__(self, key: str) -> "_SafePath":
+            def __truediv__(self, key: str) -> _SafePath:
                 return _SafePath(self._str + "/" + str(key))
 
             def __str__(self) -> str:
@@ -190,9 +186,7 @@ class TestNotificationsWindowsToast:
     def _make_manager_with_toast(self) -> Any:
         from core.notifications import NotificationManager
 
-        return NotificationManager(
-            config={"toast_enabled": True, "log_enabled": False}
-        )
+        return NotificationManager(config={"toast_enabled": True, "log_enabled": False})
 
     def test_win10toast_non_import_error_and_ctypes_fallback(self):
         """win10toast raises RuntimeError → lines 465-466 → ctypes path → lines 472-482.
@@ -239,7 +233,7 @@ class TestOcrLooksLowConfidenceAlnumPerLine:
     """Cover return True when avg_alnum_per_line < _MIN_ALNUM_PER_LINE_FOR_CONFIDENT."""
 
     def test_low_alnum_per_line_returns_true(self):
-        from core.ocr import _MIN_ALNUM_PER_LINE_FOR_CONFIDENT, looks_low_confidence
+        from core.ocr import looks_low_confidence
 
         # Need: total_alnum >= 20, but avg per line < threshold (default=6)
         # 4 alnum-only lines with 5 chars each = 20 total / 8 lines (4 punct lines) = 2.5 avg
@@ -381,11 +375,7 @@ class TestProviderRegistryUnexpectedShape:
         from core.provider_registry import PROVIDERS, fetch_models
 
         # Find a provider with a models_endpoint
-        provider_key = next(
-            k
-            for k, v in PROVIDERS.items()
-            if v.get("models_endpoint") is not None
-        )
+        provider_key = next(k for k, v in PROVIDERS.items() if v.get("models_endpoint") is not None)
 
         # Return a dict whose "data" value is a non-list dict (not a list)
         bad_response = MagicMock()
@@ -512,6 +502,7 @@ class TestUiTreeHaveUiaSuccess:
 
     def test_have_uia_returns_true_with_fake_module(self):
         import platform
+
         import core.utils as utils
 
         fake_auto = types.ModuleType("uiautomation")

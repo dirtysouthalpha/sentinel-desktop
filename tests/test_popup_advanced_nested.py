@@ -11,9 +11,8 @@ Covers:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from PIL import Image
 
 import core.popup_handler as ph
@@ -37,72 +36,100 @@ class TestMultiLevelDialogHierarchy:
 
         # Level 1: Error dialog
         level1 = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", dismissed=False,
-            dismiss_action="OK", dismiss_type="button",
+            detected=True,
+            popup_type="error_dialog",
+            dismissed=False,
+            dismiss_action="OK",
+            dismiss_type="button",
         )
         dismissed1 = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", dismissed=True,
+            detected=True,
+            popup_type="error_dialog",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Error Level 1"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Error"), \
-             patch.object(handler, "detect", return_value=level1), \
-             patch.object(handler, "dismiss", return_value=dismissed1):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Error Level 1"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Error"),
+            patch.object(handler, "detect", return_value=level1),
+            patch.object(handler, "dismiss", return_value=dismissed1),
+        ):
             r1 = handler.check_and_dismiss()
 
         assert r1.detected and r1.dismissed
 
         # Level 2: Warning dialog
         level2 = ph.PopupDetectionResult(
-            detected=True, popup_type="warning", dismissed=False,
-            dismiss_action="Continue", dismiss_type="button",
+            detected=True,
+            popup_type="warning",
+            dismissed=False,
+            dismiss_action="Continue",
+            dismiss_type="button",
         )
         dismissed2 = ph.PopupDetectionResult(
-            detected=True, popup_type="warning", dismissed=True,
+            detected=True,
+            popup_type="warning",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Warning Level 2"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Warning"), \
-             patch.object(handler, "detect", return_value=level2), \
-             patch.object(handler, "dismiss", return_value=dismissed2):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Warning Level 2"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Warning"),
+            patch.object(handler, "detect", return_value=level2),
+            patch.object(handler, "dismiss", return_value=dismissed2),
+        ):
             r2 = handler.check_and_dismiss()
 
         assert r2.detected and r2.dismissed
 
         # Level 3: Confirmation dialog
         level3 = ph.PopupDetectionResult(
-            detected=True, popup_type="confirm_dialog", dismissed=False,
-            dismiss_action="Yes", dismiss_type="button",
+            detected=True,
+            popup_type="confirm_dialog",
+            dismissed=False,
+            dismiss_action="Yes",
+            dismiss_type="button",
         )
         dismissed3 = ph.PopupDetectionResult(
-            detected=True, popup_type="confirm_dialog", dismissed=True,
+            detected=True,
+            popup_type="confirm_dialog",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Confirm Level 3"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Confirm"), \
-             patch.object(handler, "detect", return_value=level3), \
-             patch.object(handler, "dismiss", return_value=dismissed3):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Confirm Level 3"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Confirm"),
+            patch.object(handler, "detect", return_value=level3),
+            patch.object(handler, "dismiss", return_value=dismissed3),
+        ):
             r3 = handler.check_and_dismiss()
 
         assert r3.detected and r3.dismissed
 
         # Level 4: Save changes dialog
         level4 = ph.PopupDetectionResult(
-            detected=True, popup_type="save_changes", dismissed=False,
-            dismiss_action="Don't Save", dismiss_type="button",
+            detected=True,
+            popup_type="save_changes",
+            dismissed=False,
+            dismiss_action="Don't Save",
+            dismiss_type="button",
         )
         dismissed4 = ph.PopupDetectionResult(
-            detected=True, popup_type="save_changes", dismissed=True,
+            detected=True,
+            popup_type="save_changes",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Save Level 4"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Save"), \
-             patch.object(handler, "detect", return_value=level4), \
-             patch.object(handler, "dismiss", return_value=dismissed4):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Save Level 4"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Save"),
+            patch.object(handler, "detect", return_value=level4),
+            patch.object(handler, "dismiss", return_value=dismissed4),
+        ):
             r4 = handler.check_and_dismiss()
 
         assert r4.detected and r4.dismissed
@@ -121,18 +148,25 @@ class TestMultiLevelDialogHierarchy:
 
         for popup_type, action, title in dialog_types:
             result = ph.PopupDetectionResult(
-                detected=True, popup_type=popup_type, dismissed=False,
-                dismiss_action=action, dismiss_type="button",
+                detected=True,
+                popup_type=popup_type,
+                dismissed=False,
+                dismiss_action=action,
+                dismiss_type="button",
             )
             dismissed = ph.PopupDetectionResult(
-                detected=True, popup_type=popup_type, dismissed=True,
+                detected=True,
+                popup_type=popup_type,
+                dismissed=True,
             )
 
-            with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-                 patch.object(ph, "_ocr_text", return_value=title), \
-                 patch.object(ph, "_get_foreground_window_title", return_value=title), \
-                 patch.object(handler, "detect", return_value=result), \
-                 patch.object(handler, "dismiss", return_value=dismissed):
+            with (
+                patch("core.screenshot.capture_screen", return_value=_blank_image()),
+                patch.object(ph, "_ocr_text", return_value=title),
+                patch.object(ph, "_get_foreground_window_title", return_value=title),
+                patch.object(handler, "detect", return_value=result),
+                patch.object(handler, "dismiss", return_value=dismissed),
+            ):
                 r = handler.check_and_dismiss()
 
             assert r.detected and r.dismissed
@@ -151,18 +185,25 @@ class TestModalNonModalHandling:
         handler = ph.PopupHandler(auto_dismiss=True)
 
         modal_result = ph.PopupDetectionResult(
-            detected=True, popup_type="modal_dialog", dismissed=False,
-            dismiss_action="Close", dismiss_type="button",
+            detected=True,
+            popup_type="modal_dialog",
+            dismissed=False,
+            dismiss_action="Close",
+            dismiss_type="button",
         )
         dismissed = ph.PopupDetectionResult(
-            detected=True, popup_type="modal_dialog", dismissed=True,
+            detected=True,
+            popup_type="modal_dialog",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Modal Dialog"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Modal"), \
-             patch.object(handler, "detect", return_value=modal_result), \
-             patch.object(handler, "dismiss", return_value=dismissed):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Modal Dialog"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Modal"),
+            patch.object(handler, "detect", return_value=modal_result),
+            patch.object(handler, "dismiss", return_value=dismissed),
+        ):
             result = handler.check_and_dismiss()
 
         assert result.detected and result.dismissed
@@ -172,18 +213,25 @@ class TestModalNonModalHandling:
         handler = ph.PopupHandler(auto_dismiss=True)
 
         non_modal_result = ph.PopupDetectionResult(
-            detected=True, popup_type="notification", dismissed=False,
-            dismiss_action="Dismiss", dismiss_type="button",
+            detected=True,
+            popup_type="notification",
+            dismissed=False,
+            dismiss_action="Dismiss",
+            dismiss_type="button",
         )
         dismissed = ph.PopupDetectionResult(
-            detected=True, popup_type="notification", dismissed=True,
+            detected=True,
+            popup_type="notification",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Notification"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Notification"), \
-             patch.object(handler, "detect", return_value=non_modal_result), \
-             patch.object(handler, "dismiss", return_value=dismissed):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Notification"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Notification"),
+            patch.object(handler, "detect", return_value=non_modal_result),
+            patch.object(handler, "dismiss", return_value=dismissed),
+        ):
             result = handler.check_and_dismiss()
 
         assert result.detected
@@ -194,36 +242,50 @@ class TestModalNonModalHandling:
 
         # Modal dialog first
         modal = ph.PopupDetectionResult(
-            detected=True, popup_type="modal_dialog", dismissed=False,
-            dismiss_action="OK", dismiss_type="button",
+            detected=True,
+            popup_type="modal_dialog",
+            dismissed=False,
+            dismiss_action="OK",
+            dismiss_type="button",
         )
         dismissed_modal = ph.PopupDetectionResult(
-            detected=True, popup_type="modal_dialog", dismissed=True,
+            detected=True,
+            popup_type="modal_dialog",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Modal"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Modal"), \
-             patch.object(handler, "detect", return_value=modal), \
-             patch.object(handler, "dismiss", return_value=dismissed_modal):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Modal"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Modal"),
+            patch.object(handler, "detect", return_value=modal),
+            patch.object(handler, "dismiss", return_value=dismissed_modal),
+        ):
             r1 = handler.check_and_dismiss()
 
         assert r1.detected
 
         # Then non-modal
         non_modal = ph.PopupDetectionResult(
-            detected=True, popup_type="notification", dismissed=False,
-            dismiss_action="Close", dismiss_type="button",
+            detected=True,
+            popup_type="notification",
+            dismissed=False,
+            dismiss_action="Close",
+            dismiss_type="button",
         )
         dismissed_non_modal = ph.PopupDetectionResult(
-            detected=True, popup_type="notification", dismissed=True,
+            detected=True,
+            popup_type="notification",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Notification"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Notification"), \
-             patch.object(handler, "detect", return_value=non_modal), \
-             patch.object(handler, "dismiss", return_value=dismissed_non_modal):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Notification"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Notification"),
+            patch.object(handler, "detect", return_value=non_modal),
+            patch.object(handler, "dismiss", return_value=dismissed_non_modal),
+        ):
             r2 = handler.check_and_dismiss()
 
         assert r2.detected
@@ -242,18 +304,25 @@ class TestComplexLayoutHandling:
         handler = ph.PopupHandler(auto_dismiss=True)
 
         multi_button = ph.PopupDetectionResult(
-            detected=True, popup_type="confirm_dialog", dismissed=False,
-            dismiss_action="Yes", dismiss_type="button",  # Primary action
+            detected=True,
+            popup_type="confirm_dialog",
+            dismissed=False,
+            dismiss_action="Yes",
+            dismiss_type="button",  # Primary action
         )
         dismissed = ph.PopupDetectionResult(
-            detected=True, popup_type="confirm_dialog", dismissed=True,
+            detected=True,
+            popup_type="confirm_dialog",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Yes\nNo\nCancel"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Confirm"), \
-             patch.object(handler, "detect", return_value=multi_button), \
-             patch.object(handler, "dismiss", return_value=dismissed):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Yes\nNo\nCancel"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Confirm"),
+            patch.object(handler, "detect", return_value=multi_button),
+            patch.object(handler, "dismiss", return_value=dismissed),
+        ):
             result = handler.check_and_dismiss()
 
         assert result.detected and result.dismissed
@@ -263,18 +332,25 @@ class TestComplexLayoutHandling:
         handler = ph.PopupHandler(auto_dismiss=True)
 
         checkbox_dialog = ph.PopupDetectionResult(
-            detected=True, popup_type="warning", dismissed=False,
-            dismiss_action="OK", dismiss_type="button",
+            detected=True,
+            popup_type="warning",
+            dismissed=False,
+            dismiss_action="OK",
+            dismiss_type="button",
         )
         dismissed = ph.PopupDetectionResult(
-            detected=True, popup_type="warning", dismissed=True,
+            detected=True,
+            popup_type="warning",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="☑ Don't show again\nOK"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Warning"), \
-             patch.object(handler, "detect", return_value=checkbox_dialog), \
-             patch.object(handler, "dismiss", return_value=dismissed):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="☑ Don't show again\nOK"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Warning"),
+            patch.object(handler, "detect", return_value=checkbox_dialog),
+            patch.object(handler, "dismiss", return_value=dismissed),
+        ):
             result = handler.check_and_dismiss()
 
         assert result.detected
@@ -284,18 +360,25 @@ class TestComplexLayoutHandling:
         handler = ph.PopupHandler(auto_dismiss=True)
 
         dropdown_dialog = ph.PopupDetectionResult(
-            detected=True, popup_type="settings", dismissed=False,
-            dismiss_action="Apply", dismiss_type="button",
+            detected=True,
+            popup_type="settings",
+            dismissed=False,
+            dismiss_action="Apply",
+            dismiss_type="button",
         )
         dismissed = ph.PopupDetectionResult(
-            detected=True, popup_type="settings", dismissed=True,
+            detected=True,
+            popup_type="settings",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Options: ▼\nApply\nCancel"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Settings"), \
-             patch.object(handler, "detect", return_value=dropdown_dialog), \
-             patch.object(handler, "dismiss", return_value=dismissed):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Options: ▼\nApply\nCancel"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Settings"),
+            patch.object(handler, "detect", return_value=dropdown_dialog),
+            patch.object(handler, "dismiss", return_value=dismissed),
+        ):
             result = handler.check_and_dismiss()
 
         assert result.detected
@@ -313,9 +396,11 @@ class TestOCRFailureEdgeCases:
         """Test handling when OCR returns empty string."""
         handler = ph.PopupHandler(auto_dismiss=True)
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value=""), \
-             patch.object(ph, "_get_foreground_window_title", return_value=""):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value=""),
+            patch.object(ph, "_get_foreground_window_title", return_value=""),
+        ):
             result = handler.check_and_dismiss()
 
         assert not result.detected
@@ -324,9 +409,11 @@ class TestOCRFailureEdgeCases:
         """Test handling when OCR returns garbled/unreadable text."""
         handler = ph.PopupHandler(auto_dismiss=True)
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="#@! $%^ &*("), \
-             patch.object(ph, "_get_foreground_window_title", return_value=""):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="#@! $%^ &*("),
+            patch.object(ph, "_get_foreground_window_title", return_value=""),
+        ):
             result = handler.check_and_dismiss()
 
         # Garbled text should not trigger false positive detection
@@ -336,9 +423,11 @@ class TestOCRFailureEdgeCases:
         """Test handling when OCR raises an exception."""
         handler = ph.PopupHandler(auto_dismiss=True)
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", side_effect=OSError("OCR failed")), \
-             patch.object(ph, "_get_foreground_window_title", return_value=""):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", side_effect=OSError("OCR failed")),
+            patch.object(ph, "_get_foreground_window_title", return_value=""),
+        ):
             result = handler.check_and_dismiss()
 
         assert not result.detected
@@ -348,19 +437,26 @@ class TestOCRFailureEdgeCases:
         handler = ph.PopupHandler(auto_dismiss=True)
 
         error_result = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", dismissed=False,
-            dismiss_action="OK", dismiss_type="button",
+            detected=True,
+            popup_type="error_dialog",
+            dismissed=False,
+            dismiss_action="OK",
+            dismiss_type="button",
         )
         dismissed = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", dismissed=True,
+            detected=True,
+            popup_type="error_dialog",
+            dismissed=True,
         )
 
         # Partial OCR with some readable keywords
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Eror has ocured"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Error"), \
-             patch.object(handler, "detect", return_value=error_result), \
-             patch.object(handler, "dismiss", return_value=dismissed):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Eror has ocured"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Error"),
+            patch.object(handler, "detect", return_value=error_result),
+            patch.object(handler, "dismiss", return_value=dismissed),
+        ):
             result = handler.check_and_dismiss()
 
         # Should still detect despite typos from OCR
@@ -379,9 +475,11 @@ class TestUnusualWindowStates:
         """Test detection of minimized dialog windows."""
         handler = ph.PopupHandler(auto_dismiss=True)
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value=""), \
-             patch.object(ph, "_get_foreground_window_title", return_value=""):  # Minimized = no title
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value=""),
+            patch.object(ph, "_get_foreground_window_title", return_value=""),
+        ):  # Minimized = no title
             result = handler.check_and_dismiss()
 
         assert not result.detected
@@ -391,18 +489,25 @@ class TestUnusualWindowStates:
         handler = ph.PopupHandler(auto_dismiss=True)
 
         max_result = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", dismissed=False,
-            dismiss_action="OK", dismiss_type="button",
+            detected=True,
+            popup_type="error_dialog",
+            dismissed=False,
+            dismiss_action="OK",
+            dismiss_type="button",
         )
         dismissed = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", dismissed=True,
+            detected=True,
+            popup_type="error_dialog",
+            dismissed=True,
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="ERROR"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Error"), \
-             patch.object(handler, "detect", return_value=max_result), \
-             patch.object(handler, "dismiss", return_value=dismissed):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="ERROR"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Error"),
+            patch.object(handler, "detect", return_value=max_result),
+            patch.object(handler, "dismiss", return_value=dismissed),
+        ):
             result = handler.check_and_dismiss()
 
         assert result.detected
@@ -414,9 +519,11 @@ class TestUnusualWindowStates:
         # Partial screenshot due to off-screen dialog
         partial_image = Image.new("RGB", (100, 100), color=(240, 240, 240))
 
-        with patch("core.screenshot.capture_screen", return_value=partial_image), \
-             patch.object(ph, "_ocr_text", return_value="Error"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Error"):
+        with (
+            patch("core.screenshot.capture_screen", return_value=partial_image),
+            patch.object(ph, "_ocr_text", return_value="Error"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Error"),
+        ):
             result = handler.check_and_dismiss()
 
         # Should still attempt detection even with partial screenshot
@@ -438,21 +545,28 @@ class TestHighFrequencyPopups:
         for i in range(5):
             handler._dismiss_attempts = 0  # Reset to simulate new popup
             result = ph.PopupDetectionResult(
-                detected=True, popup_type="error_dialog", dismissed=False,
-                dismiss_action="OK", dismiss_type="button",
+                detected=True,
+                popup_type="error_dialog",
+                dismissed=False,
+                dismiss_action="OK",
+                dismiss_type="button",
             )
 
             # Mock dismiss to actually dismiss (return dismissed=True)
             def mock_dismiss(*args, **kwargs):
                 return ph.PopupDetectionResult(
-                    detected=True, popup_type="error_dialog", dismissed=True,
+                    detected=True,
+                    popup_type="error_dialog",
+                    dismissed=True,
                 )
 
-            with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-                 patch.object(ph, "_ocr_text", return_value=f"Error {i}"), \
-                 patch.object(ph, "_get_foreground_window_title", return_value="Error"), \
-                 patch.object(handler, "detect", return_value=result), \
-                 patch.object(handler, "dismiss", side_effect=mock_dismiss):
+            with (
+                patch("core.screenshot.capture_screen", return_value=_blank_image()),
+                patch.object(ph, "_ocr_text", return_value=f"Error {i}"),
+                patch.object(ph, "_get_foreground_window_title", return_value="Error"),
+                patch.object(handler, "detect", return_value=result),
+                patch.object(handler, "dismiss", side_effect=mock_dismiss),
+            ):
                 r = handler.check_and_dismiss()
 
             # Should be detected, but dismissal depends on handler logic
@@ -472,18 +586,25 @@ class TestHighFrequencyPopups:
 
         for popup_type, action, title in popup_types:
             result = ph.PopupDetectionResult(
-                detected=True, popup_type=popup_type, dismissed=False,
-                dismiss_action=action, dismiss_type="button",
+                detected=True,
+                popup_type=popup_type,
+                dismissed=False,
+                dismiss_action=action,
+                dismiss_type="button",
             )
             dismissed = ph.PopupDetectionResult(
-                detected=True, popup_type=popup_type, dismissed=True,
+                detected=True,
+                popup_type=popup_type,
+                dismissed=True,
             )
 
-            with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-                 patch.object(ph, "_ocr_text", return_value=title), \
-                 patch.object(ph, "_get_foreground_window_title", return_value=title), \
-                 patch.object(handler, "detect", return_value=result), \
-                 patch.object(handler, "dismiss", return_value=dismissed):
+            with (
+                patch("core.screenshot.capture_screen", return_value=_blank_image()),
+                patch.object(ph, "_ocr_text", return_value=title),
+                patch.object(ph, "_get_foreground_window_title", return_value=title),
+                patch.object(handler, "detect", return_value=result),
+                patch.object(handler, "dismiss", return_value=dismissed),
+            ):
                 r = handler.check_and_dismiss()
 
             assert r.detected
@@ -495,14 +616,19 @@ class TestHighFrequencyPopups:
 
         # Even with high attempt count, should still try to detect
         persistent = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", dismissed=False,
-            dismiss_action="OK", dismiss_type="button",
+            detected=True,
+            popup_type="error_dialog",
+            dismissed=False,
+            dismiss_action="OK",
+            dismiss_type="button",
         )
 
-        with patch("core.screenshot.capture_screen", return_value=_blank_image()), \
-             patch.object(ph, "_ocr_text", return_value="Error"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Error"), \
-             patch.object(handler, "detect", return_value=persistent):
+        with (
+            patch("core.screenshot.capture_screen", return_value=_blank_image()),
+            patch.object(ph, "_ocr_text", return_value="Error"),
+            patch.object(ph, "_get_foreground_window_title", return_value="Error"),
+            patch.object(handler, "detect", return_value=persistent),
+        ):
             result = handler.check_and_dismiss()
 
         # Should still attempt detection

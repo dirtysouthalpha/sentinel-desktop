@@ -5,9 +5,9 @@ _store_screenshot_in_cache, get_screenshot_cache_stats, clear_screenshot_cache,
 invalidate_screenshot_cache, and cache integration in capture_screen/capture_region.
 """
 
-from unittest.mock import patch
 import time
-import pytest
+from unittest.mock import patch
+
 from PIL import Image
 
 from core import screenshot as sc

@@ -21,11 +21,13 @@ class TestHaveTesseractSuccessPath:
     def setup_method(self):
         # Reset the cached state in core.utils
         import core.utils
+
         core.utils._TESSERACT_OK = None
         core.utils._pytesseract = None
 
     def test_tesseract_available_sets_flag_true(self):
         import core.utils
+
         mock_pytesseract = MagicMock()
         mock_pytesseract.get_tesseract_version.return_value = "5.0.0"
         with patch("builtins.__import__", return_value=mock_pytesseract):
@@ -191,8 +193,10 @@ class TestOcrImageCacheHit:
 
     def test_cache_hit_returns_cached_text(self):
         mock_tesseract = MagicMock()
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (10, 10))
             # Pre-populate using the raw-image key (cache key is now computed before preprocessing)
             cache_key = ocr._image_cache_key(img, preprocess=True)
@@ -238,8 +242,10 @@ class TestOcrImageWithConfidence:
             "line_num": [1, 1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (100, 100))
             text, conf = ocr._ocr_image_with_confidence(img)
             assert text == "Hello World"
@@ -263,8 +269,10 @@ class TestOcrImageWithConfidence:
             "line_num": [1, 1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (100, 100))
             _text, conf = ocr._ocr_image_with_confidence(img)
             assert len(conf["low_confidence_words"]) == 2
@@ -287,8 +295,10 @@ class TestOcrImageWithConfidence:
             "line_num": [1, 1, 1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (100, 100))
             _text, conf = ocr._ocr_image_with_confidence(img)
             # Only "valid" with conf 90 is counted (conf > 0 filter)
@@ -310,8 +320,10 @@ class TestOcrImageWithConfidence:
             "line_num": [1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (100, 100))
             _text, conf = ocr._ocr_image_with_confidence(img)
             # None conf -> 0.0, which is not > 0, so not counted
@@ -320,8 +332,10 @@ class TestOcrImageWithConfidence:
     def test_tesseract_exception_returns_empty(self):
         mock_tesseract = MagicMock()
         mock_tesseract.image_to_string.side_effect = RuntimeError("tess fail")
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (10, 10))
             text, conf = ocr._ocr_image_with_confidence(img)
             assert text == ""
@@ -329,8 +343,10 @@ class TestOcrImageWithConfidence:
 
     def test_cache_hit_returns_cached_data(self):
         mock_tesseract = MagicMock()
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (10, 10))
             # Pre-populate using the raw-image key (cache key is now computed before preprocessing)
             cache_key = ocr._image_cache_key(img, preprocess=True)
@@ -362,8 +378,10 @@ class TestOcrImageWithConfidence:
             "line_num": [1],
         }
         mock_tesseract.image_to_data.return_value = data
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (10, 10))
             with patch("core.ocr.preprocess_for_ocr") as mock_pp:
                 ocr._ocr_image_with_confidence(img, preprocess=False)
@@ -525,8 +543,10 @@ class TestReadScreenTextWithConfidence:
             assert conf["word_count"] == 0
 
     def test_exception_returns_empty(self):
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.capture_screen", side_effect=OSError("fail")):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.capture_screen", side_effect=OSError("fail")),
+        ):
             text, conf = ocr.read_screen_text_with_confidence()
             assert text == ""
             assert conf["avg_confidence"] == 0
@@ -601,8 +621,10 @@ class TestOcrCacheCrossFunction:
     def test_text_only_cache_not_used_for_confidence(self):
         """_ocr_image_with_confidence recomputes conf when cache has conf_data=None."""
         mock_tesseract = MagicMock()
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (10, 10))
             cache_key = ocr._image_cache_key(img, preprocess=True)
             # Simulate a cache entry left by the text-only _ocr_image path.
@@ -624,8 +646,10 @@ class TestOcrCacheCrossFunction:
     def test_full_cache_hit_skips_both_calls(self):
         """When cache has real conf_data, neither image_to_string nor image_to_data fires."""
         mock_tesseract = MagicMock()
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (10, 10))
             cache_key = ocr._image_cache_key(img, preprocess=True)
             full_conf = {
@@ -646,8 +670,10 @@ class TestOcrCacheCrossFunction:
     def test_image_to_data_failure_returns_cached_text(self):
         """If image_to_data raises after reusing cached text, cached text is preserved."""
         mock_tesseract = MagicMock()
-        with patch("core.ocr.have_tesseract", return_value=True), \
-             patch("core.ocr.get_tesseract", return_value=mock_tesseract):
+        with (
+            patch("core.ocr.have_tesseract", return_value=True),
+            patch("core.ocr.get_tesseract", return_value=mock_tesseract),
+        ):
             img = Image.new("RGB", (10, 10))
             cache_key = ocr._image_cache_key(img, preprocess=True)
             # Text-only cache entry (from _ocr_image fast path).
