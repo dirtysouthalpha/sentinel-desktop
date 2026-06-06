@@ -1,16 +1,18 @@
 <div align="center">
 
-# ⬡ Sentinel Desktop v3.1
+# ⬡ Sentinel Desktop v6.0
 
-**AI-powered Windows desktop automation agent — cyberpunk HUD edition.**
+**AI-powered desktop automation agent — cross-platform, cyberpunk HUD edition.**
 
 Give it a goal in plain English. It sees your screen, moves the mouse, types, and interacts with any application — autonomously.
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
-[![Version](https://img.shields.io/badge/version-3.1.0-orange)](https://github.com/DirtySouthAlpha/sentinel-desktop/releases)
+[![Version](https://img.shields.io/badge/version-6.0.0-orange)](https://github.com/dirtysouthalpha/sentinel-desktop/releases)
+[![Tests](https://img.shields.io/badge/tests-5244%20passing-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
+[![Lint](https://img.shields.io/badge/lint-0%20errors-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-76 Python modules · 21,664 lines · 19 themes · 35 API endpoints · 30+ action types
+45+ modules · 5,244 tests · 14 themes · 35 API endpoints · 30+ action types · 20+ LLM providers
 
 </div>
 
@@ -63,8 +65,9 @@ Press **Esc three times within 1.5 seconds** to immediately stop the agent. This
 ## Testing
 
 ```bash
-pip install pytest
-pytest -v
+pip install -e ".[dev]"
+pytest tests/ -q          # 5,244 tests
+ruff check core/ gui/ api/ tests/   # zero lint errors
 ```
 
 ## Configuration
@@ -159,20 +162,34 @@ sentinel-desktop/
 ├── core/
 │   ├── engine.py        # Agent loop (screenshot → LLM → action → verify)
 │   ├── action_executor.py  # Dispatches actions to desktop control
-│   ├── llm_client.py    # Multi-provider LLM client
-│   ├── provider_registry.py  # Provider catalog (16+ providers)
+│   ├── llm_client.py    # Multi-provider LLM client (20+ providers)
+│   ├── provider_registry.py  # Provider catalog
 │   ├── desktop.py       # Mouse, keyboard, screen control
-│   ├── screenshot.py    # Screen capture + template matching
+│   ├── screenshot.py    # Screen capture + template matching + cache
 │   ├── window_manager.py   # Window management
 │   ├── process_manager.py  # Process management
 │   ├── clipboard.py     # Clipboard read/write
 │   ├── file_ops.py      # Safe file operations
-│   └── system_info.py   # System information
+│   ├── system_info.py   # System information
+│   ├── control/         # Plan → Ground → Execute → Verify control loop
+│   ├── perception/      # Multi-modal perception pipeline (accessibility + OCR + vision)
+│   ├── platform/        # Cross-platform abstraction (Windows / Linux / macOS)
+│   ├── swarm/           # Multi-agent orchestration (bus + registry + specialists)
+│   ├── popup_handler.py # Automatic dialog detection and dismissal
+│   ├── recovery.py      # Action retry and error recovery
+│   ├── scheduler.py     # Cron-based task scheduling
+│   ├── auth.py          # RBAC with bcrypt password hashing
+│   ├── encryption.py    # Cross-platform encryption
+│   └── ...              # 30+ more modules
 ├── api/
-│   └── server.py        # FastAPI headless control server
+│   └── server.py        # FastAPI headless control server (35+ endpoints)
 ├── gui/
-│   ├── app.py           # Main GUI window
-│   └── themes.py        # Dark theme definitions
+│   ├── app.py           # Main GUI window (cyberpunk HUD)
+│   ├── themes.py        # 14 theme definitions
+│   ├── overlay.py       # Action overlay + animated cursor
+│   └── tabs/            # Settings, scripts, workflows, history tabs
+├── scripts/it_support/  # 19 pre-built IT support script templates
+├── tests/               # 5,244 tests, 99% coverage
 └── requirements.txt
 ```
 
