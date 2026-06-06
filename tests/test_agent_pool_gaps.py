@@ -216,8 +216,10 @@ class TestAgentWorkerFullFlow:
         callback = MagicMock()
         pool = AgentPool(max_agents=1, on_session_complete=callback)
         try:
-            sid = pool.submit("Do stuff", config={"model": "test"})
-            session = pool._sessions[sid]
+            # Insert session directly to avoid dispatcher picking it up first
+            session = AgentSession(id="test_success_id", goal="Do stuff", config={"model": "test"})
+            pool._sessions["test_success_id"] = session
+            sid = "test_success_id"
 
             mock_vd = MagicMock()
             mock_vd.create.return_value = True
@@ -245,8 +247,10 @@ class TestAgentWorkerFullFlow:
         callback = MagicMock()
         pool = AgentPool(max_agents=1, on_session_complete=callback)
         try:
-            sid = pool.submit("Goal")
-            session = pool._sessions[sid]
+            # Insert session directly to avoid dispatcher picking it up first
+            session = AgentSession(id="test_vd_create_id", goal="Goal", config={})
+            pool._sessions["test_vd_create_id"] = session
+            sid = "test_vd_create_id"
 
             mock_vd = MagicMock()
             mock_vd.create.return_value = False
@@ -271,8 +275,10 @@ class TestAgentWorkerFullFlow:
         callback = MagicMock()
         pool = AgentPool(max_agents=1, on_session_complete=callback)
         try:
-            sid = pool.submit("Goal")
-            session = pool._sessions[sid]
+            # Insert session directly to avoid dispatcher picking it up first
+            session = AgentSession(id="test_exception_id", goal="Goal", config={})
+            pool._sessions["test_exception_id"] = session
+            sid = "test_exception_id"
 
             mock_vd = MagicMock()
             mock_vd.create.return_value = True
