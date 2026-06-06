@@ -57,6 +57,8 @@ STATE_CHANGING_ACTIONS = {
     "click_text",
     "click_image",
     "click_control",
+    "click_element",
+    "click_mark",
     "type_text",
     "set_text",
     "press_key",
@@ -117,6 +119,9 @@ class ActionExecutor:
         self.stealth = bool(stealth)
         self._desktop = desktop_mod.DesktopEngine()
         self._log: list[dict[str, Any]] = []
+        # Perception: the engine stores the latest PerceptionResult here so
+        # click_element / click_mark can resolve IDs to coordinates.
+        self.perception_result: Any | None = None
 
     @property
     def log(self) -> list[dict[str, Any]]:
@@ -596,6 +601,77 @@ class ActionExecutor:
                 "output": f"list_controls error: {exc}",
                 "error": "list_controls_failed",
             }
+
+    def _click_element(
+        self,
+        *,
+        element_id: int,
+        button: str = "left",
+        **_,
+    ) -> dict[str, Any]:
+        """Click a perception element by its numeric ID.
+
+        Resolves the element ID from the latest perception result to screen
+        coordinates and delegates to _click. Falls back to raw coordinate mode
+        if no perception data is available.
+        """
+        if self.perception_result is None:
+            return {
+                "success": False,
+                "output": "No perception data available — use click with coordinates instead",
+                "error": "no_perception",
+            }
+
+        elem = self.perception_result.find_by_id(element_id)
+        if elem is None:
+            return {
+                "success": False,
+                "output": f"Element ID {element_id} not found in current perception",
+                "error": "element_not_found",
+            }
+
+        cx, cy = elem.center
+        return self._click(x=cx, y=cy, button=button)
+
+    def _click_mark(
+        self,
+        *,
+        mark_id: int,
+        button: str = "left",
+        **_,
+    ) -> dict[str, Any]:
+        """Click a Set-of-Marks target by its numbered mark ID.
+
+        Alias for click_element — both resolve numbered IDs from the
+        perception pipeline. Kept as a separate action so the LLM can use
+        the more intuitive 'click_mark' when working with SoM screenshots.
+        """
+        return self._click_element(element_id=mark_id, button=button)
+
+    def _list_elements(self, **_) -> dict[str, Any]:
+        """Return the current perception element list for the LLM.
+
+        Provides a compact summary of all detected elements with their IDs,
+        types, labels, and interactability. The LLM uses this to pick targets.
+        """
+        if self.perception_result is None:
+            return {
+                "success": False,
+                "output": "No perception data available",
+                "error": "no_perception",
+            }
+
+        elements = []
+        for elem in self.perception_result.elements:
+            elements.append(elem.to_dict())
+
+        return {
+            "success": True,
+            "output": elements,
+            "count": len(elements),
+            "interactable": len(self.perception_result.interactable_elements()),
+            "text_description": self.perception_result.to_llm_context(),
+        }
 
     def _set_text(
         self,
@@ -1310,7 +1386,10 @@ class ActionExecutor:
         "click_text": _click_text,
         "click_image": _click_image,
         "click_control": _click_control,
+        "click_element": _click_element,
+        "click_mark": _click_mark,
         "list_controls": _list_controls,
+        "list_elements": _list_elements,
         "set_text": _set_text,
         "read_text": _read_text,
         "read_window": _read_window,

@@ -114,6 +114,9 @@ and take actions to accomplish the user's goal.
 {"action": "click_text", "text": "File", "button": "right"}
 {"action": "click_control", "name": "OK"} or {"action": "click_control", \
 "automation_id": "btnOK", "control_type": "ButtonControl"}
+{"action": "click_element", "element_id": 3} — click a numbered element from \
+the perception list (PREFERRED over raw coordinates when available)
+{"action": "click_mark", "mark_id": 7} — same as click_element, for SoM screenshots
 {"action": "list_controls"} — returns accessible controls in the \
 foreground window. Use when you can't find the right coordinates.
 
@@ -179,6 +182,9 @@ Supports: outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc
 {"action": "finish", "summary": "Task completed. Opened Chrome and navigated to example.com."}
 
 ## Self-Healing — ALWAYS try alternatives before reporting failure
+
+PREFER click_element over raw coordinates when element IDs are available.
+Element targeting is more reliable than pixel coordinates.
 
 Wrong click / nothing happened:
   1. Take a screenshot to see current state
@@ -763,16 +769,29 @@ class AgentEngine:
         messages = [{"role": "system", "content": system_prompt}]
 
         # Initial screenshot + goal
+        # Run perception pipeline to get annotated image + element list
+        perception_context = ""
         try:
-            screenshot_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+            from core.screenshot import capture_screen, image_to_base64
+
+            raw_image = capture_screen(monitor=self.config.get("monitor"))
+            perception_result = self._run_perception(raw_image)
+            if perception_result is not None:
+                self.executor.perception_result = perception_result
+                perception_context = perception_result.to_llm_context()
+                if perception_result.annotated_image is not None:
+                    screenshot_b64 = image_to_base64(perception_result.annotated_image)
+                else:
+                    screenshot_b64 = image_to_base64(raw_image)
+            else:
+                screenshot_b64 = image_to_base64(raw_image)
         except (OSError, ValueError, RuntimeError) as exc:
             logger.warning("Initial screen capture failed: %s", exc)
             screenshot_b64 = ""
-        self._add_vision_message(
-            messages,
-            screenshot_b64,
-            f"Goal: {goal}\n\nI can see this screen. What should I do first?",
-        )
+        user_text = f"Goal: {goal}\n\nI can see this screen. What should I do first?"
+        if perception_context:
+            user_text += f"\n\n{perception_context}"
+        self._add_vision_message(messages, screenshot_b64, user_text)
         return messages
 
     def _check_mfa_pause(self) -> None:
@@ -1025,21 +1044,57 @@ class AgentEngine:
         step_msg: str,
         current_b64: str | None,
     ) -> str | None:
-        """Capture a fresh screenshot for the next agent step if auto-screenshot is on."""
+        """Capture a fresh screenshot for the next agent step if auto-screenshot is on.
+
+        Runs the perception pipeline on the captured image to produce an
+        annotated screenshot (with numbered bounding boxes) and an element
+        list for the LLM. Falls back to raw screenshot if perception fails.
+        """
         if not (self.running and self.config.get("auto_screenshot", True)):
             return current_b64
         self._prune_old_screenshots(messages)
+
+        # Capture raw screenshot
         try:
-            new_b64 = capture_to_base64(monitor=self.config.get("monitor"))
+            from core.screenshot import capture_screen
+
+            raw_image = capture_screen(monitor=self.config.get("monitor"))
         except (OSError, ValueError, RuntimeError) as exc:
             logger.debug("Screen capture failed mid-run: %s", exc)
             return None
+
+        # Run perception pipeline and store result on executor
+        perception_context = ""
+        try:
+            perception_result = self._run_perception(raw_image)
+            if perception_result is not None:
+                self.executor.perception_result = perception_result
+                perception_context = perception_result.to_llm_context()
+                # Use annotated image if available, else raw
+                if perception_result.annotated_image is not None:
+                    from core.screenshot import image_to_base64
+
+                    new_b64 = image_to_base64(perception_result.annotated_image)
+                else:
+                    from core.screenshot import image_to_base64
+
+                    new_b64 = image_to_base64(raw_image)
+            else:
+                from core.screenshot import image_to_base64
+
+                new_b64 = image_to_base64(raw_image)
+        except Exception as exc:
+            logger.debug("Perception pipeline failed, using raw screenshot: %s", exc)
+            from core.screenshot import image_to_base64
+
+            new_b64 = image_to_base64(raw_image)
+
         if new_b64:
-            self._add_vision_message(
-                messages,
-                new_b64,
-                f"Step {self.step} result: {step_msg[:200]}. Current screen:",
-            )
+            # Include perception element list in the user message when available
+            user_text = f"Step {self.step} result: {step_msg[:200]}. Current screen:"
+            if perception_context:
+                user_text += f"\n\n{perception_context}"
+            self._add_vision_message(messages, new_b64, user_text)
         return new_b64
 
     def _handle_post_action_success(
@@ -1353,6 +1408,30 @@ class AgentEngine:
         logger.info("Agent stop requested")
 
     # ── Internal ────────────────────────────────────────────────────────
+
+    def _run_perception(self, screenshot: Any) -> Any:
+        """Run the perception pipeline on a screenshot.
+
+        Returns a PerceptionResult with annotated image and element list,
+        or None if the pipeline is unavailable or fails. The result is
+        stored on self.executor.perception_result for click_element resolution.
+        """
+        try:
+            from core.perception import PerceptionPipeline
+
+            pipeline = PerceptionPipeline()
+            return pipeline.analyze(
+                screenshot,
+                include_accessibility=True,
+                include_ocr=True,
+                include_vision=False,
+            )
+        except ImportError:
+            logger.debug("Perception pipeline not available")
+            return None
+        except Exception as exc:
+            logger.debug("Perception analysis failed: %s", exc)
+            return None
 
     def _build_env_context(self) -> str:
         """Gather OS info, active window title, and tenant metadata for the prompt."""
