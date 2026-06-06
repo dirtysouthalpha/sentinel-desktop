@@ -262,8 +262,7 @@ class ScriptEngine:
         """
         # This function is only called from the failure branch (line 308-310),
         # so the success case below is unreachable and exists only for defensive completeness.
-        if result.get("success", False):
-            # pragma: no cover  # unreachable: only called from failure branch
+        if result.get("success", False):  # pragma: no cover
             return True, None
 
         error_msg = (

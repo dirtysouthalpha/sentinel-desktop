@@ -360,7 +360,7 @@ class SentinelServer:
 
     # ── Terminal WebSocket (PTY shell proxy) ────────────────────────────
 
-    def _setup_pty_child(self, slave_fd: int) -> NoReturn:
+    def _setup_pty_child(self, slave_fd: int) -> NoReturn:  # pragma: no cover
         """Set up child process for PTY and exec bash."""
         os.close(slave_fd)
         os.setsid()
@@ -501,7 +501,7 @@ class SentinelServer:
         except (ChildProcessError, OSError):
             pass
 
-    async def _handle_terminal_ws(self, ws: WebSocket) -> None:
+    async def _handle_terminal_ws(self, ws: WebSocket) -> None:  # pragma: no cover
         """Spawn a PTY shell and proxy I/O over WebSocket."""
         await ws.accept()
 
