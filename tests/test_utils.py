@@ -80,6 +80,7 @@ class TestHaveTesseract:
         with mock.patch.dict("sys.modules", {"pytesseract": None}):
             # Need to reset the cached state
             import core.utils
+
             core.utils._TESSERACT_OK = None
             result = core.utils.have_tesseract()
             assert result is False
@@ -89,10 +90,12 @@ class TestHaveTesseract:
     def test_oserror_on_version_check_returns_false(self):
         """Verify returns False when pytesseract.get_tesseract_version raises OSError."""
         import core.utils
+
         core.utils._TESSERACT_OK = None
         try:
             # Mock the pytesseract module to raise OSError on version check
             import sys
+
             original_pytesseract = sys.modules.get("pytesseract")
             try:
                 mock_pytesseract = mock.MagicMock()
@@ -153,6 +156,7 @@ class TestHaveUIA:
         """Verify returns False when not on Windows."""
         with mock.patch("platform.system", return_value="Linux"):
             import core.utils
+
             core.utils._UIA_OK = None
             result = core.utils.have_uia()
             assert result is False
@@ -165,6 +169,7 @@ class TestHaveUIA:
         if is_windows():
             with mock.patch.dict("sys.modules", {"uiautomation": None}):
                 import core.utils
+
                 core.utils._UIA_OK = None
                 result = core.utils.have_uia()
                 assert result is False
@@ -179,6 +184,7 @@ class TestGetUIAAuto:
         """Verify get_uia_auto returns module or None."""
         # Ensure cache is fresh — previous tests may have cleared it
         import core.utils
+
         core.utils._UIA_OK = None
         if have_uia():
             # Re-populate _auto via have_uia's import path

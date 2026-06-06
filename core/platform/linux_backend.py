@@ -41,7 +41,9 @@ def _probe_xdotool() -> bool:
         return _has_xdotool
     try:
         result = subprocess.run(
-            ["xdotool", "version"], capture_output=True, timeout=3,
+            ["xdotool", "version"],
+            capture_output=True,
+            timeout=3,
         )
         _has_xdotool = result.returncode == 0
     except (OSError, FileNotFoundError, subprocess.TimeoutExpired):
@@ -59,8 +61,10 @@ def _probe_atspi() -> bool:
         return _has_atspi
     try:
         import gi
+
         gi.require_version("Atspi", "2.0")
         from gi.repository import Atspi  # noqa: F401
+
         _has_atspi = True
     except (ImportError, ValueError, OSError):
         _has_atspi = False
@@ -77,6 +81,7 @@ def _probe_secretstorage() -> bool:
         return _has_secretstorage
     try:
         import secretstorage  # type: ignore  # noqa: F401
+
         _has_secretstorage = True
     except ImportError:
         _has_secretstorage = False
@@ -93,8 +98,10 @@ def _probe_wnck() -> bool:
         return _has_wnck
     try:
         import gi
+
         gi.require_version("Wnck", "3.0")
         from gi.repository import Wnck  # noqa: F401
+
         _has_wnck = True
     except (ImportError, ValueError, OSError):
         _has_wnck = False
@@ -121,6 +128,7 @@ class LinuxAccessibility(AccessibilityBackend):
             return []
         try:
             import gi
+
             gi.require_version("Atspi", "2.0")
             from gi.repository import Atspi
 
@@ -173,6 +181,7 @@ class LinuxAccessibility(AccessibilityBackend):
                 return False
             # Try Action interface
             from gi.repository import Atspi
+
             action = Atspi.Action
             n_actions = action.get_n_actions(atspi_ref)
             if n_actions > 0:
@@ -191,6 +200,7 @@ class LinuxAccessibility(AccessibilityBackend):
             if atspi_ref is None:
                 return False
             from gi.repository import Atspi
+
             # Try Text interface
             text_iface = Atspi.Text
             text_iface.set_text_contents(atspi_ref, value)
@@ -202,7 +212,11 @@ class LinuxAccessibility(AccessibilityBackend):
     # ── Internal helpers ────────────────────────────────────────────────
 
     def _walk_atspi(
-        self, node: Any, elements: list[UIElement], depth: int, max_depth: int,
+        self,
+        node: Any,
+        elements: list[UIElement],
+        depth: int,
+        max_depth: int,
     ) -> None:
         """Walk the AT-SPI tree recursively."""
         if depth > max_depth:
@@ -222,6 +236,7 @@ class LinuxAccessibility(AccessibilityBackend):
         """Convert an AT-SPI node to UIElement."""
         try:
             from gi.repository import Atspi
+
             role = node.get_role()
             role_name = Atspi.Role.get_name(role).lower() if role else "unknown"
         except Exception:
@@ -237,6 +252,7 @@ class LinuxAccessibility(AccessibilityBackend):
         actions: list[str] = []
         try:
             from gi.repository import Atspi
+
             action = Atspi.Action
             n = action.get_n_actions(node)
             if n > 0:
@@ -260,6 +276,7 @@ class LinuxAccessibility(AccessibilityBackend):
         """Try to get the text content of an AT-SPI node."""
         try:
             from gi.repository import Atspi
+
             text_iface = Atspi.Text
             text = text_iface.get_text(node, 0, -1)
             return text if text else None
@@ -296,9 +313,9 @@ class LinuxStealthInput(StealthInputBackend):
             btn = btn_map.get(button, "1")
             for _ in range(max(1, clicks)):
                 subprocess.run(
-                    ["xdotool", "mousemove", "--sync", str(x), str(y),
-                     "click", btn],
-                    capture_output=True, timeout=5,
+                    ["xdotool", "mousemove", "--sync", str(x), str(y), "click", btn],
+                    capture_output=True,
+                    timeout=5,
                 )
             return True
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -312,7 +329,8 @@ class LinuxStealthInput(StealthInputBackend):
         try:
             subprocess.run(
                 ["xdotool", "type", "--delay", "5", text],
-                capture_output=True, timeout=30,
+                capture_output=True,
+                timeout=30,
             )
             return True
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -327,7 +345,8 @@ class LinuxStealthInput(StealthInputBackend):
             xdo_key = self._to_xdotool_key(key)
             subprocess.run(
                 ["xdotool", "key", xdo_key],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return True
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -342,7 +361,8 @@ class LinuxStealthInput(StealthInputBackend):
             combo = "+".join(self._to_xdotool_key(k) for k in keys)
             subprocess.run(
                 ["xdotool", "key", combo],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return True
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -357,7 +377,8 @@ class LinuxStealthInput(StealthInputBackend):
             if x is not None and y is not None:
                 subprocess.run(
                     ["xdotool", "mousemove", str(x), str(y)],
-                    capture_output=True, timeout=5,
+                    capture_output=True,
+                    timeout=5,
                 )
             # xdotool click 4 = scroll up, 5 = scroll down
             btn = "4" if amount > 0 else "5"
@@ -365,7 +386,8 @@ class LinuxStealthInput(StealthInputBackend):
             for _ in range(count):
                 subprocess.run(
                     ["xdotool", "click", btn],
-                    capture_output=True, timeout=3,
+                    capture_output=True,
+                    timeout=3,
                 )
             return True
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -376,16 +398,30 @@ class LinuxStealthInput(StealthInputBackend):
     def _to_xdotool_key(key: str) -> str:
         """Map common key names to xdotool key names."""
         mapping = {
-            "enter": "Return", "return": "Return",
-            "tab": "Tab", "escape": "Escape", "esc": "Escape",
-            "space": "space", "backspace": "BackSpace",
-            "delete": "Delete", "insert": "Insert",
-            "up": "Up", "down": "Down", "left": "Left", "right": "Right",
-            "home": "Home", "end": "End",
-            "pageup": "Page_Up", "pagedown": "Page_Down",
-            "ctrl": "ctrl", "control": "ctrl",
-            "shift": "shift", "alt": "alt",
-            "super": "super", "win": "super", "meta": "super",
+            "enter": "Return",
+            "return": "Return",
+            "tab": "Tab",
+            "escape": "Escape",
+            "esc": "Escape",
+            "space": "space",
+            "backspace": "BackSpace",
+            "delete": "Delete",
+            "insert": "Insert",
+            "up": "Up",
+            "down": "Down",
+            "left": "Left",
+            "right": "Right",
+            "home": "Home",
+            "end": "End",
+            "pageup": "Page_Up",
+            "pagedown": "Page_Down",
+            "ctrl": "ctrl",
+            "control": "ctrl",
+            "shift": "shift",
+            "alt": "alt",
+            "super": "super",
+            "win": "super",
+            "meta": "super",
         }
         k = (key or "").lower()
         if k in mapping:
@@ -441,6 +477,7 @@ class LinuxCredentialBackend(CredentialBackend):
     def _store_secretstorage(self, key: str, value: str) -> bool:
         try:
             import secretstorage
+
             bus = secretstorage.dbus_init()
             collection = secretstorage.get_default_collection(bus)
             if collection.is_locked():
@@ -455,6 +492,7 @@ class LinuxCredentialBackend(CredentialBackend):
     def _retrieve_secretstorage(self, key: str) -> str | None:
         try:
             import secretstorage
+
             bus = secretstorage.dbus_init()
             collection = secretstorage.get_default_collection(bus)
             if collection.is_locked():
@@ -470,6 +508,7 @@ class LinuxCredentialBackend(CredentialBackend):
     def _delete_secretstorage(self, key: str) -> bool:
         try:
             import secretstorage
+
             bus = secretstorage.dbus_init()
             collection = secretstorage.get_default_collection(bus)
             if collection.is_locked():
@@ -486,6 +525,7 @@ class LinuxCredentialBackend(CredentialBackend):
     def _list_secretstorage(self) -> list[str]:
         try:
             import secretstorage
+
             bus = secretstorage.dbus_init()
             collection = secretstorage.get_default_collection(bus)
             if collection.is_locked():
@@ -529,6 +569,7 @@ class LinuxCredentialBackend(CredentialBackend):
 
     def _store_file(self, key: str, value: str) -> bool:
         import base64
+
         with self._lock:
             self._file_data.setdefault("keys", {})[key] = {
                 "encrypted": base64.b64encode(value.encode()).decode(),
@@ -538,6 +579,7 @@ class LinuxCredentialBackend(CredentialBackend):
 
     def _retrieve_file(self, key: str) -> str | None:
         import base64
+
         with self._lock:
             entry = self._file_data.get("keys", {}).get(key)
             if entry is None:
@@ -562,6 +604,7 @@ class LinuxCredentialBackend(CredentialBackend):
     @staticmethod
     def _iso_now() -> str:
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc).isoformat()
 
 
@@ -570,8 +613,12 @@ class LinuxCredentialBackend(CredentialBackend):
 # ---------------------------------------------------------------------------
 
 _DANGEROUS_PATTERNS = (
-    "rm -rf /", "rm -rf /*", ":(){ :|:& };:", "mkfs.",
-    "dd if=/dev/zero", "> /dev/sda",
+    "rm -rf /",
+    "rm -rf /*",
+    ":(){ :|:& };:",
+    "mkfs.",
+    "dd if=/dev/zero",
+    "> /dev/sda",
 )
 
 
@@ -579,7 +626,10 @@ class LinuxShellBackend(ShellBackend):
     """Bash-based shell backend for Linux."""
 
     def execute(
-        self, command: str, timeout: float = 60.0, capture: bool = True,
+        self,
+        command: str,
+        timeout: float = 60.0,
+        capture: bool = True,
     ) -> dict[str, Any]:
         """Execute a command in bash."""
         sanitized = self.sanitize_command(command)
@@ -607,9 +657,7 @@ class LinuxShellBackend(ShellBackend):
         lower = command.lower().strip()
         for pattern in _DANGEROUS_PATTERNS:
             if pattern in lower:
-                raise ValueError(
-                    f"Command contains dangerous pattern: '{pattern}'"
-                )
+                raise ValueError(f"Command contains dangerous pattern: '{pattern}'")
         return command
 
 
@@ -638,9 +686,9 @@ class LinuxWindowBackend(WindowBackend):
         if self._has_xdotool:
             try:
                 result = subprocess.run(
-                    ["xdotool", "search", "--name", title, "windowactivate",
-                     "--sync"],
-                    capture_output=True, timeout=5,
+                    ["xdotool", "search", "--name", title, "windowactivate", "--sync"],
+                    capture_output=True,
+                    timeout=5,
                 )
                 return result.returncode == 0
             except (OSError, subprocess.TimeoutExpired):
@@ -656,13 +704,16 @@ class LinuxWindowBackend(WindowBackend):
                 # Find window ID, then close it
                 result = subprocess.run(
                     ["xdotool", "search", "--name", title],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if result.returncode == 0 and result.stdout.strip():
                     wid = result.stdout.strip().split("\n")[0]
                     subprocess.run(
                         ["xdotool", "windowclose", wid],
-                        capture_output=True, timeout=5,
+                        capture_output=True,
+                        timeout=5,
                     )
                     return True
             except (OSError, subprocess.TimeoutExpired):
@@ -675,7 +726,9 @@ class LinuxWindowBackend(WindowBackend):
             try:
                 result = subprocess.run(
                     ["xdotool", "getactivewindow", "getwindowgeometry", "--shell"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if result.returncode == 0:
                     geo = {}
@@ -684,8 +737,10 @@ class LinuxWindowBackend(WindowBackend):
                             k, v = line.split("=", 1)
                             geo[k.strip()] = int(v.strip())
                     return (
-                        geo.get("X", 0), geo.get("Y", 0),
-                        geo.get("WIDTH", 0), geo.get("HEIGHT", 0),
+                        geo.get("X", 0),
+                        geo.get("Y", 0),
+                        geo.get("WIDTH", 0),
+                        geo.get("HEIGHT", 0),
                     )
             except (OSError, subprocess.TimeoutExpired, ValueError):
                 pass
@@ -704,6 +759,7 @@ class LinuxWindowBackend(WindowBackend):
         """List windows via libwnck."""
         try:
             import gi
+
             gi.require_version("Wnck", "3.0")
             from gi.repository import Wnck
 
@@ -715,13 +771,17 @@ class LinuxWindowBackend(WindowBackend):
             for win in screen.get_windows():
                 if not win.is_skip_pager() and win.get_name():
                     geo = win.get_geometry()
-                    windows.append(WindowInfo(
-                        title=win.get_name() or "",
-                        x=geo[0], y=geo[1],
-                        width=geo[2], height=geo[3],
-                        is_focused=win.is_active(),
-                        handle=win.get_xid(),
-                    ))
+                    windows.append(
+                        WindowInfo(
+                            title=win.get_name() or "",
+                            x=geo[0],
+                            y=geo[1],
+                            width=geo[2],
+                            height=geo[3],
+                            is_focused=win.is_active(),
+                            handle=win.get_xid(),
+                        )
+                    )
             return windows
         except Exception as exc:
             logger.debug("wnck list_windows failed: %s", exc)
@@ -734,7 +794,9 @@ class LinuxWindowBackend(WindowBackend):
             # Get list of active window IDs
             result = subprocess.run(
                 ["xdotool", "search", "--onlyvisible", "--name", ""],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode != 0:
                 return []
@@ -746,7 +808,9 @@ class LinuxWindowBackend(WindowBackend):
                     # Get window name
                     name_result = subprocess.run(
                         ["xdotool", "getwindowname", wid],
-                        capture_output=True, text=True, timeout=3,
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
                     )
                     name = name_result.stdout.strip() if name_result.returncode == 0 else ""
                     if not name:
@@ -754,7 +818,9 @@ class LinuxWindowBackend(WindowBackend):
                     # Get geometry
                     geo_result = subprocess.run(
                         ["xdotool", "getwindowgeometry", "--shell", wid],
-                        capture_output=True, text=True, timeout=3,
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
                     )
                     geo = {}
                     if geo_result.returncode == 0:
@@ -762,12 +828,16 @@ class LinuxWindowBackend(WindowBackend):
                             if "=" in line:
                                 k, v = line.split("=", 1)
                                 geo[k.strip()] = int(v.strip())
-                    windows.append(WindowInfo(
-                        title=name,
-                        x=geo.get("X", 0), y=geo.get("Y", 0),
-                        width=geo.get("WIDTH", 0), height=geo.get("HEIGHT", 0),
-                        handle=int(wid),
-                    ))
+                    windows.append(
+                        WindowInfo(
+                            title=name,
+                            x=geo.get("X", 0),
+                            y=geo.get("Y", 0),
+                            width=geo.get("WIDTH", 0),
+                            height=geo.get("HEIGHT", 0),
+                            handle=int(wid),
+                        )
+                    )
                 except (OSError, subprocess.TimeoutExpired, ValueError):
                     continue
         except (OSError, subprocess.TimeoutExpired):
@@ -778,8 +848,10 @@ class LinuxWindowBackend(WindowBackend):
         """Focus window via wnck."""
         try:
             import gi
+
             gi.require_version("Wnck", "3.0")
             from gi.repository import Wnck
+
             screen = Wnck.Screen.get_default()
             if screen is None:
                 return False
@@ -805,20 +877,19 @@ class LinuxOverlayBackend(OverlayBackend):
     def is_available(self) -> bool:
         return os.environ.get("XDG_SESSION_TYPE", "") != "wayland"
 
-    def show_ring(self, x: int, y: int, color: str = "#00F0FF",
-                  duration_ms: int = 420) -> None:
+    def show_ring(self, x: int, y: int, color: str = "#00F0FF", duration_ms: int = 420) -> None:
         """Show ring via a Python/Tkinter overlay window (X11)."""
         if not self.is_available():
             return
         try:
             import tkinter as tk
+
             root = tk.Tk()
             root.overrideredirect(True)
             root.attributes("-topmost", True)
             root.attributes("-transparentcolor", "black")
             root.geometry(f"80x80+{x - 40}+{y - 40}")
-            canvas = tk.Canvas(root, width=80, height=80, bg="black",
-                               highlightthickness=0)
+            canvas = tk.Canvas(root, width=80, height=80, bg="black", highlightthickness=0)
             canvas.create_oval(5, 5, 75, 75, outline=color, width=3)
             canvas.pack()
             root.after(duration_ms, root.destroy)
@@ -826,14 +897,16 @@ class LinuxOverlayBackend(OverlayBackend):
         except Exception as exc:
             logger.debug("Linux overlay ring failed: %s", exc)
 
-    def show_cursor_move(self, from_x: int, from_y: int, to_x: int, to_y: int,
-                         duration_ms: int = 300) -> None:
+    def show_cursor_move(
+        self, from_x: int, from_y: int, to_x: int, to_y: int, duration_ms: int = 300
+    ) -> None:
         """Animate cursor via xdotool (basic: just moves, no animation)."""
         if self._has_xdotool():
             try:
                 subprocess.run(
                     ["xdotool", "mousemove", "--sync", str(to_x), str(to_y)],
-                    capture_output=True, timeout=3,
+                    capture_output=True,
+                    timeout=3,
                 )
             except (OSError, subprocess.TimeoutExpired):
                 pass

@@ -44,9 +44,13 @@ class TestPerceptionElement:
 
     def test_to_dict(self):
         elem = PerceptionElement(
-            id=1, label="Save", element_type=ElementType.BUTTON,
-            bounding_box=(100, 200, 80, 30), confidence=0.95,
-            source=ElementSource.ACCESSIBILITY, actions=["click"],
+            id=1,
+            label="Save",
+            element_type=ElementType.BUTTON,
+            bounding_box=(100, 200, 80, 30),
+            confidence=0.95,
+            source=ElementSource.ACCESSIBILITY,
+            actions=["click"],
             is_interactable=True,
         )
         d = elem.to_dict()
@@ -90,8 +94,11 @@ class TestPerceptionResult:
     def test_to_llm_context(self):
         elems = [
             PerceptionElement(
-                id=1, label="Save", element_type=ElementType.BUTTON,
-                bounding_box=(100, 200, 80, 30), is_interactable=True,
+                id=1,
+                label="Save",
+                element_type=ElementType.BUTTON,
+                bounding_box=(100, 200, 80, 30),
+                is_interactable=True,
                 actions=["click"],
             ),
         ]
@@ -139,9 +146,12 @@ class TestFusionEngine:
         fusion = FusionEngine()
         elems = [
             PerceptionElement(
-                label="Save", element_type=ElementType.BUTTON,
-                bounding_box=(100, 200, 80, 30), confidence=0.95,
-                source=ElementSource.ACCESSIBILITY, is_interactable=True,
+                label="Save",
+                element_type=ElementType.BUTTON,
+                bounding_box=(100, 200, 80, 30),
+                confidence=0.95,
+                source=ElementSource.ACCESSIBILITY,
+                is_interactable=True,
             ),
         ]
         result = fusion.fuse(accessibility_elements=elems)
@@ -152,15 +162,19 @@ class TestFusionEngine:
         fusion = FusionEngine()
         acc = [
             PerceptionElement(
-                label="Save", bounding_box=(100, 200, 80, 30),
-                confidence=0.95, source=ElementSource.ACCESSIBILITY,
+                label="Save",
+                bounding_box=(100, 200, 80, 30),
+                confidence=0.95,
+                source=ElementSource.ACCESSIBILITY,
                 is_interactable=True,
             ),
         ]
         ocr = [
             PerceptionElement(
-                label="Save", bounding_box=(102, 201, 78, 28),
-                confidence=0.8, source=ElementSource.OCR,
+                label="Save",
+                bounding_box=(102, 201, 78, 28),
+                confidence=0.8,
+                source=ElementSource.OCR,
             ),
         ]
         result = fusion.fuse(accessibility_elements=acc, ocr_elements=ocr)
@@ -173,14 +187,18 @@ class TestFusionEngine:
         fusion = FusionEngine()
         acc = [
             PerceptionElement(
-                label="Save", bounding_box=(100, 200, 80, 30),
-                confidence=0.95, source=ElementSource.ACCESSIBILITY,
+                label="Save",
+                bounding_box=(100, 200, 80, 30),
+                confidence=0.95,
+                source=ElementSource.ACCESSIBILITY,
             ),
         ]
         ocr = [
             PerceptionElement(
-                label="Cancel", bounding_box=(400, 200, 80, 30),
-                confidence=0.8, source=ElementSource.OCR,
+                label="Cancel",
+                bounding_box=(400, 200, 80, 30),
+                confidence=0.8,
+                source=ElementSource.OCR,
             ),
         ]
         result = fusion.fuse(accessibility_elements=acc, ocr_elements=ocr)
@@ -209,8 +227,7 @@ class TestFusionEngine:
     def test_id_assignment(self):
         fusion = FusionEngine()
         elems = [
-            PerceptionElement(label=f"E{i}", bounding_box=(i * 100, 0, 50, 50))
-            for i in range(5)
+            PerceptionElement(label=f"E{i}", bounding_box=(i * 100, 0, 50, 50)) for i in range(5)
         ]
         result = fusion.fuse(accessibility_elements=elems)
         ids = [e.id for e in result]
@@ -235,8 +252,11 @@ class TestAnnotator:
         img = Image.new("RGB", (800, 600))
         elems = [
             PerceptionElement(
-                id=1, label="Save", element_type=ElementType.BUTTON,
-                bounding_box=(100, 200, 80, 30), is_interactable=True,
+                id=1,
+                label="Save",
+                element_type=ElementType.BUTTON,
+                bounding_box=(100, 200, 80, 30),
+                is_interactable=True,
             ),
         ]
         result = annotate_screenshot(img, elems)
@@ -268,6 +288,7 @@ class TestPipelineElementClassification:
 
     def test_classify_button_words(self):
         from core.perception.pipeline import PerceptionPipeline
+
         cls = PerceptionPipeline._classify_text_element
         assert cls("Save") == ElementType.BUTTON
         assert cls("OK") == ElementType.BUTTON
@@ -276,30 +297,35 @@ class TestPipelineElementClassification:
 
     def test_classify_url(self):
         from core.perception.pipeline import PerceptionPipeline
+
         cls = PerceptionPipeline._classify_text_element
         assert cls("https://example.com") == ElementType.LINK
         assert cls("www.google.com") == ElementType.LINK
 
     def test_classify_menu(self):
         from core.perception.pipeline import PerceptionPipeline
+
         cls = PerceptionPipeline._classify_text_element
         assert cls("File") == ElementType.MENU_ITEM
         assert cls("Settings") == ElementType.MENU_ITEM
 
     def test_classify_input(self):
         from core.perception.pipeline import PerceptionPipeline
+
         cls = PerceptionPipeline._classify_text_element
         assert cls("Enter your email") == ElementType.INPUT
         assert cls("Search for...") == ElementType.INPUT
 
     def test_classify_plain_text(self):
         from core.perception.pipeline import PerceptionPipeline
+
         cls = PerceptionPipeline._classify_text_element
         assert cls("Hello World") == ElementType.TEXT
         assert cls("Welcome to the application") == ElementType.TEXT
 
     def test_classify_control_type_mapping(self):
         from core.perception.pipeline import PerceptionPipeline
+
         cls = PerceptionPipeline._classify_element_type
         assert cls("button") == ElementType.BUTTON
         assert cls("edit") == ElementType.INPUT
@@ -313,9 +339,11 @@ class TestPipelineIntegration:
 
     def test_analyze_with_no_sources(self):
         from core.perception.pipeline import _result_cache, _result_cache_lock
+
         with _result_cache_lock:
             _result_cache.clear()
         from core.perception.pipeline import PerceptionPipeline
+
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (800, 600), color="white")
         result = pipeline.analyze(
@@ -331,30 +359,39 @@ class TestPipelineIntegration:
 
     def test_analyze_fuses_sources(self):
         from core.perception.pipeline import _result_cache, _result_cache_lock
+
         with _result_cache_lock:
             _result_cache.clear()
         from core.perception.pipeline import PerceptionPipeline
+
         pipeline = PerceptionPipeline()
 
         acc_elems = [
             PerceptionElement(
-                label="File", element_type=ElementType.MENU_ITEM,
-                bounding_box=(10, 5, 40, 20), confidence=0.95,
-                source=ElementSource.ACCESSIBILITY, is_interactable=True,
+                label="File",
+                element_type=ElementType.MENU_ITEM,
+                bounding_box=(10, 5, 40, 20),
+                confidence=0.95,
+                source=ElementSource.ACCESSIBILITY,
+                is_interactable=True,
                 actions=["click"],
             ),
         ]
         ocr_elems = [
             PerceptionElement(
-                label="Edit", element_type=ElementType.MENU_ITEM,
-                bounding_box=(60, 5, 35, 20), confidence=0.7,
+                label="Edit",
+                element_type=ElementType.MENU_ITEM,
+                bounding_box=(60, 5, 35, 20),
+                confidence=0.7,
                 source=ElementSource.OCR,
             ),
         ]
 
         # Test full pipeline with mocked query methods
-        with patch.object(pipeline, '_query_accessibility', return_value=acc_elems), \
-             patch.object(pipeline, '_query_ocr', return_value=ocr_elems):
+        with (
+            patch.object(pipeline, "_query_accessibility", return_value=acc_elems),
+            patch.object(pipeline, "_query_ocr", return_value=ocr_elems),
+        ):
             img = Image.new("RGB", (800, 600), color="white")
             result = pipeline.analyze(img, include_vision=False)
             assert len(result.elements) == 2
@@ -363,9 +400,11 @@ class TestPipelineIntegration:
 
     def test_caching_returns_same_result(self):
         from core.perception.pipeline import _result_cache, _result_cache_lock
+
         with _result_cache_lock:
             _result_cache.clear()
         from core.perception.pipeline import PerceptionPipeline
+
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (100, 100), color="blue")
         r1 = pipeline.analyze(

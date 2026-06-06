@@ -28,6 +28,8 @@ def _fake_tk(**attrs):
     for k, v in attrs.items():
         setattr(mod, k, v)
     return mod
+
+
 from gui.cursor_overlay import (
     CursorOverlay,
     get_overlay,
@@ -296,6 +298,7 @@ class TestAnimateActionNoLabel:
 
     def _make_overlay(self):
         from gui.cursor_overlay import CursorOverlay
+
         ov = CursorOverlay()
         ov._root = MagicMock()
         ov._canvas = MagicMock()
@@ -314,7 +317,6 @@ class TestAnimateActionNoLabel:
             ov._animate_action({"x": 10, "y": 20})  # no label, no type key
         # _canvas.itemconfig should NOT have been called with a text value for the label
         itemconfig_calls = [
-            c for c in ov._canvas.itemconfig.call_args_list
-            if c[0] and c[0][0] == "label"
+            c for c in ov._canvas.itemconfig.call_args_list if c[0] and c[0][0] == "label"
         ]
         assert not itemconfig_calls

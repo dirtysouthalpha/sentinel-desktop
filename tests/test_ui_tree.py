@@ -21,6 +21,7 @@ def clear_ui_tree_cache():
     yield
     ui_tree.clear_all_caches()
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -597,4 +598,6 @@ class TestCacheMaintenance:
         # Verify the function completed successfully (it should find the control)
         # The control may be None if the mock setup doesn't work perfectly,
         # but the cache cleanup line should still execute
-        assert result is not None or len(_m._FIND_CONTROL_CACHE) <= 100  # Either we found it or cache was cleaned
+        assert (
+            result is not None or len(_m._FIND_CONTROL_CACHE) <= 100
+        )  # Either we found it or cache was cleaned

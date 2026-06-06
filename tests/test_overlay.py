@@ -34,6 +34,7 @@ def _patched_tk():
     mod.TclError = type("TclError", (Exception,), {})
     return mod
 
+
 # ── Tests: _coords_from_action ────────────────────────────────────────────
 
 

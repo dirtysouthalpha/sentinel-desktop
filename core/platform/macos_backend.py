@@ -37,7 +37,8 @@ def _probe_osascript() -> bool:
     try:
         result = subprocess.run(
             ["osascript", "-e", 'return "ok"'],
-            capture_output=True, timeout=3,
+            capture_output=True,
+            timeout=3,
         )
         return result.returncode == 0
     except (OSError, FileNotFoundError, subprocess.TimeoutExpired):
@@ -48,9 +49,9 @@ def _probe_applescript_accessibility() -> bool:
     """Check if System Events UI scripting is available."""
     try:
         result = subprocess.run(
-            ["osascript", "-e",
-             'tell application "System Events" to return name of every process'],
-            capture_output=True, timeout=5,
+            ["osascript", "-e", 'tell application "System Events" to return name of every process'],
+            capture_output=True,
+            timeout=5,
         )
         return result.returncode == 0
     except (OSError, subprocess.TimeoutExpired):
@@ -62,7 +63,8 @@ def _probe_security() -> bool:
     try:
         result = subprocess.run(
             ["security", "list-keychains"],
-            capture_output=True, timeout=3,
+            capture_output=True,
+            timeout=3,
         )
         return result.returncode == 0
     except (OSError, FileNotFoundError, subprocess.TimeoutExpired):
@@ -73,6 +75,7 @@ def _probe_pyobjc() -> bool:
     """Check if PyObjC (ApplicationServices/Quartz) is available."""
     try:
         import ApplicationServices  # type: ignore  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -106,44 +109,46 @@ class MacOSAccessibility(AccessibilityBackend):
                     'tell application "System Events"\n'
                     f'    set targetWin to window 1 of process "{window_title}"\n'
                     '    set output to ""\n'
-                    '    repeat with elem in (every UI element of targetWin)\n'
-                    '        try\n'
+                    "    repeat with elem in (every UI element of targetWin)\n"
+                    "        try\n"
                     '            set elemDesc to (description of elem) & "|" '
                     '                & (role of elem) & "|" '
                     '                & (name of elem) & "|" '
                     '                & (value of elem) & "|" '
                     '                & (position of elem) & "|" '
-                    '                & (size of elem)\n'
-                    '            set output to output & elemDesc & linefeed\n'
-                    '        end try\n'
-                    '    end repeat\n'
-                    '    return output\n'
-                    'end tell'
+                    "                & (size of elem)\n"
+                    "            set output to output & elemDesc & linefeed\n"
+                    "        end try\n"
+                    "    end repeat\n"
+                    "    return output\n"
+                    "end tell"
                 )
             else:
                 # Get frontmost app's front window
                 script = (
                     'tell application "System Events"\n'
-                    '    set frontApp to name of first process whose frontmost is true\n'
-                    '    set targetWin to window 1 of process frontApp\n'
+                    "    set frontApp to name of first process whose frontmost is true\n"
+                    "    set targetWin to window 1 of process frontApp\n"
                     '    set output to ""\n'
-                    '    repeat with elem in (every UI element of targetWin)\n'
-                    '        try\n'
+                    "    repeat with elem in (every UI element of targetWin)\n"
+                    "        try\n"
                     '            set elemDesc to (description of elem) & "|" '
                     '                & (role of elem) & "|" '
                     '                & (name of elem) & "|" '
                     '                & (value of elem) & "|" '
                     '                & (position of elem) & "|" '
-                    '                & (size of elem)\n'
-                    '            set output to output & elemDesc & linefeed\n'
-                    '        end try\n'
-                    '    end repeat\n'
-                    '    return output\n'
-                    'end tell'
+                    "                & (size of elem)\n"
+                    "            set output to output & elemDesc & linefeed\n"
+                    "        end try\n"
+                    "    end repeat\n"
+                    "    return output\n"
+                    "end tell"
                 )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode != 0:
                 return []
@@ -178,13 +183,14 @@ class MacOSAccessibility(AccessibilityBackend):
         try:
             script = (
                 'tell application "System Events"\n'
-                '    click UI element whose name is '
+                "    click UI element whose name is "
                 f'"{element.name}" of window 1 of frontmost process\n'
-                'end tell'
+                "end tell"
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -198,14 +204,15 @@ class MacOSAccessibility(AccessibilityBackend):
         try:
             script = (
                 'tell application "System Events"\n'
-                '    set value of text field whose name is '
+                "    set value of text field whose name is "
                 f'"{element.name}" of window 1 of frontmost process '
                 f'to "{value}"\n'
-                'end tell'
+                "end tell"
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -259,15 +266,17 @@ class MacOSAccessibility(AccessibilityBackend):
             if ct == "edit":
                 actions.append("set_value")
 
-            elements.append(UIElement(
-                name=name.strip(),
-                control_type=ct,
-                bounding_box=box,
-                enabled=True,
-                value=value.strip() if value.strip() else None,
-                automation_id=desc.strip() or None,
-                actions=actions,
-            ))
+            elements.append(
+                UIElement(
+                    name=name.strip(),
+                    control_type=ct,
+                    bounding_box=box,
+                    enabled=True,
+                    value=value.strip() if value.strip() else None,
+                    automation_id=desc.strip() or None,
+                    actions=actions,
+                )
+            )
         return elements
 
 
@@ -297,13 +306,12 @@ class MacOSStealthInput(StealthInputBackend):
             btn = "" if button == "left" else " using {button button}"
             click_str = "click" if clicks == 1 else "double click"
             script = (
-                'tell application "System Events"\n'
-                f'    {click_str} at {{{x}, {y}}}{btn}\n'
-                'end tell'
+                f'tell application "System Events"\n    {click_str} at {{{x}, {y}}}{btn}\nend tell'
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -317,14 +325,11 @@ class MacOSStealthInput(StealthInputBackend):
         try:
             # Escape quotes for AppleScript
             escaped = text.replace("\\", "\\\\").replace('"', '\\"')
-            script = (
-                'tell application "System Events"\n'
-                f'    keystroke "{escaped}"\n'
-                'end tell'
-            )
+            script = f'tell application "System Events"\n    keystroke "{escaped}"\nend tell'
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=15,
+                capture_output=True,
+                timeout=15,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -337,14 +342,11 @@ class MacOSStealthInput(StealthInputBackend):
             return False
         try:
             key_code = self._to_applescript_key(key)
-            script = (
-                'tell application "System Events"\n'
-                f'    key code {key_code}\n'
-                'end tell'
-            )
+            script = f'tell application "System Events"\n    key code {key_code}\nend tell'
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -375,16 +377,15 @@ class MacOSStealthInput(StealthInputBackend):
             if main_key:
                 using = f" using {{{using}}}" if using else ""
                 script = (
-                    'tell application "System Events"\n'
-                    f'    keystroke "{main_key}"{using}\n'
-                    'end tell'
+                    f'tell application "System Events"\n    keystroke "{main_key}"{using}\nend tell'
                 )
             else:
                 return False
 
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -401,14 +402,11 @@ class MacOSStealthInput(StealthInputBackend):
             lines = []
             for _ in range(count):
                 lines.append(f'    scroll 1 in direction "{direction}"')
-            script = (
-                'tell application "System Events"\n'
-                + "\n".join(lines) + "\n"
-                + 'end tell'
-            )
+            script = 'tell application "System Events"\n' + "\n".join(lines) + "\n" + "end tell"
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=10,
+                capture_output=True,
+                timeout=10,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired):
@@ -418,13 +416,34 @@ class MacOSStealthInput(StealthInputBackend):
     def _to_applescript_key(key: str) -> int:
         """Map key names to macOS key codes."""
         key_codes = {
-            "enter": 36, "return": 36, "tab": 48, "escape": 53, "esc": 53,
-            "space": 49, "backspace": 51, "delete": 51,
-            "up": 126, "down": 125, "left": 123, "right": 124,
-            "home": 115, "end": 119, "pageup": 116, "pagedown": 121,
-            "f1": 122, "f2": 120, "f3": 99, "f4": 118, "f5": 96,
-            "f6": 97, "f7": 98, "f8": 100, "f9": 101, "f10": 109,
-            "f11": 103, "f12": 111,
+            "enter": 36,
+            "return": 36,
+            "tab": 48,
+            "escape": 53,
+            "esc": 53,
+            "space": 49,
+            "backspace": 51,
+            "delete": 51,
+            "up": 126,
+            "down": 125,
+            "left": 123,
+            "right": 124,
+            "home": 115,
+            "end": 119,
+            "pageup": 116,
+            "pagedown": 121,
+            "f1": 122,
+            "f2": 120,
+            "f3": 99,
+            "f4": 118,
+            "f5": 96,
+            "f6": 97,
+            "f7": 98,
+            "f8": 100,
+            "f9": 101,
+            "f10": 109,
+            "f11": 103,
+            "f12": 111,
         }
         k = (key or "").lower()
         if k in key_codes:
@@ -482,9 +501,9 @@ class MacOSCredentialBackend(CredentialBackend):
             # Delete existing first (security add-generic-password fails on duplicate)
             self._delete_keychain(key)
             result = subprocess.run(
-                ["security", "add-generic-password",
-                 "-a", key, "-s", self._SERVICE, "-w", value],
-                capture_output=True, timeout=5,
+                ["security", "add-generic-password", "-a", key, "-s", self._SERVICE, "-w", value],
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -494,9 +513,10 @@ class MacOSCredentialBackend(CredentialBackend):
     def _retrieve_keychain(self, key: str) -> str | None:
         try:
             result = subprocess.run(
-                ["security", "find-generic-password",
-                 "-a", key, "-s", self._SERVICE, "-w"],
-                capture_output=True, text=True, timeout=5,
+                ["security", "find-generic-password", "-a", key, "-s", self._SERVICE, "-w"],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode == 0:
                 return result.stdout.strip()
@@ -507,9 +527,9 @@ class MacOSCredentialBackend(CredentialBackend):
     def _delete_keychain(self, key: str) -> bool:
         try:
             result = subprocess.run(
-                ["security", "delete-generic-password",
-                 "-a", key, "-s", self._SERVICE],
-                capture_output=True, timeout=5,
+                ["security", "delete-generic-password", "-a", key, "-s", self._SERVICE],
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired):
@@ -519,7 +539,9 @@ class MacOSCredentialBackend(CredentialBackend):
         try:
             result = subprocess.run(
                 ["security", "dump-keychain"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             keys = []
             if result.returncode == 0:
@@ -527,6 +549,7 @@ class MacOSCredentialBackend(CredentialBackend):
                     if self._SERVICE in line and "acct" in line:
                         # Parse "acct"<blob>="key_name"
                         import re
+
                         match = re.search(r'"acct"<blob>="([^"]+)"', line)
                         if match:
                             keys.append(match.group(1))
@@ -592,6 +615,7 @@ class MacOSCredentialBackend(CredentialBackend):
     @staticmethod
     def _iso_now() -> str:
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc).isoformat()
 
 
@@ -600,7 +624,10 @@ class MacOSCredentialBackend(CredentialBackend):
 # ---------------------------------------------------------------------------
 
 _DANGEROUS_PATTERNS = (
-    "rm -rf /", "rm -rf /*", ":(){ :|:& };:", "mkfs.",
+    "rm -rf /",
+    "rm -rf /*",
+    ":(){ :|:& };:",
+    "mkfs.",
     "dd if=/dev/zero",
 )
 
@@ -609,7 +636,10 @@ class MacOSShellBackend(ShellBackend):
     """zsh-based shell backend for macOS."""
 
     def execute(
-        self, command: str, timeout: float = 60.0, capture: bool = True,
+        self,
+        command: str,
+        timeout: float = 60.0,
+        capture: bool = True,
     ) -> dict[str, Any]:
         """Execute a command in zsh."""
         sanitized = self.sanitize_command(command)
@@ -637,9 +667,7 @@ class MacOSShellBackend(ShellBackend):
         lower = command.lower().strip()
         for pattern in _DANGEROUS_PATTERNS:
             if pattern in lower:
-                raise ValueError(
-                    f"Command contains dangerous pattern: '{pattern}'"
-                )
+                raise ValueError(f"Command contains dangerous pattern: '{pattern}'")
         return command
 
 
@@ -662,26 +690,28 @@ class MacOSWindowBackend(WindowBackend):
             script = (
                 'tell application "System Events"\n'
                 '    set output to ""\n'
-                '    repeat with p in (every process whose background only is false)\n'
-                '        try\n'
-                '            repeat with w in (every window of p)\n'
-                '                set winName to name of w\n'
-                '                set winPos to position of w\n'
-                '                set winSize to size of w\n'
+                "    repeat with p in (every process whose background only is false)\n"
+                "        try\n"
+                "            repeat with w in (every window of p)\n"
+                "                set winName to name of w\n"
+                "                set winPos to position of w\n"
+                "                set winSize to size of w\n"
                 '                set output to output & winName & "|" '
                 '                    & (item 1 of winPos) & "," '
                 '                    & (item 2 of winPos) & "|" '
                 '                    & (item 1 of winSize) & "," '
-                '                    & (item 2 of winSize) & linefeed\n'
-                '            end repeat\n'
-                '        end try\n'
-                '    end repeat\n'
-                '    return output\n'
-                'end tell'
+                "                    & (item 2 of winSize) & linefeed\n"
+                "            end repeat\n"
+                "        end try\n"
+                "    end repeat\n"
+                "    return output\n"
+                "end tell"
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode != 0:
                 return []
@@ -698,13 +728,14 @@ class MacOSWindowBackend(WindowBackend):
             escaped = title.replace('"', '\\"')
             script = (
                 'tell application "System Events"\n'
-                '    set frontmost of (every process whose windows contains '
+                "    set frontmost of (every process whose windows contains "
                 f'        (every window whose name contains "{escaped}")) to true\n'
-                'end tell'
+                "end tell"
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired):
@@ -718,13 +749,14 @@ class MacOSWindowBackend(WindowBackend):
             escaped = title.replace('"', '\\"')
             script = (
                 'tell application "System Events"\n'
-                f'    click (first button of (every window whose name contains '
+                f"    click (first button of (every window whose name contains "
                 f'        "{escaped}") whose subrole is "AXCloseButton")\n'
-                'end tell'
+                "end tell"
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired):
@@ -737,18 +769,20 @@ class MacOSWindowBackend(WindowBackend):
         try:
             script = (
                 'tell application "System Events"\n'
-                '    set frontApp to name of first process whose frontmost is true\n'
-                '    tell process frontApp\n'
-                '        set winPos to position of window 1\n'
-                '        set winSize to size of window 1\n'
+                "    set frontApp to name of first process whose frontmost is true\n"
+                "    tell process frontApp\n"
+                "        set winPos to position of window 1\n"
+                "        set winSize to size of window 1\n"
                 '        return (item 1 of winPos) & "," & (item 2 of winPos) '
                 '            & "," & (item 1 of winSize) & "," & (item 2 of winSize)\n'
-                '    end tell\n'
-                'end tell'
+                "    end tell\n"
+                "end tell"
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode == 0:
                 parts = result.stdout.strip().split(",")
@@ -796,17 +830,16 @@ class MacOSOverlayBackend(OverlayBackend):
     def is_available(self) -> bool:
         return _probe_osascript()
 
-    def show_ring(self, x: int, y: int, color: str = "#00F0FF",
-                  duration_ms: int = 420) -> None:
+    def show_ring(self, x: int, y: int, color: str = "#00F0FF", duration_ms: int = 420) -> None:
         """Show ring via a Tkinter overlay."""
         try:
             import tkinter as tk
+
             root = tk.Tk()
             root.overrideredirect(True)
             root.attributes("-topmost", True)
             root.geometry(f"80x80+{x - 40}+{y - 40}")
-            canvas = tk.Canvas(root, width=80, height=80,
-                               highlightthickness=0)
+            canvas = tk.Canvas(root, width=80, height=80, highlightthickness=0)
             canvas.create_oval(5, 5, 75, 75, outline=color, width=3)
             canvas.pack()
             root.after(duration_ms, root.destroy)
@@ -814,18 +847,18 @@ class MacOSOverlayBackend(OverlayBackend):
         except Exception as exc:
             logger.debug("macOS overlay ring failed: %s", exc)
 
-    def show_cursor_move(self, from_x: int, from_y: int, to_x: int, to_y: int,
-                         duration_ms: int = 300) -> None:
+    def show_cursor_move(
+        self, from_x: int, from_y: int, to_x: int, to_y: int, duration_ms: int = 300
+    ) -> None:
         """Move cursor via AppleScript."""
         try:
             script = (
-                'tell application "System Events"\n'
-                f'    set cursor to {{{to_x}, {to_y}}}\n'
-                'end tell'
+                f'tell application "System Events"\n    set cursor to {{{to_x}, {to_y}}}\nend tell'
             )
             subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=3,
+                capture_output=True,
+                timeout=3,
             )
         except (OSError, subprocess.TimeoutExpired):
             pass

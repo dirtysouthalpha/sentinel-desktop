@@ -137,6 +137,7 @@ class TestCaptureRegionToBase64:
 # list_monitors
 # ===========================================================================
 
+
 class TestListMonitors:
     @patch("core.screenshot._HAS_MSS", False)
     def test_without_mss_returns_primary(self):
@@ -195,6 +196,7 @@ class TestListMonitors:
 # capture_screen
 # ===========================================================================
 
+
 class TestCaptureScreen:
     @patch("core.screenshot._HAS_MSS", False)
     def test_fallback_to_pyautogui(self):
@@ -235,8 +237,10 @@ class TestCaptureScreen:
         mock_sct.__exit__ = MagicMock(return_value=False)
         mock_sct.monitors = [{"left": 0, "top": 0, "width": 100, "height": 100}]
 
-        with patch("core.screenshot.mss") as mock_mss, \
-             patch("core.screenshot.pyautogui") as mock_pg:
+        with (
+            patch("core.screenshot.mss") as mock_mss,
+            patch("core.screenshot.pyautogui") as mock_pg,
+        ):
             mock_mss.mss.return_value = mock_sct
             mock_pg.screenshot.return_value = fake_img
             result = capture_screen(monitor=99)
@@ -257,6 +261,7 @@ class TestCaptureScreen:
 # ===========================================================================
 # capture_region
 # ===========================================================================
+
 
 class TestCaptureRegion:
     @patch("core.screenshot._HAS_MSS", False)
@@ -303,6 +308,7 @@ class TestCaptureRegion:
 # capture_focused_window / capture_focused_window_with_title
 # ===========================================================================
 
+
 class TestCaptureFocusedWindow:
     def test_no_target_returns_none(self):
         from core.screenshot import capture_focused_window
@@ -326,8 +332,10 @@ class TestCaptureFocusedWindow:
         from core.screenshot import capture_focused_window
 
         fake_img = Image.new("RGB", (100, 100))
-        with patch("core.window_manager") as mock_wm, \
-             patch("core.screenshot.capture_region", return_value=fake_img) as mock_cap:
+        with (
+            patch("core.window_manager") as mock_wm,
+            patch("core.screenshot.capture_region", return_value=fake_img) as mock_cap,
+        ):
             mock_wm.get_target_window_rect.return_value = None
             mock_wm.get_focused_window_rect.return_value = (10, 20, 100, 200)
             result = capture_focused_window()
@@ -338,8 +346,10 @@ class TestCaptureFocusedWindow:
         from core.screenshot import capture_focused_window
 
         fake_img = Image.new("RGB", (100, 100))
-        with patch("core.window_manager") as mock_wm, \
-             patch("core.screenshot.capture_region", return_value=fake_img):
+        with (
+            patch("core.window_manager") as mock_wm,
+            patch("core.screenshot.capture_region", return_value=fake_img),
+        ):
             mock_wm.get_target_window_rect.return_value = (50, 60, 100, 200, "Notepad")
             result = capture_focused_window()
             assert result is fake_img
@@ -347,8 +357,10 @@ class TestCaptureFocusedWindow:
     def test_capture_region_error_returns_none(self):
         from core.screenshot import capture_focused_window
 
-        with patch("core.window_manager") as mock_wm, \
-             patch("core.screenshot.capture_region", side_effect=OSError("fail")):
+        with (
+            patch("core.window_manager") as mock_wm,
+            patch("core.screenshot.capture_region", side_effect=OSError("fail")),
+        ):
             mock_wm.get_target_window_rect.return_value = None
             mock_wm.get_focused_window_rect.return_value = (10, 20, 100, 200)
             result = capture_focused_window()
@@ -369,8 +381,10 @@ class TestCaptureFocusedWindowWithTitle:
         from core.screenshot import capture_focused_window_with_title
 
         fake_img = Image.new("RGB", (100, 100))
-        with patch("core.window_manager") as mock_wm, \
-             patch("core.screenshot.capture_region", return_value=fake_img):
+        with (
+            patch("core.window_manager") as mock_wm,
+            patch("core.screenshot.capture_region", return_value=fake_img),
+        ):
             mock_wm.get_target_window_rect.return_value = (0, 0, 100, 100, "Chrome")
             result = capture_focused_window_with_title()
             assert result is not None
@@ -381,8 +395,10 @@ class TestCaptureFocusedWindowWithTitle:
         from core.screenshot import capture_focused_window_with_title
 
         fake_img = Image.new("RGB", (100, 100))
-        with patch("core.window_manager") as mock_wm, \
-             patch("core.screenshot.capture_region", return_value=fake_img):
+        with (
+            patch("core.window_manager") as mock_wm,
+            patch("core.screenshot.capture_region", return_value=fake_img),
+        ):
             mock_wm.get_target_window_rect.return_value = None
             mock_wm.get_focused_window_rect.return_value = (0, 0, 100, 100)
             result = capture_focused_window_with_title()
@@ -393,6 +409,7 @@ class TestCaptureFocusedWindowWithTitle:
 # ===========================================================================
 # capture_window
 # ===========================================================================
+
 
 class TestCaptureWindow:
     def test_no_rect_returns_none(self):
@@ -418,9 +435,11 @@ class TestCaptureWindow:
         from core.screenshot import capture_window
 
         fake_img = Image.new("RGB", (200, 100))
-        with patch("core.window_manager") as mock_wm, \
-             patch("core.screenshot.capture_region", return_value=fake_img) as mock_cap, \
-             patch("core.screenshot.time"):
+        with (
+            patch("core.window_manager") as mock_wm,
+            patch("core.screenshot.capture_region", return_value=fake_img) as mock_cap,
+            patch("core.screenshot.time"),
+        ):
             mock_wm.restore_window.return_value = None
             mock_wm.get_window_rect.return_value = (50, 60, 200, 100)
             result = capture_window("Notepad")
@@ -430,9 +449,11 @@ class TestCaptureWindow:
     def test_capture_error_returns_none(self):
         from core.screenshot import capture_window
 
-        with patch("core.window_manager") as mock_wm, \
-             patch("core.screenshot.capture_region", side_effect=OSError("nope")), \
-             patch("core.screenshot.time"):
+        with (
+            patch("core.window_manager") as mock_wm,
+            patch("core.screenshot.capture_region", side_effect=OSError("nope")),
+            patch("core.screenshot.time"),
+        ):
             mock_wm.restore_window.return_value = None
             mock_wm.get_window_rect.return_value = (50, 60, 200, 100)
             result = capture_window("Broken")
@@ -442,6 +463,7 @@ class TestCaptureWindow:
 # ===========================================================================
 # capture_to_base64
 # ===========================================================================
+
 
 class TestCaptureToBase64:
     def test_produces_base64_string(self):
@@ -469,6 +491,7 @@ class TestCaptureToBase64:
 # find_template / wait_for_template
 # ===========================================================================
 
+
 class TestFindTemplate:
     def test_no_cv2_returns_none(self):
         from core.screenshot import find_template
@@ -493,8 +516,10 @@ class TestWaitForTemplate:
     def test_timeout_returns_none(self):
         from core.screenshot import wait_for_template
 
-        with patch("core.screenshot.find_template", return_value=None), \
-             patch("core.screenshot.time") as mock_time:
+        with (
+            patch("core.screenshot.find_template", return_value=None),
+            patch("core.screenshot.time") as mock_time,
+        ):
             # Simulate time passing beyond timeout
             mock_time.time.side_effect = [0, 0.5, 31]  # start, check, past timeout
             mock_time.sleep = MagicMock()
@@ -505,6 +530,7 @@ class TestWaitForTemplate:
 # ===========================================================================
 # get_capture_offset — additional coverage
 # ===========================================================================
+
 
 class TestGetCaptureOffsetExtra:
     @patch("core.screenshot._HAS_MSS", True)
@@ -519,8 +545,10 @@ class TestGetCaptureOffsetExtra:
             {"left": 1920, "top": 0, "width": 1920, "height": 1080},
         ]
 
-        with patch("core.screenshot.mss") as mock_mss, \
-             patch("core.screenshot.resolve_monitor", return_value=1):
+        with (
+            patch("core.screenshot.mss") as mock_mss,
+            patch("core.screenshot.resolve_monitor", return_value=1),
+        ):
             mock_mss.mss.return_value = mock_sct
             result = get_capture_offset(1)
             assert result == (1920, 0)
@@ -529,8 +557,10 @@ class TestGetCaptureOffsetExtra:
     def test_mss_error_returns_zero(self):
         from core.screenshot import get_capture_offset
 
-        with patch("core.screenshot.mss") as mock_mss, \
-             patch("core.screenshot.resolve_monitor", return_value=1):
+        with (
+            patch("core.screenshot.mss") as mock_mss,
+            patch("core.screenshot.resolve_monitor", return_value=1),
+        ):
             mock_mss.mss.side_effect = RuntimeError("fail")
             mock_mss.ScreenShotError = RuntimeError
             result = get_capture_offset(1)

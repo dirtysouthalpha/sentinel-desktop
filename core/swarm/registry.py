@@ -42,10 +42,7 @@ class AgentRegistry:
 
     def find_by_role(self, role: AgentRole) -> list[SpecialistAgent]:
         """Find all agents with a specific role that are idle."""
-        return [
-            a for a in self._agents.values()
-            if a.role == role and a.state == AgentState.IDLE
-        ]
+        return [a for a in self._agents.values() if a.role == role and a.state == AgentState.IDLE]
 
     def find_available(self) -> list[SpecialistAgent]:
         """Find all idle agents."""

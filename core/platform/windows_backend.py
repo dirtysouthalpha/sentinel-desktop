@@ -39,6 +39,7 @@ def _probe_uia() -> bool:
         return _HAS_UIA
     try:
         import uiautomation as auto  # type: ignore
+
         _uia_auto = auto
         _HAS_UIA = True
     except (ImportError, ModuleNotFoundError, OSError):
@@ -61,6 +62,7 @@ def _probe_win32() -> bool:
         import win32api  # type: ignore
         import win32con  # type: ignore
         import win32gui  # type: ignore
+
         _win32gui = win32gui
         _win32api = win32api
         _win32con = win32con
@@ -107,15 +109,25 @@ def _init_dpapi() -> None:
 
         _CryptProtectData = crypt32.CryptProtectData
         _CryptProtectData.argtypes = [
-            POINTER(_DATA_BLOB), c_wchar_p, POINTER(_DATA_BLOB),
-            c_void_p, c_void_p, c_uint, POINTER(_DATA_BLOB),
+            POINTER(_DATA_BLOB),
+            c_wchar_p,
+            POINTER(_DATA_BLOB),
+            c_void_p,
+            c_void_p,
+            c_uint,
+            POINTER(_DATA_BLOB),
         ]
         _CryptProtectData.restype = c_uint
 
         _CryptUnprotectData = crypt32.CryptUnprotectData
         _CryptUnprotectData.argtypes = [
-            POINTER(_DATA_BLOB), POINTER(c_wchar_p), POINTER(_DATA_BLOB),
-            c_void_p, c_void_p, c_uint, POINTER(_DATA_BLOB),
+            POINTER(_DATA_BLOB),
+            POINTER(c_wchar_p),
+            POINTER(_DATA_BLOB),
+            c_void_p,
+            c_void_p,
+            c_uint,
+            POINTER(_DATA_BLOB),
         ]
         _CryptUnprotectData.restype = c_uint
         _DPAPI_OK = True
@@ -229,7 +241,11 @@ class WindowsAccessibility(AccessibilityBackend):
         return _uia_auto.GetForegroundWindow()
 
     def _walk_tree(
-        self, control: Any, elements: list[UIElement], depth: int, max_depth: int,
+        self,
+        control: Any,
+        elements: list[UIElement],
+        depth: int,
+        max_depth: int,
     ) -> None:
         """Recursively walk the UIA tree and collect elements."""
         if depth > max_depth:
@@ -247,8 +263,7 @@ class WindowsAccessibility(AccessibilityBackend):
         """Convert a UIA control to our normalized UIElement."""
         try:
             rect = control.BoundingRectangle
-            box = (int(rect.left), int(rect.top),
-                   int(rect.width), int(rect.height))
+            box = (int(rect.left), int(rect.top), int(rect.width), int(rect.height))
         except (OSError, RuntimeError, AttributeError):
             box = None
 
@@ -333,6 +348,7 @@ class WindowsStealthInput(StealthInputBackend):
                 down, up = _win32con.WM_LBUTTONDOWN, _win32con.WM_LBUTTONUP
                 wparam = _win32con.MK_LBUTTON
             import time
+
             for _ in range(max(1, clicks)):
                 _win32api.PostMessage(hwnd, down, wparam, lparam)
                 time.sleep(0.02)
@@ -353,6 +369,7 @@ class WindowsStealthInput(StealthInputBackend):
                 return False
             focus_hwnd = self._get_focus_hwnd(hwnd) or hwnd
             import time
+
             for ch in text:
                 _win32api.PostMessage(focus_hwnd, _win32con.WM_CHAR, ord(ch), 0)
                 time.sleep(0.005)
@@ -366,6 +383,7 @@ class WindowsStealthInput(StealthInputBackend):
         if not self._available:
             return False
         from core.stealth_input import VK_NAMES, post_key
+
         vk = VK_NAMES.get((key or "").lower())
         if vk is not None:
             return post_key(vk)
@@ -376,6 +394,7 @@ class WindowsStealthInput(StealthInputBackend):
         if not self._available:
             return False
         from core.stealth_input import post_hotkey
+
         return post_hotkey(list(keys))
 
     def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> bool:
@@ -411,16 +430,22 @@ class WindowsStealthInput(StealthInputBackend):
 
             class _RECT(ctypes.Structure):
                 _fields_ = [
-                    ("left", ctypes.c_long), ("top", ctypes.c_long),
-                    ("right", ctypes.c_long), ("bottom", ctypes.c_long),
+                    ("left", ctypes.c_long),
+                    ("top", ctypes.c_long),
+                    ("right", ctypes.c_long),
+                    ("bottom", ctypes.c_long),
                 ]
 
             class _GUI_THREAD_INFO(ctypes.Structure):
                 _fields_ = [
-                    ("cbSize", wintypes.DWORD), ("flags", wintypes.DWORD),
-                    ("hwndActive", wintypes.HWND), ("hwndFocus", wintypes.HWND),
-                    ("hwndCapture", wintypes.HWND), ("hwndMenuOwner", wintypes.HWND),
-                    ("hwndMoveSize", wintypes.HWND), ("hwndCaret", wintypes.HWND),
+                    ("cbSize", wintypes.DWORD),
+                    ("flags", wintypes.DWORD),
+                    ("hwndActive", wintypes.HWND),
+                    ("hwndFocus", wintypes.HWND),
+                    ("hwndCapture", wintypes.HWND),
+                    ("hwndMenuOwner", wintypes.HWND),
+                    ("hwndMoveSize", wintypes.HWND),
+                    ("hwndCaret", wintypes.HWND),
                     ("rcCaret", _RECT),
                 ]
 
@@ -452,24 +477,28 @@ class WindowsCredentialBackend(CredentialBackend):
     def store(self, key: str, value: str) -> bool:
         """Encrypt and store a credential using DPAPI."""
         from core.encryption import CredentialVault
+
         vault = CredentialVault()
         return vault.store(key, value)
 
     def retrieve(self, key: str) -> str | None:
         """Decrypt and return a stored credential."""
         from core.encryption import CredentialVault
+
         vault = CredentialVault()
         return vault.retrieve(key)
 
     def delete(self, key: str) -> bool:
         """Delete a stored credential."""
         from core.encryption import CredentialVault
+
         vault = CredentialVault()
         return vault.delete(key)
 
     def list_keys(self) -> list[str]:
         """List all stored credential names."""
         from core.encryption import CredentialVault
+
         vault = CredentialVault()
         return vault.list_keys()
 
@@ -480,8 +509,14 @@ class WindowsCredentialBackend(CredentialBackend):
 
 # Dangerous command patterns to block
 _DANGEROUS_PATTERNS = (
-    "rm -rf /", "del /f /s /q c:\\", "format ", "diskpart",
-    "reg delete", "reg add", "net user", "net localgroup",
+    "rm -rf /",
+    "del /f /s /q c:\\",
+    "format ",
+    "diskpart",
+    "reg delete",
+    "reg add",
+    "net user",
+    "net localgroup",
 )
 
 
@@ -525,9 +560,7 @@ class WindowsShellBackend(ShellBackend):
         lower = command.lower().strip()
         for pattern in _DANGEROUS_PATTERNS:
             if pattern in lower:
-                raise ValueError(
-                    f"Command contains potentially dangerous pattern: '{pattern}'"
-                )
+                raise ValueError(f"Command contains potentially dangerous pattern: '{pattern}'")
         return command
 
 
@@ -544,6 +577,7 @@ class WindowsWindowBackend(WindowBackend):
         self._has_pgw = False
         try:
             import pygetwindow as pgw  # type: ignore
+
             self._has_pgw = True
             self._pgw = pgw
         except ImportError:
@@ -553,19 +587,24 @@ class WindowsWindowBackend(WindowBackend):
         """List all visible windows."""
         windows: list[WindowInfo] = []
         if self._has_win32:
+
             def _enum(hwnd: int, _: Any) -> None:
                 if _win32gui.IsWindowVisible(hwnd):
                     title = _win32gui.GetWindowText(hwnd)
                     if title:
                         rect = _win32gui.GetWindowRect(hwnd)
-                        windows.append(WindowInfo(
-                            title=title,
-                            x=rect[0], y=rect[1],
-                            width=rect[2] - rect[0],
-                            height=rect[3] - rect[1],
-                            is_focused=hwnd == _win32gui.GetForegroundWindow(),
-                            handle=hwnd,
-                        ))
+                        windows.append(
+                            WindowInfo(
+                                title=title,
+                                x=rect[0],
+                                y=rect[1],
+                                width=rect[2] - rect[0],
+                                height=rect[3] - rect[1],
+                                is_focused=hwnd == _win32gui.GetForegroundWindow(),
+                                handle=hwnd,
+                            )
+                        )
+
             try:
                 _win32gui.EnumWindows(_enum, None)
             except OSError as exc:
@@ -574,12 +613,16 @@ class WindowsWindowBackend(WindowBackend):
             try:
                 for w in self._pgw.getAllWindows():
                     if w.title:
-                        windows.append(WindowInfo(
-                            title=w.title,
-                            x=w.left, y=w.top,
-                            width=w.width, height=w.height,
-                            is_focused=w.isActive,
-                        ))
+                        windows.append(
+                            WindowInfo(
+                                title=w.title,
+                                x=w.left,
+                                y=w.top,
+                                width=w.width,
+                                height=w.height,
+                                is_focused=w.isActive,
+                            )
+                        )
             except (OSError, RuntimeError) as exc:
                 logger.error("pygetwindow list failed: %s", exc)
         return windows
@@ -660,14 +703,15 @@ class WindowsWindowBackend(WindowBackend):
         """Close a window via WM_CLOSE."""
         needle = title.lower()
         found = False
+
         def _find(hwnd: int, _: Any) -> None:
             nonlocal found
             if found:
                 return
-            if (_win32gui.IsWindowVisible(hwnd)
-                    and needle in _win32gui.GetWindowText(hwnd).lower()):
+            if _win32gui.IsWindowVisible(hwnd) and needle in _win32gui.GetWindowText(hwnd).lower():
                 _win32gui.PostMessage(hwnd, _win32con.WM_CLOSE, 0, 0)
                 found = True
+
         try:
             _win32gui.EnumWindows(_find, None)
             return found
@@ -697,22 +741,24 @@ class WindowsOverlayBackend(OverlayBackend):
     def is_available(self) -> bool:
         return _probe_win32()
 
-    def show_ring(self, x: int, y: int, color: str = "#00F0FF",
-                  duration_ms: int = 420) -> None:
+    def show_ring(self, x: int, y: int, color: str = "#00F0FF", duration_ms: int = 420) -> None:
         """Show ring highlight via the existing GUI overlay system."""
         # Delegate to existing gui overlay module if available
         try:
             from gui import overlay as overlay_mod
+
             if hasattr(overlay_mod, "show_action_ring"):
                 overlay_mod.show_action_ring(x, y, color, duration_ms)
         except (ImportError, AttributeError):
             logger.debug("Overlay ring not available")
 
-    def show_cursor_move(self, from_x: int, from_y: int, to_x: int, to_y: int,
-                         duration_ms: int = 300) -> None:
+    def show_cursor_move(
+        self, from_x: int, from_y: int, to_x: int, to_y: int, duration_ms: int = 300
+    ) -> None:
         """Animate cursor via the existing GUI cursor overlay."""
         try:
             from gui import cursor_overlay as cursor_mod
+
             if hasattr(cursor_mod, "animate_cursor"):
                 cursor_mod.animate_cursor(from_x, from_y, to_x, to_y, duration_ms)
         except (ImportError, AttributeError):

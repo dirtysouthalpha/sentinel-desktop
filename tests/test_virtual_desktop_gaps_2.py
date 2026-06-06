@@ -19,6 +19,7 @@ import core.virtual_desktop as vd
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_user32():
     """Return a MagicMock that behaves like ctypes.windll.user32."""
     m = MagicMock()
@@ -61,15 +62,18 @@ def _make_win32_vd(name="TestDesk", user32=None, kernel32=None):
     """Create a _Win32VirtualDesktop with mocked platform APIs."""
     u = user32 or _mock_user32()
     k = kernel32 or _mock_kernel32()
-    with patch.object(vd, "_get_user32", return_value=u), \
-         patch.object(vd, "_get_kernel32", return_value=k), \
-         patch.object(vd, "_get_current_desktop_name", return_value="Default"):
+    with (
+        patch.object(vd, "_get_user32", return_value=u),
+        patch.object(vd, "_get_kernel32", return_value=k),
+        patch.object(vd, "_get_current_desktop_name", return_value="Default"),
+    ):
         return vd._Win32VirtualDesktop(name)
 
 
 # ---------------------------------------------------------------------------
 # _StubVirtualDesktop — launch_app edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestStubLaunchApp:
     """Test _StubVirtualDesktop.launch_app success and failure paths."""
@@ -106,6 +110,7 @@ class TestStubLaunchApp:
 # _StubVirtualDesktop — other methods
 # ---------------------------------------------------------------------------
 
+
 class TestStubMethods:
     """Test remaining _StubVirtualDesktop methods."""
 
@@ -132,7 +137,10 @@ class TestStubMethods:
 
     def test_screenshot_returns_none_on_error(self):
         stub = vd._StubVirtualDesktop("Test")
-        with patch.dict("sys.modules", {"pyautogui": MagicMock(screenshot=MagicMock(side_effect=OSError("nope")))}):
+        with patch.dict(
+            "sys.modules",
+            {"pyautogui": MagicMock(screenshot=MagicMock(side_effect=OSError("nope")))},
+        ):
             result = stub.screenshot()
         assert result is None
 
@@ -153,6 +161,7 @@ class TestStubMethods:
 # _Win32VirtualDesktop.__init__ — snapshot failure
 # ---------------------------------------------------------------------------
 
+
 class TestWin32InitSnapshot:
     """Test _Win32VirtualDesktop init with failing user32 calls."""
 
@@ -164,9 +173,11 @@ class TestWin32InitSnapshot:
         # Make GetThreadDesktop fail during init
         user32.GetThreadDesktop.side_effect = AttributeError("nope")
 
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch.object(vd, "_get_current_desktop_name", return_value="Default"):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch.object(vd, "_get_current_desktop_name", return_value="Default"),
+        ):
             vd_instance = vd.VirtualDesktop("TestDesktop")
 
         # On Linux, _IS_WINDOWS is False so it uses stub anyway;
@@ -179,6 +190,7 @@ class TestWin32InitSnapshot:
 # _Win32VirtualDesktop.create — various paths
 # ---------------------------------------------------------------------------
 
+
 class TestWin32Create:
     """Test _Win32VirtualDesktop.create() paths via mocking."""
 
@@ -188,9 +200,11 @@ class TestWin32Create:
         user32.OpenDesktopW.return_value = 555
 
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch.object(vd, "_IS_WINDOWS", True):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch.object(vd, "_IS_WINDOWS", True),
+        ):
             result = win_vd.create()
 
         assert result is True
@@ -203,9 +217,11 @@ class TestWin32Create:
         user32.CreateDesktopW.return_value = 444
 
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch.object(vd, "_IS_WINDOWS", True):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch.object(vd, "_IS_WINDOWS", True),
+        ):
             result = win_vd.create()
 
         assert result is True
@@ -219,10 +235,16 @@ class TestWin32Create:
         kernel32.GetLastError.return_value = 5
 
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_raise_last_error", side_effect=OSError("CreateDesktopW failed (Win32 error 5)")):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(
+                vd,
+                "_raise_last_error",
+                side_effect=OSError("CreateDesktopW failed (Win32 error 5)"),
+            ),
+        ):
             result = win_vd.create()
 
         assert result is False
@@ -237,6 +259,7 @@ class TestWin32Create:
 # ---------------------------------------------------------------------------
 # _Win32VirtualDesktop.close
 # ---------------------------------------------------------------------------
+
 
 class TestWin32Close:
     """Test _Win32VirtualDesktop.close() cleanup."""
@@ -274,6 +297,7 @@ class TestWin32Close:
 # _Win32VirtualDesktop.switch_to / switch_back
 # ---------------------------------------------------------------------------
 
+
 class TestWin32Switching:
     """Test switch_to() and switch_back() paths."""
 
@@ -304,9 +328,15 @@ class TestWin32Switching:
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
         win_vd._handle = 100
 
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch.object(vd, "_raise_last_error", side_effect=OSError("SetThreadDesktop failed (Win32 error 5)")):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch.object(
+                vd,
+                "_raise_last_error",
+                side_effect=OSError("SetThreadDesktop failed (Win32 error 5)"),
+            ),
+        ):
             result = win_vd.switch_to()
         assert result is False
 
@@ -335,6 +365,7 @@ class TestWin32Switching:
 # _Win32VirtualDesktop context manager
 # ---------------------------------------------------------------------------
 
+
 class TestWin32ContextManager:
     """Test __enter__ and __exit__ on _Win32VirtualDesktop."""
 
@@ -344,8 +375,10 @@ class TestWin32ContextManager:
         user32.OpenDesktopW.return_value = 555
 
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+        ):
             result = win_vd.__enter__()
         assert result is win_vd
 
@@ -364,6 +397,7 @@ class TestWin32ContextManager:
 # VirtualDesktop factory — repr
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux stub repr")
 class TestVirtualDesktopRepr:
     """Test VirtualDesktop.__repr__."""
@@ -378,6 +412,7 @@ class TestVirtualDesktopRepr:
 # ---------------------------------------------------------------------------
 # _Win32VirtualDesktop._switch_to_locked / _switch_back_locked
 # ---------------------------------------------------------------------------
+
 
 class TestWin32LockedSwitching:
     """Test internal locked switch methods."""
@@ -441,6 +476,7 @@ class TestWin32LockedSwitching:
 # _Win32VirtualDesktop.list_windows — fallback path
 # ---------------------------------------------------------------------------
 
+
 class TestWin32ListWindowsFallback:
     """Test list_windows() fallback when not on Windows."""
 
@@ -473,6 +509,7 @@ class TestWin32ListWindowsFallback:
 # _Win32VirtualDesktop.screenshot
 # ---------------------------------------------------------------------------
 
+
 class TestWin32Screenshot:
     """Test screenshot() with various switch states."""
 
@@ -485,7 +522,9 @@ class TestWin32Screenshot:
         win_vd._handle = 100
         win_vd._is_active = True
 
-        with patch.dict("sys.modules", {"pyautogui": MagicMock(screenshot=MagicMock(return_value=mock_img))}):
+        with patch.dict(
+            "sys.modules", {"pyautogui": MagicMock(screenshot=MagicMock(return_value=mock_img))}
+        ):
             result = win_vd.screenshot()
         assert result is mock_img
 
@@ -498,7 +537,9 @@ class TestWin32Screenshot:
         win_vd._handle = None
         win_vd._is_active = False
 
-        with patch.dict("sys.modules", {"pyautogui": MagicMock(screenshot=MagicMock(return_value=mock_img))}):
+        with patch.dict(
+            "sys.modules", {"pyautogui": MagicMock(screenshot=MagicMock(return_value=mock_img))}
+        ):
             result = win_vd.screenshot()
         assert result is mock_img
 
@@ -506,6 +547,7 @@ class TestWin32Screenshot:
 # ---------------------------------------------------------------------------
 # VirtualDesktop public facade delegation
 # ---------------------------------------------------------------------------
+
 
 class TestVirtualDesktopDelegation:
     """Test that VirtualDesktop correctly delegates to _StubVirtualDesktop."""
@@ -556,9 +598,11 @@ class TestVirtualDesktopDelegation:
 
     def test_context_manager_delegates(self):
         vd_instance = vd.VirtualDesktop("Test")
-        with patch.object(vd_instance._impl, "create", return_value=False), \
-             patch.object(vd_instance._impl, "switch_back", return_value=False), \
-             patch.object(vd_instance._impl, "close"):
+        with (
+            patch.object(vd_instance._impl, "create", return_value=False),
+            patch.object(vd_instance._impl, "switch_back", return_value=False),
+            patch.object(vd_instance._impl, "close"),
+        ):
             with vd_instance as v:
                 assert v is vd_instance
 
@@ -566,6 +610,7 @@ class TestVirtualDesktopDelegation:
 # ---------------------------------------------------------------------------
 # _get_current_desktop_name — non-Windows
 # ---------------------------------------------------------------------------
+
 
 class TestGetCurrentDesktopName:
     """Test _get_current_desktop_name on non-Windows."""
@@ -578,6 +623,7 @@ class TestGetCurrentDesktopName:
 # ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
+
 
 class TestConstants:
     """Verify exported constants exist and have expected values."""

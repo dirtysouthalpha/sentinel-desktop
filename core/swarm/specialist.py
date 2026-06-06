@@ -19,10 +19,11 @@ logger = logging.getLogger(__name__)
 
 class AgentRole(str, Enum):
     """Specialist agent roles."""
-    DESKTOP = "desktop"       # General desktop interaction (default)
-    BROWSER = "browser"       # Web automation
-    TERMINAL = "terminal"     # Shell/SSH execution
-    MONITOR = "monitor"       # Passive monitoring
+
+    DESKTOP = "desktop"  # General desktop interaction (default)
+    BROWSER = "browser"  # Web automation
+    TERMINAL = "terminal"  # Shell/SSH execution
+    MONITOR = "monitor"  # Passive monitoring
     ORCHESTRATOR = "orchestrator"  # Task decomposition
 
 
@@ -106,13 +107,15 @@ class SpecialistAgent(ABC):
             self.task_count += 1
 
             # Send result back
-            await self.bus.send(AgentMessage(
-                sender=self.agent_id,
-                recipient=message.sender or "orchestrator",
-                msg_type="result",
-                payload=result,
-                parent_id=message.id,
-            ))
+            await self.bus.send(
+                AgentMessage(
+                    sender=self.agent_id,
+                    recipient=message.sender or "orchestrator",
+                    msg_type="result",
+                    payload=result,
+                    parent_id=message.id,
+                )
+            )
 
             self.state = AgentState.IDLE
             return result
@@ -127,13 +130,15 @@ class SpecialistAgent(ABC):
                 "error": str(exc),
                 "agent_id": self.agent_id,
             }
-            await self.bus.send(AgentMessage(
-                sender=self.agent_id,
-                recipient=message.sender or "orchestrator",
-                msg_type="error",
-                payload=error_result,
-                parent_id=message.id,
-            ))
+            await self.bus.send(
+                AgentMessage(
+                    sender=self.agent_id,
+                    recipient=message.sender or "orchestrator",
+                    msg_type="error",
+                    payload=error_result,
+                    parent_id=message.id,
+                )
+            )
             return error_result
 
     def to_dict(self) -> dict[str, Any]:
@@ -169,6 +174,7 @@ class TerminalAgent(SpecialistAgent):
         """Execute a shell command."""
         command = task.get("command", task.get("description", ""))
         from core.platform import get_backend
+
         backend = get_backend()
         result = backend.shell.execute(command)
         return {"success": result["exit_code"] == 0, "output": result}

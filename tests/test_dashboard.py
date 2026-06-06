@@ -61,7 +61,9 @@ def _make_psutil(
     """Build a lightweight psutil stub."""
     mod = MagicMock()
     mod.cpu_percent.return_value = cpu_percent
-    mod.cpu_count.side_effect = lambda logical=True: cpu_count_logical if logical else cpu_count_physical
+    mod.cpu_count.side_effect = lambda logical=True: (
+        cpu_count_logical if logical else cpu_count_physical
+    )
     mod.cpu_freq.return_value = cpu_freq
     mod.virtual_memory.return_value = virtual_mem or _FakeVirtualMem()
     if disk_partitions is not None:
@@ -149,7 +151,9 @@ class TestGetMemoryInfo:
     def test_returns_memory_fields(self):
         import core.dashboard as dash
 
-        mem = _FakeVirtualMem(total=64 * 1024**3, used=32 * 1024**3, available=32 * 1024**3, percent=50.0)
+        mem = _FakeVirtualMem(
+            total=64 * 1024**3, used=32 * 1024**3, available=32 * 1024**3, percent=50.0
+        )
         fake_psutil = _make_psutil(virtual_mem=mem)
         with patch.dict(sys.modules, {"psutil": fake_psutil}):
             result = dash._get_memory_info()
@@ -178,8 +182,12 @@ class TestGetDiskInfo:
 
         partitions = [_FakePartition("/"), _FakePartition("/home")]
         usage_map = {
-            "/": _FakeUsage(total=500 * 1024**3, used=200 * 1024**3, free=300 * 1024**3, percent=40.0),
-            "/home": _FakeUsage(total=1000 * 1024**3, used=600 * 1024**3, free=400 * 1024**3, percent=60.0),
+            "/": _FakeUsage(
+                total=500 * 1024**3, used=200 * 1024**3, free=300 * 1024**3, percent=40.0
+            ),
+            "/home": _FakeUsage(
+                total=1000 * 1024**3, used=600 * 1024**3, free=400 * 1024**3, percent=60.0
+            ),
         }
         fake_psutil = _make_psutil(disk_partitions=partitions, disk_usage=lambda mp: usage_map[mp])
         with patch.dict(sys.modules, {"psutil": fake_psutil}):
@@ -307,8 +315,10 @@ class TestDashboardOverview:
         import core.dashboard as dash
 
         fake_psutil = _make_psutil()
-        with patch.dict(sys.modules, {"psutil": fake_psutil}), \
-             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
+        with (
+            patch.dict(sys.modules, {"psutil": fake_psutil}),
+            patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")),
+        ):
             result = await dash.dashboard_overview()
         assert "timestamp" in result
         assert "system" in result
@@ -324,9 +334,11 @@ class TestDashboardOverview:
 
         fake_psutil = _make_psutil()
         # Set module start time to 3661 seconds ago
-        with patch.dict(sys.modules, {"psutil": fake_psutil}), \
-             patch.object(dash, "_start_time", time.time() - 3661), \
-             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
+        with (
+            patch.dict(sys.modules, {"psutil": fake_psutil}),
+            patch.object(dash, "_start_time", time.time() - 3661),
+            patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")),
+        ):
             result = await dash.dashboard_overview()
         assert result["system"]["uptime_seconds"] >= 3661
         assert "1h" in result["system"]["uptime"]
@@ -338,8 +350,10 @@ class TestDashboardOverview:
         import core.dashboard as dash
 
         fake_psutil = _make_psutil()
-        with patch.dict(sys.modules, {"psutil": fake_psutil}), \
-             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
+        with (
+            patch.dict(sys.modules, {"psutil": fake_psutil}),
+            patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")),
+        ):
             result = await dash.dashboard_overview()
         assert result["system"]["platform"] == platform.system()
         assert result["system"]["python_version"] == platform.python_version()
@@ -456,7 +470,7 @@ class TestMetrics:
             async def _timeout_gather(*args, **kwargs):
                 # Close coroutines to avoid RuntimeWarning about unawaited to_thread calls
                 for coro in args:
-                    if hasattr(coro, 'close'):
+                    if hasattr(coro, "close"):
                         coro.close()
                 raise asyncio.TimeoutError("simulated timeout")
 
@@ -480,13 +494,15 @@ class TestTimeoutHandlers:
         import core.dashboard as dash
 
         fake_psutil = _make_psutil()
-        with patch.dict(sys.modules, {"psutil": fake_psutil}), \
-             patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")):
+        with (
+            patch.dict(sys.modules, {"psutil": fake_psutil}),
+            patch("subprocess.run", side_effect=FileNotFoundError("no nvidia")),
+        ):
             # Patch asyncio.gather to raise TimeoutError
             async def _timeout_gather(*args, **kwargs):
                 # Close coroutines to avoid RuntimeWarning about unawaited to_thread calls
                 for coro in args:
-                    if hasattr(coro, 'close'):
+                    if hasattr(coro, "close"):
                         coro.close()
                 raise asyncio.TimeoutError("simulated timeout")
 
@@ -515,7 +531,7 @@ class TestTimeoutHandlers:
             async def _timeout_gather(*args, **kwargs):
                 # Close coroutines to avoid RuntimeWarning about unawaited to_thread calls
                 for coro in args:
-                    if hasattr(coro, 'close'):
+                    if hasattr(coro, "close"):
                         coro.close()
                 raise asyncio.TimeoutError("simulated timeout")
 

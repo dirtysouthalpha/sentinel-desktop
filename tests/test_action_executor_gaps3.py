@@ -974,6 +974,7 @@ class TestHandlerTimeoutAsync:
         import core.action_executor as ae_mod
 
         ex = fake_executor()
+
         # Inject a coroutine handler that waits longer than the timeout
         async def _slow_handler(self_ref, **_):
             await asyncio_mod.sleep(0.5)
@@ -1041,6 +1042,7 @@ class TestSetTextClickFallbackLoopContinue:
         monkeypatch.setattr(ui_tree_mod, "set_text", lambda t, **kw: False)
 
         import time
+
         monkeypatch.setattr(time, "sleep", lambda _: None)
 
         ex = _make_executor()
@@ -1088,9 +1090,7 @@ class TestPressKeyStealthReturnsFalse:
         import core.action_executor as ae_mod
 
         monkeypatch.setattr(ae_mod.stealth_input, "is_available", lambda: True)
-        monkeypatch.setattr(
-            ae_mod.stealth_input, "post_named_key", MagicMock(return_value=False)
-        )
+        monkeypatch.setattr(ae_mod.stealth_input, "post_named_key", MagicMock(return_value=False))
 
         ex = _make_executor(stealth=True)
         result = ex._press_key(key="enter")

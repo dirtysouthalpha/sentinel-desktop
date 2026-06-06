@@ -20,7 +20,9 @@ import core.window_manager as wm_original
 class TestWin32ImportFailsOnWindows:
     """Cover lines 15-16: HAS_WIN32 = False when win32gui import fails."""
 
-    @pytest.mark.skipif(platform.system() != "Windows", reason="Test simulates Windows-specific import failures")
+    @pytest.mark.skipif(
+        platform.system() != "Windows", reason="Test simulates Windows-specific import failures"
+    )
     def test_has_win32_false_when_win32_import_fails(self):
         """On Windows, if win32con/win32gui raise ImportError, HAS_WIN32 = False."""
         # Capture the real module before we manipulate sys.modules
@@ -86,7 +88,9 @@ class TestWin32ImportFailsOnWindows:
 class TestPgwImportFailsOnWindows:
     """Cover lines 21-22: HAS_PGW = False when pygetwindow import fails."""
 
-    @pytest.mark.skipif(platform.system() != "Windows", reason="Test simulates Windows-specific import failures")
+    @pytest.mark.skipif(
+        platform.system() != "Windows", reason="Test simulates Windows-specific import failures"
+    )
     def test_has_pgw_false_when_pgw_import_fails(self):
         """On Windows, if pygetwindow raises ImportError, HAS_PGW = False."""
         real_win32gui = sys.modules.get("win32gui")
@@ -134,7 +138,9 @@ class TestPgwImportFailsOnWindows:
 class TestPywintypesImportFailsOnWindows:
     """Cover lines 27-28: _Win32Error = OSError when pywintypes import fails."""
 
-    @pytest.mark.skipif(platform.system() != "Windows", reason="Test simulates Windows-specific import failures")
+    @pytest.mark.skipif(
+        platform.system() != "Windows", reason="Test simulates Windows-specific import failures"
+    )
     def test_win32_error_is_oserror_when_pywintypes_fails(self):
         """On Windows, if pywintypes raises ImportError, _Win32Error = OSError."""
         real_win32gui = sys.modules.get("win32gui")

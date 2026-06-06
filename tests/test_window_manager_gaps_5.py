@@ -13,6 +13,7 @@ import core.window_manager as wm
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_win32gui():
     """Return a fresh MagicMock stand-in for win32gui."""
     m = MagicMock()
@@ -48,6 +49,7 @@ def _mock_pgw():
 # list_windows — win32 path
 # ---------------------------------------------------------------------------
 
+
 class TestListWindowsWin32:
     """Test list_windows when HAS_WIN32 is True."""
 
@@ -69,8 +71,10 @@ class TestListWindowsWin32:
         mock_gui.GetForegroundWindow.return_value = 101
 
         with patch.dict("sys.modules", {"win32gui": mock_gui, "win32con": mock_con}):
-            with patch.object(wm, "win32gui", mock_gui, create=True), \
-                 patch.object(wm, "win32con", mock_con, create=True):
+            with (
+                patch.object(wm, "win32gui", mock_gui, create=True),
+                patch.object(wm, "win32con", mock_con, create=True),
+            ):
                 # Patch the module-level refs used inside list_windows
                 wm.win32gui = mock_gui
                 wm.win32con = mock_con
@@ -140,6 +144,7 @@ class TestListWindowsWin32:
 # list_windows — pygetwindow path
 # ---------------------------------------------------------------------------
 
+
 class TestListWindowsPGW:
     """Test list_windows when HAS_PGW is True but HAS_WIN32 is False."""
 
@@ -178,6 +183,7 @@ class TestListWindowsPGW:
 # focus_window — win32 path
 # ---------------------------------------------------------------------------
 
+
 class TestFocusWindowWin32:
     """Test focus_window when HAS_WIN32 is True."""
 
@@ -187,9 +193,21 @@ class TestFocusWindowWin32:
         mock_gui = _mock_win32gui()
         mock_con = _mock_win32con()
 
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Notepad", "hwnd": 42, "x": 0, "y": 0, "width": 800, "height": 600, "is_focused": False},
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {
+                    "title": "Notepad",
+                    "hwnd": 42,
+                    "x": 0,
+                    "y": 0,
+                    "width": 800,
+                    "height": 600,
+                    "is_focused": False,
+                },
+            ],
+        ):
             wm.win32gui = mock_gui
             wm.win32con = mock_con
             wm._Win32Error = OSError
@@ -206,9 +224,13 @@ class TestFocusWindowWin32:
     @patch.object(wm, "HAS_WIN32", True)
     @patch.object(wm, "HAS_PGW", False)
     def test_focus_no_match_returns_false(self):
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Chrome", "hwnd": 1},
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {"title": "Chrome", "hwnd": 1},
+            ],
+        ):
             wm.win32gui = _mock_win32gui()
             wm.win32con = _mock_win32con()
             wm._Win32Error = OSError
@@ -218,9 +240,13 @@ class TestFocusWindowWin32:
     @patch.object(wm, "HAS_WIN32", True)
     @patch.object(wm, "HAS_PGW", False)
     def test_focus_no_hwnd_returns_false(self):
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Notepad"},  # no hwnd key
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {"title": "Notepad"},  # no hwnd key
+            ],
+        ):
             wm.win32gui = _mock_win32gui()
             wm.win32con = _mock_win32con()
             result = wm.focus_window("Notepad")
@@ -232,9 +258,13 @@ class TestFocusWindowWin32:
         mock_gui = _mock_win32gui()
         mock_gui.ShowWindow.side_effect = OSError("fail")
 
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Notepad", "hwnd": 42},
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {"title": "Notepad", "hwnd": 42},
+            ],
+        ):
             wm.win32gui = mock_gui
             wm.win32con = _mock_win32con()
             wm._Win32Error = OSError
@@ -245,6 +275,7 @@ class TestFocusWindowWin32:
 # ---------------------------------------------------------------------------
 # focus_window — pgw path
 # ---------------------------------------------------------------------------
+
 
 class TestFocusWindowPGW:
     """Test focus_window when HAS_PGW is True but HAS_WIN32 is False."""
@@ -280,6 +311,7 @@ class TestFocusWindowPGW:
 # ---------------------------------------------------------------------------
 # get_focused_window_rect — win32 path
 # ---------------------------------------------------------------------------
+
 
 class TestGetFocusedWindowRectWin32:
     """Test get_focused_window_rect with HAS_WIN32=True."""
@@ -329,6 +361,7 @@ class TestGetFocusedWindowRectWin32:
 # get_focused_window_rect — pgw path
 # ---------------------------------------------------------------------------
 
+
 class TestGetFocusedWindowRectPGW:
     """Test get_focused_window_rect with HAS_PGW=True."""
 
@@ -374,6 +407,7 @@ class TestGetFocusedWindowRectPGW:
 # get_target_window_rect — win32 path
 # ---------------------------------------------------------------------------
 
+
 class TestGetTargetWindowRectWin32:
     """Test get_target_window_rect with HAS_WIN32=True."""
 
@@ -400,9 +434,20 @@ class TestGetTargetWindowRectWin32:
         wm.win32gui = mock_gui
         wm._Win32Error = OSError
 
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Chrome", "x": 10, "y": 20, "width": 800, "height": 600, "is_focused": False},
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {
+                    "title": "Chrome",
+                    "x": 10,
+                    "y": 20,
+                    "width": 800,
+                    "height": 600,
+                    "is_focused": False,
+                },
+            ],
+        ):
             result = wm.get_target_window_rect()
         assert result is not None
         assert result[4] == "Chrome"
@@ -443,9 +488,13 @@ class TestGetTargetWindowRectWin32:
         wm._Win32Error = OSError
 
         # Candidate has width=100 (<= 200) so should be skipped
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Tiny", "x": 0, "y": 0, "width": 100, "height": 600, "is_focused": False},
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {"title": "Tiny", "x": 0, "y": 0, "width": 100, "height": 600, "is_focused": False},
+            ],
+        ):
             result = wm.get_target_window_rect()
         assert result is None
 
@@ -453,6 +502,7 @@ class TestGetTargetWindowRectWin32:
 # ---------------------------------------------------------------------------
 # get_window_rect — edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestGetWindowRectEdgeCases:
     """Additional get_window_rect tests."""
@@ -466,21 +516,38 @@ class TestGetWindowRectEdgeCases:
         result = wm.get_window_rect("Nonexistent")
         assert result is None
 
-    @patch.object(wm, "list_windows", return_value=[
-        {"title": "Chrome", "x": 10, "y": 20, "width": 800, "height": 600},
-    ])
+    @patch.object(
+        wm,
+        "list_windows",
+        return_value=[
+            {"title": "Chrome", "x": 10, "y": 20, "width": 800, "height": 600},
+        ],
+    )
     def test_matching_window_returns_rect(self, mock_lw):
         result = wm.get_window_rect("Chrome")
         assert result == (10, 20, 800, 600)
 
-    @patch.object(wm, "list_windows", return_value=[
-        {"title": "Chrome", "x": 10, "y": 20, "width": 800, "height": 600, "hwnd": 42},
-    ])
+    @patch.object(
+        wm,
+        "list_windows",
+        return_value=[
+            {"title": "Chrome", "x": 10, "y": 20, "width": 800, "height": 600, "hwnd": 42},
+        ],
+    )
     def test_minimized_window_restores(self, mock_lw):
         """If the window rect looks minimized, restore is attempted."""
         # First call: minimized rect. Second call: restored.
         mock_lw.side_effect = [
-            [{"title": "Chrome", "x": -32000, "y": -32000, "width": 800, "height": 600, "hwnd": 42}],
+            [
+                {
+                    "title": "Chrome",
+                    "x": -32000,
+                    "y": -32000,
+                    "width": 800,
+                    "height": 600,
+                    "hwnd": 42,
+                }
+            ],
             [{"title": "Chrome", "x": 100, "y": 100, "width": 800, "height": 600, "hwnd": 42}],
         ]
         with patch.object(wm, "restore_window_hwnd", return_value=True) as mock_restore:
@@ -498,6 +565,7 @@ class TestGetWindowRectEdgeCases:
 # ---------------------------------------------------------------------------
 # restore_window_hwnd — win32 path
 # ---------------------------------------------------------------------------
+
 
 class TestRestoreWindowHwnd:
     """Test restore_window_hwnd with HAS_WIN32 toggled."""
@@ -537,6 +605,7 @@ class TestRestoreWindowHwnd:
 # restore_window — edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestRestoreWindowEdgeCases:
     """Test restore_window with empty title and error paths."""
 
@@ -554,6 +623,7 @@ class TestRestoreWindowEdgeCases:
 # ---------------------------------------------------------------------------
 # close_window — win32 path
 # ---------------------------------------------------------------------------
+
 
 class TestCloseWindowWin32:
     """Test close_window with HAS_WIN32=True."""
@@ -636,6 +706,7 @@ class TestCloseWindowWin32:
 # close_window — pgw path
 # ---------------------------------------------------------------------------
 
+
 class TestCloseWindowPGW:
     """Test close_window with HAS_PGW=True."""
 
@@ -671,6 +742,7 @@ class TestCloseWindowPGW:
 # get_target_window_rect — candidate scanning edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestGetTargetWindowRectCandidates:
     """Test candidate sorting and filtering in get_target_window_rect."""
 
@@ -684,10 +756,28 @@ class TestGetTargetWindowRectCandidates:
         wm.win32gui = mock_gui
         wm._Win32Error = OSError
 
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Chrome", "x": 10, "y": 20, "width": 800, "height": 600, "is_focused": False},
-            {"title": "Notepad", "x": 5, "y": 5, "width": 900, "height": 700, "is_focused": True},
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {
+                    "title": "Chrome",
+                    "x": 10,
+                    "y": 20,
+                    "width": 800,
+                    "height": 600,
+                    "is_focused": False,
+                },
+                {
+                    "title": "Notepad",
+                    "x": 5,
+                    "y": 5,
+                    "width": 900,
+                    "height": 700,
+                    "is_focused": True,
+                },
+            ],
+        ):
             result = wm.get_target_window_rect()
         assert result is not None
         assert result[4] == "Notepad"  # focused one wins
@@ -716,8 +806,19 @@ class TestGetTargetWindowRectCandidates:
         wm.win32gui = mock_gui
         wm._Win32Error = OSError
 
-        with patch.object(wm, "list_windows", return_value=[
-            {"title": "Sentinel Desktop v3", "x": 0, "y": 0, "width": 800, "height": 600, "is_focused": False},
-        ]):
+        with patch.object(
+            wm,
+            "list_windows",
+            return_value=[
+                {
+                    "title": "Sentinel Desktop v3",
+                    "x": 0,
+                    "y": 0,
+                    "width": 800,
+                    "height": 600,
+                    "is_focused": False,
+                },
+            ],
+        ):
             result = wm.get_target_window_rect()
         assert result is None

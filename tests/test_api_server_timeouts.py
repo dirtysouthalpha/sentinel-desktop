@@ -125,7 +125,9 @@ class TestHandleScheduleRunTimeout:
         monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
         monkeypatch.setattr(asyncio, "to_thread", lambda f, *args: f(*args))
 
-        fake_engine = type("E", (), {"scheduler": type("S", (), {"run_task_now": lambda s, tid: None})()})()
+        fake_engine = type(
+            "E", (), {"scheduler": type("S", (), {"run_task_now": lambda s, tid: None})()}
+        )()
         server = _make_server()
         server.engine = fake_engine
         req = mod.ScheduleRunRequest(task_id="test_task")
@@ -202,7 +204,9 @@ class TestHandleAuthLoginTimeout:
         monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
         monkeypatch.setattr(asyncio, "to_thread", lambda f, *args: f(*args))
 
-        fake_auth = type("AM", (), {"authenticate": lambda s, u, p: None, "create_session": lambda s, u: "token"})()
+        fake_auth = type(
+            "AM", (), {"authenticate": lambda s, u, p: None, "create_session": lambda s, u: "token"}
+        )()
         fake_engine = type("E", (), {"auth_manager": fake_auth})()
         server = _make_server()
         _ = server.create_app()  # Initialize _login_attempts

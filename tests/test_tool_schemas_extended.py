@@ -8,6 +8,7 @@ from core.tool_schemas import TOOL_CAPABLE_PROVIDERS, TOOLS
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _tool_names():
     """Return ordered list of tool function names."""
     return [t["function"]["name"] for t in TOOLS]
@@ -24,6 +25,7 @@ def _tool_by_name(name: str):
 # ---------------------------------------------------------------------------
 # Structural validation — every entry must be well-formed
 # ---------------------------------------------------------------------------
+
 
 class TestToolStructures:
     """Every item in TOOLS must follow the OpenAI function-calling schema."""
@@ -77,6 +79,7 @@ class TestToolStructures:
 # Required vs optional parameters
 # ---------------------------------------------------------------------------
 
+
 class TestParameterRequirements:
     """Verify required/optional fields are correctly declared."""
 
@@ -116,8 +119,10 @@ class TestParameterRequirements:
 
     def test_read_text_has_no_required(self):
         t = _tool_by_name("read_text")
-        assert "required" not in t["function"]["parameters"] or \
-               t["function"]["parameters"]["required"] == []
+        assert (
+            "required" not in t["function"]["parameters"]
+            or t["function"]["parameters"]["required"] == []
+        )
 
     def test_wait_requires_seconds(self):
         t = _tool_by_name("wait")
@@ -180,6 +185,7 @@ class TestParameterRequirements:
 # Default values
 # ---------------------------------------------------------------------------
 
+
 class TestDefaults:
     """Check that declared defaults match expectations."""
 
@@ -233,6 +239,7 @@ class TestDefaults:
 # Enum constraints
 # ---------------------------------------------------------------------------
 
+
 class TestEnums:
     """Verify enum-restricted fields have the expected values."""
 
@@ -256,6 +263,7 @@ class TestEnums:
 # ---------------------------------------------------------------------------
 # Parameter types
 # ---------------------------------------------------------------------------
+
 
 class TestParamTypes:
     """Verify parameter types are correctly declared."""
@@ -333,6 +341,7 @@ class TestParamTypes:
 # TOOL_CAPABLE_PROVIDERS
 # ---------------------------------------------------------------------------
 
+
 class TestToolCapableProviders:
     """Verify the tool-capable provider set."""
 
@@ -360,19 +369,51 @@ class TestToolCapableProviders:
 # Coverage inventory — ensure expected tools are present
 # ---------------------------------------------------------------------------
 
+
 class TestToolInventory:
     """Verify all expected tools are registered."""
 
     EXPECTED_TOOLS = [
-        "click", "double_click", "right_click", "type_text", "press_key",
-        "hotkey", "scroll", "screenshot", "find_image", "click_text",
-        "read_text", "read_window", "wait", "smart_open", "open_app",
-        "focus_window", "close_window", "list_windows", "list_controls",
-        "click_control", "set_text", "read_file", "write_file",
-        "clipboard_read", "clipboard_write", "note", "finish", "drag",
-        "smart_wait", "wait_for_stable", "wait_for_text", "wait_for_image",
-        "system_info", "list_processes", "start_process", "kill_process",
-        "powershell", "run_script", "close_app", "list_directory",
+        "click",
+        "double_click",
+        "right_click",
+        "type_text",
+        "press_key",
+        "hotkey",
+        "scroll",
+        "screenshot",
+        "find_image",
+        "click_text",
+        "read_text",
+        "read_window",
+        "wait",
+        "smart_open",
+        "open_app",
+        "focus_window",
+        "close_window",
+        "list_windows",
+        "list_controls",
+        "click_control",
+        "set_text",
+        "read_file",
+        "write_file",
+        "clipboard_read",
+        "clipboard_write",
+        "note",
+        "finish",
+        "drag",
+        "smart_wait",
+        "wait_for_stable",
+        "wait_for_text",
+        "wait_for_image",
+        "system_info",
+        "list_processes",
+        "start_process",
+        "kill_process",
+        "powershell",
+        "run_script",
+        "close_app",
+        "list_directory",
     ]
 
     def test_all_expected_tools_present(self):
@@ -398,13 +439,16 @@ class TestToolInventory:
 # Description quality
 # ---------------------------------------------------------------------------
 
+
 class TestDescriptions:
     """Verify tool descriptions are meaningful."""
 
     @pytest.mark.parametrize("idx", range(len(TOOLS)))
     def test_description_minimum_length(self, idx):
         desc = TOOLS[idx]["function"]["description"]
-        assert len(desc) >= 10, f"Tool {TOOLS[idx]['function']['name']} has a very short description"
+        assert len(desc) >= 10, (
+            f"Tool {TOOLS[idx]['function']['name']} has a very short description"
+        )
 
     @pytest.mark.parametrize("idx", range(len(TOOLS)))
     def test_description_is_string(self, idx):

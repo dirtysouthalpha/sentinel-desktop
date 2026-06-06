@@ -146,7 +146,8 @@ class TestClearCompleted:
             assert "run1" in pool._sessions
             # Only 1 terminal session should remain
             terminal_remaining = [
-                sid for sid, sess in pool._sessions.items()
+                sid
+                for sid, sess in pool._sessions.items()
                 if sess.status in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED)
             ]
             assert len(terminal_remaining) == 1

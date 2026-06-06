@@ -79,9 +79,11 @@ def _make_win32_vd(name="TestDesk", user32=None, kernel32=None):
     """Create a _Win32VirtualDesktop with mocked platform APIs."""
     u = user32 or _mock_user32()
     k = kernel32 or _mock_kernel32()
-    with patch.object(vd, "_get_user32", return_value=u), \
-         patch.object(vd, "_get_kernel32", return_value=k), \
-         patch.object(vd, "_get_current_desktop_name", return_value="Default"):
+    with (
+        patch.object(vd, "_get_user32", return_value=u),
+        patch.object(vd, "_get_kernel32", return_value=k),
+        patch.object(vd, "_get_current_desktop_name", return_value="Default"),
+    ):
         return vd._Win32VirtualDesktop(name)
 
 
@@ -224,12 +226,17 @@ class TestGetCurrentDesktopNameWin32:
         mock_ctypes.byref.return_value = MagicMock()
         mock_ctypes.windll = mock_windll
 
-        with patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_get_user32", return_value=user32), \
-             patch.dict("sys.modules", {
-                 "ctypes": mock_ctypes,
-                 "ctypes.wintypes": mock_wintypes,
-             }):
+        with (
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.dict(
+                "sys.modules",
+                {
+                    "ctypes": mock_ctypes,
+                    "ctypes.wintypes": mock_wintypes,
+                },
+            ),
+        ):
             result = vd._get_current_desktop_name()
         assert result == "MyDesktop"
 
@@ -239,9 +246,11 @@ class TestGetCurrentDesktopNameWin32:
         user32.GetThreadDesktop.return_value = 0
         kernel32 = _mock_kernel32()
 
-        with patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32):
+        with (
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+        ):
             result = vd._get_current_desktop_name()
         assert result == "Default"
 
@@ -266,12 +275,17 @@ class TestGetCurrentDesktopNameWin32:
 
         mock_wintypes = MagicMock()
 
-        with patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_get_user32", return_value=user32), \
-             patch.dict("sys.modules", {
-                 "ctypes": mock_ctypes,
-                 "ctypes.wintypes": mock_wintypes,
-             }):
+        with (
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.dict(
+                "sys.modules",
+                {
+                    "ctypes": mock_ctypes,
+                    "ctypes.wintypes": mock_wintypes,
+                },
+            ),
+        ):
             result = vd._get_current_desktop_name()
         assert result == "Default"
 
@@ -296,12 +310,17 @@ class TestGetCurrentDesktopNameWin32:
 
         mock_wintypes = MagicMock()
 
-        with patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_get_user32", return_value=user32), \
-             patch.dict("sys.modules", {
-                 "ctypes": mock_ctypes,
-                 "ctypes.wintypes": mock_wintypes,
-             }):
+        with (
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.dict(
+                "sys.modules",
+                {
+                    "ctypes": mock_ctypes,
+                    "ctypes.wintypes": mock_wintypes,
+                },
+            ),
+        ):
             result = vd._get_current_desktop_name()
         assert result == "Default"
 
@@ -311,9 +330,11 @@ class TestGetCurrentDesktopNameWin32:
         user32.GetThreadDesktop.side_effect = OSError("nope")
         kernel32 = _mock_kernel32()
 
-        with patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32):
+        with (
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+        ):
             result = vd._get_current_desktop_name()
         assert result == "Default"
 
@@ -323,9 +344,11 @@ class TestGetCurrentDesktopNameWin32:
         user32.GetThreadDesktop.side_effect = AttributeError("nope")
         kernel32 = _mock_kernel32()
 
-        with patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_get_kernel32", return_value=kernel32):
+        with (
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+        ):
             result = vd._get_current_desktop_name()
         assert result == "Default"
 
@@ -392,8 +415,10 @@ class TestWin32SwitchBackPaths:
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
         win_vd._handle = 100
 
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_raise_last_error", side_effect=OSError("fail")):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_raise_last_error", side_effect=OSError("fail")),
+        ):
             result = win_vd.switch_back()
         assert result is False
 
@@ -407,8 +432,10 @@ class TestWin32SwitchBackPaths:
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
         win_vd._handle = 100
 
-        with patch.object(vd, "_get_user32", return_value=user32), \
-             patch.object(vd, "_raise_last_error", side_effect=OSError("fail")):
+        with (
+            patch.object(vd, "_get_user32", return_value=user32),
+            patch.object(vd, "_raise_last_error", side_effect=OSError("fail")),
+        ):
             result = win_vd.switch_back()
         assert result is False
 
@@ -526,8 +553,10 @@ class TestWin32LaunchApp:
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
         win_vd._handle = 100
 
-        with patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch("ctypes.byref", side_effect=lambda obj: obj):
+        with (
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch("ctypes.byref", side_effect=lambda obj: obj),
+        ):
             result = win_vd._launch_app_locked(r"C:\Windows\notepad.exe", "test.txt")
 
         assert result["success"] is True
@@ -569,8 +598,10 @@ class TestWin32LaunchApp:
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
         win_vd._handle = None
 
-        with patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch("ctypes.byref", side_effect=lambda obj: obj):
+        with (
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch("ctypes.byref", side_effect=lambda obj: obj),
+        ):
             result = win_vd._launch_app_locked(r"C:\app.exe")
 
         assert result["success"] is True
@@ -617,8 +648,10 @@ class TestWin32LaunchApp:
         win_vd = _make_win32_vd(user32=user32, kernel32=kernel32)
         win_vd._handle = 100
 
-        with patch.object(vd, "_get_kernel32", return_value=kernel32), \
-             patch("ctypes.create_unicode_buffer") as mock_buf_fn:
+        with (
+            patch.object(vd, "_get_kernel32", return_value=kernel32),
+            patch("ctypes.create_unicode_buffer") as mock_buf_fn,
+        ):
             mock_buf = MagicMock()
             mock_buf_fn.return_value = mock_buf
 
@@ -855,24 +888,27 @@ class TestWin32ListWindowsWin32:
         mock_buf.value = "TestWin"
 
         # Save and restore ctypes.WINFUNCTYPE
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
         if had_winfunctype:
             original_wintypes_ctypes = ctypes.WINFUNCTYPE
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32), \
-                 patch("ctypes.create_unicode_buffer", return_value=mock_buf), \
-                 patch("ctypes.byref") as mock_byref:
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+                patch("ctypes.create_unicode_buffer", return_value=mock_buf),
+                patch("ctypes.byref") as mock_byref,
+            ):
                 # Simulate RECT being filled by GetWindowRect
                 def byref_side_effect(obj):
-                    if hasattr(obj, 'left'):
+                    if hasattr(obj, "left"):
                         obj.left = 10
                         obj.top = 20
                         obj.right = 810
                         obj.bottom = 620
                     return MagicMock()
+
                 mock_byref.side_effect = byref_side_effect
 
                 result = win_vd.list_windows()
@@ -880,7 +916,7 @@ class TestWin32ListWindowsWin32:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = original_wintypes_ctypes
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert len(result) == 1
         assert result[0]["title"] == "TestWin"
@@ -894,19 +930,21 @@ class TestWin32ListWindowsWin32:
         user32.EnumWindows = lambda cb, lp: cb(50, 0) or True
         user32.IsWindowVisible.return_value = False
 
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
-        orig = getattr(ctypes, 'WINFUNCTYPE', None)
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
+        orig = getattr(ctypes, "WINFUNCTYPE", None)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32):
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+            ):
                 result = win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert result == []
 
@@ -919,19 +957,21 @@ class TestWin32ListWindowsWin32:
         user32.GetWindowThreadProcessId.return_value = 42
         user32.GetThreadDesktop.return_value = 999  # different desktop
 
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
-        orig = getattr(ctypes, 'WINFUNCTYPE', None)
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
+        orig = getattr(ctypes, "WINFUNCTYPE", None)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32):
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+            ):
                 result = win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert result == []
 
@@ -945,19 +985,21 @@ class TestWin32ListWindowsWin32:
         user32.GetThreadDesktop.return_value = 100
         user32.GetWindowTextLengthW.return_value = 0
 
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
-        orig = getattr(ctypes, 'WINFUNCTYPE', None)
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
+        orig = getattr(ctypes, "WINFUNCTYPE", None)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32):
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+            ):
                 result = win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert result == []
 
@@ -974,20 +1016,22 @@ class TestWin32ListWindowsWin32:
         mock_buf = MagicMock()
         mock_buf.value = ""
 
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
-        orig = getattr(ctypes, 'WINFUNCTYPE', None)
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
+        orig = getattr(ctypes, "WINFUNCTYPE", None)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32), \
-                 patch("ctypes.create_unicode_buffer", return_value=mock_buf):
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+                patch("ctypes.create_unicode_buffer", return_value=mock_buf),
+            ):
                 result = win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert result == []
 
@@ -999,19 +1043,21 @@ class TestWin32ListWindowsWin32:
         user32.IsWindowVisible.return_value = True
         user32.GetWindowThreadProcessId.return_value = 0
 
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
-        orig = getattr(ctypes, 'WINFUNCTYPE', None)
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
+        orig = getattr(ctypes, "WINFUNCTYPE", None)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32):
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+            ):
                 result = win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert result == []
 
@@ -1025,8 +1071,10 @@ class TestWin32ListWindowsWin32:
         mock_lock.acquire.return_value = False
         win_vd._lock = mock_lock
 
-        with patch.object(vd, "_IS_WINDOWS", True), \
-             patch.object(vd, "_get_user32", return_value=user32):
+        with (
+            patch.object(vd, "_IS_WINDOWS", True),
+            patch.object(vd, "_get_user32", return_value=user32),
+        ):
             result = win_vd.list_windows()
 
         assert result == []
@@ -1036,19 +1084,21 @@ class TestWin32ListWindowsWin32:
         win_vd, user32 = self._make_vd_for_enum()
         user32.EnumWindows.side_effect = OSError("nope")
 
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
-        orig = getattr(ctypes, 'WINFUNCTYPE', None)
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
+        orig = getattr(ctypes, "WINFUNCTYPE", None)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32):
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+            ):
                 result = win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert result == []
 
@@ -1073,19 +1123,21 @@ class TestWin32ListWindowsWin32:
         win_vd._switch_to_locked = fake_switch_to
         win_vd._switch_back_locked = fake_switch_back
 
-        had_winfunctype = hasattr(ctypes, 'WINFUNCTYPE')
-        orig = getattr(ctypes, 'WINFUNCTYPE', None)
-        ctypes.WINFUNCTYPE = lambda *a, **kw: (lambda cb: cb)
+        had_winfunctype = hasattr(ctypes, "WINFUNCTYPE")
+        orig = getattr(ctypes, "WINFUNCTYPE", None)
+        ctypes.WINFUNCTYPE = lambda *a, **kw: lambda cb: cb
 
         try:
-            with patch.object(vd, "_IS_WINDOWS", True), \
-                 patch.object(vd, "_get_user32", return_value=user32):
+            with (
+                patch.object(vd, "_IS_WINDOWS", True),
+                patch.object(vd, "_get_user32", return_value=user32),
+            ):
                 win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig
             else:
-                delattr(ctypes, 'WINFUNCTYPE')
+                delattr(ctypes, "WINFUNCTYPE")
 
         assert switch_back_called is True
 

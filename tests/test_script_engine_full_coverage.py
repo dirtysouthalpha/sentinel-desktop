@@ -145,7 +145,6 @@ class TestRetryLogic:
         assert result.success is True
         assert executor.execute_sync.call_count == 2
 
-
     def test_retry_once_exception_on_retry(self):
         """Test that exceptions during retry are handled."""
         executor = MagicMock()
@@ -181,7 +180,11 @@ class TestOnErrorPolicies:
             {"success": False, "error": "Step 2 failed"},
             {"success": True, "output": "Step 3 success"},  # Should not execute
         ]
-        executor._dispatch_table = {"step1": lambda x: x, "step2": lambda x: x, "step3": lambda x: x}
+        executor._dispatch_table = {
+            "step1": lambda x: x,
+            "step2": lambda x: x,
+            "step3": lambda x: x,
+        }
         engine = ScriptEngine(executor)
         engine.set_on_error_policy("stop")
 
@@ -198,7 +201,6 @@ class TestOnErrorPolicies:
         assert result.steps_completed == 2
         assert executor.execute_sync.call_count == 2
 
-
     def test_skip_policy_continues_on_failure(self):
         """Test that 'skip' policy continues execution on failure."""
         executor = MagicMock()
@@ -207,7 +209,11 @@ class TestOnErrorPolicies:
             {"success": False, "error": "Step 2 failed"},
             {"success": True, "output": "Step 3 success"},
         ]
-        executor._dispatch_table = {"step1": lambda x: x, "step2": lambda x: x, "step3": lambda x: x}
+        executor._dispatch_table = {
+            "step1": lambda x: x,
+            "step2": lambda x: x,
+            "step3": lambda x: x,
+        }
         engine = ScriptEngine(executor)
         engine.set_on_error_policy("skip")
 
@@ -257,7 +263,11 @@ class TestComplexScenarios:
             {"success": True, "output": "Step 2 retry success"},
             {"success": True, "output": "Step 3"},
         ]
-        executor._dispatch_table = {"step1": lambda x: x, "step2": lambda x: x, "step3": lambda x: x}
+        executor._dispatch_table = {
+            "step1": lambda x: x,
+            "step2": lambda x: x,
+            "step3": lambda x: x,
+        }
         engine = ScriptEngine(executor)
         engine.set_on_error_policy("retry_once")
 
@@ -274,12 +284,15 @@ class TestComplexScenarios:
         assert result.steps_completed == 3
         assert len(result.results) == 3
 
-
     def test_progress_callback_called_correctly(self):
         """Test that progress callback is called with correct parameters."""
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True, "output": "test"}
-        executor._dispatch_table = {"action1": lambda x: x, "action2": lambda x: x, "action3": lambda x: x}
+        executor._dispatch_table = {
+            "action1": lambda x: x,
+            "action2": lambda x: x,
+            "action3": lambda x: x,
+        }
         engine = ScriptEngine(executor)
 
         callback_calls = []
@@ -327,7 +340,6 @@ class TestEdgeCases:
         result = engine.run_script_from_dict(script, {})
         assert result.success is True
 
-
     def test_none_params(self):
         """Test that None params are handled correctly."""
         executor = MagicMock()
@@ -343,7 +355,6 @@ class TestEdgeCases:
 
         result = engine.run_script_from_dict(script, None)
         assert result.success is True
-
 
     def test_zero_wait_after_ms(self):
         """Test that zero wait_after_ms doesn't trigger sleep."""
@@ -373,7 +384,6 @@ class TestEdgeCases:
         finally:
             time.sleep = original_sleep
 
-
     def test_invalid_on_error_policy(self):
         """Test that invalid on_error policy raises ValueError."""
         executor = MagicMock()
@@ -399,7 +409,6 @@ class TestSubstitutionEdgeCases:
         # Note: _substitute_step doesn't recursively process nested structures
         assert result["z"]["nested"] == "{{another}}"  # Not substituted in nested structures
 
-
     def test_extract_required_params_from_complex_steps(self):
         """Test parameter extraction from complex step structures."""
         script = {
@@ -410,7 +419,7 @@ class TestSubstitutionEdgeCases:
                         "simple": "{{param1}}",
                         "nested": {"key": "{{param2}}"},
                         "list": ["{{param3}}", "fixed"],
-                    }
+                    },
                 }
             ]
         }
@@ -446,7 +455,6 @@ class TestDryRun:
         assert previews[1]["action"] == "action2"
         assert previews[1]["params"]["y"] == "fixed"  # No substitution needed
         assert previews[1]["wait_after_ms"] == 200
-
 
     def test_dry_run_raises_on_validation_error(self):
         """Test that dry_run raises ValueError on validation failure."""

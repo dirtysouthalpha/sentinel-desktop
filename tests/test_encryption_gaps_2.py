@@ -265,7 +265,10 @@ class TestLoadEdgeCases:
 
     def test_load_valid_vault(self, tmp_path: Path) -> None:
         vault_path = tmp_path / "v.json"
-        vault_data = {"version": 1, "keys": {"k1": {"encrypted": "dGVzdA==", "created": "2025-01-01"}}}
+        vault_data = {
+            "version": 1,
+            "keys": {"k1": {"encrypted": "dGVzdA==", "created": "2025-01-01"}},
+        }
         vault_path.write_text(json.dumps(vault_data), encoding="utf-8")
         vault = CredentialVault(str(vault_path))
         assert "k1" in vault.list_keys()

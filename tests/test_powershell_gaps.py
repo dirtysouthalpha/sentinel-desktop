@@ -86,7 +86,11 @@ class TestRunnerInit:
 
     def test_custom_params(self):
         runner = PowerShellRunner(
-            timeout=60, run_as_admin=True, working_dir="/tmp", env_vars={"FOO": "bar"}, allow_raw=False
+            timeout=60,
+            run_as_admin=True,
+            working_dir="/tmp",
+            env_vars={"FOO": "bar"},
+            allow_raw=False,
         )
         assert runner.timeout == 60
         assert runner.run_as_admin is True
@@ -156,7 +160,9 @@ class TestRunScriptGaps:
         script.write_text('Write-Output "hello"')
 
         with patch.object(runner, "_run") as mock_run:
-            mock_run.return_value = PSResult(success=True, exit_code=0, stdout="hello", stderr="", objects=[])
+            mock_run.return_value = PSResult(
+                success=True, exit_code=0, stdout="hello", stderr="", objects=[]
+            )
             result = runner.run_script(str(script), args={"Name": "Test", "Count": 5})
             assert result.success is True
             # Verify _run was called with the script path and params
@@ -172,7 +178,9 @@ class TestRunScriptGaps:
         script.write_text('Write-Output "hello"')
 
         with patch.object(runner, "_run") as mock_run:
-            mock_run.return_value = PSResult(success=True, exit_code=0, stdout="ok", stderr="", objects=[])
+            mock_run.return_value = PSResult(
+                success=True, exit_code=0, stdout="ok", stderr="", objects=[]
+            )
             # Value with null byte → _ps_escape raises ValueError → falls back to ''
             runner.run_script(str(script), args={"Key": "bad\x00val"})
             call_args = mock_run.call_args[0][0]

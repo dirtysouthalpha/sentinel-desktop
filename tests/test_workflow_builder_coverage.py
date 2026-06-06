@@ -59,14 +59,28 @@ class TestWorkflowStepEdgeCases:
     def test_to_dict_includes_all_fields(self) -> None:
         """to_dict returns every expected key."""
         step = WorkflowStep(
-            name="test", action="click", params={"x": 1}, timeout=60,
-            max_retries=5, condition="True", on_failure="skip",
-            status=StepStatus.FAILED, error="timeout",
+            name="test",
+            action="click",
+            params={"x": 1},
+            timeout=60,
+            max_retries=5,
+            condition="True",
+            on_failure="skip",
+            status=StepStatus.FAILED,
+            error="timeout",
         )
         d = step.to_dict()
         assert set(d.keys()) >= {
-            "id", "name", "action", "params", "timeout", "max_retries",
-            "condition", "on_failure", "status", "error",
+            "id",
+            "name",
+            "action",
+            "params",
+            "timeout",
+            "max_retries",
+            "condition",
+            "on_failure",
+            "status",
+            "error",
         }
 
 

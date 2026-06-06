@@ -37,7 +37,9 @@ class TestPlanStep:
         assert step.retries == 0
 
     def test_to_dict(self):
-        step = PlanStep(id=1, description="Click Save", step_type=StepType.CLICK, target="Save button")
+        step = PlanStep(
+            id=1, description="Click Save", step_type=StepType.CLICK, target="Save button"
+        )
         d = step.to_dict()
         assert d["id"] == 1
         assert d["description"] == "Click Save"
@@ -52,29 +54,35 @@ class TestExecutionPlan:
         assert plan.current_step is None
 
     def test_advance_returns_pending_step(self):
-        plan = ExecutionPlan(steps=[
-            PlanStep(id=1, status=StepStatus.PENDING),
-            PlanStep(id=2, status=StepStatus.PENDING),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                PlanStep(id=1, status=StepStatus.PENDING),
+                PlanStep(id=2, status=StepStatus.PENDING),
+            ]
+        )
         step = plan.advance()
         assert step.id == 1
 
     def test_completed_steps(self):
-        plan = ExecutionPlan(steps=[
-            PlanStep(id=1, status=StepStatus.COMPLETED),
-            PlanStep(id=2, status=StepStatus.FAILED),
-            PlanStep(id=3, status=StepStatus.PENDING),
-        ])
+        plan = ExecutionPlan(
+            steps=[
+                PlanStep(id=1, status=StepStatus.COMPLETED),
+                PlanStep(id=2, status=StepStatus.FAILED),
+                PlanStep(id=3, status=StepStatus.PENDING),
+            ]
+        )
         assert len(plan.completed_steps) == 1
         assert len(plan.failed_steps) == 1
 
 
 class TestTaskPlanner:
     def test_parse_steps_from_json(self):
-        response = json.dumps([
-            {"description": "Click Save", "type": "click", "target": "Save button"},
-            {"description": "Wait for save", "type": "wait", "target": "screen"},
-        ])
+        response = json.dumps(
+            [
+                {"description": "Click Save", "type": "click", "target": "Save button"},
+                {"description": "Wait for save", "type": "wait", "target": "screen"},
+            ]
+        )
         steps = TaskPlanner._parse_steps(response)
         assert len(steps) == 2
         assert steps[0].description == "Click Save"
@@ -108,8 +116,11 @@ class TestActionGrounder:
     def test_ground_click_by_label(self):
         elements = [
             PerceptionElement(
-                id=1, label="Save", element_type=ElementType.BUTTON,
-                bounding_box=(100, 200, 80, 30), is_interactable=True,
+                id=1,
+                label="Save",
+                element_type=ElementType.BUTTON,
+                bounding_box=(100, 200, 80, 30),
+                is_interactable=True,
             ),
         ]
         step = PlanStep(target="Save", step_type=StepType.CLICK)
@@ -123,8 +134,11 @@ class TestActionGrounder:
     def test_ground_type_step(self):
         elements = [
             PerceptionElement(
-                id=1, label="Input", element_type=ElementType.INPUT,
-                bounding_box=(100, 200, 200, 30), is_interactable=True,
+                id=1,
+                label="Input",
+                element_type=ElementType.INPUT,
+                bounding_box=(100, 200, 200, 30),
+                is_interactable=True,
             ),
         ]
         step = PlanStep(target="Input", step_type=StepType.TYPE, value="hello")
@@ -157,8 +171,11 @@ class TestActionGrounder:
     def test_ground_by_type_match(self):
         elements = [
             PerceptionElement(
-                id=1, label="MysteryBtn", element_type=ElementType.BUTTON,
-                bounding_box=(200, 300, 60, 25), is_interactable=True,
+                id=1,
+                label="MysteryBtn",
+                element_type=ElementType.BUTTON,
+                bounding_box=(200, 300, 60, 25),
+                is_interactable=True,
             ),
         ]
         # Target doesn't match label, so falls to type_match

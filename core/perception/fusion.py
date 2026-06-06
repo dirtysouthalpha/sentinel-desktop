@@ -99,9 +99,15 @@ def merge_elements(
         label = existing.label or new_elem.label
 
     # Use the element type from the higher-priority source
-    elem_type = existing.element_type if existing_priority >= new_priority else new_elem.element_type
+    elem_type = (
+        existing.element_type if existing_priority >= new_priority else new_elem.element_type
+    )
     if elem_type == ElementType.UNKNOWN:
-        elem_type = new_elem.element_type if new_elem.element_type != ElementType.UNKNOWN else existing.element_type
+        elem_type = (
+            new_elem.element_type
+            if new_elem.element_type != ElementType.UNKNOWN
+            else existing.element_type
+        )
 
     # Use the tighter bounding box (smaller area)
     box = existing.bounding_box if existing.area <= new_elem.area else new_elem.bounding_box

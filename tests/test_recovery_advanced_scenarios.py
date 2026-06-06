@@ -173,7 +173,9 @@ class TestTimeoutRecoveryEdgeCases:
         assert suggestion.pattern == "timeout"
         # Alternate action should have safe duration value
         if suggestion.alternate_action:
-            new_duration = suggestion.alternate_action.get("duration", suggestion.alternate_action.get("wait", 0))
+            new_duration = suggestion.alternate_action.get(
+                "duration", suggestion.alternate_action.get("wait", 0)
+            )
             assert new_duration >= 0
 
     def test_timeout_recovery_with_zero_duration(self):
@@ -185,7 +187,9 @@ class TestTimeoutRecoveryEdgeCases:
         assert suggestion is not None
         # Should increase from zero
         if suggestion.alternate_action:
-            new_duration = suggestion.alternate_action.get("duration", suggestion.alternate_action.get("wait", 0))
+            new_duration = suggestion.alternate_action.get(
+                "duration", suggestion.alternate_action.get("wait", 0)
+            )
             assert new_duration > 0
 
     def test_timeout_recovery_with_very_large_duration(self):
@@ -197,7 +201,9 @@ class TestTimeoutRecoveryEdgeCases:
         assert suggestion is not None
         # Should cap at 15 seconds max
         if suggestion.alternate_action:
-            new_duration = suggestion.alternate_action.get("duration", suggestion.alternate_action.get("wait", 0))
+            new_duration = suggestion.alternate_action.get(
+                "duration", suggestion.alternate_action.get("wait", 0)
+            )
             assert new_duration <= 15.0
 
 

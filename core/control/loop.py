@@ -80,16 +80,22 @@ class ControlLoop:
             perception_result = self._get_perception()
             grounded = self.grounder.ground(step, perception_result)
 
-            if not grounded.is_grounded and step.step_type not in (StepType.KEY, StepType.HOTKEY, StepType.WAIT):
+            if not grounded.is_grounded and step.step_type not in (
+                StepType.KEY,
+                StepType.HOTKEY,
+                StepType.WAIT,
+            ):
                 # Can't ground — retry or fail
                 step.retries += 1
                 if step.retries >= self.max_retries_per_step:
                     step.status = StepStatus.FAILED
-                    results.append({
-                        "step": step.to_dict(),
-                        "status": "grounding_failed",
-                        "confidence": 0.0,
-                    })
+                    results.append(
+                        {
+                            "step": step.to_dict(),
+                            "status": "grounding_failed",
+                            "confidence": 0.0,
+                        }
+                    )
                     plan.current_step_index += 1
                     steps_executed += 1
                     continue
@@ -119,11 +125,13 @@ class ControlLoop:
                     step.status = StepStatus.FAILED
                     plan.current_step_index += 1
 
-            results.append({
-                "step": step.to_dict(),
-                "grounded_method": grounded.method,
-                "verification": report.to_dict(),
-            })
+            results.append(
+                {
+                    "step": step.to_dict(),
+                    "grounded_method": grounded.method,
+                    "verification": report.to_dict(),
+                }
+            )
 
             steps_executed += 1
 
@@ -149,6 +157,7 @@ class ControlLoop:
     def _get_perception(self):
         """Capture and analyze the current screen."""
         from core.screenshot import capture_screen
+
         screenshot = capture_screen()
         return self.perception.analyze(
             screenshot,

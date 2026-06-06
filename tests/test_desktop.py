@@ -10,6 +10,7 @@ from core.desktop import DesktopController
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_controller(**size_kwargs):
     """Create a DesktopController with pyautogui mocked out."""
     with patch("core.desktop.pyautogui") as mock_pg:
@@ -26,6 +27,7 @@ def _make_controller(**size_kwargs):
 # ===========================================================================
 # __init__ edge cases
 # ===========================================================================
+
 
 class TestDesktopControllerInit:
     def test_screen_size_stored(self):
@@ -56,6 +58,7 @@ class TestDesktopControllerInit:
 # ===========================================================================
 # Screenshot methods
 # ===========================================================================
+
 
 class TestScreenshot:
     def test_screenshot_returns_image(self):
@@ -141,6 +144,7 @@ class TestScreenshotRegion:
 # Mouse actions — error handling
 # ===========================================================================
 
+
 class TestClickErrorHandling:
     def test_click_failsafe_exception_swallowed(self):
         with patch("core.desktop.pyautogui") as mock_pg:
@@ -196,6 +200,7 @@ class TestClickErrorHandling:
 # ===========================================================================
 # Mouse happy paths
 # ===========================================================================
+
 
 class TestClickHappyPaths:
     def test_click(self):
@@ -260,6 +265,7 @@ class TestClickHappyPaths:
 # get_mouse_position
 # ===========================================================================
 
+
 class TestGetMousePosition:
     def test_returns_position(self):
         with patch("core.desktop.pyautogui") as mock_pg:
@@ -286,6 +292,7 @@ class TestGetMousePosition:
 # ===========================================================================
 # Keyboard actions — error handling
 # ===========================================================================
+
 
 class TestKeyboardErrorHandling:
     def test_type_text_error_swallowed(self):
@@ -337,6 +344,7 @@ class TestKeyboardHappyPaths:
 # find_on_screen / wait_for_image / click_image
 # ===========================================================================
 
+
 class TestFindOnScreen:
     def test_no_cv2_returns_none(self):
         with patch("core.desktop.pyautogui") as mock_pg:
@@ -353,9 +361,11 @@ class TestFindOnScreen:
         mock_cv2.imread.return_value = MagicMock(shape=(10, 10))
         mock_cv2.minMaxLoc.return_value = (0, 0.5, 0, (0, 0))  # below confidence
 
-        with patch("core.desktop.pyautogui") as mock_pg, \
-             patch("core.desktop.cv2", mock_cv2, create=True), \
-             patch("core.desktop.np", mock_np, create=True):
+        with (
+            patch("core.desktop.pyautogui") as mock_pg,
+            patch("core.desktop.cv2", mock_cv2, create=True),
+            patch("core.desktop.np", mock_np, create=True),
+        ):
             mock_pg.size.return_value = (1920, 1080)
             mock_pg.screenshot.return_value = fake_img
             ctrl = DesktopController()
@@ -375,8 +385,10 @@ class TestFindOnScreen:
         mock_np = MagicMock()
         mock_np.array.return_value = mock_arr
 
-        with patch("core.desktop.pyautogui") as mock_pg, \
-             patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}):
+        with (
+            patch("core.desktop.pyautogui") as mock_pg,
+            patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": mock_np}),
+        ):
             mock_pg.size.return_value = (1920, 1080)
             mock_pg.screenshot.return_value = fake_img
             ctrl = DesktopController()
@@ -389,8 +401,10 @@ class TestFindOnScreen:
         mock_cv2 = MagicMock()
         mock_cv2.imread.return_value = None
 
-        with patch("core.desktop.pyautogui") as mock_pg, \
-             patch.dict("sys.modules", {"cv2": mock_cv2}):
+        with (
+            patch("core.desktop.pyautogui") as mock_pg,
+            patch.dict("sys.modules", {"cv2": mock_cv2}),
+        ):
             mock_pg.size.return_value = (1920, 1080)
             ctrl = DesktopController()
             result = ctrl.find_on_screen("bad_template.png")
@@ -412,8 +426,10 @@ class TestWaitForImage:
         with patch("core.desktop.pyautogui") as mock_pg:
             mock_pg.size.return_value = (1920, 1080)
             ctrl = DesktopController()
-            with patch.object(ctrl, "find_on_screen", return_value=None), \
-                 patch("core.desktop.time.sleep"):
+            with (
+                patch.object(ctrl, "find_on_screen", return_value=None),
+                patch("core.desktop.time.sleep"),
+            ):
                 result = ctrl.wait_for_image("missing.png", timeout=0.1, interval=0.05)
                 assert result is None
 
@@ -431,8 +447,10 @@ class TestWaitForImage:
                     raise OSError("scan failed")
                 return (50, 60)
 
-            with patch.object(ctrl, "find_on_screen", side_effect=flaky_find), \
-                 patch("core.desktop.time.sleep"):
+            with (
+                patch.object(ctrl, "find_on_screen", side_effect=flaky_find),
+                patch("core.desktop.time.sleep"),
+            ):
                 result = ctrl.wait_for_image("img.png", timeout=5)
                 assert result == (50, 60)
 
@@ -449,8 +467,10 @@ class TestClickImage:
         with patch("core.desktop.pyautogui") as mock_pg:
             mock_pg.size.return_value = (1920, 1080)
             ctrl = DesktopController()
-            with patch.object(ctrl, "find_on_screen", return_value=(100, 200)), \
-                 patch.object(ctrl, "click") as mock_click:
+            with (
+                patch.object(ctrl, "find_on_screen", return_value=(100, 200)),
+                patch.object(ctrl, "click") as mock_click,
+            ):
                 result = ctrl.click_image("found.png", button="right")
                 assert result is True
                 mock_click.assert_called_with(100, 200, button="right")
@@ -460,9 +480,11 @@ class TestClickImage:
 # DesktopEngine alias
 # ===========================================================================
 
+
 class TestDesktopEngineAlias:
     def test_alias_is_same_class(self):
         from core.desktop import DesktopEngine
+
         assert DesktopEngine is DesktopController
 
 
@@ -470,9 +492,11 @@ class TestDesktopEngineAlias:
 # Module-level convenience functions
 # ===========================================================================
 
+
 class TestModuleLevelFunctions:
     def test_module_screenshot(self):
         import core.desktop as mod
+
         fake_img = Image.new("RGB", (10, 10))
         with patch.object(mod, "_get_controller") as mock_get:
             mock_ctrl = MagicMock()
@@ -485,6 +509,7 @@ class TestModuleLevelFunctions:
 
     def test_module_screenshot_base64(self):
         import core.desktop as mod
+
         with patch.object(mod, "_get_controller") as mock_get:
             mock_ctrl = MagicMock()
             mock_ctrl.screenshot_base64.return_value = "abc123"
@@ -494,6 +519,7 @@ class TestModuleLevelFunctions:
 
     def test_module_click(self):
         import core.desktop as mod
+
         with patch.object(mod, "_get_controller") as mock_get:
             mock_ctrl = MagicMock()
             mock_get.return_value = mock_ctrl
@@ -502,6 +528,7 @@ class TestModuleLevelFunctions:
 
     def test_module_type_text(self):
         import core.desktop as mod
+
         with patch.object(mod, "_get_controller") as mock_get:
             mock_ctrl = MagicMock()
             mock_get.return_value = mock_ctrl
@@ -510,6 +537,7 @@ class TestModuleLevelFunctions:
 
     def test_module_press_key(self):
         import core.desktop as mod
+
         with patch.object(mod, "_get_controller") as mock_get:
             mock_ctrl = MagicMock()
             mock_get.return_value = mock_ctrl
@@ -518,6 +546,7 @@ class TestModuleLevelFunctions:
 
     def test_module_hotkey(self):
         import core.desktop as mod
+
         with patch.object(mod, "_get_controller") as mock_get:
             mock_ctrl = MagicMock()
             mock_get.return_value = mock_ctrl
@@ -526,6 +555,7 @@ class TestModuleLevelFunctions:
 
     def test_module_scroll(self):
         import core.desktop as mod
+
         with patch.object(mod, "_get_controller") as mock_get:
             mock_ctrl = MagicMock()
             mock_get.return_value = mock_ctrl
@@ -534,6 +564,7 @@ class TestModuleLevelFunctions:
 
     def test_get_controller_creates_singleton(self):
         import core.desktop as mod
+
         mod._ctrl = None
         with patch("core.desktop.pyautogui") as mock_pg:
             mock_pg.size.return_value = (1920, 1080)

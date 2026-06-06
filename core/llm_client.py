@@ -238,11 +238,19 @@ class LLMClient:
             payload["tool_choice"] = "auto"
         logger.info(
             "chat → %s/%s (%d msgs, %d tools)",
-            provider, model, len(messages), len(tools or []),
+            provider,
+            model,
+            len(messages),
+            len(tools or []),
         )
         data = self._post_with_retry(
-            chat_url, headers, payload, timeout,
-            max_retries=max_retries, base_delay=retry_base_delay, provider_label=provider,
+            chat_url,
+            headers,
+            payload,
+            timeout,
+            max_retries=max_retries,
+            base_delay=retry_base_delay,
+            provider_label=provider,
         )
         return self._parse_openai_response(data, provider)
 
@@ -416,8 +424,10 @@ class LLMClient:
 
         system_msg, converted_messages = self._convert_messages_for_anthropic(messages)
         payload: dict[str, Any] = {
-            "model": model, "messages": converted_messages,
-            "max_tokens": max_tokens, "temperature": temperature,
+            "model": model,
+            "messages": converted_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
         }
         if system_msg.strip():
             payload["system"] = system_msg.strip()
@@ -426,8 +436,13 @@ class LLMClient:
 
         logger.info("chat → anthropic/%s", model)
         data = self._post_with_retry(
-            chat_url, headers, payload, timeout,
-            max_retries=max_retries, base_delay=retry_base_delay, provider_label="anthropic",
+            chat_url,
+            headers,
+            payload,
+            timeout,
+            max_retries=max_retries,
+            base_delay=retry_base_delay,
+            provider_label="anthropic",
         )
         return self._parse_anthropic_response(data)
 
@@ -522,7 +537,10 @@ class LLMClient:
                 if resp.status_code < HTTP_BAD_REQUEST:
                     return self._parse_response_json(resp, provider_label)
                 last_status, last_body = self._classify_error_response(
-                    resp, provider_label, attempt, max_retries,
+                    resp,
+                    provider_label,
+                    attempt,
+                    max_retries,
                 )
 
             if attempt >= max_retries:
@@ -538,7 +556,10 @@ class LLMClient:
 
     @staticmethod
     def _log_request_exc(
-        provider_label: str, exc: Exception, attempt: int, max_retries: int,
+        provider_label: str,
+        exc: Exception,
+        attempt: int,
+        max_retries: int,
     ) -> None:
         """Log a network-level request failure with attempt context."""
         logger.warning(
@@ -579,7 +600,10 @@ class LLMClient:
 
     @staticmethod
     def _classify_error_response(
-        resp: Any, provider_label: str, attempt: int, max_retries: int,
+        resp: Any,
+        provider_label: str,
+        attempt: int,
+        max_retries: int,
     ) -> tuple[int, str]:
         """Handle ≥400 HTTP response.
 

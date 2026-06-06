@@ -42,8 +42,10 @@ class TestForegroundWindowTitleFallback:
 
     def test_win32gui_fails_falls_back_to_wm(self):
         """When win32gui fails, falls back to window_manager."""
-        with patch.object(ph, "_IS_WINDOWS", True), \
-             patch("core.window_manager.list_windows", return_value=[{"title": "FallbackApp"}]):
+        with (
+            patch.object(ph, "_IS_WINDOWS", True),
+            patch("core.window_manager.list_windows", return_value=[{"title": "FallbackApp"}]),
+        ):
             # On Linux, win32gui import fails, hitting the first except block,
             # then falling through to window_manager
             result = ph._get_foreground_window_title()
@@ -64,9 +66,11 @@ class TestForegroundWindowTitleFallback:
         has left a fake win32gui in ``sys.modules``)."""
         fake_win32gui = MagicMock()
         fake_win32gui.GetForegroundWindow.side_effect = OSError("no win32")
-        with patch.object(ph, "_IS_WINDOWS", True), \
-             patch.dict("sys.modules", {"win32gui": fake_win32gui}), \
-             patch("core.window_manager.list_windows", side_effect=OSError("no wm")):
+        with (
+            patch.object(ph, "_IS_WINDOWS", True),
+            patch.dict("sys.modules", {"win32gui": fake_win32gui}),
+            patch("core.window_manager.list_windows", side_effect=OSError("no wm")),
+        ):
             # win32gui path raises (first except), then the wm fallback raises
             # too (second except) -> "".
             assert ph._get_foreground_window_title() == ""
@@ -109,8 +113,10 @@ class TestClickButtonWin32:
     def test_click_button_no_win32_returns_false(self):
         """On non-Windows, _click_button returns False when OCR and UIA fail."""
         handler = ph.PopupHandler()
-        with patch("core.ocr.find_text", side_effect=ImportError("nope")), \
-             patch("core.ui_tree.click_control", side_effect=ImportError("nope")):
+        with (
+            patch("core.ocr.find_text", side_effect=ImportError("nope")),
+            patch("core.ui_tree.click_control", side_effect=ImportError("nope")),
+        ):
             result = handler._click_button("OK")
         assert result is False
 
@@ -122,10 +128,12 @@ class TestClickButtonWin32:
         mock_win32gui.GetForegroundWindow.return_value = 999
         mock_win32con = MagicMock()
 
-        with patch("core.ocr.find_text", return_value=None), \
-             patch("core.ui_tree.click_control", return_value=None), \
-             patch.object(handler, "_find_button_hwnd", return_value=100), \
-             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": mock_win32con}):
+        with (
+            patch("core.ocr.find_text", return_value=None),
+            patch("core.ui_tree.click_control", return_value=None),
+            patch.object(handler, "_find_button_hwnd", return_value=100),
+            patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": mock_win32con}),
+        ):
             result = handler._click_button("OK")
 
         assert result is True
@@ -138,9 +146,11 @@ class TestClickButtonWin32:
         mock_win32gui = MagicMock()
         mock_win32gui.GetForegroundWindow.return_value = 0
 
-        with patch("core.ocr.find_text", return_value=None), \
-             patch("core.ui_tree.click_control", return_value=None), \
-             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}):
+        with (
+            patch("core.ocr.find_text", return_value=None),
+            patch("core.ui_tree.click_control", return_value=None),
+            patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}),
+        ):
             result = handler._click_button("OK")
 
         assert result is False
@@ -152,10 +162,12 @@ class TestClickButtonWin32:
         mock_win32gui = MagicMock()
         mock_win32gui.GetForegroundWindow.return_value = 999
 
-        with patch("core.ocr.find_text", return_value=None), \
-             patch("core.ui_tree.click_control", return_value=None), \
-             patch.object(handler, "_find_button_hwnd", return_value=None), \
-             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}):
+        with (
+            patch("core.ocr.find_text", return_value=None),
+            patch("core.ui_tree.click_control", return_value=None),
+            patch.object(handler, "_find_button_hwnd", return_value=None),
+            patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}),
+        ):
             result = handler._click_button("OK")
 
         assert result is False
@@ -168,9 +180,11 @@ class TestClickButtonWin32:
         mock_win32gui = MagicMock()
         mock_win32gui.GetForegroundWindow.side_effect = OSError("win32 boom")
 
-        with patch("core.ocr.find_text", return_value=None), \
-             patch("core.ui_tree.click_control", return_value=None), \
-             patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}):
+        with (
+            patch("core.ocr.find_text", return_value=None),
+            patch("core.ui_tree.click_control", return_value=None),
+            patch.dict("sys.modules", {"win32gui": mock_win32gui, "win32con": MagicMock()}),
+        ):
             result = handler._click_button("OK")
 
         assert result is False
@@ -337,9 +351,13 @@ class TestCheckAndDismiss:
         handler._last_detection_time = float("inf")  # Very recent
 
         # Even with matching pattern, cooldown should skip
-        with patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100))), \
-             patch.object(ph, "_ocr_text", return_value="Save Changes?\nDo you want to save your changes?"), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Save Changes?"):
+        with (
+            patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100))),
+            patch.object(
+                ph, "_ocr_text", return_value="Save Changes?\nDo you want to save your changes?"
+            ),
+            patch.object(ph, "_get_foreground_window_title", return_value="Save Changes?"),
+        ):
             result = handler.check_and_dismiss()
         # Should be detected but not dismissed
         assert result.dismissed is False
@@ -349,9 +367,11 @@ class TestCheckAndDismiss:
         handler = ph.PopupHandler(auto_dismiss=True)
         handler._dismiss_attempts = handler.MAX_DISMISS_ATTEMPTS
 
-        with patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100))), \
-             patch.object(ph, "_ocr_text", return_value="Error\nAn error has occurred."), \
-             patch.object(ph, "_get_foreground_window_title", return_value="Error"):
+        with (
+            patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100))),
+            patch.object(ph, "_ocr_text", return_value="Error\nAn error has occurred."),
+            patch.object(ph, "_get_foreground_window_title", return_value="Error"),
+        ):
             handler.check_and_dismiss()
         # Should not have attempted to dismiss
         assert handler._dismiss_attempts == handler.MAX_DISMISS_ATTEMPTS

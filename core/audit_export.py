@@ -93,8 +93,6 @@ def _compute_summary(masked_log: list[dict[str, Any]], metadata: dict[str, Any])
     }
 
 
-
-
 _TEXT_COL_WIDTHS = (6, 22, 18, 30)
 _TEXT_HEADER_FMT = (
     f"  {{:<{_TEXT_COL_WIDTHS[0]}}} {{:<{_TEXT_COL_WIDTHS[1]}}} "
@@ -197,7 +195,8 @@ class AuditExporter:
             self._dir_ready = True
         except OSError:
             logger.exception(
-                "Failed to create output dir %s — all exports will fail", self.output_dir,
+                "Failed to create output dir %s — all exports will fail",
+                self.output_dir,
             )
 
     # ------------------------------------------------------------------

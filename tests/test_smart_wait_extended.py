@@ -22,6 +22,7 @@ from core.smart_wait import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sw():
     """Fresh SmartWait instance."""
@@ -39,6 +40,7 @@ def _different_image(color=(200, 200, 200), size=(50, 50)):
 # ---------------------------------------------------------------------------
 # _crop_to_region
 # ---------------------------------------------------------------------------
+
 
 class TestCropToRegion:
     """Tests for the _crop_to_region helper."""
@@ -72,6 +74,7 @@ class TestCropToRegion:
 # WaitResult dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestWaitResultExtended:
     """Extended WaitResult tests."""
 
@@ -96,8 +99,11 @@ class TestWaitResultExtended:
 
     def test_snapshot_path_stored(self):
         r = WaitResult(
-            success=True, elapsed=1.0, frames_checked=2,
-            change_score=1.0, snapshot_path="/tmp/test.png",
+            success=True,
+            elapsed=1.0,
+            frames_checked=2,
+            change_score=1.0,
+            snapshot_path="/tmp/test.png",
         )
         assert r.snapshot_path == "/tmp/test.png"
 
@@ -105,6 +111,7 @@ class TestWaitResultExtended:
 # ---------------------------------------------------------------------------
 # _downsample edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestDownsampleExtended:
     def test_factor_1_returns_same_size(self):
@@ -137,6 +144,7 @@ class TestDownsampleExtended:
 # ---------------------------------------------------------------------------
 # _compute_change_score extended
 # ---------------------------------------------------------------------------
+
 
 class TestComputeChangeScoreExtended:
     def test_threshold_boundary_exact(self):
@@ -190,9 +198,11 @@ class TestComputeChangeScoreExtended:
 # _save_snapshot edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestSaveSnapshotExtended:
     def test_creates_png_file(self, tmp_path):
         import core.smart_wait as sw
+
         orig = sw.tempfile.gettempdir
         sw.tempfile.gettempdir = lambda: str(tmp_path)
         try:
@@ -201,12 +211,14 @@ class TestSaveSnapshotExtended:
             assert path != ""
             assert path.endswith(".png")
             from pathlib import Path
+
             assert Path(path).exists()
         finally:
             sw.tempfile.gettempdir = orig
 
     def test_custom_prefix(self, tmp_path):
         import core.smart_wait as sw
+
         orig = sw.tempfile.gettempdir
         sw.tempfile.gettempdir = lambda: str(tmp_path)
         try:
@@ -226,6 +238,7 @@ class TestSaveSnapshotExtended:
 # ---------------------------------------------------------------------------
 # SmartWait — cancel mechanism
 # ---------------------------------------------------------------------------
+
 
 class TestSmartWaitCancel:
     def test_cancel_sets_event(self, sw):
@@ -259,6 +272,7 @@ class TestSmartWaitCancel:
 # ---------------------------------------------------------------------------
 # SmartWait.wait_for_change — mocked capture
 # ---------------------------------------------------------------------------
+
 
 class TestWaitForChange:
     @patch.object(SmartWait, "_capture")
@@ -320,6 +334,7 @@ class TestWaitForChange:
 # SmartWait.wait_for_stable — mocked capture
 # ---------------------------------------------------------------------------
 
+
 class TestWaitForStable:
     @patch.object(SmartWait, "_capture")
     def test_returns_success_when_stable(self, mock_capture, sw):
@@ -365,6 +380,7 @@ class TestWaitForStable:
 # SmartWait.wait_for_text — mocked OCR
 # ---------------------------------------------------------------------------
 
+
 class TestWaitForText:
     def test_empty_text_returns_immediately(self, sw):
         result = sw.wait_for_text(text="   ", timeout=2)
@@ -389,6 +405,7 @@ class TestWaitForText:
 # SmartWait.wait_for_color — mocked capture
 # ---------------------------------------------------------------------------
 
+
 class TestWaitForColor:
     @patch("core.smart_wait.capture_region")
     def test_color_match_immediately(self, mock_region, sw):
@@ -396,7 +413,11 @@ class TestWaitForColor:
         img = Image.new("RGB", (2, 2), (128, 128, 128))
         mock_region.return_value = img
         result = sw.wait_for_color(
-            x=10, y=10, target_rgb=(128, 128, 128), tolerance=10, timeout=1,
+            x=10,
+            y=10,
+            target_rgb=(128, 128, 128),
+            tolerance=10,
+            timeout=1,
         )
         assert result.success is True
         assert result.change_score == 1.0
@@ -404,7 +425,10 @@ class TestWaitForColor:
     @patch("core.smart_wait.capture_region", side_effect=OSError("no display"))
     def test_capture_failure_timeout(self, mock_region, sw):
         result = sw.wait_for_color(
-            x=10, y=10, target_rgb=(128, 128, 128), timeout=0.2,
+            x=10,
+            y=10,
+            target_rgb=(128, 128, 128),
+            timeout=0.2,
         )
         assert result.success is False
 
@@ -414,7 +438,10 @@ class TestWaitForColor:
         mock_region.return_value = img
         threading.Timer(0.05, sw.cancel).start()
         result = sw.wait_for_color(
-            x=10, y=10, target_rgb=(255, 255, 255), timeout=2,
+            x=10,
+            y=10,
+            target_rgb=(255, 255, 255),
+            timeout=2,
         )
         assert result.success is False
 
@@ -423,7 +450,11 @@ class TestWaitForColor:
         img = Image.new("RGB", (2, 2), (125, 125, 125))
         mock_region.return_value = img
         result = sw.wait_for_color(
-            x=10, y=10, target_rgb=(128, 128, 128), tolerance=5, timeout=1,
+            x=10,
+            y=10,
+            target_rgb=(128, 128, 128),
+            tolerance=5,
+            timeout=1,
         )
         assert result.success is True
 
@@ -432,7 +463,11 @@ class TestWaitForColor:
         img = Image.new("RGB", (2, 2), (0, 0, 0))
         mock_region.return_value = img
         result = sw.wait_for_color(
-            x=10, y=10, target_rgb=(200, 200, 200), tolerance=5, timeout=0.2,
+            x=10,
+            y=10,
+            target_rgb=(200, 200, 200),
+            tolerance=5,
+            timeout=0.2,
         )
         assert result.success is False
 
@@ -441,20 +476,25 @@ class TestWaitForColor:
 # SmartWait.wait_for_match — mocked find_template
 # ---------------------------------------------------------------------------
 
+
 class TestWaitForMatch:
     @patch("core.smart_wait.capture_screen", return_value=_solid_image())
     @patch("core.smart_wait._save_snapshot", return_value="/tmp/match.png")
     @patch("core.screenshot.find_template", return_value=(100, 200))
     def test_template_found(self, mock_find, mock_snap, mock_cap, sw):
         result = sw.wait_for_match(
-            template_path="/tmp/tpl.png", timeout=2, interval=0.05,
+            template_path="/tmp/tpl.png",
+            timeout=2,
+            interval=0.05,
         )
         assert result.success is True
 
     @patch("core.screenshot.find_template", return_value=None)
     def test_template_not_found_timeout(self, mock_find, sw):
         result = sw.wait_for_match(
-            template_path="/tmp/tpl.png", timeout=0.2, interval=0.05,
+            template_path="/tmp/tpl.png",
+            timeout=0.2,
+            interval=0.05,
         )
         assert result.success is False
 
@@ -462,7 +502,9 @@ class TestWaitForMatch:
     def test_find_template_error_continues(self, mock_find, sw):
         """Errors in find_template should be caught, not crash."""
         result = sw.wait_for_match(
-            template_path="/tmp/tpl.png", timeout=0.2, interval=0.05,
+            template_path="/tmp/tpl.png",
+            timeout=0.2,
+            interval=0.05,
         )
         assert result.success is False
 
@@ -470,7 +512,9 @@ class TestWaitForMatch:
     def test_cancel_during_wait_for_match(self, mock_find, sw):
         threading.Timer(0.05, sw.cancel).start()
         result = sw.wait_for_match(
-            template_path="/tmp/tpl.png", timeout=2, interval=0.05,
+            template_path="/tmp/tpl.png",
+            timeout=2,
+            interval=0.05,
         )
         assert result.success is False
 
@@ -478,6 +522,7 @@ class TestWaitForMatch:
 # ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
+
 
 class TestConstants:
     def test_channel_threshold_is_positive(self):

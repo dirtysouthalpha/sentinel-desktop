@@ -122,7 +122,9 @@ class WorkflowEngine:
 
     @staticmethod
     def resolve_variables(
-        text: str, variables: dict[str, Any], step_outputs: dict[str, Any],
+        text: str,
+        variables: dict[str, Any],
+        step_outputs: dict[str, Any],
     ) -> str:
         """Replace {{var}} and {{step.sN.output.field}} references."""
         if not isinstance(text, str):
@@ -227,7 +229,9 @@ class WorkflowEngine:
         return result
 
     def _validate_and_load_workflow(
-        self, path: str, variables: dict[str, Any] | None,
+        self,
+        path: str,
+        variables: dict[str, Any] | None,
     ) -> tuple[list[WorkflowStep], WorkflowResult] | WorkflowResult:
         """Load, validate, and prepare a workflow for execution.
 
@@ -252,7 +256,9 @@ class WorkflowEngine:
         return steps, result
 
     def _execute_step_chain(
-        self, steps: list[WorkflowStep], result: WorkflowResult,
+        self,
+        steps: list[WorkflowStep],
+        result: WorkflowResult,
     ) -> None:
         """Execute the workflow step chain with cycle detection.
 
@@ -290,7 +296,9 @@ class WorkflowEngine:
                     break
 
     def _finalize_workflow(
-        self, result: WorkflowResult, start_time: float,
+        self,
+        result: WorkflowResult,
+        start_time: float,
     ) -> None:
         """Set final outputs, success flag, elapsed time, and fire completion callback."""
         result.outputs = dict(self._step_outputs)
@@ -354,7 +362,9 @@ class WorkflowEngine:
 
         if step.type == StepType.CONDITION:
             expr = self.resolve_variables(
-                step.check or "", self._variables, self._step_outputs,
+                step.check or "",
+                self._variables,
+                self._step_outputs,
             )
             cond_result = self.evaluate_condition(expr)
             next_id = step.true_next if cond_result else step.false_next
@@ -362,7 +372,9 @@ class WorkflowEngine:
 
         elif step.type == StepType.LOOP:
             over_ref = self.resolve_variables(
-                step.over or "", self._variables, self._step_outputs,
+                step.over or "",
+                self._variables,
+                self._step_outputs,
             )
             items = self._parse_list(over_ref)
             body = step_map.get(step.body_step)  # type: ignore[arg-type]
@@ -411,7 +423,10 @@ class WorkflowEngine:
             while retries < step.max_retries:
                 retries += 1
                 logger.info(
-                    "Retrying step [%s] attempt %d/%d", step.id, retries, step.max_retries,
+                    "Retrying step [%s] attempt %d/%d",
+                    step.id,
+                    retries,
+                    step.max_retries,
                 )
                 try:
                     sr = self._execute_step(step)
@@ -421,7 +436,10 @@ class WorkflowEngine:
                     break
                 except (RuntimeError, OSError, ValueError, KeyError) as retry_exc:
                     logger.warning(
-                        "Step retry %d/%d failed: %s", retries, step.max_retries, retry_exc,
+                        "Step retry %d/%d failed: %s",
+                        retries,
+                        step.max_retries,
+                        retry_exc,
                     )
                     time.sleep(0.5)
             if not retried:

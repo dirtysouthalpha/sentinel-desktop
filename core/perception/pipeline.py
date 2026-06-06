@@ -119,8 +119,11 @@ class PerceptionPipeline:
 
         logger.debug(
             "Perception: %d elements (%d acc, %d ocr, %d vis) in %.1fms",
-            len(elements), len(acc_elements), len(ocr_elements),
-            len(vision_elements), elapsed_ms,
+            len(elements),
+            len(acc_elements),
+            len(ocr_elements),
+            len(vision_elements),
+            elapsed_ms,
         )
 
         return result
@@ -132,6 +135,7 @@ class PerceptionPipeline:
         """
         try:
             from core.platform import get_backend
+
             backend = get_backend()
             if not backend.accessibility.is_available():
                 return []
@@ -145,16 +149,18 @@ class PerceptionPipeline:
                 # Determine if interactable
                 is_interactable = bool(node.actions)
 
-                elements.append(PerceptionElement(
-                    label=node.name,
-                    element_type=elem_type,
-                    bounding_box=node.bounding_box or (0, 0, 0, 0),
-                    confidence=0.95,  # Accessibility data is very reliable
-                    source=ElementSource.ACCESSIBILITY,
-                    actions=node.actions,
-                    is_interactable=is_interactable,
-                    raw=node.raw,
-                ))
+                elements.append(
+                    PerceptionElement(
+                        label=node.name,
+                        element_type=elem_type,
+                        bounding_box=node.bounding_box or (0, 0, 0, 0),
+                        confidence=0.95,  # Accessibility data is very reliable
+                        source=ElementSource.ACCESSIBILITY,
+                        actions=node.actions,
+                        is_interactable=is_interactable,
+                        raw=node.raw,
+                    )
+                )
             return elements
         except Exception as exc:
             logger.debug("Accessibility query failed: %s", exc)
@@ -167,6 +173,7 @@ class PerceptionPipeline:
         """
         try:
             from core.ocr import find_text_boxes
+
             boxes = find_text_boxes(screenshot)
             if not boxes:
                 return []
@@ -188,20 +195,27 @@ class PerceptionPipeline:
                 # Classify based on text content
                 elem_type = self._classify_text_element(text)
 
-                elements.append(PerceptionElement(
-                    label=text,
-                    element_type=elem_type,
-                    bounding_box=(x, y, w, h),
-                    confidence=min(confidence / 100.0, 1.0) if confidence > 1 else confidence,
-                    source=ElementSource.OCR,
-                    actions=["click"] if elem_type in (
-                        ElementType.BUTTON, ElementType.LINK, ElementType.MENU_ITEM
-                    ) else [],
-                    is_interactable=elem_type in (
-                        ElementType.BUTTON, ElementType.LINK, ElementType.INPUT,
-                        ElementType.MENU_ITEM, ElementType.DROPDOWN,
-                    ),
-                ))
+                elements.append(
+                    PerceptionElement(
+                        label=text,
+                        element_type=elem_type,
+                        bounding_box=(x, y, w, h),
+                        confidence=min(confidence / 100.0, 1.0) if confidence > 1 else confidence,
+                        source=ElementSource.OCR,
+                        actions=["click"]
+                        if elem_type
+                        in (ElementType.BUTTON, ElementType.LINK, ElementType.MENU_ITEM)
+                        else [],
+                        is_interactable=elem_type
+                        in (
+                            ElementType.BUTTON,
+                            ElementType.LINK,
+                            ElementType.INPUT,
+                            ElementType.MENU_ITEM,
+                            ElementType.DROPDOWN,
+                        ),
+                    )
+                )
             return elements
         except Exception as exc:
             logger.debug("OCR query failed: %s", exc)
@@ -250,13 +264,46 @@ class PerceptionPipeline:
 
         # Common button labels
         button_words = {
-            "ok", "cancel", "save", "apply", "close", "yes", "no",
-            "submit", "send", "delete", "remove", "add", "create",
-            "edit", "update", "install", "download", "upload", "open",
-            "next", "back", "done", "accept", "decline", "retry",
-            "browse", "choose", "select", "search", "find", "go",
-            "login", "sign in", "sign up", "register", "reset",
-            "enable", "disable", "connect", "disconnect",
+            "ok",
+            "cancel",
+            "save",
+            "apply",
+            "close",
+            "yes",
+            "no",
+            "submit",
+            "send",
+            "delete",
+            "remove",
+            "add",
+            "create",
+            "edit",
+            "update",
+            "install",
+            "download",
+            "upload",
+            "open",
+            "next",
+            "back",
+            "done",
+            "accept",
+            "decline",
+            "retry",
+            "browse",
+            "choose",
+            "select",
+            "search",
+            "find",
+            "go",
+            "login",
+            "sign in",
+            "sign up",
+            "register",
+            "reset",
+            "enable",
+            "disable",
+            "connect",
+            "disconnect",
         }
         if text_lower in button_words or (len(text_lower) < 20 and text_lower.isupper()):
             return ElementType.BUTTON
@@ -266,13 +313,24 @@ class PerceptionPipeline:
             return ElementType.LINK
 
         # Menu indicators
-        if text_lower in {"file", "edit", "view", "tools", "help", "window",
-                          "settings", "preferences", "options"}:
+        if text_lower in {
+            "file",
+            "edit",
+            "view",
+            "tools",
+            "help",
+            "window",
+            "settings",
+            "preferences",
+            "options",
+        }:
             return ElementType.MENU_ITEM
 
         # Input placeholder text
-        if any(p in text_lower for p in ("enter ", "type ", "search ", "password",
-                                          "email", "username", "placeholder")):
+        if any(
+            p in text_lower
+            for p in ("enter ", "type ", "search ", "password", "email", "username", "placeholder")
+        ):
             return ElementType.INPUT
 
         return ElementType.TEXT
@@ -330,15 +388,13 @@ class PerceptionPipeline:
         with _result_cache_lock:
             # Evict expired
             now = time.monotonic()
-            expired = [k for k, (_, ts) in _result_cache.items()
-                       if now - ts >= _RESULT_CACHE_TTL]
+            expired = [k for k, (_, ts) in _result_cache.items() if now - ts >= _RESULT_CACHE_TTL]
             for k in expired:
                 del _result_cache[k]
 
             # Evict oldest if at capacity
             if len(_result_cache) >= _RESULT_CACHE_MAX:
-                oldest = min(_result_cache.keys(),
-                             key=lambda k: _result_cache[k][1])
+                oldest = min(_result_cache.keys(), key=lambda k: _result_cache[k][1])
                 del _result_cache[oldest]
 
             _result_cache[key] = (result, now)

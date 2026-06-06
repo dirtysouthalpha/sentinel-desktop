@@ -157,7 +157,9 @@ class TestGenerateReportEdgeCases:
 
     @pytest.fixture
     def sample_log(self) -> list[dict]:
-        return [{"step": 1, "action": "click", "params": {"x": 100}, "result": "ok", "duration": 0.5}]
+        return [
+            {"step": 1, "action": "click", "params": {"x": 100}, "result": "ok", "duration": 0.5}
+        ]
 
     @pytest.fixture
     def sample_metadata(self) -> dict:
@@ -167,9 +169,7 @@ class TestGenerateReportEdgeCases:
         self, exporter: AuditExporter, sample_log: list, sample_metadata: dict
     ) -> None:
         """The `format` keyword arg should override `fmt`."""
-        path = exporter.generate_report(
-            sample_log, sample_metadata, fmt="html", format="json"
-        )
+        path = exporter.generate_report(sample_log, sample_metadata, fmt="html", format="json")
         assert path.endswith(".json")
 
     def test_dir_not_ready_raises_oserror(self) -> None:
@@ -197,7 +197,7 @@ class TestEscEdgeCases:
 
     def test_all_special_chars(self) -> None:
         """All five HTML entities are escaped."""
-        result = _esc('<>&"\'')
+        result = _esc("<>&\"'")
         assert "&lt;" in result
         assert "&gt;" in result
         assert "&amp;" in result

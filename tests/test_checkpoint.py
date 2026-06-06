@@ -175,9 +175,7 @@ class TestStaleCheckpoints:
         # Backdate the timestamp to 2 hours ago
         path = Path(cm._dir) / f"{cp_id}.json"
         data = json.loads(path.read_text())
-        data["timestamp"] = (
-            datetime.now(timezone.utc) - timedelta(hours=2)
-        ).isoformat()
+        data["timestamp"] = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
         path.write_text(json.dumps(data))
         # load_latest should skip stale, return None
         assert cm.load_latest() is None
@@ -188,9 +186,7 @@ class TestStaleCheckpoints:
         cp_id = _save_checkpoint(cm, goal="Old but explicit")
         path = Path(cm._dir) / f"{cp_id}.json"
         data = json.loads(path.read_text())
-        data["timestamp"] = (
-            datetime.now(timezone.utc) - timedelta(hours=2)
-        ).isoformat()
+        data["timestamp"] = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
         path.write_text(json.dumps(data))
         # Direct load should still work
         record = cm.load(cp_id)
@@ -205,9 +201,7 @@ class TestStaleCheckpoints:
         stale_id = _save_checkpoint(cm, goal="Stale")
         path = Path(cm._dir) / f"{stale_id}.json"
         data = json.loads(path.read_text())
-        data["timestamp"] = (
-            datetime.now(timezone.utc) - timedelta(hours=2)
-        ).isoformat()
+        data["timestamp"] = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
         path.write_text(json.dumps(data))
         # Create fresh
         time.sleep(0.05)

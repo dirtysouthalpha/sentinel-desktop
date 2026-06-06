@@ -250,7 +250,9 @@ class TestBuildStepTrace:
 
     def test_handles_none_params(self):
         engine = AgentEngine.__new__(AgentEngine)
-        entries = [{"step": 1, "action": "note", "params": None, "result": {"ok": True}, "timestamp": "t1"}]
+        entries = [
+            {"step": 1, "action": "note", "params": None, "result": {"ok": True}, "timestamp": "t1"}
+        ]
         trace = engine._build_step_trace(entries)
         assert trace[0]["params"] == {}
 
@@ -295,7 +297,13 @@ class TestBuildErrorList:
     def test_caps_at_20_entries(self):
         engine = AgentEngine.__new__(AgentEngine)
         errors = [
-            {"step": i, "action": "click", "params": {}, "result": {"ok": False, "msg": "err"}, "timestamp": f"t{i}"}
+            {
+                "step": i,
+                "action": "click",
+                "params": {},
+                "result": {"ok": False, "msg": "err"},
+                "timestamp": f"t{i}",
+            }
             for i in range(50)
         ]
         result = engine._build_error_list(errors)
@@ -304,7 +312,13 @@ class TestBuildErrorList:
     def test_truncates_error_message_at_300(self):
         engine = AgentEngine.__new__(AgentEngine)
         errors = [
-            {"step": 1, "action": "click", "params": {}, "result": {"ok": False, "msg": "e" * 500}, "timestamp": "t1"}
+            {
+                "step": 1,
+                "action": "click",
+                "params": {},
+                "result": {"ok": False, "msg": "e" * 500},
+                "timestamp": "t1",
+            }
         ]
         result = engine._build_error_list(errors)
         assert len(result[0]["error"]) <= 300
@@ -312,7 +326,13 @@ class TestBuildErrorList:
     def test_strips_screenshots_from_params(self):
         engine = AgentEngine.__new__(AgentEngine)
         errors = [
-            {"step": 1, "action": "click", "params": {"screenshot": "data"}, "result": {"msg": "fail"}, "timestamp": "t1"}
+            {
+                "step": 1,
+                "action": "click",
+                "params": {"screenshot": "data"},
+                "result": {"msg": "fail"},
+                "timestamp": "t1",
+            }
         ]
         result = engine._build_error_list(errors)
         assert "screenshot" not in result[0]["params"]
@@ -341,7 +361,13 @@ class TestBuildReportText:
             "summary": "done",
         }
         text = engine._build_report_text(
-            report, "test goal", 5.0, True, [], "openai", "gpt-4",
+            report,
+            "test goal",
+            5.0,
+            True,
+            [],
+            "openai",
+            "gpt-4",
         )
         assert "SENTINEL DESKTOP" in text
         assert "COMPLETED" in text
@@ -402,10 +428,7 @@ class TestBuildReportText:
         engine = self._make_engine()
         engine.notes = []
         report = {"session_id": "s1", "started_at": "t0", "finished_at": "t1", "summary": "ok"}
-        errors = [
-            {"step": i, "action": "click", "result": {"msg": f"err{i}"}}
-            for i in range(10)
-        ]
+        errors = [{"step": i, "action": "click", "result": {"msg": f"err{i}"}} for i in range(10)]
         text = engine._build_report_text(report, "g", 1.0, False, errors, "p", "m")
         # Count how many error lines appear
         error_lines = [l for l in text.split("\n") if l.startswith("  Step ")]

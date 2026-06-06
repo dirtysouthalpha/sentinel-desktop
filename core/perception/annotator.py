@@ -94,8 +94,7 @@ def annotate_screenshot(
 
         # Draw bounding box
         draw.rectangle(
-            [x - _BOX_PADDING, y - _BOX_PADDING,
-             x + w + _BOX_PADDING, y + h + _BOX_PADDING],
+            [x - _BOX_PADDING, y - _BOX_PADDING, x + w + _BOX_PADDING, y + h + _BOX_PADDING],
             outline=color,
             width=_BOX_WIDTH,
         )
@@ -151,9 +150,12 @@ def _draw_label_tag(
 
     # Draw background rectangle
     draw.rectangle(
-        [label_x, label_y,
-         label_x + text_w + _LABEL_PADDING * 2,
-         label_y + text_h + _LABEL_PADDING * 2],
+        [
+            label_x,
+            label_y,
+            label_x + text_w + _LABEL_PADDING * 2,
+            label_y + text_h + _LABEL_PADDING * 2,
+        ],
         fill="#000000CC",  # Semi-transparent black
         outline=color,
         width=1,
@@ -172,25 +174,28 @@ def _load_font(size: int) -> Any:
     """Try to load a TrueType font, falling back to default."""
     # Try common fonts in order of preference
     font_names = [
-        "consola.ttf",      # Windows Consolas
-        "arial.ttf",        # Windows Arial
-        "DejaVuSans.ttf",   # Linux
-        "Menlo.ttc",        # macOS
-        "Helvetica.ttc",    # macOS
+        "consola.ttf",  # Windows Consolas
+        "arial.ttf",  # Windows Arial
+        "DejaVuSans.ttf",  # Linux
+        "Menlo.ttc",  # macOS
+        "Helvetica.ttc",  # macOS
     ]
 
     import os
+
     # Common font directories
     font_dirs = []
     if os.name == "nt":
         font_dirs.append(os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"))
     elif os.name == "posix":
-        font_dirs.extend([
-            "/usr/share/fonts/truetype/dejavu/",
-            "/usr/share/fonts/TTF/",
-            "/System/Library/Fonts/",
-            "/Library/Fonts/",
-        ])
+        font_dirs.extend(
+            [
+                "/usr/share/fonts/truetype/dejavu/",
+                "/usr/share/fonts/TTF/",
+                "/System/Library/Fonts/",
+                "/Library/Fonts/",
+            ]
+        )
 
     for font_dir in font_dirs:
         for font_name in font_names:

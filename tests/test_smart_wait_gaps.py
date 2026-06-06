@@ -151,9 +151,7 @@ class TestWaitForStable:
         same_img = Image.new("RGB", (50, 50), (100, 100, 100))
         with patch.object(sw, "_capture", return_value=same_img):
             with patch("core.smart_wait._save_snapshot", return_value="/tmp/test.png"):
-                result = sw.wait_for_stable(
-                    timeout=5, stable_time=0.2, interval=0.05
-                )
+                result = sw.wait_for_stable(timeout=5, stable_time=0.2, interval=0.05)
                 assert result.success is True
 
     def test_timeout_while_changing(self):
@@ -359,9 +357,7 @@ class TestWaitForColor:
         snap_img = Image.new("RGB", (100, 100), (105, 155, 205))
         with patch("core.smart_wait.capture_region", side_effect=[img, snap_img]):
             with patch("core.smart_wait._save_snapshot", return_value="/tmp/color.png"):
-                result = sw.wait_for_color(
-                    10, 20, (100, 150, 200), tolerance=10, timeout=1
-                )
+                result = sw.wait_for_color(10, 20, (100, 150, 200), tolerance=10, timeout=1)
                 assert result.success is True
 
     def test_color_outside_tolerance(self):

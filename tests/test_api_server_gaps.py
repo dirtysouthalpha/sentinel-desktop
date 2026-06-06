@@ -224,9 +224,7 @@ class TestGetClientIP:
         assert SentinelServer._get_client_ip(NoClientReq()) == "unknown"
 
     def test_x_forwarded_for_takes_priority_over_real_ip(self):
-        req = _FakeRequest(
-            headers={"x-forwarded-for": "1.1.1.1", "x-real-ip": "2.2.2.2"}
-        )
+        req = _FakeRequest(headers={"x-forwarded-for": "1.1.1.1", "x-real-ip": "2.2.2.2"})
         assert SentinelServer._get_client_ip(req) == "1.1.1.1"
 
 
@@ -247,7 +245,9 @@ class TestHandleScreenshot:
     def test_screenshot_capture_failure(self, monkeypatch):
         from fastapi import HTTPException
 
-        monkeypatch.setattr(mod, "capture_to_base64", lambda: (_ for _ in ()).throw(OSError("no display")))
+        monkeypatch.setattr(
+            mod, "capture_to_base64", lambda: (_ for _ in ()).throw(OSError("no display"))
+        )
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
@@ -257,7 +257,9 @@ class TestHandleScreenshot:
     def test_screenshot_value_error(self, monkeypatch):
         from fastapi import HTTPException
 
-        monkeypatch.setattr(mod, "capture_to_base64", lambda: (_ for _ in ()).throw(ValueError("bad")))
+        monkeypatch.setattr(
+            mod, "capture_to_base64", lambda: (_ for _ in ()).throw(ValueError("bad"))
+        )
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
@@ -291,7 +293,9 @@ class TestHandleWindows:
     def test_windows_runtime_error(self, monkeypatch):
         from fastapi import HTTPException
 
-        monkeypatch.setattr(mod.wm, "list_windows", lambda: (_ for _ in ()).throw(RuntimeError("crash")))
+        monkeypatch.setattr(
+            mod.wm, "list_windows", lambda: (_ for _ in ()).throw(RuntimeError("crash"))
+        )
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
@@ -327,7 +331,9 @@ class TestHandleProcesses:
     def test_processes_oserror(self, monkeypatch):
         from fastapi import HTTPException
 
-        monkeypatch.setattr(mod.pm, "list_processes", lambda limit=100: (_ for _ in ()).throw(OSError("fail")))
+        monkeypatch.setattr(
+            mod.pm, "list_processes", lambda limit=100: (_ for _ in ()).throw(OSError("fail"))
+        )
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
@@ -337,7 +343,9 @@ class TestHandleProcesses:
     def test_processes_runtime_error(self, monkeypatch):
         from fastapi import HTTPException
 
-        monkeypatch.setattr(mod.pm, "list_processes", lambda limit=100: (_ for _ in ()).throw(RuntimeError("crash")))
+        monkeypatch.setattr(
+            mod.pm, "list_processes", lambda limit=100: (_ for _ in ()).throw(RuntimeError("crash"))
+        )
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
@@ -361,7 +369,9 @@ class TestHandleSystem:
     def test_system_oserror(self, monkeypatch):
         from fastapi import HTTPException
 
-        monkeypatch.setattr(mod.sysinfo, "system_info", lambda: (_ for _ in ()).throw(OSError("fail")))
+        monkeypatch.setattr(
+            mod.sysinfo, "system_info", lambda: (_ for _ in ()).throw(OSError("fail"))
+        )
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
@@ -371,7 +381,9 @@ class TestHandleSystem:
     def test_system_runtime_error(self, monkeypatch):
         from fastapi import HTTPException
 
-        monkeypatch.setattr(mod.sysinfo, "system_info", lambda: (_ for _ in ()).throw(RuntimeError("crash")))
+        monkeypatch.setattr(
+            mod.sysinfo, "system_info", lambda: (_ for _ in ()).throw(RuntimeError("crash"))
+        )
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
@@ -596,7 +608,9 @@ class TestWorkflowBuilderCreate:
         server = _make_server()
         _ = server.create_app()  # Initialize workflow store
         result = _run(
-            server._handle_workflow_builder_create(name="Custom WF", description="desc", authorization=None)
+            server._handle_workflow_builder_create(
+                name="Custom WF", description="desc", authorization=None
+            )
         )
         assert result["name"] == "Custom WF"
         assert result["description"] == "desc"
@@ -660,9 +674,7 @@ class TestWorkflowRemoveStep:
         _ = server.create_app()  # Initialize workflow store
         with pytest.raises(HTTPException) as exc_info:
             _run(
-                server._handle_workflow_remove_step(
-                    "nonexistent", step_id="s1", authorization=None
-                )
+                server._handle_workflow_remove_step("nonexistent", step_id="s1", authorization=None)
             )
         assert exc_info.value.status_code == 404
 
@@ -790,7 +802,9 @@ class TestHandleCommandErrors:
     def test_value_error_from_executor(self, monkeypatch):
         from fastapi import HTTPException
 
-        fake_executor = type("E", (), {"execute_sync": lambda s, p: (_ for _ in ()).throw(ValueError("bad"))})()
+        fake_executor = type(
+            "E", (), {"execute_sync": lambda s, p: (_ for _ in ()).throw(ValueError("bad"))}
+        )()
 
         class FakeAE:
             def __init__(self, cfg):
@@ -806,7 +820,9 @@ class TestHandleCommandErrors:
     def test_os_error_from_executor(self, monkeypatch):
         from fastapi import HTTPException
 
-        fake_executor = type("E", (), {"execute_sync": lambda s, p: (_ for _ in ()).throw(OSError("fail"))})()
+        fake_executor = type(
+            "E", (), {"execute_sync": lambda s, p: (_ for _ in ()).throw(OSError("fail"))}
+        )()
 
         class FakeAE:
             def __init__(self, cfg):
@@ -822,7 +838,9 @@ class TestHandleCommandErrors:
     def test_runtime_error_from_executor(self, monkeypatch):
         from fastapi import HTTPException
 
-        fake_executor = type("E", (), {"execute_sync": lambda s, p: (_ for _ in ()).throw(RuntimeError("crash"))})()
+        fake_executor = type(
+            "E", (), {"execute_sync": lambda s, p: (_ for _ in ()).throw(RuntimeError("crash"))}
+        )()
 
         class FakeAE:
             def __init__(self, cfg):
@@ -929,7 +947,14 @@ class TestHandleScriptRunTimeout:
 
         monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
 
-        fake_engine = type("E", (), {"run_script": lambda s, p, v: {"status": "ok"}, "executor": type("Ex", (), {"execute_sync": lambda s, p: {}})()})()
+        fake_engine = type(
+            "E",
+            (),
+            {
+                "run_script": lambda s, p, v: {"status": "ok"},
+                "executor": type("Ex", (), {"execute_sync": lambda s, p: {}})(),
+            },
+        )()
 
         server = _make_server()
         server.engine = fake_engine
@@ -943,12 +968,15 @@ class TestHandleScriptRunTimeout:
 class TestHandlePowerShellTimeout:
     def test_powershell_timeout(self, monkeypatch):
         """Test PowerShell execution timeout returns error dict."""
+
         def fake_to_thread(func, *args):
             raise asyncio.TimeoutError()
 
         monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
 
-        fake_ps = type("PS", (), {"run_command": lambda s, c: type("R", (), {"exit_code": 0, "objects": []})()})()
+        fake_ps = type(
+            "PS", (), {"run_command": lambda s, c: type("R", (), {"exit_code": 0, "objects": []})()}
+        )()
 
         fake_engine = type("E", (), {"powershell": fake_ps})()
 
@@ -972,7 +1000,14 @@ class TestHandleWorkflowRunTimeout:
 
         fake_wf = type("WF", (), {"run_workflow": lambda s, p, v: {"status": "ok"}})()
 
-        fake_engine = type("E", (), {"executor": type("Ex", (), {"execute_sync": lambda s, p: {}})(), "script_engine": type("SE", (), {})()})()
+        fake_engine = type(
+            "E",
+            (),
+            {
+                "executor": type("Ex", (), {"execute_sync": lambda s, p: {}})(),
+                "script_engine": type("SE", (), {})(),
+            },
+        )()
 
         server = _make_server()
         server.engine = fake_engine

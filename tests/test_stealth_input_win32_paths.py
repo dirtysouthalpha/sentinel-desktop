@@ -41,6 +41,7 @@ def stealth_module():
 
     # Force reload so the try/except succeeds
     import core.stealth_input as si
+
     importlib.reload(si)
 
     yield si, mock_win32api, mock_win32gui, mock_win32con
@@ -68,8 +69,10 @@ class TestPostTextDelay:
         """post_text sleeps between characters when delay > 0."""
         si, mock_win32api, mock_win32gui, mock_win32con = stealth_module
 
-        with patch.object(si, "_get_focus_hwnd", return_value=None), \
-             patch("time.sleep") as mock_sleep:
+        with (
+            patch.object(si, "_get_focus_hwnd", return_value=None),
+            patch("time.sleep") as mock_sleep,
+        ):
             result = si.post_text("AB", delay=0.05, hwnd=100)
 
         assert result is True
@@ -80,8 +83,10 @@ class TestPostTextDelay:
         """post_text doesn't sleep when delay is 0."""
         si, mock_win32api, mock_win32gui, mock_win32con = stealth_module
 
-        with patch.object(si, "_get_focus_hwnd", return_value=None), \
-             patch("time.sleep") as mock_sleep:
+        with (
+            patch.object(si, "_get_focus_hwnd", return_value=None),
+            patch("time.sleep") as mock_sleep,
+        ):
             result = si.post_text("A", delay=0, hwnd=100)
 
         assert result is True
@@ -91,8 +96,10 @@ class TestPostTextDelay:
         """post_text with default delay=0.005 sleeps between chars."""
         si, mock_win32api, mock_win32gui, mock_win32con = stealth_module
 
-        with patch.object(si, "_get_focus_hwnd", return_value=None), \
-             patch("time.sleep") as mock_sleep:
+        with (
+            patch.object(si, "_get_focus_hwnd", return_value=None),
+            patch("time.sleep") as mock_sleep,
+        ):
             result = si.post_text("AB", hwnd=100)
 
         assert result is True

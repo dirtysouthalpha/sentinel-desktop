@@ -113,6 +113,7 @@ class TestSignalReRaise:
         # Make the executor raise KeyboardInterrupt — hits line 608 then 638
         eng.executor.execute_sync.side_effect = KeyboardInterrupt()
         import pytest
+
         with pytest.raises(KeyboardInterrupt):
             eng._run_inner("test goal")
 
@@ -123,5 +124,6 @@ class TestSignalReRaise:
         eng.llm.chat.return_value = '{"action": "click", "x": 1, "y": 2}'
         eng.executor.execute_sync.side_effect = SystemExit(1)
         import pytest
+
         with pytest.raises(SystemExit):
             eng._run_inner("test goal")

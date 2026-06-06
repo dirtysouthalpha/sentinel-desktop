@@ -186,9 +186,7 @@ class TestNotificationsWindowsToast:
     def _make_manager_with_toast(self) -> Any:
         from core.notifications import NotificationManager
 
-        return NotificationManager(
-            config={"toast_enabled": True, "log_enabled": False}
-        )
+        return NotificationManager(config={"toast_enabled": True, "log_enabled": False})
 
     def test_win10toast_non_import_error_and_ctypes_fallback(self):
         """win10toast raises RuntimeError → lines 465-466 → ctypes path → lines 472-482.
@@ -380,11 +378,7 @@ class TestProviderRegistryUnexpectedShape:
         from core.provider_registry import PROVIDERS, fetch_models
 
         # Find a provider with a models_endpoint
-        provider_key = next(
-            k
-            for k, v in PROVIDERS.items()
-            if v.get("models_endpoint") is not None
-        )
+        provider_key = next(k for k, v in PROVIDERS.items() if v.get("models_endpoint") is not None)
 
         # Return a dict whose "data" value is a non-list dict (not a list)
         bad_response = MagicMock()
@@ -599,6 +593,7 @@ class TestVirtualDesktopGetThreadDesktopNull:
         # ctypes.windll doesn't exist on Linux; patch it at the ctypes level
         # with explicit attribute assignment to prevent auto-child recursion
         import ctypes
+
         mock_windll = MagicMock()
 
         with (

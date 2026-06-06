@@ -132,7 +132,11 @@ def _get_current_desktop_name() -> str:
         buf = ctypes.create_unicode_buffer(256)
         needed = wintypes.DWORD()
         if not user32.GetUserObjectInformationW(
-            hdesk, UOI_NAME, buf, ctypes.sizeof(buf), ctypes.byref(needed),
+            hdesk,
+            UOI_NAME,
+            buf,
+            ctypes.sizeof(buf),
+            ctypes.byref(needed),
         ):
             return "Default"
 
@@ -322,9 +326,12 @@ class _Win32VirtualDesktop:
 
     @staticmethod
     def _build_process_structs(
-        ctypes: Any, wintypes: Any, desktop_target: str | None,
+        ctypes: Any,
+        wintypes: Any,
+        desktop_target: str | None,
     ) -> tuple[Any, Any]:
         """Define and populate STARTUPINFOW and PROCESS_INFORMATION structs."""
+
         class STARTUPINFOW(ctypes.Structure):
             _fields_ = [
                 ("cb", wintypes.DWORD),
@@ -363,16 +370,29 @@ class _Win32VirtualDesktop:
         return si, PROCESS_INFORMATION()
 
     def _invoke_create_process(
-        self, ctypes: Any, path: str, cmd: str, si: Any, pi: Any, desktop_target: str | None,
+        self,
+        ctypes: Any,
+        path: str,
+        cmd: str,
+        si: Any,
+        pi: Any,
+        desktop_target: str | None,
     ) -> dict[str, Any]:
         """Call kernel32.CreateProcessW and return a success/failure result dict."""
         kernel32 = _get_kernel32()
         CREATE_NEW_CONSOLE = 0x00000010  # noqa: N806
         cmd_line = ctypes.create_unicode_buffer(cmd)
         ok = kernel32.CreateProcessW(
-            None, cmd_line, None, None, False,
-            CREATE_NEW_CONSOLE, None, None,
-            ctypes.byref(si), ctypes.byref(pi),
+            None,
+            cmd_line,
+            None,
+            None,
+            False,
+            CREATE_NEW_CONSOLE,
+            None,
+            None,
+            ctypes.byref(si),
+            ctypes.byref(pi),
         )
         if not ok:
             error = kernel32.GetLastError()

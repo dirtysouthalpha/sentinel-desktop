@@ -1,4 +1,5 @@
 """Tests for LLMClient._parse_openai_response helper."""
+
 import json
 
 import pytest
@@ -9,41 +10,32 @@ from core.llm_client import LLMClient, LLMError
 # Happy path
 # ---------------------------------------------------------------------------
 
+
 def test_plain_text_response():
-    data = {
-        "choices": [{"message": {"role": "assistant", "content": "Hello!"}}]
-    }
+    data = {"choices": [{"message": {"role": "assistant", "content": "Hello!"}}]}
     assert LLMClient._parse_openai_response(data, "openai") == "Hello!"
 
 
 def test_empty_content_returns_empty_string():
-    data = {
-        "choices": [{"message": {"role": "assistant", "content": ""}}]
-    }
+    data = {"choices": [{"message": {"role": "assistant", "content": ""}}]}
     assert LLMClient._parse_openai_response(data, "openai") == ""
 
 
 def test_missing_content_defaults_empty():
-    data = {
-        "choices": [{"message": {"role": "assistant"}}]
-    }
+    data = {"choices": [{"message": {"role": "assistant"}}]}
     assert LLMClient._parse_openai_response(data, "openai") == ""
 
 
 def test_tool_calls_returned_as_json():
     calls = [{"id": "call_1", "function": {"name": "click", "arguments": "{}"}}]
-    data = {
-        "choices": [{"message": {"role": "assistant", "tool_calls": calls}}]
-    }
+    data = {"choices": [{"message": {"role": "assistant", "tool_calls": calls}}]}
     result = LLMClient._parse_openai_response(data, "openai")
     parsed = json.loads(result)
     assert parsed == {"tool_calls": calls}
 
 
 def test_delta_instead_of_message():
-    data = {
-        "choices": [{"delta": {"content": "streaming chunk"}}]
-    }
+    data = {"choices": [{"delta": {"content": "streaming chunk"}}]}
     assert LLMClient._parse_openai_response(data, "openai") == "streaming chunk"
 
 
@@ -85,6 +77,7 @@ def test_content_list_skips_non_dict_blocks():
 # ---------------------------------------------------------------------------
 # Error envelopes
 # ---------------------------------------------------------------------------
+
 
 def test_non_dict_raises():
     with pytest.raises(LLMError, match="unexpected response type"):

@@ -17,6 +17,7 @@ from core import stealth_input
 # Helpers — inject mock win32 modules into the stealth_input module namespace
 # ---------------------------------------------------------------------------
 
+
 class MockWin32:
     """Convenience container that builds mock win32api/win32con/win32gui."""
 
@@ -63,6 +64,7 @@ def _cleanup_win32():
 # ---------------------------------------------------------------------------
 # post_click
 # ---------------------------------------------------------------------------
+
 
 class TestPostClick:
     """post_click() — PostMessage-based click (lines 60-84)."""
@@ -136,6 +138,7 @@ class TestPostClick:
 # post_text
 # ---------------------------------------------------------------------------
 
+
 class TestPostText:
     """post_text() — WM_CHAR typing (lines 99-115)."""
 
@@ -143,8 +146,10 @@ class TestPostText:
         mw = MockWin32()
         mw.inject()
         mw.gui.GetForegroundWindow.return_value = 9999
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=None):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=None),
+        ):
             result = stealth_input.post_text("AB", delay=0)
         assert result is True
         mw.api.PostMessage.assert_any_call(9999, 0x0102, ord("A"), 0)
@@ -154,8 +159,10 @@ class TestPostText:
         mw = MockWin32()
         mw.inject()
         mw.gui.GetForegroundWindow.return_value = 9999
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=5555):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=5555),
+        ):
             result = stealth_input.post_text("X", delay=0)
         assert result is True
         # Should send to focus_hwnd (5555), not foreground (9999)
@@ -164,8 +171,10 @@ class TestPostText:
     def test_explicit_hwnd_used(self):
         mw = MockWin32()
         mw.inject()
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=None):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=None),
+        ):
             result = stealth_input.post_text("Z", hwnd=7777, delay=0)
         assert result is True
         mw.api.PostMessage.assert_called_with(7777, 0x0102, ord("Z"), 0)
@@ -199,6 +208,7 @@ class TestPostText:
 # ---------------------------------------------------------------------------
 # post_key
 # ---------------------------------------------------------------------------
+
 
 class TestPostKey:
     """post_key() — single VK press (lines 122-133)."""
@@ -237,14 +247,17 @@ class TestPostKey:
 # post_hotkey
 # ---------------------------------------------------------------------------
 
+
 class TestPostHotkey:
     """post_hotkey() — chorded hotkey via WM_KEYDOWN/UP (lines 203-238)."""
 
     def test_ctrl_c_sends_modifier_then_key(self):
         mw = MockWin32()
         mw.inject()
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=None):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=None),
+        ):
             result = stealth_input.post_hotkey(["ctrl", "c"], hwnd=1111)
         assert result is True
         calls = mw.api.PostMessage.call_args_list
@@ -257,8 +270,10 @@ class TestPostHotkey:
     def test_uses_focus_hwnd_when_available(self):
         mw = MockWin32()
         mw.inject()
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=5555):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=5555),
+        ):
             result = stealth_input.post_hotkey(["shift", "a"], hwnd=1111)
         assert result is True
         for c in mw.api.PostMessage.call_args_list:
@@ -268,8 +283,10 @@ class TestPostHotkey:
         mw = MockWin32()
         mw.inject()
         mw.gui.GetForegroundWindow.return_value = 1111
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=None):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=None),
+        ):
             result = stealth_input.post_hotkey(["ctrl", "unknown_key"], hwnd=1111)
         assert result is False
 
@@ -277,8 +294,10 @@ class TestPostHotkey:
         mw = MockWin32()
         mw.inject()
         mw.gui.GetForegroundWindow.return_value = 1111
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=None):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=None),
+        ):
             result = stealth_input.post_hotkey(["ctrl", "shift"], hwnd=1111)
         assert result is False
 
@@ -311,8 +330,10 @@ class TestPostHotkey:
         """A single character not in VK_NAMES is resolved via ord().upper()."""
         mw = MockWin32()
         mw.inject()
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=None):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=None),
+        ):
             result = stealth_input.post_hotkey(["ctrl", "z"], hwnd=1111)
         assert result is True
         calls = mw.api.PostMessage.call_args_list
@@ -322,8 +343,10 @@ class TestPostHotkey:
         """Named key 'enter' resolves via VK_NAMES dict."""
         mw = MockWin32()
         mw.inject()
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input._get_focus_hwnd", return_value=None):
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input._get_focus_hwnd", return_value=None),
+        ):
             result = stealth_input.post_hotkey(["ctrl", "enter"], hwnd=1111)
         assert result is True
 
@@ -332,33 +355,42 @@ class TestPostHotkey:
 # post_named_key
 # ---------------------------------------------------------------------------
 
+
 class TestPostNamedKey:
     """post_named_key() — friendly key name → VK dispatch."""
 
     def test_known_name_delegates_to_post_key(self):
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input.post_key", return_value=True) as mock_pk:
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input.post_key", return_value=True) as mock_pk,
+        ):
             result = stealth_input.post_named_key("enter")
         assert result is True
         mock_pk.assert_called_once_with(0x0D, hwnd=None)
 
     def test_case_insensitive(self):
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input.post_key", return_value=True) as mock_pk:
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input.post_key", return_value=True) as mock_pk,
+        ):
             result = stealth_input.post_named_key("Enter")
         assert result is True
         mock_pk.assert_called_once_with(0x0D, hwnd=None)
 
     def test_single_char_falls_back_to_post_text(self):
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input.post_text", return_value=True) as mock_pt:
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input.post_text", return_value=True) as mock_pt,
+        ):
             result = stealth_input.post_named_key("a")
         assert result is True
         mock_pt.assert_called_once_with("a", hwnd=None)
 
     def test_custom_hwnd_passed_through(self):
-        with patch.object(stealth_input, "_HAS_WIN32", True), \
-             patch("core.stealth_input.post_key", return_value=True) as mock_pk:
+        with (
+            patch.object(stealth_input, "_HAS_WIN32", True),
+            patch("core.stealth_input.post_key", return_value=True) as mock_pk,
+        ):
             result = stealth_input.post_named_key("tab", hwnd=42)
         assert result is True
         mock_pk.assert_called_once_with(0x09, hwnd=42)
@@ -377,6 +409,7 @@ class TestPostNamedKey:
 # ---------------------------------------------------------------------------
 # _get_focus_hwnd — Linux/non-win32 fallback paths
 # ---------------------------------------------------------------------------
+
 
 class TestGetFocusHwndNonWin32:
     """_get_focus_hwnd on Linux — should return None gracefully."""
@@ -407,6 +440,7 @@ class TestGetFocusHwndNonWin32:
 # ---------------------------------------------------------------------------
 # VK_NAMES and _MOD_VK sanity checks
 # ---------------------------------------------------------------------------
+
 
 class TestConstants:
     """Quick sanity checks for key-name maps."""

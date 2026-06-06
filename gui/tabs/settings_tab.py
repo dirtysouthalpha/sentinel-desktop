@@ -111,7 +111,10 @@ class SettingsTab:
         return widget
 
     def _make_entry_widget(
-        self, parent: Any, default: str, _values: Any,
+        self,
+        parent: Any,
+        default: str,
+        _values: Any,
     ) -> tuple[Any, Any]:
         """Create a text-entry widget and its StringVar."""
         var: Any = ctk.StringVar(value=default)
@@ -126,7 +129,10 @@ class SettingsTab:
         return var, widget
 
     def _make_dropdown_widget(
-        self, parent: Any, default: str, values: list[str] | None,
+        self,
+        parent: Any,
+        default: str,
+        values: list[str] | None,
     ) -> tuple[Any, Any]:
         """Create a dropdown option-menu widget and its StringVar."""
         var: Any = ctk.StringVar(value=default)
@@ -142,7 +148,10 @@ class SettingsTab:
         return var, widget
 
     def _make_slider_widget(
-        self, parent: Any, default: str, values: list[str] | None,
+        self,
+        parent: Any,
+        default: str,
+        values: list[str] | None,
     ) -> tuple[Any, Any]:
         """Create a slider widget and its DoubleVar."""
         var: Any = ctk.DoubleVar(value=float(default))
@@ -158,7 +167,10 @@ class SettingsTab:
         return var, widget
 
     def _make_checkbox_widget(
-        self, parent: Any, default: str, _values: Any,
+        self,
+        parent: Any,
+        default: str,
+        _values: Any,
     ) -> tuple[Any, Any]:
         """Create a checkbox widget and its BooleanVar."""
         var: Any = ctk.BooleanVar(value=default.lower() in ("true", "1", "yes"))
@@ -219,7 +231,13 @@ class SettingsTab:
         self._add_field(s, "API Key", "api_key", "", "entry", row=1)
         self._add_field(s, "Base URL", "base_url", "", "entry", row=2)
         self._add_field(
-            s, "Temperature", "temperature", "0.3", "slider", values=[0.0, 2.0, 20], row=3,
+            s,
+            "Temperature",
+            "temperature",
+            "0.3",
+            "slider",
+            values=[0.0, 2.0, 20],
+            row=3,
         )
 
     def _section_agent(self) -> None:

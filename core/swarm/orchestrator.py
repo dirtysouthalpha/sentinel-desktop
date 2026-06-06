@@ -75,36 +75,44 @@ class SwarmOrchestrator:
 
             agent = self.registry.find_for_task(subtask.get("type", "desktop"))
             if agent is None:
-                self._results.append({
-                    "subtask": subtask,
-                    "status": "no_agent",
-                    "error": "No available agent for this task",
-                })
+                self._results.append(
+                    {
+                        "subtask": subtask,
+                        "status": "no_agent",
+                        "error": "No available agent for this task",
+                    }
+                )
                 continue
 
             # Send task to agent
-            await self.bus.send(AgentMessage(
-                sender="orchestrator",
-                recipient=agent.agent_id,
-                msg_type="task",
-                payload={**subtask, "goal": goal, "step": i + 1},
-            ))
+            await self.bus.send(
+                AgentMessage(
+                    sender="orchestrator",
+                    recipient=agent.agent_id,
+                    msg_type="task",
+                    payload={**subtask, "goal": goal, "step": i + 1},
+                )
+            )
 
             # Wait for result
             result_msg = await self.bus.receive("orchestrator", timeout=30.0)
             if result_msg:
-                self._results.append({
-                    "subtask": subtask,
-                    "agent": result_msg.payload.get("agent_id", "unknown"),
-                    "status": "success" if result_msg.payload.get("success") else "failed",
-                    "result": result_msg.payload,
-                })
+                self._results.append(
+                    {
+                        "subtask": subtask,
+                        "agent": result_msg.payload.get("agent_id", "unknown"),
+                        "status": "success" if result_msg.payload.get("success") else "failed",
+                        "result": result_msg.payload,
+                    }
+                )
             else:
-                self._results.append({
-                    "subtask": subtask,
-                    "agent": agent.agent_id,
-                    "status": "timeout",
-                })
+                self._results.append(
+                    {
+                        "subtask": subtask,
+                        "agent": agent.agent_id,
+                        "status": "timeout",
+                    }
+                )
 
         elapsed = (time.monotonic() - start) * 1000
         successes = sum(1 for r in self._results if r.get("status") == "success")
@@ -131,45 +139,69 @@ class SwarmOrchestrator:
         goal_lower = goal.lower()
 
         # Detect terminal tasks
-        terminal_keywords = ["configure", "install", "run ", "execute", "command",
-                             "ssh", "powershell", "bash", "script"]
+        terminal_keywords = [
+            "configure",
+            "install",
+            "run ",
+            "execute",
+            "command",
+            "ssh",
+            "powershell",
+            "bash",
+            "script",
+        ]
         for kw in terminal_keywords:
             if kw in goal_lower:
-                subtasks.append({
-                    "type": "terminal",
-                    "description": goal,
-                    "command": goal,
-                })
+                subtasks.append(
+                    {
+                        "type": "terminal",
+                        "description": goal,
+                        "command": goal,
+                    }
+                )
                 break
 
         # Detect browser tasks
-        browser_keywords = ["browser", "website", "web ", "navigate", "open ",
-                            "download", "portal", "login"]
+        browser_keywords = [
+            "browser",
+            "website",
+            "web ",
+            "navigate",
+            "open ",
+            "download",
+            "portal",
+            "login",
+        ]
         for kw in browser_keywords:
             if kw in goal_lower:
-                subtasks.append({
-                    "type": "browser",
-                    "description": goal,
-                })
+                subtasks.append(
+                    {
+                        "type": "browser",
+                        "description": goal,
+                    }
+                )
                 break
 
         # Detect monitor tasks
-        monitor_keywords = ["monitor", "watch", "alert", "check ", "verify",
-                           "status", "health"]
+        monitor_keywords = ["monitor", "watch", "alert", "check ", "verify", "status", "health"]
         for kw in monitor_keywords:
             if kw in goal_lower:
-                subtasks.append({
-                    "type": "monitor",
-                    "description": goal,
-                })
+                subtasks.append(
+                    {
+                        "type": "monitor",
+                        "description": goal,
+                    }
+                )
                 break
 
         # If no specific type detected, create a desktop task
         if not subtasks:
-            subtasks.append({
-                "type": "desktop",
-                "description": goal,
-            })
+            subtasks.append(
+                {
+                    "type": "desktop",
+                    "description": goal,
+                }
+            )
 
         return subtasks
 

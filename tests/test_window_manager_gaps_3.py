@@ -29,7 +29,9 @@ class TestListWindowsEnumWindowsError:
 class TestFocusWindowAltTapError:
     """focus_window Alt-tap trick error path (lines 112-113)."""
 
-    @pytest.mark.skipif(platform.system() != "Windows", reason="win32gui/win32con only available on Windows")
+    @pytest.mark.skipif(
+        platform.system() != "Windows", reason="win32gui/win32con only available on Windows"
+    )
     @patch("core.window_manager.HAS_WIN32", True)
     @patch("core.window_manager.win32gui")
     @patch("core.window_manager.win32con")
@@ -71,7 +73,9 @@ class TestRestoreWindowEnumError:
 class TestCloseWindowFoundGuard:
     """close_window early-return guard when already found (line 305)."""
 
-    @pytest.mark.skipif(platform.system() != "Windows", reason="win32gui/win32con only available on Windows")
+    @pytest.mark.skipif(
+        platform.system() != "Windows", reason="win32gui/win32con only available on Windows"
+    )
     @patch("core.window_manager.HAS_WIN32", True)
     @patch("core.window_manager.win32gui")
     @patch("core.window_manager.win32con")

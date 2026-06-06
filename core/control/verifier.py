@@ -23,10 +23,11 @@ logger = logging.getLogger(__name__)
 
 class VerifyResult(str, Enum):
     """Verification outcome."""
-    SUCCESS = "success"           # Action had the expected effect
-    NO_CHANGE = "no_change"       # Screen didn't change (click may have missed)
-    UNEXPECTED = "unexpected"      # Screen changed but not as expected
-    ERROR = "error"               # Verification itself failed
+
+    SUCCESS = "success"  # Action had the expected effect
+    NO_CHANGE = "no_change"  # Screen didn't change (click may have missed)
+    UNEXPECTED = "unexpected"  # Screen changed but not as expected
+    ERROR = "error"  # Verification itself failed
 
 
 class VerificationReport:
@@ -76,8 +77,8 @@ class VerificationReport:
 
 
 # Thresholds for pixel difference analysis
-_MIN_CHANGE_THRESHOLD = 0.5    # < 0.5% change = NO_CHANGE
-_MAX_CHANGE_THRESHOLD = 50.0   # > 50% change = unexpected (full page change)
+_MIN_CHANGE_THRESHOLD = 0.5  # < 0.5% change = NO_CHANGE
+_MAX_CHANGE_THRESHOLD = 50.0  # > 50% change = unexpected (full page change)
 
 
 def _image_hash(image: Image.Image) -> str:
@@ -107,9 +108,11 @@ def _compute_pixel_diff(before: Image.Image, after: Image.Image) -> float:
     diff_count = 0
     threshold = 30  # Per-channel difference threshold
     for bp, ap in zip(b_pixels, a_pixels, strict=False):
-        if (abs(bp[0] - ap[0]) > threshold or
-                abs(bp[1] - ap[1]) > threshold or
-                abs(bp[2] - ap[2]) > threshold):
+        if (
+            abs(bp[0] - ap[0]) > threshold
+            or abs(bp[1] - ap[1]) > threshold
+            or abs(bp[2] - ap[2]) > threshold
+        ):
             diff_count += 1
 
     return (diff_count / len(b_pixels)) * 100.0

@@ -18,6 +18,7 @@ from core.powershell import (
 # _ps_escape_single_quoted extended
 # ---------------------------------------------------------------------------
 
+
 class TestPsEscapeExtended:
     def test_unicode_string(self):
         result = _ps_escape_single_quoted("héllo wörld")
@@ -33,7 +34,7 @@ class TestPsEscapeExtended:
 
     def test_double_quotes_pass_through(self):
         result = _ps_escape_single_quoted('say "hello"')
-        assert result == '\'say "hello"\''
+        assert result == "'say \"hello\"'"
 
     def test_only_single_quote(self):
         assert _ps_escape_single_quoted("'") == "''''"
@@ -60,10 +61,12 @@ class TestPsEscapeExtended:
 # PSResult extended
 # ---------------------------------------------------------------------------
 
+
 class TestPSResultExtended:
     def test_success_with_objects(self):
         r = PSResult(
-            success=True, exit_code=0,
+            success=True,
+            exit_code=0,
             stdout='[{"Name": "test"}]',
             stderr="",
             objects=[{"Name": "test"}],
@@ -85,8 +88,11 @@ class TestPSResultExtended:
 
     def test_str_with_many_objects(self):
         r = PSResult(
-            success=True, exit_code=0, stdout="",
-            stderr="", objects=[{"a": i} for i in range(50)],
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+            objects=[{"a": i} for i in range(50)],
         )
         s = str(r)
         assert "objects=50" in s
@@ -105,6 +111,7 @@ class TestPSResultExtended:
 # ---------------------------------------------------------------------------
 # Platform guards
 # ---------------------------------------------------------------------------
+
 
 class TestPlatformGuards:
     @patch("core.utils.platform.system", return_value="Linux")
@@ -129,6 +136,7 @@ class TestPlatformGuards:
 # ---------------------------------------------------------------------------
 # PowerShellRunner initialization
 # ---------------------------------------------------------------------------
+
 
 class TestRunnerInit:
     def test_default_timeout(self):
@@ -180,6 +188,7 @@ class TestRunnerInit:
 # _base_args
 # ---------------------------------------------------------------------------
 
+
 class TestBaseArgs:
     def test_includes_no_profile(self):
         runner = PowerShellRunner()
@@ -205,6 +214,7 @@ class TestBaseArgs:
 # ---------------------------------------------------------------------------
 # _build_env
 # ---------------------------------------------------------------------------
+
 
 class TestBuildEnv:
     def test_includes_system_env(self):
@@ -232,6 +242,7 @@ class TestBuildEnv:
 # ---------------------------------------------------------------------------
 # _parse_json_output extended
 # ---------------------------------------------------------------------------
+
 
 class TestParseJsonOutputExtended:
     def test_nested_json(self):
@@ -279,6 +290,7 @@ class TestParseJsonOutputExtended:
 # _run — non-Windows path
 # ---------------------------------------------------------------------------
 
+
 class TestRunNonWindows:
     @patch("core.powershell._is_windows", return_value=False)
     def test_returns_non_windows_result(self, mock_win):
@@ -292,6 +304,7 @@ class TestRunNonWindows:
 # ---------------------------------------------------------------------------
 # run_script — edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestRunScriptExtended:
     def test_nonexistent_script(self, tmp_path):
@@ -311,7 +324,7 @@ class TestRunScriptExtended:
     def test_script_with_args_escapes_values(self, tmp_path):
         """Verify that script args are properly escaped."""
         script = tmp_path / "test.ps1"
-        script.write_text('param($Name) Write-Output $Name')
+        script.write_text("param($Name) Write-Output $Name")
         runner = PowerShellRunner()
         # On Linux this will fail since PS isn't available,
         # but we can verify it doesn't crash on the escaping
@@ -323,6 +336,7 @@ class TestRunScriptExtended:
 # ---------------------------------------------------------------------------
 # run_command / run_inline — allow_raw guard
 # ---------------------------------------------------------------------------
+
 
 class TestRawGuard:
     def test_run_command_refused_with_allow_raw_false(self):
@@ -355,6 +369,7 @@ class TestRawGuard:
 # ---------------------------------------------------------------------------
 # Built-in helpers — bad input handling
 # ---------------------------------------------------------------------------
+
 
 class TestBuiltinHelpersBadInput:
     def test_get_service_status_empty_name(self):
@@ -410,17 +425,23 @@ class TestBuiltinHelpersBadInput:
 # get_default_runner
 # ---------------------------------------------------------------------------
 
+
 class TestGetDefaultRunner:
-    @patch.dict("sys.modules", {"core.powershell": __import__("core.powershell", fromlist=["_default_runner"])})
+    @patch.dict(
+        "sys.modules",
+        {"core.powershell": __import__("core.powershell", fromlist=["_default_runner"])},
+    )
     def test_returns_runner_instance(self):
         # Reset the global
         import core.powershell as ps
+
         ps._default_runner = None
         runner = get_default_runner()
         assert isinstance(runner, PowerShellRunner)
 
     def test_returns_same_instance(self):
         import core.powershell as ps
+
         ps._default_runner = None
         a = get_default_runner()
         b = get_default_runner()
@@ -430,6 +451,7 @@ class TestGetDefaultRunner:
 # ---------------------------------------------------------------------------
 # _resolve_ps_exe
 # ---------------------------------------------------------------------------
+
 
 class TestResolvePsExe:
     @patch("core.powershell._is_windows", return_value=False)

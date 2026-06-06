@@ -106,7 +106,13 @@ class _Indicator:
         _make_clickthrough(self.win)
 
     def _setup_window(
-        self, tk: Any, master: Any, w: int, h: int, x: int, y: int,
+        self,
+        tk: Any,
+        master: Any,
+        w: int,
+        h: int,
+        x: int,
+        y: int,
     ) -> tuple[Any, Any]:
         """Create and position the transparent Toplevel window and its canvas."""
         win = tk.Toplevel(master)
@@ -129,20 +135,32 @@ class _Indicator:
         cx = w // 2
         cy = (h - 26) // 2
         self.canvas.create_oval(
-            cx - _RING_RADIUS, cy - _RING_RADIUS,
-            cx + _RING_RADIUS, cy + _RING_RADIUS,
-            outline=color, width=4,
+            cx - _RING_RADIUS,
+            cy - _RING_RADIUS,
+            cx + _RING_RADIUS,
+            cy + _RING_RADIUS,
+            outline=color,
+            width=4,
         )
         self.canvas.create_oval(cx - 3, cy - 3, cx + 3, cy + 3, fill=color, outline=color)
         label = (label or "").strip()
         if label:
             text_y = h - 14
             self.canvas.create_rectangle(
-                4, text_y - 11, w - 4, text_y + 10,
-                fill="#0A0C10", outline=color, width=1,
+                4,
+                text_y - 11,
+                w - 4,
+                text_y + 10,
+                fill="#0A0C10",
+                outline=color,
+                width=1,
             )
             self.canvas.create_text(
-                cx, text_y, text=label, fill="#e2e2e8", font=("Segoe UI", 9, "bold"),
+                cx,
+                text_y,
+                text=label,
+                fill="#e2e2e8",
+                font=("Segoe UI", 9, "bold"),
             )
 
     def destroy(self) -> None:

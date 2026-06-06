@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class StepStatus(str, Enum):
     """Status of a plan step."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -30,6 +31,7 @@ class StepStatus(str, Enum):
 
 class StepType(str, Enum):
     """Category of action a step represents."""
+
     CLICK = "click"
     TYPE = "type"
     KEY = "key"
@@ -194,18 +196,21 @@ class TaskPlanner:
             # Return a minimal fallback plan
             return ExecutionPlan(
                 goal=goal,
-                steps=[PlanStep(
-                    id=1,
-                    description=goal,
-                    step_type=StepType.OBSERVE,
-                    target="screen",
-                )],
+                steps=[
+                    PlanStep(
+                        id=1,
+                        description=goal,
+                        step_type=StepType.OBSERVE,
+                        target="screen",
+                    )
+                ],
             )
 
     def _query_llm(self, prompt: str) -> list[PlanStep]:
         """Query the LLM and parse the response into plan steps."""
         if self._llm is None:
             from core.llm_client import LLMClient
+
             self._llm = LLMClient()
 
         # Use a simple request — in production this would use the full
@@ -229,7 +234,7 @@ class TaskPlanner:
         """Parse LLM response into PlanStep objects."""
         # Extract JSON from response (may have markdown fences)
         json_str = response.strip()
-        json_match = re.search(r'\[.*\]', json_str, re.DOTALL)
+        json_match = re.search(r"\[.*\]", json_str, re.DOTALL)
         if json_match:
             json_str = json_match.group()
 
@@ -247,12 +252,14 @@ class TaskPlanner:
             except ValueError:
                 step_type = StepType.CLICK
 
-            steps.append(PlanStep(
-                id=i + 1,
-                description=raw.get("description", ""),
-                step_type=step_type,
-                target=raw.get("target", ""),
-                value=raw.get("value"),
-            ))
+            steps.append(
+                PlanStep(
+                    id=i + 1,
+                    description=raw.get("description", ""),
+                    step_type=step_type,
+                    target=raw.get("target", ""),
+                    value=raw.get("value"),
+                )
+            )
 
         return steps

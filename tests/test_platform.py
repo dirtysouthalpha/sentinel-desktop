@@ -26,18 +26,23 @@ class TestPlatformDetection:
 
     def test_current_platform_returns_string(self):
         from core.platform import current_platform
+
         result = current_platform()
         assert isinstance(result, str)
         assert result in ("windows", "linux", "macos", "unknown")
 
     def test_current_platform_matches_system(self):
         from core.platform import current_platform
+
         system = platform.system()
-        expected = {"Windows": "windows", "Linux": "linux", "Darwin": "macos"}.get(system, "unknown")
+        expected = {"Windows": "windows", "Linux": "linux", "Darwin": "macos"}.get(
+            system, "unknown"
+        )
         assert current_platform() == expected
 
     def test_is_windows_on_windows(self):
         from core.platform import is_windows
+
         if platform.system() == "Windows":
             assert is_windows() is True
         else:
@@ -45,6 +50,7 @@ class TestPlatformDetection:
 
     def test_is_linux_on_linux(self):
         from core.platform import is_linux
+
         if platform.system() == "Linux":
             assert is_linux() is True
         else:
@@ -52,6 +58,7 @@ class TestPlatformDetection:
 
     def test_is_macos_on_macos(self):
         from core.platform import is_macos
+
         if platform.system() == "Darwin":
             assert is_macos() is True
         else:
@@ -68,6 +75,7 @@ class TestBackendFactory:
 
     def test_get_backend_returns_backend_object(self):
         from core.platform import get_backend, reset_backend
+
         reset_backend()
         backend = get_backend()
         assert backend is not None
@@ -82,6 +90,7 @@ class TestBackendFactory:
 
     def test_get_backend_caches_result(self):
         from core.platform import get_backend, reset_backend
+
         reset_backend()
         b1 = get_backend()
         b2 = get_backend()
@@ -90,6 +99,7 @@ class TestBackendFactory:
 
     def test_reset_backend_clears_cache(self):
         from core.platform import get_backend, reset_backend
+
         reset_backend()
         b1 = get_backend()
         reset_backend()
@@ -100,9 +110,11 @@ class TestBackendFactory:
     @patch("core.platform._SYSTEM", "Windows")
     def test_windows_creates_windows_backend(self):
         from core.platform import _create_backend, reset_backend
+
         reset_backend()
         # Import after patch so the module picks up the mock
         from core.platform.windows_backend import WindowsBackend
+
         backend = _create_backend()
         assert isinstance(backend, WindowsBackend)
         reset_backend()
@@ -110,8 +122,10 @@ class TestBackendFactory:
     @patch("core.platform._SYSTEM", "Linux")
     def test_linux_creates_linux_backend(self):
         from core.platform import _create_backend, reset_backend
+
         reset_backend()
         from core.platform.linux_backend import LinuxBackend
+
         backend = _create_backend()
         assert isinstance(backend, LinuxBackend)
         reset_backend()
@@ -119,8 +133,10 @@ class TestBackendFactory:
     @patch("core.platform._SYSTEM", "Darwin")
     def test_macos_creates_macos_backend(self):
         from core.platform import _create_backend, reset_backend
+
         reset_backend()
         from core.platform.macos_backend import MacOSBackend
+
         backend = _create_backend()
         assert isinstance(backend, MacOSBackend)
         reset_backend()
@@ -129,6 +145,7 @@ class TestBackendFactory:
     def test_unknown_creates_noop_backend(self):
         from core.platform import _create_backend, reset_backend
         from core.platform.base import NoOpBackend
+
         reset_backend()
         backend = _create_backend()
         assert isinstance(backend, NoOpBackend)
@@ -145,6 +162,7 @@ class TestUIElement:
 
     def test_default_construction(self):
         from core.platform.base import UIElement
+
         elem = UIElement()
         assert elem.name == ""
         assert elem.control_type == "unknown"
@@ -158,6 +176,7 @@ class TestUIElement:
 
     def test_full_construction(self):
         from core.platform.base import UIElement
+
         elem = UIElement(
             name="Save",
             control_type="button",
@@ -174,6 +193,7 @@ class TestUIElement:
 
     def test_to_dict(self):
         from core.platform.base import UIElement
+
         elem = UIElement(name="OK", control_type="button", bounding_box=(10, 20, 50, 30))
         d = elem.to_dict()
         assert d["name"] == "OK"
@@ -183,6 +203,7 @@ class TestUIElement:
 
     def test_to_dict_minimal(self):
         from core.platform.base import UIElement
+
         elem = UIElement()
         d = elem.to_dict()
         assert "name" in d
@@ -196,6 +217,7 @@ class TestWindowInfo:
 
     def test_default_construction(self):
         from core.platform.base import WindowInfo
+
         w = WindowInfo()
         assert w.title == ""
         assert w.x == 0
@@ -204,7 +226,10 @@ class TestWindowInfo:
 
     def test_to_dict(self):
         from core.platform.base import WindowInfo
-        w = WindowInfo(title="Chrome", x=100, y=50, width=800, height=600, is_focused=True, handle=12345)
+
+        w = WindowInfo(
+            title="Chrome", x=100, y=50, width=800, height=600, is_focused=True, handle=12345
+        )
         d = w.to_dict()
         assert d["title"] == "Chrome"
         assert d["x"] == 100
@@ -223,6 +248,7 @@ class TestNoOpBackend:
 
     def test_accessibility_noop(self):
         from core.platform.base import NoOpAccessibility
+
         acc = NoOpAccessibility()
         assert acc.is_available() is False
         assert acc.get_tree() == []
@@ -231,6 +257,7 @@ class TestNoOpBackend:
 
     def test_stealth_noop(self):
         from core.platform.base import NoOpStealthInput
+
         stealth = NoOpStealthInput()
         assert stealth.is_available() is False
         assert stealth.click(0, 0) is False
@@ -241,6 +268,7 @@ class TestNoOpBackend:
 
     def test_credential_noop(self):
         from core.platform.base import NoOpCredential
+
         cred = NoOpCredential()
         assert cred.store("key", "val") is False
         assert cred.retrieve("key") is None
@@ -249,6 +277,7 @@ class TestNoOpBackend:
 
     def test_window_noop(self):
         from core.platform.base import NoOpWindow
+
         win = NoOpWindow()
         assert win.list_windows() == []
         assert win.focus_window("test") is False
@@ -258,6 +287,7 @@ class TestNoOpBackend:
 
     def test_overlay_noop(self):
         from core.platform.base import NoOpOverlay
+
         overlay = NoOpOverlay()
         assert overlay.is_available() is False
         # These should not raise
@@ -266,6 +296,7 @@ class TestNoOpBackend:
 
     def test_aggregated_noop_backend(self):
         from core.platform.base import NoOpBackend
+
         backend = NoOpBackend()
         assert backend.default_shell == "sh"
         assert backend.accessibility.is_available() is False
@@ -282,6 +313,7 @@ class TestWindowsBackendStructure:
 
     def test_has_all_subsystems(self):
         from core.platform.windows_backend import WindowsBackend
+
         backend = WindowsBackend()
         assert backend.accessibility is not None
         assert backend.stealth is not None
@@ -292,6 +324,7 @@ class TestWindowsBackendStructure:
 
     def test_default_shell(self):
         from core.platform.windows_backend import WindowsBackend
+
         backend = WindowsBackend()
         # On Windows with PowerShell, should return 'powershell'
         shell = backend.default_shell
@@ -299,12 +332,14 @@ class TestWindowsBackendStructure:
 
     def test_shell_sanitization_blocks_dangerous(self):
         from core.platform.windows_backend import WindowsShellBackend
+
         shell = WindowsShellBackend()
         with pytest.raises(ValueError, match="dangerous"):
             shell.sanitize_command("del /f /s /q c:\\")
 
     def test_shell_sanitization_allows_safe(self):
         from core.platform.windows_backend import WindowsShellBackend
+
         shell = WindowsShellBackend()
         result = shell.sanitize_command("Get-Process | Select-Object -First 5")
         assert result == "Get-Process | Select-Object -First 5"
@@ -320,6 +355,7 @@ class TestLinuxBackendStructure:
 
     def test_has_all_subsystems(self):
         from core.platform.linux_backend import LinuxBackend
+
         backend = LinuxBackend()
         assert backend.accessibility is not None
         assert backend.stealth is not None
@@ -330,23 +366,27 @@ class TestLinuxBackendStructure:
 
     def test_default_shell(self):
         from core.platform.linux_backend import LinuxBackend
+
         backend = LinuxBackend()
         assert backend.default_shell == "bash"
 
     def test_shell_sanitization_blocks_dangerous(self):
         from core.platform.linux_backend import LinuxShellBackend
+
         shell = LinuxShellBackend()
         with pytest.raises(ValueError, match="dangerous"):
             shell.sanitize_command("rm -rf /")
 
     def test_shell_sanitization_allows_safe(self):
         from core.platform.linux_backend import LinuxShellBackend
+
         shell = LinuxShellBackend()
         result = shell.sanitize_command("ls -la /home")
         assert result == "ls -la /home"
 
     def test_xdotool_key_mapping(self):
         from core.platform.linux_backend import LinuxStealthInput
+
         assert LinuxStealthInput._to_xdotool_key("enter") == "Return"
         assert LinuxStealthInput._to_xdotool_key("tab") == "Tab"
         assert LinuxStealthInput._to_xdotool_key("escape") == "Escape"
@@ -365,6 +405,7 @@ class TestMacOSBackendStructure:
 
     def test_has_all_subsystems(self):
         from core.platform.macos_backend import MacOSBackend
+
         backend = MacOSBackend()
         assert backend.accessibility is not None
         assert backend.stealth is not None
@@ -375,17 +416,20 @@ class TestMacOSBackendStructure:
 
     def test_default_shell(self):
         from core.platform.macos_backend import MacOSBackend
+
         backend = MacOSBackend()
         assert backend.default_shell == "zsh"
 
     def test_shell_sanitization_blocks_dangerous(self):
         from core.platform.macos_backend import MacOSShellBackend
+
         shell = MacOSShellBackend()
         with pytest.raises(ValueError, match="dangerous"):
             shell.sanitize_command("rm -rf /")
 
     def test_key_code_mapping(self):
         from core.platform.macos_backend import MacOSStealthInput
+
         assert MacOSStealthInput._to_applescript_key("enter") == 36
         assert MacOSStealthInput._to_applescript_key("tab") == 48
         assert MacOSStealthInput._to_applescript_key("escape") == 53
@@ -402,6 +446,7 @@ class TestXOREncryptionFallback:
 
     def test_xor_encrypt_produces_different_output(self):
         from core.encryption import _xor_encrypt
+
         data = b"hello world"
         result = _xor_encrypt(data)
         assert result is not None
@@ -409,6 +454,7 @@ class TestXOREncryptionFallback:
 
     def test_xor_decrypt_reverses_encrypt(self):
         from core.encryption import _xor_decrypt, _xor_encrypt
+
         data = b"test credential value 12345"
         encrypted = _xor_encrypt(data)
         decrypted = _xor_decrypt(encrypted)
@@ -416,6 +462,7 @@ class TestXOREncryptionFallback:
 
     def test_xor_roundtrip_empty(self):
         from core.encryption import _xor_decrypt, _xor_encrypt
+
         data = b""
         encrypted = _xor_encrypt(data)
         decrypted = _xor_decrypt(encrypted)
@@ -423,6 +470,7 @@ class TestXOREncryptionFallback:
 
     def test_xor_roundtrip_binary(self):
         from core.encryption import _xor_decrypt, _xor_encrypt
+
         data = bytes(range(256))
         encrypted = _xor_encrypt(data)
         decrypted = _xor_decrypt(encrypted)
@@ -430,6 +478,7 @@ class TestXOREncryptionFallback:
 
     def test_xor_decrypt_invalid_base64_returns_none(self):
         from core.encryption import _xor_decrypt
+
         result = _xor_decrypt(b"not-valid-base64!!!")
         assert result is None
 
@@ -444,21 +493,25 @@ class TestProcessManagerSanitization:
 
     def test_blocks_rm_rf(self):
         from core.process_manager import _sanitize_command
+
         with pytest.raises(ValueError, match="dangerous"):
             _sanitize_command("/usr/bin/rm", ["-rf", "/"])
 
     def test_blocks_del_format(self):
         from core.process_manager import _sanitize_command
+
         with pytest.raises(ValueError, match="dangerous"):
             _sanitize_command("del /f /q c:\\important")
 
     def test_blocks_shell_metacharacters_in_path(self):
         from core.process_manager import _sanitize_command
+
         with pytest.raises(ValueError, match="metacharacter"):
             _sanitize_command("notepad && del important.txt")
 
     def test_allows_safe_commands(self):
         from core.process_manager import _sanitize_command
+
         # Should not raise
         _sanitize_command("notepad.exe")
         _sanitize_command("C:\\Program Files\\App\\app.exe", ["--flag"])
@@ -466,10 +519,12 @@ class TestProcessManagerSanitization:
 
     def test_blocks_pipe_in_path(self):
         from core.process_manager import _sanitize_command
+
         with pytest.raises(ValueError, match="metacharacter"):
             _sanitize_command("cmd | evil")
 
     def test_blocks_semicolon_in_path(self):
         from core.process_manager import _sanitize_command
+
         with pytest.raises(ValueError, match="metacharacter"):
             _sanitize_command("cmd ; evil")

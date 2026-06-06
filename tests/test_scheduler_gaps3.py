@@ -45,8 +45,10 @@ class TestRunTaskNowRemovedMidRun:
             ts._tasks.pop(tid, None)
             return {"success": True, "output": "", "error": None}
 
-        with patch.object(ts, "_execute_task", side_effect=fake_exec), \
-             patch.object(ts, "save") as mock_save:
+        with (
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+            patch.object(ts, "save") as mock_save,
+        ):
             result = ts.run_task_now(tid)
         assert tid not in ts._tasks
         assert result == {"success": True, "output": "", "error": None}
@@ -107,8 +109,10 @@ class TestTickEdgeCases:
             ts._tasks.pop(tid, None)
             return {"status": "success"}
 
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", side_effect=fake_exec):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", side_effect=fake_exec),
+        ):
             ts._tick()
         assert tid not in ts._tasks
 
@@ -118,8 +122,10 @@ class TestTickEdgeCases:
         ts = _scheduler(tmp_path)
         task = ts.add_task("T", "script", "* * * * *", path="x.py")
         tid = task["id"]
-        with patch("core.scheduler.cron_matches", return_value=True), \
-             patch.object(ts, "_execute_task", return_value={"status": "success"}), \
-             patch("core.scheduler._next_run_after", side_effect=ValueError("bad cron")):
+        with (
+            patch("core.scheduler.cron_matches", return_value=True),
+            patch.object(ts, "_execute_task", return_value={"status": "success"}),
+            patch("core.scheduler._next_run_after", side_effect=ValueError("bad cron")),
+        ):
             ts._tick()
         assert ts._tasks[tid]["next_run"] is None

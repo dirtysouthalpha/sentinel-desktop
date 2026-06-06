@@ -119,7 +119,10 @@ class PluginAPI:
     # -- registration helpers ------------------------------------------------
 
     def register_action(
-        self, name: str, handler: Callable[..., Any], description: str = "",
+        self,
+        name: str,
+        handler: Callable[..., Any],
+        description: str = "",
     ) -> None:
         """Register a named action that the agent can invoke.
 
@@ -146,7 +149,10 @@ class PluginAPI:
         )
 
     def register_command(
-        self, name: str, handler: Callable[..., Any], keywords: Sequence[str] | None = None,
+        self,
+        name: str,
+        handler: Callable[..., Any],
+        keywords: Sequence[str] | None = None,
     ) -> None:
         """Register a command-palette / voice command.
 

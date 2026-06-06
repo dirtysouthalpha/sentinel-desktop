@@ -342,7 +342,11 @@ TEMPLATES: dict[str, dict] = {
                 "params": {"text": "{temp_password}"},
             },
             {"action": "click", "name": "Create", "params": {"text": "OK"}},
-            {"action": "launch_app", "name": "Open email admin", "params": {"app": "chrome", "url": "https://admin.microsoft.com"}},
+            {
+                "action": "launch_app",
+                "name": "Open email admin",
+                "params": {"app": "chrome", "url": "https://admin.microsoft.com"},
+            },
         ],
     },
 }

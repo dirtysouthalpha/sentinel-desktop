@@ -39,7 +39,8 @@ _SYSTEM = _platform.system()  # "Windows", "Linux", "Darwin"
 def current_platform() -> str:
     """Return the normalized platform name: ``'windows'``, ``'linux'``, or ``'macos'``."""
     return {"Windows": "windows", "Linux": "linux", "Darwin": "macos"}.get(
-        _SYSTEM, "unknown",
+        _SYSTEM,
+        "unknown",
     )
 
 
@@ -80,16 +81,20 @@ def _create_backend() -> PlatformBackend:
     plat = current_platform()
     if plat == "windows":
         from core.platform.windows_backend import WindowsBackend
+
         return WindowsBackend()
     if plat == "linux":
         from core.platform.linux_backend import LinuxBackend
+
         return LinuxBackend()
     if plat == "macos":
         from core.platform.macos_backend import MacOSBackend
+
         return MacOSBackend()
     # Unknown — return a no-op backend so nothing crashes
     logger.warning("Unsupported platform '%s' — using no-op backend", _SYSTEM)
     from core.platform.base import NoOpBackend
+
     return NoOpBackend()
 
 
@@ -100,6 +105,7 @@ def reset_backend() -> None:
 
 
 # ── Aggregated backend class ────────────────────────────────────────────
+
 
 class PlatformBackend:
     """Aggregated backend that holds all platform-specific subsystems.

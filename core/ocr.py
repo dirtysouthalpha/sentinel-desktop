@@ -226,7 +226,8 @@ def _extract_confidence_data(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _ocr_image_with_confidence(
-    img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT,
+    img: Image.Image,
+    preprocess: bool = PREPROCESS_DEFAULT,
 ) -> tuple[str, dict[str, Any]]:
     """OCR a PIL Image and return text + confidence data.
 
@@ -358,7 +359,8 @@ def read_screen_text(monitor: int | None = None, preprocess: bool = PREPROCESS_D
 
 
 def read_screen_text_with_confidence(
-    monitor: int | None = None, preprocess: bool = PREPROCESS_DEFAULT,
+    monitor: int | None = None,
+    preprocess: bool = PREPROCESS_DEFAULT,
 ) -> tuple[str, dict[str, Any]]:
     """OCR the screen and return text + confidence data."""
     if not have_tesseract():
@@ -472,11 +474,13 @@ def find_text_boxes(image: Image.Image) -> list[dict[str, Any]]:
                 continue
             # Estimate confidence from the raw data (30+ threshold already applied)
             conf = 70.0  # Default moderate confidence
-            result.append({
-                "text": box["text"],
-                "bbox": (x, y, x + w, y + h),
-                "confidence": conf,
-            })
+            result.append(
+                {
+                    "text": box["text"],
+                    "bbox": (x, y, x + w, y + h),
+                    "confidence": conf,
+                }
+            )
         return result
     except (OSError, RuntimeError) as exc:
         logger.debug("find_text_boxes failed: %s", exc)

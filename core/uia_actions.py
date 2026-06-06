@@ -191,9 +191,7 @@ class UIAActionPipeline:
             if bounds is not None:
                 from core.stealth_input import post_click
 
-                if post_click(
-                    bounds["center_x"], bounds["center_y"], button=button
-                ):
+                if post_click(bounds["center_x"], bounds["center_y"], button=button):
                     return _result(  # noqa: E501
                         True, {"x": bounds["center_x"], "y": bounds["center_y"]}, "postmessage"
                     )
@@ -286,7 +284,9 @@ class UIAActionPipeline:
         return self._select_menu_physical(segments, path)
 
     def _select_menu_uia(
-        self, segments: list[str], window_title: str | None,
+        self,
+        segments: list[str],
+        window_title: str | None,
     ) -> bool:
         """Tier 1: UIA menu traversal. Returns True on success."""
         try:
@@ -308,7 +308,9 @@ class UIAActionPipeline:
             logger.debug("PostMessage select_menu_item failed: %s", exc)
 
     def _select_menu_physical(
-        self, segments: list[str], path: str,
+        self,
+        segments: list[str],
+        path: str,
     ) -> dict[str, Any]:
         """Tier 3: pyautogui mnemonic navigation; returns failure result if unavailable."""
         try:

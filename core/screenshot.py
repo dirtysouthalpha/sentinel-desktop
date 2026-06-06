@@ -36,9 +36,9 @@ except ImportError as exc:
 
 # Detect if we're running in test mode to disable caching by default
 _IN_TEST_MODE = (
-    "pytest" in sys.modules or
-    "unittest" in sys.modules or
-    os.environ.get("PYTEST_CURRENT_TEST") is not None
+    "pytest" in sys.modules
+    or "unittest" in sys.modules
+    or os.environ.get("PYTEST_CURRENT_TEST") is not None
 )
 
 
@@ -512,7 +512,12 @@ def capture_to_base64(quality: int = 85, fmt: str = "PNG", monitor: int | None =
 
 
 def capture_region_to_base64(
-    x: int, y: int, w: int, h: int, quality: int = 85, fmt: str = "PNG",
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    quality: int = 85,
+    fmt: str = "PNG",
 ) -> str:
     """Capture a screen region → base64 image (PNG by default)."""
     img = capture_region(x, y, w, h)
@@ -549,7 +554,9 @@ def base64_to_image(b64_str: str) -> Image.Image:
 
 
 def find_template(
-    template_path: str, confidence: float = 0.8, monitor: int | None = None,
+    template_path: str,
+    confidence: float = 0.8,
+    monitor: int | None = None,
 ) -> tuple[int, int] | None:
     """Find a template image on screen. Returns center (x, y) or None."""
     try:

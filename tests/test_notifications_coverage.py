@@ -29,6 +29,7 @@ class TestSendHttpRetries:
             call_count += 1
             if call_count == 1:
                 from urllib.error import URLError
+
                 raise URLError("connection refused")
             mock_resp = MagicMock()
             mock_resp.status = 200
@@ -39,9 +40,7 @@ class TestSendHttpRetries:
 
         with patch("core.notifications.urlopen", side_effect=fake_urlopen):
             with patch("core.notifications.time.sleep"):
-                ok, detail = _send_http(
-                    "https://example.com/hook", {"x": 1}, retries=3
-                )
+                ok, detail = _send_http("https://example.com/hook", {"x": 1}, retries=3)
 
         assert ok is True
         assert "200" in detail
@@ -56,9 +55,7 @@ class TestSendHttpRetries:
             side_effect=URLError("host unreachable"),
         ):
             with patch("core.notifications.time.sleep"):
-                ok, detail = _send_http(
-                    "https://example.com/hook", {"x": 1}, retries=2
-                )
+                ok, detail = _send_http("https://example.com/hook", {"x": 1}, retries=2)
 
         assert ok is False
         assert "host unreachable" in detail
@@ -81,9 +78,7 @@ class TestSendHttpRetries:
 
         with patch("core.notifications.urlopen", side_effect=fake_urlopen):
             with patch("core.notifications.time.sleep"):
-                ok, detail = _send_http(
-                    "https://example.com/hook", {"x": 1}, retries=3
-                )
+                ok, detail = _send_http("https://example.com/hook", {"x": 1}, retries=3)
 
         assert ok is True
         assert "201" in detail
@@ -275,9 +270,7 @@ class TestDiscordSend:
 
     def test_discord_success(self) -> None:
         """Discord webhook sends colour-coded embed."""
-        nm = NotificationManager(
-            {"discord_webhook": "https://discord.com/api/webhooks/test"}
-        )
+        nm = NotificationManager({"discord_webhook": "https://discord.com/api/webhooks/test"})
 
         mock_resp = MagicMock()
         mock_resp.status = 204
@@ -300,9 +293,7 @@ class TestDiscordSend:
 
     def test_discord_uses_info_color_for_unknown_level(self) -> None:
         """Discord falls back to info colour for unknown levels."""
-        nm = NotificationManager(
-            {"discord_webhook": "https://discord.com/api/webhooks/test"}
-        )
+        nm = NotificationManager({"discord_webhook": "https://discord.com/api/webhooks/test"})
 
         mock_resp = MagicMock()
         mock_resp.status = 200

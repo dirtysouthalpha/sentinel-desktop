@@ -121,13 +121,15 @@ def _make_app(cfg_data: dict | None = None) -> SentinelApp:
     cfg = _FakeConfig(cfg_data)
     # Patch the lazily-imported tab classes with MagicMocks so the
     # success branches in _build_tabs run without touching tab internals.
-    with patch.object(app_mod.ctk, "CTk", _FakeRoot), patch.object(
-        app_mod.ctk, "CTkTabview", _FakeTabview
-    ), patch.object(app_mod.ctk, "CTkTextbox", _FakeText), patch(
-        "gui.tabs.scripts_tab.ScriptsTab", MagicMock()
-    ), patch("gui.tabs.workflows_tab.WorkflowsTab", MagicMock()), patch(
-        "gui.tabs.history_tab.HistoryTab", MagicMock()
-    ), patch("gui.tabs.settings_tab.SettingsTab", MagicMock()):
+    with (
+        patch.object(app_mod.ctk, "CTk", _FakeRoot),
+        patch.object(app_mod.ctk, "CTkTabview", _FakeTabview),
+        patch.object(app_mod.ctk, "CTkTextbox", _FakeText),
+        patch("gui.tabs.scripts_tab.ScriptsTab", MagicMock()),
+        patch("gui.tabs.workflows_tab.WorkflowsTab", MagicMock()),
+        patch("gui.tabs.history_tab.HistoryTab", MagicMock()),
+        patch("gui.tabs.settings_tab.SettingsTab", MagicMock()),
+    ):
         app = SentinelApp(cfg)
     # The history_display widget is only built on demand; provide a fake.
     app.history_display = _FakeText()
@@ -191,11 +193,13 @@ class TestConstruction:
         mb.showerror = lambda *a, **k: None
         mb.showinfo = lambda *a, **k: None
         mb.askyesno = lambda *a, **k: True
-        with patch.dict(
-            sys.modules,
-            {"tkinter.filedialog": fd, "tkinter.messagebox": mb},
-        ), patch.object(tkinter, "filedialog", fd, create=True), patch.object(
-            tkinter, "messagebox", mb, create=True
+        with (
+            patch.dict(
+                sys.modules,
+                {"tkinter.filedialog": fd, "tkinter.messagebox": mb},
+            ),
+            patch.object(tkinter, "filedialog", fd, create=True),
+            patch.object(tkinter, "messagebox", mb, create=True),
         ):
             app = _make_app({"quick_actions": [], "recent_prompts": []})
         assert app.recorder_panel is not None
@@ -367,8 +371,9 @@ class TestRunGoal:
             t.start = lambda: target()
             return t
 
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=fake_thread
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=fake_thread),
         ):
             app._run_goal("do work")
         fake_engine.run.assert_called_once_with("do work")
@@ -381,9 +386,11 @@ class TestRunGoal:
             "notes": ["bad config"],
             "error": "boom",
         }
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=self._sync_thread
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=self._sync_thread),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._run_goal("g")
         assert any("bad config" in str(c) for c in chat.call_args_list)
 
@@ -395,9 +402,11 @@ class TestRunGoal:
             "notes": ["nothing to do"],
             "finish_summary": "",
         }
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=self._sync_thread
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=self._sync_thread),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._run_goal("g")
         assert any("nothing to do" in str(c) for c in chat.call_args_list)
 
@@ -406,8 +415,9 @@ class TestRunGoal:
         fake_engine.running = False
         fake_engine.run.return_value = {"steps": 1, "notes": [], "finish_summary": "done"}
         app.tray = MagicMock()
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=self._sync_thread
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=self._sync_thread),
         ):
             app._run_goal("g")
         app.tray.notify.assert_called_once()
@@ -418,8 +428,9 @@ class TestRunGoal:
         fake_engine.run.return_value = {"steps": 2, "notes": [], "finish_summary": "ok"}
         app.tray = MagicMock()
         app.tray.notify.side_effect = RuntimeError("no tray")
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=self._sync_thread
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=self._sync_thread),
         ):
             app._run_goal("g")  # should not raise
 
@@ -428,9 +439,11 @@ class TestRunGoal:
         fake_engine.running = False
         fake_engine.run.side_effect = ValueError("kaboom")
         monkeypatch.setenv("APPDATA", str(tmp_path))
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=self._sync_thread
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=self._sync_thread),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._run_goal("g")
         assert any("kaboom" in str(c) for c in chat.call_args_list)
         # last_error.log should have been written under APPDATA.
@@ -440,10 +453,11 @@ class TestRunGoal:
         fake_engine = MagicMock()
         fake_engine.running = False
         fake_engine.run.side_effect = OSError("engine down")
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=self._sync_thread
-        ), patch("pathlib.Path.mkdir", side_effect=OSError("ro fs")), patch.object(
-            app, "_add_chat"
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=self._sync_thread),
+            patch("pathlib.Path.mkdir", side_effect=OSError("ro fs")),
+            patch.object(app, "_add_chat"),
         ):
             app._run_goal("g")  # should not raise even if log write fails
 
@@ -455,8 +469,9 @@ class TestRunGoal:
         fake_engine.max_steps = 50
         fake_engine.notes = ["n1"]
 
-        with patch("core.engine.AgentEngine", return_value=fake_engine), patch.object(
-            threading, "Thread", side_effect=self._sync_thread
+        with (
+            patch("core.engine.AgentEngine", return_value=fake_engine),
+            patch.object(threading, "Thread", side_effect=self._sync_thread),
         ):
             app._run_goal("g")
         on_step = fake_engine.on_step_callback
@@ -512,11 +527,12 @@ class TestLabelsApprovalScreenshot:
         """Run the scheduled _prompt synchronously and build the dialog."""
         # _FakeRoot.after runs callbacks synchronously, so _prompt executes.
         fake_top = MagicMock()
-        with patch.object(app_mod.ctk, "CTkToplevel", return_value=fake_top), patch.object(
-            app_mod.ctk, "CTkLabel"
-        ), patch.object(app_mod.ctk, "CTkFrame"), patch.object(
-            app_mod.ctk, "CTkButton"
-        ) as btn:
+        with (
+            patch.object(app_mod.ctk, "CTkToplevel", return_value=fake_top),
+            patch.object(app_mod.ctk, "CTkLabel"),
+            patch.object(app_mod.ctk, "CTkFrame"),
+            patch.object(app_mod.ctk, "CTkButton") as btn,
+        ):
             with patch("threading.Event") as ev_cls:
                 ev = MagicMock()
                 ev.wait.return_value = True
@@ -533,9 +549,10 @@ class TestLabelsApprovalScreenshot:
 
     def test_approve_action_prompt_raises_sets_event(self, app):
         # _FakeRoot.after runs _prompt synchronously; CTkToplevel raises.
-        with patch.object(
-            app_mod.ctk, "CTkToplevel", side_effect=RuntimeError("no win")
-        ), patch("threading.Event") as ev_cls:
+        with (
+            patch.object(app_mod.ctk, "CTkToplevel", side_effect=RuntimeError("no win")),
+            patch("threading.Event") as ev_cls,
+        ):
             ev = MagicMock()
             ev.wait.return_value = False
             ev_cls.return_value = ev
@@ -584,27 +601,31 @@ class TestSettingsHooks:
 class TestCommandPalette:
     def test_show_command_palette_builds(self, app):
         fake_palette = MagicMock()
-        with patch.object(app_mod.ctk, "CTkToplevel", return_value=fake_palette), patch.object(
-            app_mod.ctk, "CTkEntry"
-        ), patch.object(app_mod.ctk, "CTkScrollableFrame"), patch.object(
-            app_mod.ctk, "CTkButton"
-        ) as btn:
+        with (
+            patch.object(app_mod.ctk, "CTkToplevel", return_value=fake_palette),
+            patch.object(app_mod.ctk, "CTkEntry"),
+            patch.object(app_mod.ctk, "CTkScrollableFrame"),
+            patch.object(app_mod.ctk, "CTkButton") as btn,
+        ):
             app._show_command_palette()
         # Four commands -> four buttons.
         assert btn.call_count >= 4
 
     def test_take_screenshot_success(self, app):
-        with patch("core.screenshot.capture_to_base64", return_value="b64"), patch.object(
-            app, "_update_screenshot"
-        ) as upd, patch.object(app, "_add_chat") as chat:
+        with (
+            patch("core.screenshot.capture_to_base64", return_value="b64"),
+            patch.object(app, "_update_screenshot") as upd,
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._take_screenshot()
         upd.assert_called_once_with("b64")
         chat.assert_called()
 
     def test_take_screenshot_error(self, app):
-        with patch(
-            "core.screenshot.capture_to_base64", side_effect=OSError("no screen")
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch("core.screenshot.capture_to_base64", side_effect=OSError("no screen")),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._take_screenshot()
         assert any("failed" in str(c).lower() for c in chat.call_args_list)
 
@@ -625,9 +646,10 @@ class TestCommandPalette:
     def test_export_log_oserror(self, app):
         app.engine = MagicMock()
         app.engine.forensic_log = [{"x": 1}]
-        with patch("pathlib.Path.open", side_effect=OSError("ro")), patch.object(
-            app, "_add_chat"
-        ) as chat:
+        with (
+            patch("pathlib.Path.open", side_effect=OSError("ro")),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._export_log()
         assert any("failed" in str(c).lower() for c in chat.call_args_list)
 
@@ -639,9 +661,10 @@ class TestCheckpoint:
     def test_check_resume_no_checkpoint(self, app):
         fake_cp = MagicMock()
         fake_cp.load_latest.return_value = None
-        with patch("core.checkpoint.CheckpointManager", return_value=fake_cp), patch.object(
-            app, "_add_chat"
-        ) as chat:
+        with (
+            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._check_resume_checkpoint()
         chat.assert_not_called()
 
@@ -652,49 +675,52 @@ class TestCheckpoint:
             "step_num": 4,
             "status": "paused",
         }
-        with patch("core.checkpoint.CheckpointManager", return_value=fake_cp), patch.object(
-            app, "_add_chat"
-        ) as chat:
+        with (
+            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._check_resume_checkpoint()
         chat.assert_called()
 
     def test_check_resume_error_swallowed(self, app):
-        with patch(
-            "core.checkpoint.CheckpointManager", side_effect=RuntimeError("oops")
-        ):
+        with patch("core.checkpoint.CheckpointManager", side_effect=RuntimeError("oops")):
             app._check_resume_checkpoint()  # should not raise
 
     def test_do_resume_no_checkpoint(self, app):
         fake_cp = MagicMock()
         fake_cp.load_latest.return_value = None
-        with patch("core.checkpoint.CheckpointManager", return_value=fake_cp), patch.object(
-            app, "_add_chat"
-        ) as chat:
+        with (
+            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._do_resume_checkpoint()
         assert any("No resumable" in str(c) for c in chat.call_args_list)
 
     def test_do_resume_no_goal(self, app):
         fake_cp = MagicMock()
         fake_cp.load_latest.return_value = {"goal": ""}
-        with patch("core.checkpoint.CheckpointManager", return_value=fake_cp), patch.object(
-            app, "_add_chat"
-        ) as chat:
+        with (
+            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._do_resume_checkpoint()
         assert any("no goal" in str(c).lower() for c in chat.call_args_list)
 
     def test_do_resume_success(self, app):
         fake_cp = MagicMock()
         fake_cp.load_latest.return_value = {"goal": "resume me"}
-        with patch("core.checkpoint.CheckpointManager", return_value=fake_cp), patch.object(
-            app, "_run_goal"
-        ) as run:
+        with (
+            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
+            patch.object(app, "_run_goal") as run,
+        ):
             app._do_resume_checkpoint()
         run.assert_called_once_with("resume me")
 
     def test_do_resume_error(self, app):
-        with patch(
-            "core.checkpoint.CheckpointManager", side_effect=ValueError("bad")
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch("core.checkpoint.CheckpointManager", side_effect=ValueError("bad")),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._do_resume_checkpoint()
         assert any("failed" in str(c).lower() for c in chat.call_args_list)
 
@@ -758,9 +784,10 @@ class TestTray:
 
     def test_start_tray_unavailable(self, app):
         app.cfg["minimize_to_tray"] = True
-        with patch.object(app_mod, "_tray_available", return_value=False), patch.object(
-            app, "_add_chat"
-        ) as chat:
+        with (
+            patch.object(app_mod, "_tray_available", return_value=False),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app._start_tray_if_enabled()
         chat.assert_called()
         assert app.tray is None
@@ -770,8 +797,9 @@ class TestTray:
         app.cfg["start_in_tray"] = False
         fake_tray = MagicMock()
         fake_tray.run.return_value = True
-        with patch.object(app_mod, "_tray_available", return_value=True), patch.object(
-            app_mod, "SentinelTray", return_value=fake_tray
+        with (
+            patch.object(app_mod, "_tray_available", return_value=True),
+            patch.object(app_mod, "SentinelTray", return_value=fake_tray),
         ):
             app._start_tray_if_enabled()
         assert app.tray is fake_tray
@@ -781,8 +809,9 @@ class TestTray:
         app.cfg["start_in_tray"] = True
         fake_tray = MagicMock()
         fake_tray.run.return_value = True
-        with patch.object(app_mod, "_tray_available", return_value=True), patch.object(
-            app_mod, "SentinelTray", return_value=fake_tray
+        with (
+            patch.object(app_mod, "_tray_available", return_value=True),
+            patch.object(app_mod, "SentinelTray", return_value=fake_tray),
         ):
             app._start_tray_if_enabled()
         # after(100, ...) scheduled the hide; no exception is enough here.
@@ -836,9 +865,11 @@ class TestRun:
         app.cfg["provider"] = "openai"
         app.cfg["model"] = ""
         app.root.mainloop = MagicMock()
-        with patch.object(app, "_check_resume_checkpoint"), patch.object(
-            app, "_start_tray_if_enabled"
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch.object(app, "_check_resume_checkpoint"),
+            patch.object(app, "_start_tray_if_enabled"),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app.run()
         assert any("No LLM" in str(c) for c in chat.call_args_list)
         app.root.mainloop.assert_called_once()
@@ -848,9 +879,11 @@ class TestRun:
         app.cfg["provider"] = "openai"
         app.cfg["model"] = "gpt-4o"
         app.root.mainloop = MagicMock()
-        with patch.object(app, "_check_resume_checkpoint"), patch.object(
-            app, "_start_tray_if_enabled"
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch.object(app, "_check_resume_checkpoint"),
+            patch.object(app, "_start_tray_if_enabled"),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app.run()
         # No 'No LLM' warning when fully configured.
         assert not any("No LLM" in str(c) for c in chat.call_args_list)
@@ -860,9 +893,11 @@ class TestRun:
         app.cfg["provider"] = "ollama"
         app.cfg["model"] = "llama3"
         app.root.mainloop = MagicMock()
-        with patch.object(app, "_check_resume_checkpoint"), patch.object(
-            app, "_start_tray_if_enabled"
-        ), patch.object(app, "_add_chat") as chat:
+        with (
+            patch.object(app, "_check_resume_checkpoint"),
+            patch.object(app, "_start_tray_if_enabled"),
+            patch.object(app, "_add_chat") as chat,
+        ):
             app.run()
         assert not any("No LLM" in str(c) for c in chat.call_args_list)
 
@@ -956,9 +991,7 @@ class TestSettingsWindow:
         sw.api_key_entry.get.return_value = "sk-1"
         sw.model_var = MagicMock()
         sw.model_entry = MagicMock()
-        with patch(
-            "core.provider_registry.fetch_models", return_value=["a", "b", "c"]
-        ):
+        with patch("core.provider_registry.fetch_models", return_value=["a", "b", "c"]):
             sw._detect_models()
         sw.model_var.set.assert_called_with("")
 
@@ -1061,6 +1094,7 @@ class TestSafeLoadTabImportError:
     def test_import_error_shows_label(self):
         """Patching importlib.import_module directly to raise ImportError."""
         import importlib
+
         app = _make_app({"quick_actions": [], "recent_prompts": []})
         fake_parent = MagicMock()
         with patch.object(importlib, "import_module", side_effect=ImportError("forced")):

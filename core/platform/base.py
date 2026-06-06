@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 # ── Data types shared across all platforms ──────────────────────────────
 
+
 class UIElement:
     """A single accessible UI element, normalized across platforms.
 
@@ -131,6 +132,7 @@ class WindowInfo:
 
 # ── Abstract backends ───────────────────────────────────────────────────
 
+
 class AccessibilityBackend(ABC):
     """Read and interact with the OS accessibility tree."""
 
@@ -185,7 +187,11 @@ class StealthInputBackend(ABC):
 
     @abstractmethod
     def click(
-        self, x: int, y: int, button: str = "left", clicks: int = 1,
+        self,
+        x: int,
+        y: int,
+        button: str = "left",
+        clicks: int = 1,
     ) -> bool:
         """Click at ``(x, y)`` without moving the visible cursor.
 
@@ -319,14 +325,22 @@ class OverlayBackend(ABC):
 
     @abstractmethod
     def show_ring(
-        self, x: int, y: int, color: str = "#00F0FF", duration_ms: int = 420,
+        self,
+        x: int,
+        y: int,
+        color: str = "#00F0FF",
+        duration_ms: int = 420,
     ) -> None:
         """Show a ring highlight at ``(x, y)`` for *duration_ms*."""
         ...
 
     @abstractmethod
     def show_cursor_move(
-        self, from_x: int, from_y: int, to_x: int, to_y: int,
+        self,
+        from_x: int,
+        from_y: int,
+        to_x: int,
+        to_y: int,
         duration_ms: int = 300,
     ) -> None:
         """Animate a cursor movement from one point to another."""
@@ -334,6 +348,7 @@ class OverlayBackend(ABC):
 
 
 # ── No-op fallback ──────────────────────────────────────────────────────
+
 
 class NoOpAccessibility(AccessibilityBackend):
     """No-op accessibility backend for unsupported platforms."""
@@ -344,9 +359,13 @@ class NoOpAccessibility(AccessibilityBackend):
     def get_tree(self, window_title: str | None = None) -> list[UIElement]:
         return []
 
-    def find_element(self, name: str | None = None, automation_id: str | None = None,
-                     control_type: str | None = None, window_title: str | None = None,
-                     ) -> UIElement | None:
+    def find_element(
+        self,
+        name: str | None = None,
+        automation_id: str | None = None,
+        control_type: str | None = None,
+        window_title: str | None = None,
+    ) -> UIElement | None:
         return None
 
     def invoke_element(self, element: UIElement) -> bool:
@@ -398,8 +417,12 @@ class NoOpCredential(CredentialBackend):
 class NoOpShell(ShellBackend):
     """No-op shell backend for unsupported platforms."""
 
-    def execute(self, command: str, timeout: float = 60.0, capture: bool = True,
-                ) -> dict[str, Any]:
+    def execute(
+        self,
+        command: str,
+        timeout: float = 60.0,
+        capture: bool = True,
+    ) -> dict[str, Any]:
         return {"exit_code": -1, "stdout": "", "stderr": "No shell available"}
 
     def get_platform_shell(self) -> str:
@@ -434,13 +457,23 @@ class NoOpOverlay(OverlayBackend):
     def is_available(self) -> bool:
         return False
 
-    def show_ring(self, x: int, y: int, color: str = "#00F0FF", duration_ms: int = 420,
-                  ) -> None:
+    def show_ring(
+        self,
+        x: int,
+        y: int,
+        color: str = "#00F0FF",
+        duration_ms: int = 420,
+    ) -> None:
         pass
 
-    def show_cursor_move(self, from_x: int, from_y: int, to_x: int, to_y: int,
-                         duration_ms: int = 300,
-                         ) -> None:
+    def show_cursor_move(
+        self,
+        from_x: int,
+        from_y: int,
+        to_x: int,
+        to_y: int,
+        duration_ms: int = 300,
+    ) -> None:
         pass
 
 

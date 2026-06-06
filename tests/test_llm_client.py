@@ -227,7 +227,11 @@ class TestParseOpenAIResponseEdgeCases:
 
         tool_calls = [
             {"id": "call_1", "type": "function", "function": {"name": "click", "arguments": "{}"}},
-            {"id": "call_2", "type": "function", "function": {"name": "type_text", "arguments": '{"text": "hi"}'}},
+            {
+                "id": "call_2",
+                "type": "function",
+                "function": {"name": "type_text", "arguments": '{"text": "hi"}'},
+            },
         ]
         data = {"choices": [{"message": {"tool_calls": tool_calls}}]}
         result = LLMClient._parse_openai_response(data, "testprovider")

@@ -81,8 +81,10 @@ class TestGetWindowTitlesEnumCallback:
             "My App Window" if hwnd == 1001 else ""
         )
 
-        with patch("core.mfa_detection._IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": fake_win32gui}):
+        with (
+            patch("core.mfa_detection._IS_WINDOWS", True),
+            patch.dict(sys.modules, {"win32gui": fake_win32gui}),
+        ):
             titles = _get_window_titles()
 
         assert titles == ["My App Window"]

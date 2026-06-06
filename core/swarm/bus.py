@@ -119,7 +119,7 @@ class MessageBus:
         # Record in history
         self._history.append(message)
         if len(self._history) > self._history_max:
-            self._history = self._history[-self._history_max:]
+            self._history = self._history[-self._history_max :]
 
         return recipients
 

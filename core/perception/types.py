@@ -16,9 +16,9 @@ class ElementSource(str, Enum):
     """Where a perception element was detected."""
 
     ACCESSIBILITY = "accessibility"  # From OS accessibility tree (UIA/AT-SPI/AX)
-    OCR = "ocr"                      # From Tesseract/PaddleOCR text detection
-    VISION = "vision"                # From vision model analysis
-    TEMPLATE = "template"            # From template matching
+    OCR = "ocr"  # From Tesseract/PaddleOCR text detection
+    VISION = "vision"  # From vision model analysis
+    TEMPLATE = "template"  # From template matching
 
 
 class ElementType(str, Enum):
@@ -141,7 +141,9 @@ class PerceptionResult:
         for elem in self.elements:
             actions_str = ", ".join(elem.actions) if elem.actions else ""
             interact_str = "interactable" if elem.is_interactable else ""
-            tags = " | ".join(filter(None, [interactable_str for interactable_str in [actions_str, interact_str]]))
+            tags = " | ".join(
+                filter(None, [interactable_str for interactable_str in [actions_str, interact_str]])
+            )
             tag_str = f" [{tags}]" if tags else ""
             x, y = elem.center
             lines.append(

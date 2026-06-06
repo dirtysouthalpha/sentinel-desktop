@@ -594,6 +594,7 @@ class TestAgentWorkerFullFlow:
             pool._sessions = _SessionsProxy(pool._sessions)
 
             import sys
+
             original = sys.modules.get("core.engine", ...)
             sys.modules["core.engine"] = None  # makes 'from core.engine import AgentEngine' fail
             try:

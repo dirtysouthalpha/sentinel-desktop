@@ -29,7 +29,9 @@ class TestMessageBus:
         bus = MessageBus()
         bus.register("agent-1")
         bus.subscribe("agent-1", "task")
-        msg = AgentMessage(sender="boss", recipient="broadcast", msg_type="task", payload={"action": "click"})
+        msg = AgentMessage(
+            sender="boss", recipient="broadcast", msg_type="task", payload={"action": "click"}
+        )
         count = await bus.send(msg)
         assert count == 1
         received = await bus.receive("agent-1", timeout=1.0)

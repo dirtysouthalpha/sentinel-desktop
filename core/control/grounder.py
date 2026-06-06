@@ -17,9 +17,17 @@ logger = logging.getLogger(__name__)
 
 # Element types that map to each step type
 _STEP_TYPE_TO_ELEMENT_TYPES = {
-    "click": [ElementType.BUTTON, ElementType.LINK, ElementType.MENU_ITEM,
-              ElementType.ICON, ElementType.CHECKBOX, ElementType.RADIO,
-              ElementType.TAB, ElementType.DROPDOWN, ElementType.DIALOG],
+    "click": [
+        ElementType.BUTTON,
+        ElementType.LINK,
+        ElementType.MENU_ITEM,
+        ElementType.ICON,
+        ElementType.CHECKBOX,
+        ElementType.RADIO,
+        ElementType.TAB,
+        ElementType.DROPDOWN,
+        ElementType.DIALOG,
+    ],
     "type": [ElementType.INPUT, ElementType.TEXT],
     "key": [],  # Keys don't target elements
     "hotkey": [],  # Hotkeys don't target elements
@@ -111,7 +119,10 @@ class ActionGrounder:
             return self._ground_keyboard(step)
         if step.step_type.value == "wait":
             return GroundedAction(
-                step=step, action_type="wait", confidence=1.0, method="direct",
+                step=step,
+                action_type="wait",
+                confidence=1.0,
+                method="direct",
             )
         if step.step_type.value == "observe":
             return self._ground_observe(step)
@@ -129,7 +140,9 @@ class ActionGrounder:
         # Fallback
         return self._ground_fallback(step, perception)
 
-    def _ground_by_label(self, step: PlanStep, perception: PerceptionResult) -> GroundedAction | None:
+    def _ground_by_label(
+        self, step: PlanStep, perception: PerceptionResult
+    ) -> GroundedAction | None:
         """Try to find the target by matching step.target to element labels."""
         target = (step.target or "").lower().strip()
         if not target:
@@ -152,7 +165,9 @@ class ActionGrounder:
 
         return None
 
-    def _ground_by_type(self, step: PlanStep, perception: PerceptionResult) -> GroundedAction | None:
+    def _ground_by_type(
+        self, step: PlanStep, perception: PerceptionResult
+    ) -> GroundedAction | None:
         """Try to find the target by matching element types."""
         preferred_types = _STEP_TYPE_TO_ELEMENT_TYPES.get(step.step_type.value, [])
         if not preferred_types:
@@ -211,7 +226,8 @@ class ActionGrounder:
             return GroundedAction(
                 step=step,
                 action_type=ActionGrounder._step_to_action_type(step),
-                x=cx, y=cy,
+                x=cx,
+                y=cy,
                 element_id=elem.id,
                 confidence=0.2,
                 method="fallback_first_interactable",
@@ -223,7 +239,8 @@ class ActionGrounder:
             return GroundedAction(
                 step=step,
                 action_type=ActionGrounder._step_to_action_type(step),
-                x=w // 2, y=h // 2,
+                x=w // 2,
+                y=h // 2,
                 confidence=0.1,
                 method="fallback_center",
             )

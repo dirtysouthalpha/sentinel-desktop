@@ -319,7 +319,11 @@ class SmartWait:
         return _crop_to_region(region)
 
     def _loop_check(
-        self, start: float, timeout: float, frames: int, extra_score: float = 0.0,
+        self,
+        start: float,
+        timeout: float,
+        frames: int,
+        extra_score: float = 0.0,
     ) -> WaitResult | None:
         """Return a failure WaitResult if the loop should stop, else None.
 
@@ -481,7 +485,12 @@ class SmartWait:
                 last_score = score
             else:
                 result = self._check_stable_duration(
-                    current, start, frames, last_score, last_change_time, stable_time,
+                    current,
+                    start,
+                    frames,
+                    last_score,
+                    last_change_time,
+                    stable_time,
                 )
                 if result is not None:
                     return result

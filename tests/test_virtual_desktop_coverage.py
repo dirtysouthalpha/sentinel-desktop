@@ -17,6 +17,7 @@ from core import virtual_desktop
 # _StubVirtualDesktop — directly tested (it's the impl on Linux)
 # ---------------------------------------------------------------------------
 
+
 class TestStubLaunchApp:
     """_StubVirtualDesktop.launch_app — subprocess fallback paths."""
 
@@ -126,6 +127,7 @@ class TestStubContextManager:
 # VirtualDesktop wrapper — delegation tests (works on Linux via stub)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux stub delegation behavior")
 class TestVirtualDesktopWrapper:
     """VirtualDesktop delegates to _StubVirtualDesktop on Linux."""
@@ -207,6 +209,7 @@ class TestVirtualDesktopWrapper:
 # _get_user32 / _get_kernel32 — non-Windows paths
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(sys.platform == "win32", reason="Tests Linux ctypes failure behavior")
 class TestLazyCtypes:
     """Lazy ctypes handles — on Linux, windll doesn't exist."""
@@ -235,6 +238,7 @@ class TestLazyCtypes:
 # _get_current_desktop_name — non-Windows path
 # ---------------------------------------------------------------------------
 
+
 class TestGetCurrentDesktopName:
     """_get_current_desktop_name returns 'Default' on non-Windows."""
 
@@ -246,6 +250,7 @@ class TestGetCurrentDesktopName:
 # Constants
 # ---------------------------------------------------------------------------
 
+
 class TestConstants:
     """Verify desktop access right constants are defined."""
 
@@ -256,8 +261,7 @@ class TestConstants:
 
     def test_full_access_mask(self):
         assert virtual_desktop._DESKTOP_FULL_ACCESS == (
-            0x0001 | 0x0002 | 0x0004 | 0x0008 |
-            0x0010 | 0x0020 | 0x0040 | 0x0080 | 0x0100
+            0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040 | 0x0080 | 0x0100
         )
 
     def test_startup_constants(self):

@@ -103,7 +103,10 @@ class TestOcrText:
         processed_img = Image.new("L", (100, 50))
         with patch("core.popup_handler.preprocess_for_ocr", create=True):
             # We need to actually import from core.ocr
-            with patch.dict(sys.modules, {"core.ocr": MagicMock(preprocess_for_ocr=MagicMock(return_value=processed_img))}):
+            with patch.dict(
+                sys.modules,
+                {"core.ocr": MagicMock(preprocess_for_ocr=MagicMock(return_value=processed_img))},
+            ):
                 # The function does `from core.ocr import preprocess_for_ocr`
                 # Let's just test the fallback path
                 img = Image.new("RGB", (100, 50))
@@ -120,7 +123,10 @@ class TestOcrText:
         img = Image.new("RGB", (100, 50))
 
         # Force the import to raise
-        with patch.dict(sys.modules, {"core.ocr": MagicMock(preprocess_for_ocr=MagicMock(side_effect=RuntimeError("nope")))}):
+        with patch.dict(
+            sys.modules,
+            {"core.ocr": MagicMock(preprocess_for_ocr=MagicMock(side_effect=RuntimeError("nope")))},
+        ):
             result = ph._ocr_text(img)
             assert result == "fallback text"
 
@@ -143,8 +149,10 @@ class TestGetForegroundWindowTitle:
         mock_wingui = MagicMock()
         mock_wingui.GetForegroundWindow.return_value = 12345
         mock_wingui.GetWindowText.return_value = "Test Window"
-        with patch.object(ph, "_IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": mock_wingui}):
+        with (
+            patch.object(ph, "_IS_WINDOWS", True),
+            patch.dict(sys.modules, {"win32gui": mock_wingui}),
+        ):
             assert ph._get_foreground_window_title() == "Test Window"
 
     def test_returns_empty_string_for_none_title(self):
@@ -152,19 +160,28 @@ class TestGetForegroundWindowTitle:
         mock_wingui = MagicMock()
         mock_wingui.GetForegroundWindow.return_value = 12345
         mock_wingui.GetWindowText.return_value = None
-        with patch.object(ph, "_IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": mock_wingui}):
+        with (
+            patch.object(ph, "_IS_WINDOWS", True),
+            patch.dict(sys.modules, {"win32gui": mock_wingui}),
+        ):
             assert ph._get_foreground_window_title() == ""
 
     def test_falls_back_to_window_manager(self):
         """Falls back to core.window_manager when win32gui fails."""
         mock_wingui = MagicMock()
         mock_wingui.GetForegroundWindow.side_effect = OSError("nope")
-        with patch.object(ph, "_IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": mock_wingui}), \
-             patch("core.window_manager.list_windows", return_value=[{"title": "Fallback Window"}], create=True):
+        with (
+            patch.object(ph, "_IS_WINDOWS", True),
+            patch.dict(sys.modules, {"win32gui": mock_wingui}),
+            patch(
+                "core.window_manager.list_windows",
+                return_value=[{"title": "Fallback Window"}],
+                create=True,
+            ),
+        ):
             # Also need to ensure the module-level import finds the mock
             import core.window_manager as wm
+
             with patch.object(wm, "list_windows", return_value=[{"title": "Fallback Window"}]):
                 result = ph._get_foreground_window_title()
         assert result == "Fallback Window"
@@ -173,9 +190,11 @@ class TestGetForegroundWindowTitle:
         """Returns empty when both win32gui and window_manager fail."""
         mock_wingui = MagicMock()
         mock_wingui.GetForegroundWindow.side_effect = OSError("fail")
-        with patch.object(ph, "_IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": mock_wingui}), \
-             patch("core.window_manager.list_windows", side_effect=OSError("fail"), create=True):
+        with (
+            patch.object(ph, "_IS_WINDOWS", True),
+            patch.dict(sys.modules, {"win32gui": mock_wingui}),
+            patch("core.window_manager.list_windows", side_effect=OSError("fail"), create=True),
+        ):
             assert ph._get_foreground_window_title() == ""
 
 
@@ -226,9 +245,18 @@ class TestCheckAndDismiss:
     def test_returns_empty_when_screenshot_capture_fails(self):
         """Returns empty result when screenshot capture fails."""
         handler = ph.PopupHandler()
-        with patch("core.popup_handler.capture_screen", create=True, side_effect=RuntimeError("no screen")):
+        with patch(
+            "core.popup_handler.capture_screen", create=True, side_effect=RuntimeError("no screen")
+        ):
             # The import in the function body needs mocking
-            with patch.dict(sys.modules, {"core.screenshot": MagicMock(capture_screen=MagicMock(side_effect=RuntimeError("nope")))}):
+            with patch.dict(
+                sys.modules,
+                {
+                    "core.screenshot": MagicMock(
+                        capture_screen=MagicMock(side_effect=RuntimeError("nope"))
+                    )
+                },
+            ):
                 result = handler.check_and_dismiss(screenshot=None)
         assert result.detected is False
 
@@ -237,10 +265,17 @@ class TestCheckAndDismiss:
         handler = ph.PopupHandler(auto_dismiss=True)
         # First detection
         img = Image.new("RGB", (100, 50))
-        with patch.object(handler, "detect", return_value=ph.PopupDetectionResult(
-            detected=True, popup_type="save_changes", confidence=0.9,
-            dismiss_type="button", dismiss_action="Don't Save"
-        )):
+        with patch.object(
+            handler,
+            "detect",
+            return_value=ph.PopupDetectionResult(
+                detected=True,
+                popup_type="save_changes",
+                confidence=0.9,
+                dismiss_type="button",
+                dismiss_action="Don't Save",
+            ),
+        ):
             r1 = handler.check_and_dismiss(screenshot=img)
             assert r1.detected is True
             # Second detection within cooldown
@@ -255,13 +290,18 @@ class TestCheckAndDismiss:
         handler.MAX_DISMISS_ATTEMPTS = 2
         img = Image.new("RGB", (100, 50))
         detection = ph.PopupDetectionResult(
-            detected=True, popup_type="error_dialog", confidence=0.9,
-            dismiss_type="key", dismiss_action="Escape"
+            detected=True,
+            popup_type="error_dialog",
+            confidence=0.9,
+            dismiss_type="key",
+            dismiss_action="Escape",
         )
 
         # Mock the low-level key send to fail so dismiss doesn't reset attempts
-        with patch.object(handler, "detect", return_value=detection), \
-             patch.object(handler, "_send_key", return_value=False):
+        with (
+            patch.object(handler, "detect", return_value=detection),
+            patch.object(handler, "_send_key", return_value=False),
+        ):
             # First call: attempt 1
             handler._last_detection_time = 0
             r1 = handler.check_and_dismiss(screenshot=img)
@@ -319,10 +359,11 @@ class TestClickButtonFallbacks:
         ]
         # Also patch on the core package directly in case from/import caches it
         import core as core_pkg
-        if hasattr(core_pkg, 'ocr'):
-            patches.append(patch.object(core_pkg, 'ocr', mock_ocr_mod, create=True))
-        if hasattr(core_pkg, 'ui_tree'):
-            patches.append(patch.object(core_pkg, 'ui_tree', mock_ui_tree_mod, create=True))
+
+        if hasattr(core_pkg, "ocr"):
+            patches.append(patch.object(core_pkg, "ocr", mock_ocr_mod, create=True))
+        if hasattr(core_pkg, "ui_tree"):
+            patches.append(patch.object(core_pkg, "ui_tree", mock_ui_tree_mod, create=True))
 
         for p in patches:
             p.start()
@@ -364,7 +405,9 @@ class TestSendKey:
     def test_returns_false_on_failure(self):
         """Returns False when pyautogui raises."""
         handler = ph.PopupHandler()
-        with patch.dict(sys.modules, {"pyautogui": MagicMock(press=MagicMock(side_effect=RuntimeError("nope")))}):
+        with patch.dict(
+            sys.modules, {"pyautogui": MagicMock(press=MagicMock(side_effect=RuntimeError("nope")))}
+        ):
             result = handler._send_key("Escape")
         assert result is False
 

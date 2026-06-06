@@ -14,6 +14,7 @@ from core.workflow_builder import (
 
 # ─── WorkflowStep ──────────────────────────────────────────────────────────
 
+
 class TestWorkflowStep:
     """Tests for WorkflowStep dataclass."""
 
@@ -54,6 +55,7 @@ class TestWorkflowStep:
 
 
 # ─── Workflow ─────────────────────────────────────────────────────────────
+
 
 class TestWorkflow:
     """Tests for Workflow dataclass and methods."""
@@ -156,6 +158,7 @@ class TestWorkflow:
 
 # ─── WorkflowStore ─────────────────────────────────────────────────────────
 
+
 class TestWorkflowStore:
     """Tests for WorkflowStore CRUD operations."""
 
@@ -229,6 +232,7 @@ class TestWorkflowStore:
 
 # ─── Templates ─────────────────────────────────────────────────────────────
 
+
 class TestTemplates:
     """Tests for pre-built workflow templates."""
 
@@ -257,6 +261,7 @@ class TestTemplates:
 
 
 # ─── Enums ─────────────────────────────────────────────────────────────────
+
 
 class TestEnums:
     """Tests for WorkflowStatus and StepStatus enums."""

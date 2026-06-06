@@ -14,8 +14,13 @@ logger = logging.getLogger(__name__)
 
 # Dangerous command patterns that should never be passed to start_process.
 _DANGEROUS_CMD_PATTERNS = (
-    "rm -rf", "del /f /q", "format ", "diskpart",
-    "mkfs.", "dd if=/dev", "> /dev/sd",
+    "rm -rf",
+    "del /f /q",
+    "format ",
+    "diskpart",
+    "mkfs.",
+    "dd if=/dev",
+    "> /dev/sd",
 )
 
 
@@ -28,9 +33,7 @@ def _sanitize_command(path: str, args: list[str] | None = None) -> None:
     lower = full_cmd.lower().strip()
     for pattern in _DANGEROUS_CMD_PATTERNS:
         if pattern in lower:
-            raise ValueError(
-                f"Command contains potentially dangerous pattern: '{pattern}'"
-            )
+            raise ValueError(f"Command contains potentially dangerous pattern: '{pattern}'")
     # Block shell metacharacters in the path itself
     shell_chars = {"&", "|", ";", "`", "$", ">", "<"}
     if any(c in path for c in shell_chars):
