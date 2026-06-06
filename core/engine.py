@@ -304,6 +304,24 @@ class AgentEngine:
 
     def _init_core_subsystems(self) -> None:
         """Initialise always-needed subsystems."""
+        # DPI calibration — detect monitors and run probe on startup
+        from core.dpi import get_monitors, run_calibration_probe
+
+        monitors = get_monitors()
+        for m in monitors:
+            if m.index > 0:  # Skip virtual desktop aggregate
+                logger.info(
+                    "Monitor %d: %dx%d @ (%d,%d) scale=%.0f%% %s",
+                    m.index,
+                    m.width,
+                    m.height,
+                    m.x,
+                    m.y,
+                    m.scale_factor * 100,
+                    "[primary]" if m.is_primary else "",
+                )
+        run_calibration_probe(monitors)
+
         self.logger = ForensicLog()
         self.checkpoint = CheckpointManager()
         self.gate = ApprovalGate(

@@ -15,6 +15,7 @@ from core import file_ops, launcher, ocr, stealth_input, ui_tree
 from core import process_manager as pm
 from core import system_info as sysinfo
 from core import window_manager as wm
+from core.dpi import transform_action_coordinates
 from core.screenshot import capture_to_base64, find_template, wait_for_template
 
 _FailSafeException = desktop_mod._FailSafeException
@@ -159,6 +160,10 @@ class ActionExecutor:
     async def _execute_with_logging(self, action: dict[str, Any]) -> dict[str, Any]:
         """Execute action with approval checks and logging."""
         action_type = action.get("action", "").lower()
+
+        # DPI: transform screenshot coordinates to logical space
+        action = transform_action_coordinates(action)
+
         params = {k: v for k, v in action.items() if k != "action"}
 
         if self.approval_callback:
@@ -228,6 +233,11 @@ class ActionExecutor:
     def execute_sync(self, action: dict[str, Any]) -> dict[str, Any]:
         """Execute action directly without event loop (synchronous wrapper)."""
         action_type = action.get("action", "").lower()
+
+        # DPI: transform screenshot coordinates to logical (pyautogui) space
+        # before dispatching. No-op when all monitors are at 100% scaling.
+        action = transform_action_coordinates(action)
+
         params = {k: v for k, v in action.items() if k != "action"}
 
         self._fire_pre_action_hook(action)
