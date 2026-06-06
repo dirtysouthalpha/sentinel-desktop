@@ -63,14 +63,20 @@ def annotate_screenshot(
     elements: list[PerceptionElement],
     show_labels: bool = True,
     show_ids: bool = True,
+    highlight_interactable: bool = True,
 ) -> Image.Image:
-    """Draw numbered bounding boxes on a screenshot.
+    """Draw numbered bounding boxes on a screenshot (Set-of-Marks annotation).
+
+    Produces an annotated image where every detected element has a numbered
+    bounding box. The LLM uses these numbers (mark IDs) to target elements
+    instead of raw pixel coordinates.
 
     Args:
         image: The original screenshot.
         elements: Detected elements with bounding boxes.
         show_labels: Whether to show element labels.
         show_ids: Whether to show element IDs.
+        highlight_interactable: Whether to use thicker outlines for interactable elements.
 
     Returns:
         A new PIL Image with annotations drawn on it.
@@ -92,11 +98,14 @@ def annotate_screenshot(
         x, y, w, h = elem.bounding_box
         color = get_color(elem.element_type)
 
+        # Thicker outline for interactable elements
+        box_width = _BOX_WIDTH + 1 if (highlight_interactable and elem.is_interactable) else _BOX_WIDTH
+
         # Draw bounding box
         draw.rectangle(
             [x - _BOX_PADDING, y - _BOX_PADDING, x + w + _BOX_PADDING, y + h + _BOX_PADDING],
             outline=color,
-            width=_BOX_WIDTH,
+            width=box_width,
         )
 
         # Draw label tag

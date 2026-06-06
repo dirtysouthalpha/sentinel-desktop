@@ -53,7 +53,7 @@ class PerceptionPipeline:
         window_title: str | None = None,
         include_accessibility: bool = True,
         include_ocr: bool = True,
-        include_vision: bool = False,
+        include_vision: bool = True,
     ) -> PerceptionResult:
         """Run the full perception pipeline on a screenshot.
 
@@ -62,7 +62,7 @@ class PerceptionPipeline:
             window_title: Optional window title to filter accessibility tree.
             include_accessibility: Query OS accessibility tree.
             include_ocr: Run OCR text detection.
-            include_vision: Run vision model analysis (expensive).
+            include_vision: Run CV contour detection for canvas/custom UIs.
 
         Returns:
             PerceptionResult with annotated image and element list.
@@ -222,13 +222,72 @@ class PerceptionPipeline:
             return []
 
     def _query_vision(self, screenshot: Image.Image) -> list[PerceptionElement]:
-        """Analyze screenshot with a vision model (placeholder for v5.1).
+        """Detect UI elements via CV contour analysis.
 
-        In the future, this will use a local YOLO/Florence-2 model for
-        element detection and icon captioning. For now, returns empty.
+        Uses edge detection + contour finding on regions not already covered
+        by accessibility or OCR sources. Detects button-like rectangles,
+        icons, and interactive regions in canvas/custom UIs (e.g., game
+        menus, Java apps, WPF custom controls).
+
+        Requires opencv-python (optional). Returns empty if unavailable.
         """
-        # Placeholder — will be implemented with local model inference
-        return []
+        try:
+            import cv2
+            import numpy as np
+        except ImportError:
+            return []
+
+        try:
+            # Convert to grayscale for contour detection
+            img_array = np.array(screenshot.convert("RGB"))
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+
+            # Edge detection
+            edges = cv2.Canny(gray, 50, 150)
+
+            # Dilate to connect nearby edges into closed contours
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            edges = cv2.dilate(edges, kernel, iterations=1)
+
+            # Find contours
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            elements = []
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+
+                # Filter: skip tiny noise and huge background regions
+                area = w * h
+                if area < 200 or area > 500000:
+                    continue
+
+                # Filter: skip very thin lines (aspect ratio > 10:1)
+                aspect = max(w, h) / max(min(w, h), 1)
+                if aspect > 10:
+                    continue
+
+                # Filter: skip very tall/wide strips (likely scrollbars/decorations)
+                if w < 15 or h < 15:
+                    continue
+
+                elements.append(
+                    PerceptionElement(
+                        label="",
+                        element_type=ElementType.UNKNOWN,
+                        bounding_box=(x, y, w, h),
+                        confidence=0.3,  # Low confidence — CV is noisy
+                        source=ElementSource.VISION,
+                        actions=["click"],
+                        is_interactable=True,  # Assume interactable (canvas buttons)
+                    )
+                )
+
+            logger.debug("CV contour detection found %d candidate regions", len(elements))
+            return elements
+
+        except Exception as exc:
+            logger.debug("CV contour detection failed: %s", exc)
+            return []
 
     @staticmethod
     def _classify_element_type(control_type: str) -> ElementType:
