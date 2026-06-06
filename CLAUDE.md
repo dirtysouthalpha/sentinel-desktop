@@ -1,12 +1,12 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v6.0: Dependency upgrades + lint cleanup + test fixes.**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v7.0.0: Perception milestone complete — 6 phases, 17 requirements.**
 
 ## What To Do (Priority Order)
 **All priorities complete - project is production-ready ✅**
 
 All quality gates met:
-- ✅ 4,907 tests passing (12 skipped, 13 win32-ctypes-crash files excluded — pre-existing mock recursion issue)
+- ✅ 5,277 tests passing (146 skipped — win32-ctypes compatibility, platform-specific tests)
 - ✅ Zero lint errors (ruff check clean)
 - ✅ 99% test coverage (well above ≥80% target)
 - ✅ All API endpoints fully implemented (workflow builder complete)
