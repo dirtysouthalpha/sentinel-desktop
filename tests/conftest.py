@@ -63,6 +63,43 @@ def _install_headless_stubs() -> None:
     if "mouseinfo" not in sys.modules:
         sys.modules["mouseinfo"] = types.ModuleType("mouseinfo")
 
+    # mss tries to connect to X display on import — stub it on headless CI
+    if "mss" not in sys.modules:
+        mss = types.ModuleType("mss")
+
+        class _MssContext:
+            """Stub mss context manager for headless testing."""
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            @property
+            def monitors(self):
+                # Return fake monitor data: [virtual desktop, monitor 1]
+                return [
+                    {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                    {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                ]
+
+            def grab(self, rect):
+                """Return fake screenshot data."""
+                _FakeScreenshot = type(
+                    "_FakeScreenshot",
+                    (),
+                    {
+                        "size": (rect.get("width", 10), rect.get("height", 10)),
+                        "rgb": b"\x00" * (rect.get("width", 10) * rect.get("height", 10) * 3),
+                    },
+                )
+                return _FakeScreenshot()
+
+        mss.mss = _MssContext
+        mss.ScreenShotError = type("ScreenShotError", (Exception,), {})
+        sys.modules["mss"] = mss
+
     # pystray tries to connect to X display on import — stub it on headless CI
     if "pystray" not in sys.modules:
         sys.modules["pystray"] = types.ModuleType("pystray")
