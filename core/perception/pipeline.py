@@ -222,15 +222,28 @@ class PerceptionPipeline:
             return []
 
     def _query_vision(self, screenshot: Image.Image) -> list[PerceptionElement]:
-        """Detect UI elements via CV contour analysis.
+        """Detect UI elements via CV contour analysis and optional local grounding model.
 
         Uses edge detection + contour finding on regions not already covered
-        by accessibility or OCR sources. Detects button-like rectangles,
-        icons, and interactive regions in canvas/custom UIs (e.g., game
-        menus, Java apps, WPF custom controls).
+        by accessibility or OCR sources. If a local grounding model is
+        available and enabled, also uses it for higher-quality predictions.
 
         Requires opencv-python (optional). Returns empty if unavailable.
         """
+        elements: list[PerceptionElement] = []
+
+        # CV contour detection (always available when OpenCV is installed)
+        cv_elements = self._cv_contour_detection(screenshot)
+        elements.extend(cv_elements)
+
+        # Local grounding model (optional, feature-flagged)
+        local_elements = self._local_grounding_detection(screenshot)
+        elements.extend(local_elements)
+
+        return elements
+
+    def _cv_contour_detection(self, screenshot: Image.Image) -> list[PerceptionElement]:
+        """CV contour detection for canvas/custom UIs."""
         try:
             import cv2
             import numpy as np
@@ -238,35 +251,22 @@ class PerceptionPipeline:
             return []
 
         try:
-            # Convert to grayscale for contour detection
             img_array = np.array(screenshot.convert("RGB"))
             gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-
-            # Edge detection
             edges = cv2.Canny(gray, 50, 150)
-
-            # Dilate to connect nearby edges into closed contours
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
             edges = cv2.dilate(edges, kernel, iterations=1)
-
-            # Find contours
             contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             elements = []
             for contour in contours:
                 x, y, w, h = cv2.boundingRect(contour)
-
-                # Filter: skip tiny noise and huge background regions
                 area = w * h
                 if area < 200 or area > 500000:
                     continue
-
-                # Filter: skip very thin lines (aspect ratio > 10:1)
                 aspect = max(w, h) / max(min(w, h), 1)
                 if aspect > 10:
                     continue
-
-                # Filter: skip very tall/wide strips (likely scrollbars/decorations)
                 if w < 15 or h < 15:
                     continue
 
@@ -275,10 +275,10 @@ class PerceptionPipeline:
                         label="",
                         element_type=ElementType.UNKNOWN,
                         bounding_box=(x, y, w, h),
-                        confidence=0.3,  # Low confidence — CV is noisy
+                        confidence=0.3,
                         source=ElementSource.VISION,
                         actions=["click"],
-                        is_interactable=True,  # Assume interactable (canvas buttons)
+                        is_interactable=True,
                     )
                 )
 
@@ -287,6 +287,53 @@ class PerceptionPipeline:
 
         except Exception as exc:
             logger.debug("CV contour detection failed: %s", exc)
+            return []
+
+    def _local_grounding_detection(self, screenshot: Image.Image) -> list[PerceptionElement]:
+        """Use local grounding model for element detection (optional).
+
+        Only active when the local_grounding feature flag is enabled and
+        a model backend is installed. Returns empty otherwise.
+        """
+        try:
+            from core.local_grounding import LocalGroundingModel
+
+            model = LocalGroundingModel(backend="auto")
+            if not model.is_available:
+                return []
+
+            # Predict common UI elements
+            prompts = [
+                "the main action button",
+                "text input field",
+                "navigation menu item",
+                "close or cancel button",
+            ]
+
+            elements = []
+            for prompt in prompts:
+                result = model.predict(screenshot, prompt)
+                if result.is_valid and result.confidence > 0.5:
+                    elements.append(
+                        PerceptionElement(
+                            label=prompt,
+                            element_type=ElementType.UNKNOWN,
+                            bounding_box=result.bbox,
+                            confidence=result.confidence,
+                            source=ElementSource.VISION,
+                            actions=["click"],
+                            is_interactable=True,
+                        )
+                    )
+
+            if elements:
+                logger.debug("Local grounding model found %d elements", len(elements))
+            return elements
+
+        except ImportError:
+            return []
+        except Exception as exc:
+            logger.debug("Local grounding detection failed: %s", exc)
             return []
 
     @staticmethod

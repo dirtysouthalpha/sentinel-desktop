@@ -390,7 +390,7 @@ class TestBuildInitialMessages:
         eng = self._make_engine()
         with patch.object(eng, "_build_env_context", return_value=""):
             with patch.object(eng, "_build_app_context", return_value=""):
-                with patch("core.engine.capture_to_base64", side_effect=OSError("no screen")):
+                with patch("core.screenshot.capture_screen", side_effect=OSError("no screen")):
                     with patch.object(eng, "_add_vision_message") as mock_vision:
                         eng._build_initial_messages("goal")
 
