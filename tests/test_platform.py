@@ -107,6 +107,7 @@ class TestBackendFactory:
         assert b1 is not b2
         reset_backend()
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test")
     @patch("core.platform._SYSTEM", "Windows")
     def test_windows_creates_windows_backend(self):
         from core.platform import _create_backend, reset_backend
@@ -308,6 +309,7 @@ class TestNoOpBackend:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific backend")
 class TestWindowsBackendStructure:
     """Test Windows backend has correct subsystems."""
 

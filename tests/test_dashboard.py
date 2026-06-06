@@ -234,7 +234,8 @@ class TestGetGpuInfo:
         fake_result = MagicMock()
         fake_result.returncode = 0
         fake_result.stdout = "NVIDIA RTX 4090, 8192, 24576, 65, 85, 320.5\n"
-        with patch("subprocess.run", return_value=fake_result):
+        with patch("shutil.which", return_value="/usr/bin/nvidia-smi"), \
+             patch("subprocess.run", return_value=fake_result):
             result = dash._get_gpu_info()
         assert len(result) == 1
         assert result[0]["name"] == "NVIDIA RTX 4090"

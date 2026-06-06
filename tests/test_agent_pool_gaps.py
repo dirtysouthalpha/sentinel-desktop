@@ -213,6 +213,9 @@ class TestAgentWorkerFullFlow:
 
     def test_worker_success_path(self):
         """Worker runs engine, sets status to COMPLETED, calls callback."""
+        import core.virtual_desktop
+        import core.engine
+
         callback = MagicMock()
         pool = AgentPool(max_agents=1, on_session_complete=callback)
         try:
@@ -221,12 +224,12 @@ class TestAgentWorkerFullFlow:
 
             mock_vd = MagicMock()
             mock_vd.create.return_value = True
-            mock_engine = MagicMock()
-            mock_engine.run.return_value = {"steps": 7, "result": "done"}
+            mock_engine_instance = MagicMock()
+            mock_engine_instance.run.return_value = {"steps": 7, "result": "done"}
 
             with (
-                patch("core.virtual_desktop.VirtualDesktop", return_value=mock_vd),
-                patch("core.engine.AgentEngine", return_value=mock_engine),
+                patch.object(core.virtual_desktop, "VirtualDesktop", return_value=mock_vd),
+                patch.object(core.engine, "AgentEngine", return_value=mock_engine_instance),
             ):
                 pool._agent_worker(sid, "SentinelAgent-1")
 
