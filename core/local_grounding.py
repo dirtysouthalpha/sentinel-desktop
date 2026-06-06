@@ -192,7 +192,7 @@ def _load_omniparser():
         from omniparser import OmniParser  # type: ignore
         return OmniParser()
     except ImportError:
-        raise ImportError("omniparser not installed — pip install omniparser")
+        raise ImportError("omniparser not installed — pip install omniparser") from None
 
 
 @_register_backend("florence2")
@@ -220,7 +220,7 @@ def _load_florence2():
 
         return _Florence2Wrapper()
     except ImportError:
-        raise ImportError("transformers not installed for Florence-2")
+        raise ImportError("transformers not installed for Florence-2") from None
 
 
 @_register_backend("uground")
@@ -230,7 +230,7 @@ def _load_uground():
         import uground  # type: ignore
         return uground.Model()
     except ImportError:
-        raise ImportError("uground not installed")
+        raise ImportError("uground not installed") from None
 
 
 @_register_backend("yolo")
@@ -263,7 +263,7 @@ def _load_yolo():
 
         return _YOLOWrapper()
     except ImportError:
-        raise ImportError("ultralytics not installed for YOLO")
+        raise ImportError("ultralytics not installed for YOLO") from None
 
 
 # ---------------------------------------------------------------------------

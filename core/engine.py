@@ -33,7 +33,7 @@ from core.llm_client import LLMClient, LLMError
 from core.mfa_detection import MFADetector
 from core.popup_handler import PopupHandler
 from core.recovery import RecoveryEngine
-from core.screenshot import capture_to_base64, get_capture_offset
+from core.screenshot import capture_to_base64, get_capture_offset  # noqa: F401
 from core.smart_wait import SmartWait
 from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
 from core.tool_schemas import TOOLS as ACTION_TOOLS

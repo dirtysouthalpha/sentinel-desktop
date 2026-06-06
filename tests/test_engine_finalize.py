@@ -341,6 +341,10 @@ class TestBuildInitialMessages:
         eng = AgentEngine.__new__(AgentEngine)
         eng.config = config or {}
         eng.notes = []
+        # Add mock executor to avoid AttributeError
+        from unittest.mock import MagicMock
+        eng.executor = MagicMock()
+        eng.executor.perception_result = None
         return eng
 
     def test_returns_list_of_dicts(self):

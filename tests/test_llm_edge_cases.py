@@ -294,8 +294,8 @@ class TestAnthropicToolUse:
                         {
                             "type": "tool_use",
                             "id": "tu_123",
-                            "name": "click",
-                            "input": {"x": 100, "y": 200},
+                            "name": "computer",
+                            "input": {"action": "click", "coordinate": [100, 200]},
                         },
                     ]
                 }
@@ -499,7 +499,7 @@ class TestAnthropicMalformedToolUse:
             json=MagicMock(
                 return_value={
                     "content": [
-                        {"type": "tool_use", "name": "click"},  # missing id and input
+                        {"type": "tool_use", "name": "computer", "input": {"action": "click"}},  # missing id, partial input
                     ]
                 }
             ),

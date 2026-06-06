@@ -551,21 +551,45 @@ class LLMClient:
             elif block_type == "tool_use":
                 action = translate_anthropic_action(block)
                 if action:
+                    # Store the original id from the tool_use block
+                    action["_original_id"] = block.get("id", "")
                     actions.append(action)
+                else:
+                    # Handle malformed tool_use blocks by creating a default tool_call
+                    # This ensures graceful degradation when responses are incomplete
+                    actions.append({
+                        "action": block.get("name", ""),
+                        "_original_id": block.get("id", ""),
+                        "_input": block.get("input", {}),
+                    })
 
         if actions:
             # Return as tool_calls format so the engine picks it up
-            return json.dumps({"tool_calls": [
-                {
-                    "id": "computer_action",
-                    "type": "function",
-                    "function": {
-                        "name": action["action"],
-                        "arguments": json.dumps({k: v for k, v in action.items() if k != "action"}),
-                    },
-                }
-                for action in actions
-            ]})
+            tool_calls = []
+            for action in actions:
+                # Check if this is a malformed action (has _id and _input keys)
+                if "_id" in action or "_input" in action:
+                    # Handle malformed tool_use block
+                    tool_calls.append({
+                        "id": action.get("_id", ""),
+                        "type": "function",
+                        "function": {
+                            "name": action.get("action", ""),
+                            "arguments": json.dumps(action.get("_input", {})),
+                        },
+                    })
+                else:
+                    # Handle normal computer use action
+                    # Use the original tool_use block's id if available, otherwise use empty string
+                    tool_calls.append({
+                        "id": action.get("_original_id", ""),
+                        "type": "function",
+                        "function": {
+                            "name": action["action"],
+                            "arguments": json.dumps({k: v for k, v in action.items() if k not in ("action", "_original_id")}),
+                        },
+                    })
+            return json.dumps({"tool_calls": tool_calls})
 
         return "\n".join(text_parts).strip()
 

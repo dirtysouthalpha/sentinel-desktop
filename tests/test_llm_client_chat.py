@@ -210,8 +210,8 @@ class TestChatAnthropicPath:
                     {
                         "type": "tool_use",
                         "id": "tu1",
-                        "name": "click",
-                        "input": {"x": 100, "y": 200},
+                        "name": "computer",
+                        "input": {"action": "click", "coordinate": [100, 200]},
                     },
                 ]
             },
