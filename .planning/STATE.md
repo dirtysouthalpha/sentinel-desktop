@@ -6,34 +6,70 @@
 milestone:
   version: "7.0.0"
   name: "Perception"
-  status: "planning"  # planning | in_progress | complete
+  status: "in_progress"
   started: 2026-06-06
 
 progress:
   phases_completed: 0
   requirements_completed: 0
-  total_phases: 0
+  total_phases: 6
   total_requirements: 17
 
 metadata:
   last_updated: 2026-06-06
-  last_phase: —
+  last_phase: Phase 1
 ```
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-06 — Milestone v7.0.0 Perception started
+Phase: 1 of 6 (DPI & Coordinate Calibration)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-06-06 — Roadmap created for v7.0.0 Perception milestone
+
+Progress: [░░░░░░░░░░] 0%
+
+---
+
+## Project Reference
+
+**Core value:** Automate any Windows desktop task through natural language -- safely, reliably, and with full visibility.
+**Current focus:** Phase 1 -- DPI & Coordinate Calibration
+
+---
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: -
+- Total execution time: 0 hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: (none)
+- Trend: N/A
+
+*Updated after each plan completion*
 
 ---
 
 ## Context
 
 *Accumulated across milestones — decisions, blockers, todos.*
+
+### Decisions
+
+- Milestone v7.0.0 "Perception" initialized with 17 requirements across 6 phases
+- Phase 1 is DPI calibration because coordinate correctness is load-bearing for all downstream grounding work
+- core/grounding.py is a new module; existing modules extended (ui_tree.py, llm_client.py, action_executor.py, screenshot.py, engine.py, provider_registry.py)
 
 ### Blockers
 
@@ -53,6 +89,7 @@ Last activity: 2026-06-06 — Milestone v7.0.0 Perception started
 
 | Date | Event | Details |
 |------|-------|---------|
+| 2026-06-06 | Roadmap created | 6 phases, 17 requirements mapped |
 | 2026-06-06 | v7.0.0 Perception started | Grounding revolution milestone |
 | 2026-06-06 | v6.0.0 released | Dependency upgrades, 36 lint fixes, 12 test fixes |
 | 2026-06-05 | Milestone v6.0.0 started | Dependency upgrade work |

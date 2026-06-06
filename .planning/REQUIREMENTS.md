@@ -95,29 +95,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GND-01 | — | Pending |
-| GND-02 | — | Pending |
-| GND-03 | — | Pending |
-| SOM-01 | — | Pending |
-| SOM-02 | — | Pending |
-| SOM-03 | — | Pending |
-| NCU-01 | — | Pending |
-| NCU-02 | — | Pending |
-| NCU-03 | — | Pending |
-| LCL-01 | — | Pending |
-| LCL-02 | — | Pending |
-| VER-01 | — | Pending |
-| VER-02 | — | Pending |
-| VER-03 | — | Pending |
-| DPI-01 | — | Pending |
-| DPI-02 | — | Pending |
-| DPI-03 | — | Pending |
+| DPI-01 | Phase 1 | Pending |
+| DPI-02 | Phase 1 | Pending |
+| DPI-03 | Phase 1 | Pending |
+| GND-01 | Phase 2 | Pending |
+| GND-02 | Phase 2 | Pending |
+| GND-03 | Phase 2 | Pending |
+| SOM-01 | Phase 3 | Pending |
+| SOM-02 | Phase 3 | Pending |
+| SOM-03 | Phase 3 | Pending |
+| NCU-01 | Phase 4 | Pending |
+| NCU-02 | Phase 4 | Pending |
+| NCU-03 | Phase 4 | Pending |
+| VER-01 | Phase 5 | Pending |
+| VER-02 | Phase 5 | Pending |
+| VER-03 | Phase 5 | Pending |
+| LCL-01 | Phase 6 | Pending |
+| LCL-02 | Phase 6 | Pending |
 
 **Coverage:**
 - v7 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-06*
-*Last updated: 2026-06-06 after initial definition*
+*Last updated: 2026-06-06 — Traceability added during roadmap creation*
