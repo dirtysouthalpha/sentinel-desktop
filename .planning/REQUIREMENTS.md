@@ -1,123 +1,84 @@
-# Requirements: Sentinel Desktop v7.0.0 Perception
+# Requirements: Sentinel Desktop v8.0.0 Webhand
 
 **Defined:** 2026-06-06
 **Core Value:** Automate any Windows desktop task through natural language — safely, reliably, and with full visibility.
 
-## v7 Requirements
+## v8 Requirements
 
-Requirements for v7.0.0 "Perception" milestone. Each maps to roadmap phases.
+### Browser Core
 
-### Grounding Pipeline
+- [ ] **WEB-01**: Embedded controlled browser via Playwright (Chromium/Firefox/WebKit) with CDP — launches a managed browser instance the agent drives directly
+- [ ] **WEB-02**: `web_open` action — navigate to a URL in the managed browser, handles redirects and page load events
+- [ ] **WEB-03**: `web_click` action — click elements by CSS selector, text content, or ARIA role; auto-scrolls element into view
+- [ ] **WEB-04**: `web_type` action — type text into form fields identified by selector, label, or placeholder; clears existing content by default
+- [ ] **WEB-05**: `web_read` action — extract text content from the full page or a specific element by selector
+- [ ] **WEB-06**: `web_extract` action — extract structured data (HTML tables → JSON, lists, form values, page metadata)
 
-- [ ] **GND-01**: Agent builds structured element map from accessibility tree (UIAutomation) before asking model for coordinates
-- [ ] **GND-02**: Model selects target by element ID (not raw pixel coordinates) when a11y elements are available
-- [ ] **GND-03**: System falls back to vision/coordinate mode only when no accessibility element matches target
+### Browser Advanced
 
-### Set-of-Marks (SoM)
+- [ ] **WEB-07**: `web_wait_for` action — wait for element visibility, navigation complete, network idle, or specific text on page
+- [ ] **WEB-08**: `web_screenshot` action — capture browser viewport or element screenshot as PIL Image
+- [ ] **WEB-09**: `web_eval_js` action — execute arbitrary JavaScript in browser context and return result
+- [ ] **WEB-10**: `web_download` action — download files from browser with progress tracking
+- [ ] **WEB-11**: `web_upload` action — upload files to web forms by setting file input elements
+- [ ] **WEB-12**: `web_tabs` action — list open tabs, switch between tabs, create new tabs, close tabs
 
-- [ ] **SOM-01**: Annotated screenshots render numbered bounding boxes on every clickable/typeable element
-- [ ] **SOM-02**: Model references targets by mark ID (e.g., "click_mark 7") instead of coordinates
-- [ ] **SOM-03**: Mark generation combines a11y tree + OCR + CV contour detection for canvas/custom UIs
+### Dual-Mode Unification
 
-### Native Computer-Use Models
+- [ ] **DUAL-01**: Engine auto-detects whether the target is a web app or native desktop and routes to browser DOM mode or native vision mode accordingly
+- [ ] **DUAL-02**: Mid-task handoff — agent can download a file in the browser, then open it natively (browser → native transition)
 
-- [ ] **NCU-01**: First-class adapter for Anthropic computer_20250124 tool — model uses its own native screen-control loop
-- [ ] **NCU-02**: First-class adapter for OpenAI computer-use-preview tool — model uses its own native screen-control loop
-- [ ] **NCU-03**: JSON action protocol preserved as universal fallback for all other 18+ providers
+### Appliance UX & Sessions
 
-### Local Grounding
+- [ ] **CERT-01**: Auto-accept self-signed certificate warnings for explicitly whitelisted appliance hostnames only (configurable whitelist)
+- [ ] **CERT-02**: Login form detection — recognize common IT admin login pages (SonicWall, FortiGate, UniFi, Meraki, etc.) and offer to fill credentials
+- [ ] **SESS-01**: Session vault — save cookies + localStorage per site, encrypted via core/encryption.py
+- [ ] **SESS-02**: Session vault restore — reload saved cookies on return visits so the agent doesn't re-login every run
 
-- [ ] **LCL-01**: Optional local grounding model (OmniParser/Florence-2/UGround style) converts "click the Save button" → bbox with no cloud round-trip
-- [ ] **LCL-02**: Feature-flag gated behind `local_grounding` config, optional dependency, works air-gapped
+### Web Recorder
 
-### Click Verification
-
-- [ ] **VER-01**: After-action screenshot diff detects whether click landed (region changed)
-- [ ] **VER-02**: Auto-retry through grounding tiers (a11y → SoM → coords → keyboard nav) on click miss
-- [ ] **VER-03**: Self-healing logic promoted from system prompt prose to enforced executor code
-
-### DPI & Calibration
-
-- [ ] **DPI-01**: Detect DPI scaling per monitor at runtime
-- [ ] **DPI-02**: Transform coordinates correctly for HiDPI, multi-monitor, and mixed-scaling setups
-- [ ] **DPI-03**: One-time calibration probe for new display configurations
-
-## Future Requirements
-
-Deferred to future milestones (v8.0+ per master roadmap).
-
-### Web Browser Control (v8.0 "Webhand")
-- **WEB-01**: Embedded controlled browser via Playwright with CDP
-- **WEB-02**: DOM-aware web actions (web_click, web_type, web_read, etc.)
-- **WEB-03**: Dual-mode unification (browser DOM vs native vision)
-
-### Network Operations (v9.0 "Netops")
-- **NET-01**: SSH/serial/Telnet/WinRM/SNMP connection layer
-- **NET-02**: Network device profiles (SonicWall, Cisco, FortiGate, etc.)
-- **NET-03**: Diagnostic playbooks for common network issues
-
-### Server & Fleet (v10.0 "Sentinel Server")
-- **SRV-01**: Service/daemon mode (Windows Service + systemd)
-- **SRV-02**: Remote agent + control plane for fleet management
-- **SRV-03**: Web control center (React dashboard)
-
-### Memory & Learning (v11.0 "Memory")
-- **MEM-01**: Persistent agent memory for environment facts
-- **MEM-02**: Skill library (learned procedures from successful runs)
-- **MEM-03**: RAG over forensic log run history
-
-### Multi-Agent Orchestration (v12.0 "Conductor")
-- **ORC-01**: Hierarchical planner → executor → critic
-- **ORC-02**: Parallel task graphs on separate virtual desktops/agents
-- **ORC-03**: Specialist sub-agents (browser, terminal, netops, desktop)
-
-### Linux Desktop Parity (v13.0 "Penguin")
-- **LNX-01**: Linux accessibility tree via AT-SPI (pyatspi/D-Bus)
-- **LNX-02**: Input on Wayland (ydotool/libei) and X11 (xdotool/Xlib)
-- **LNX-03**: Platform abstraction layer formalization
+- [ ] **REC-01**: Web recorder captures browser interactions (navigations, clicks, form fills) into replayable Sentinel script JSON format
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Web browser automation (Playwright) | v8.0 "Webhand" — requires grounding first |
-| SSH/network device control | v9.0 "Netops" — requires grounding first |
-| Fleet/daemon mode | v10.0 "Sentinel Server" — requires single-agent reliability first |
-| Persistent memory / RAG | v11.0 "Memory" — requires reliable actions first |
-| Multi-agent orchestration | v12.0 "Conductor" — requires memory + grounding |
-| Voice I/O | v14.0 "Voice" — far future |
-| Mobile platform support | Not desktop automation |
-| Custom action plugins | Plugin system exists, not prioritized |
+| SSH/network device control | v9.0 "Netops" |
+| Fleet/daemon mode | v10.0 "Sentinel Server" |
+| Persistent memory / RAG | v11.0 "Memory" |
+| Multi-agent orchestration | v12.0 "Conductor" |
+| Browser extension install | Not needed for DOM control |
+| Visual regression testing | Not core to IT automation |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DPI-01 | Phase 1 | Pending |
-| DPI-02 | Phase 1 | Pending |
-| DPI-03 | Phase 1 | Pending |
-| GND-01 | Phase 2 | Pending |
-| GND-02 | Phase 2 | Pending |
-| GND-03 | Phase 2 | Pending |
-| SOM-01 | Phase 3 | Pending |
-| SOM-02 | Phase 3 | Pending |
-| SOM-03 | Phase 3 | Pending |
-| NCU-01 | Phase 4 | Pending |
-| NCU-02 | Phase 4 | Pending |
-| NCU-03 | Phase 4 | Pending |
-| VER-01 | Phase 5 | Pending |
-| VER-02 | Phase 5 | Pending |
-| VER-03 | Phase 5 | Pending |
-| LCL-01 | Phase 6 | Pending |
-| LCL-02 | Phase 6 | Pending |
+| WEB-01 | Phase 1 | Pending |
+| WEB-02 | Phase 1 | Pending |
+| WEB-03 | Phase 1 | Pending |
+| WEB-04 | Phase 1 | Pending |
+| WEB-05 | Phase 1 | Pending |
+| WEB-06 | Phase 2 | Pending |
+| WEB-07 | Phase 2 | Pending |
+| WEB-08 | Phase 2 | Pending |
+| WEB-09 | Phase 2 | Pending |
+| WEB-10 | Phase 2 | Pending |
+| WEB-11 | Phase 2 | Pending |
+| WEB-12 | Phase 2 | Pending |
+| DUAL-01 | Phase 3 | Pending |
+| DUAL-02 | Phase 3 | Pending |
+| CERT-01 | Phase 3 | Pending |
+| CERT-02 | Phase 3 | Pending |
+| SESS-01 | Phase 4 | Pending |
+| SESS-02 | Phase 4 | Pending |
+| REC-01 | Phase 4 | Pending |
 
 **Coverage:**
-- v7 requirements: 17 total
-- Mapped to phases: 17
-- Unmapped: 0
+- v8 requirements: 19 total
+- Mapped to phases: 19
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-06*
-*Last updated: 2026-06-06 — Traceability added during roadmap creation*
+*Last updated: 2026-06-06 after initial definition*

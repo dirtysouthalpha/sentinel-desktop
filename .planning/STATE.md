@@ -4,46 +4,41 @@
 
 ```yaml
 milestone:
-  version: "7.0.0"
-  name: "Perception"
-  status: "complete"  # planning | in_progress | complete
+  version: "8.0.0"
+  name: "Webhand"
+  status: "in_progress"
   started: 2026-06-06
 
 progress:
-  phases_completed: 6
-  requirements_completed: 17
-  total_phases: 6
-  total_requirements: 17
+  phases_completed: 0
+  requirements_completed: 0
+  total_phases: 4
+  total_requirements: 19
 
 metadata:
   last_updated: 2026-06-06
-  last_phase: Phase 6
+  last_phase: Phase 1
 ```
 
 ---
 
 ## Current Position
 
-Phase: Complete (6/6)
-Plan: All 17 requirements met
-Status: v7.0.0 Perception shipped — grounding revolution
-Last activity: 2026-06-06 — v7.0.0 released
+Phase: 1 of 4 (Browser Core)
+Plan: 0 of 5 in current phase
+Status: Ready to build
+Last activity: 2026-06-06 — Milestone v8.0.0 Webhand started
+
+Progress: [░░░░░░░░░░] 0%
 
 ---
 
-## Context
+## Decisions
 
-*Accumulated across milestones — decisions, blockers, todos.*
-
-### Decisions
-
-- Milestone v7.0.0 "Perception" initialized with 17 requirements across 6 phases
-- Phase 1 is DPI calibration because coordinate correctness is load-bearing for all downstream grounding work
-- core/grounding.py is a new module; existing modules extended (ui_tree.py, llm_client.py, action_executor.py, screenshot.py, engine.py, provider_registry.py)
-- Perception pipeline (core/perception/) already existed from prior work — extended, not replaced
-- Native computer-use adapters route automatically based on provider capability flags
-- Click verification is enforced in code (core/click_verify.py), not system prompt prose
-- Local grounding model is feature-flagged and fully optional
+- Milestone v8.0.0 "Webhand" — Playwright browser automation for IT admin web UIs
+- Playwright chosen over Selenium for modern API, auto-wait, and multi-browser support
+- Browser module is optional dependency behind `pip install sentinel-desktop[web]`
+- Session vault reuses existing core/encryption.py for cookie storage
 
 ### Blockers
 
@@ -51,7 +46,7 @@ Last activity: 2026-06-06 — v7.0.0 released
 
 ### Known Issues
 
-- 13 test files excluded from suite due to pre-existing win32 ctypes mock recursion (stack overflow on Python 3.13). These tests pass individually but crash the suite due to `MagicMock` + `ctypes.windll` infinite recursion. Not caused by v7.0 changes.
+- 13 test files excluded from suite due to pre-existing win32 ctypes mock recursion
 
 ### Todos
 
@@ -63,11 +58,8 @@ Last activity: 2026-06-06 — v7.0.0 released
 
 | Date | Event | Details |
 |------|-------|---------|
-| 2026-06-06 | v7.0.0 Perception shipped | 6 phases, 17 requirements, 5,337 tests passing |
-| 2026-06-06 | Roadmap created | 6 phases, 17 requirements mapped |
-| 2026-06-06 | v7.0.0 Perception started | Grounding revolution milestone |
-| 2026-06-06 | v6.0.0 released | Dependency upgrades, 36 lint fixes, 12 test fixes |
-| 2026-06-04 | Milestone v3.1.0 completed | Production foundation shipped |
+| 2026-06-06 | v8.0.0 Webhand started | Browser automation milestone |
+| 2026-06-06 | v7.0.0 Perception shipped | 6 phases, 17 requirements, 5,337 tests |
 
 ---
 

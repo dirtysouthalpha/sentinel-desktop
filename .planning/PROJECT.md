@@ -26,17 +26,17 @@ Sentinel Desktop reduces repetitive IT support tasks to natural language descrip
 
 ---
 
-## Current Milestone: v7.0.0 — Perception (Grounding Revolution)
+## Current Milestone: v8.0.0 — Webhand (Browser & Web Command)
 
-**Goal:** Hybrid accessibility-first grounding + Set-of-Marks + native computer-use models + click verification + HiDPI calibration. The load-bearing foundation — if the click misses, nothing downstream works.
+**Goal:** Embedded browser control via Playwright with DOM-aware web actions. Drive any web app / firewall UI by DOM, not pixels. Dual-mode: browser DOM for web apps, native vision for desktop.
 
 **Target features:**
-- Hybrid grounding pipeline (accessibility-first, vision-fallback)
-- Set-of-Marks (SoM) annotated screenshots with numbered targets
-- Native computer-use tool support (Anthropic computer_20250124, OpenAI computer-use-preview)
-- Local grounding model support (optional, offline-capable)
-- Click verification + self-correction with tiered retry
-- HiDPI / multi-monitor / scaling coordinate calibration
+- Embedded controlled browser via Playwright (Chromium/Firefox/WebKit) with CDP
+- DOM-aware web actions: web_open, web_click, web_type, web_read, web_extract, web_wait_for, web_screenshot, web_eval_js, web_download, web_upload, web_tabs
+- Dual-mode unification: browser DOM mode for web apps, native vision mode for desktop
+- Self-signed cert / appliance UX handling for IT admin web UIs
+- Authenticated session vault (save/restore cookies per site, encrypted)
+- Web recorder integration with core/recorder.py
 
 ---
 
@@ -122,23 +122,25 @@ Sentinel Desktop reduces repetitive IT support tasks to natural language descrip
 
 ## Active Requirements
 
-- [ ] GND-01: Agent builds structured element map from accessibility tree before asking model for coordinates
-- [ ] GND-02: Model selects target by element ID, not raw pixel coordinates
-- [ ] GND-03: System falls back to vision coordinates only when no accessibility element matches
-- [ ] SOM-01: Annotated screenshots render numbered boxes on every clickable/typeable element
-- [ ] SOM-02: Model references targets by mark ID (e.g., "click_mark 7")
-- [ ] SOM-03: Mark generation combines a11y tree + OCR + CV contour detection for canvas/custom UIs
-- [ ] NCU-01: First-class adapter for Anthropic computer_20250124 tool loop
-- [ ] NCU-02: First-class adapter for OpenAI computer-use-preview tool loop
-- [ ] NCU-03: JSON protocol preserved as universal fallback for other 18+ providers
-- [ ] LCL-01: Optional local grounding model (OmniParser/Florence-2/UGround style) for offline bbox prediction
-- [ ] LCL-02: Feature-flag gated, optional dependency
-- [ ] VER-01: After-action screenshot diff detects whether click landed
-- [ ] VER-02: Auto-retry through grounding tiers (a11y → SoM → coords → keyboard nav) on miss
-- [ ] VER-03: Self-healing logic promoted from system prompt to enforced executor code
-- [ ] DPI-01: Detect DPI scaling per monitor
-- [ ] DPI-02: Transform coordinates for HiDPI/multi-monitor setups
-- [ ] DPI-03: One-time calibration probe for new displays
+- [ ] WEB-01: Embedded controlled browser via Playwright with CDP support
+- [ ] WEB-02: web_open action — navigate to URL in managed browser
+- [ ] WEB-03: web_click action — click by CSS selector, text content, or ARIA role
+- [ ] WEB-04: web_type action — type text into form fields by selector/label
+- [ ] WEB-05: web_read action — extract text content from page or element
+- [ ] WEB-06: web_extract action — extract structured data (tables, lists, forms)
+- [ ] WEB-07: web_wait_for action — wait for element, navigation, or network idle
+- [ ] WEB-08: web_screenshot action — capture browser viewport as image
+- [ ] WEB-09: web_eval_js action — execute JavaScript in browser context
+- [ ] WEB-10: web_download action — download files from browser
+- [ ] WEB-11: web_upload action — upload files to web forms
+- [ ] WEB-12: web_tabs action — list, switch, create, close browser tabs
+- [ ] DUAL-01: Engine auto-detects web vs native context and routes to browser or vision mode
+- [ ] DUAL-02: Mid-task handoff between browser and native mode
+- [ ] CERT-01: Auto-accept self-signed cert warnings for whitelisted appliance hosts
+- [ ] CERT-02: Login form detection for common IT admin web UIs
+- [ ] SESS-01: Session vault saves cookies + localStorage per site, encrypted
+- [ ] SESS-02: Session vault restores cookies on return visits
+- [ ] REC-01: Web recorder captures browser interactions into replayable scripts
 
 ---
 
@@ -229,4 +231,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-06-06 — Milestone v7.0.0 Perception initialized*
+*Last updated: 2026-06-06 — Milestone v8.0.0 Webhand initialized*
