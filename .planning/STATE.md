@@ -4,30 +4,30 @@
 
 ```yaml
 milestone:
-  version: "6.0.0"
-  name: "v6.0 dependency upgrades"
-  status: "complete"  # planning | in_progress | complete
-  started: 2026-06-05
+  version: "7.0.0"
+  name: "Perception"
+  status: "planning"  # planning | in_progress | complete
+  started: 2026-06-06
 
 progress:
-  phases_completed: 1
-  requirements_completed: 4
-  total_phases: 1
-  total_requirements: 4
+  phases_completed: 0
+  requirements_completed: 0
+  total_phases: 0
+  total_requirements: 17
 
 metadata:
   last_updated: 2026-06-06
-  last_phase: dependency-upgrade
+  last_phase: —
 ```
 
 ---
 
 ## Current Position
 
-**Phase:** Complete
-**Plan:** —
-**Status:** v6.0.0 shipped — dependency upgrades, lint cleanup, test fixes
-**Last activity:** 2026-06-06 — v6.0.0 released
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-06 — Milestone v7.0.0 Perception started
 
 ---
 
@@ -53,6 +53,7 @@ metadata:
 
 | Date | Event | Details |
 |------|-------|---------|
+| 2026-06-06 | v7.0.0 Perception started | Grounding revolution milestone |
 | 2026-06-06 | v6.0.0 released | Dependency upgrades, 36 lint fixes, 12 test fixes |
 | 2026-06-05 | Milestone v6.0.0 started | Dependency upgrade work |
 | 2026-06-04 | Milestone v3.1.0 completed | Production foundation shipped |

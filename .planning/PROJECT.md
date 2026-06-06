@@ -26,9 +26,17 @@ Sentinel Desktop reduces repetitive IT support tasks to natural language descrip
 
 ---
 
-## Current Milestone: v6.0.0 — Complete ✅
+## Current Milestone: v7.0.0 — Perception (Grounding Revolution)
 
-**Shipped:** Dependency upgrades (fastapi 0.136, uvicorn 0.47, pydantic 2.13, websockets 16.0, ruff 0.15, mypy 2.1, pytest 8.4), 36 lint errors fixed, 12 test files fixed for Windows/Python 3.13, git repo initialized, CI pipeline added.
+**Goal:** Hybrid accessibility-first grounding + Set-of-Marks + native computer-use models + click verification + HiDPI calibration. The load-bearing foundation — if the click misses, nothing downstream works.
+
+**Target features:**
+- Hybrid grounding pipeline (accessibility-first, vision-fallback)
+- Set-of-Marks (SoM) annotated screenshots with numbered targets
+- Native computer-use tool support (Anthropic computer_20250124, OpenAI computer-use-preview)
+- Local grounding model support (optional, offline-capable)
+- Click verification + self-correction with tiered retry
+- HiDPI / multi-monitor / scaling coordinate calibration
 
 ---
 
@@ -114,7 +122,23 @@ Sentinel Desktop reduces repetitive IT support tasks to natural language descrip
 
 ## Active Requirements
 
-*Requirements will be defined for the current milestone...*
+- [ ] GND-01: Agent builds structured element map from accessibility tree before asking model for coordinates
+- [ ] GND-02: Model selects target by element ID, not raw pixel coordinates
+- [ ] GND-03: System falls back to vision coordinates only when no accessibility element matches
+- [ ] SOM-01: Annotated screenshots render numbered boxes on every clickable/typeable element
+- [ ] SOM-02: Model references targets by mark ID (e.g., "click_mark 7")
+- [ ] SOM-03: Mark generation combines a11y tree + OCR + CV contour detection for canvas/custom UIs
+- [ ] NCU-01: First-class adapter for Anthropic computer_20250124 tool loop
+- [ ] NCU-02: First-class adapter for OpenAI computer-use-preview tool loop
+- [ ] NCU-03: JSON protocol preserved as universal fallback for other 18+ providers
+- [ ] LCL-01: Optional local grounding model (OmniParser/Florence-2/UGround style) for offline bbox prediction
+- [ ] LCL-02: Feature-flag gated, optional dependency
+- [ ] VER-01: After-action screenshot diff detects whether click landed
+- [ ] VER-02: Auto-retry through grounding tiers (a11y → SoM → coords → keyboard nav) on miss
+- [ ] VER-03: Self-healing logic promoted from system prompt to enforced executor code
+- [ ] DPI-01: Detect DPI scaling per monitor
+- [ ] DPI-02: Transform coordinates for HiDPI/multi-monitor setups
+- [ ] DPI-03: One-time calibration probe for new displays
 
 ---
 
@@ -205,4 +229,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2025-06-18 — Initialized for v3.2.0 milestone planning*
+*Last updated: 2026-06-06 — Milestone v7.0.0 Perception initialized*
