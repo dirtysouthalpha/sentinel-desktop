@@ -28,15 +28,21 @@ logger = logging.getLogger(__name__)
 
 # Check if Playwright is available
 _HAS_PLAYWRIGHT = False
+sync_playwright = None  # Define as None for test patching
+
 try:
     from playwright.sync_api import (
         Browser,
         BrowserContext,
         Page,
         Playwright,
-        sync_playwright,
+    )
+    from playwright.sync_api import (
+        sync_playwright as _sync_playwright,
     )
 
+    # Override the None placeholder with the real import
+    sync_playwright = _sync_playwright
     _HAS_PLAYWRIGHT = True
 except ImportError:
     pass

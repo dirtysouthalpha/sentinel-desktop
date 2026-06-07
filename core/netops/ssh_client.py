@@ -21,9 +21,13 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _HAS_PARAMIKO = False
-try:
-    import paramiko
+paramiko = None  # Define as None for test patching
 
+try:
+    import paramiko as _paramiko
+
+    # Override the None placeholder with the real import
+    paramiko = _paramiko
     _HAS_PARAMIKO = True
 except ImportError:
     pass
