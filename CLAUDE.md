@@ -6,7 +6,7 @@ Vision-driven desktop automation agent. Give it a goal in plain English, it sees
 **All priorities complete - project is production-ready ✅**
 
 All quality gates met:
-- ✅ 5,943 tests passing (36 skipped)
+- ✅ 5,832 tests passing (147 skipped)
 - ✅ Zero lint errors (ruff check clean)
 - ✅ 99% test coverage (well above ≥80% target)
 - ✅ All API endpoints fully implemented (workflow builder complete)
@@ -78,7 +78,7 @@ All quality gates met:
 - ✅ Parallel executor — concurrent subtask execution respecting dependencies
 - ✅ Result synthesizer — merge multi-agent results with status aggregation
 - ✅ Conductor coordinator — end-to-end plan → execute → synthesize pipeline
-- ✅ 606 new tests across v8-v12 (5,943 total)
+- ✅ 606 new tests across v8-v12 (5,832 total)
 
 ## v4.0 — Multi-Platform Core (June 2025)
 - ✅ Platform abstraction layer (`core/platform/`) with ABC interfaces for all OS-specific code
