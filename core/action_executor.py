@@ -15,6 +15,7 @@ from core import file_ops, launcher, ocr, stealth_input, ui_tree
 from core import process_manager as pm
 from core import system_info as sysinfo
 from core import window_manager as wm
+from core.browser import BrowserManager
 from core.dpi import transform_action_coordinates
 from core.screenshot import capture_to_base64, find_template, wait_for_template
 
@@ -122,6 +123,10 @@ class ActionExecutor:
         # Perception: the engine stores the latest PerceptionResult here so
         # click_element / click_mark can resolve IDs to coordinates.
         self.perception_result: Any | None = None
+        # Browser: lazy-initialized on first web action
+        self._browser_manager: BrowserManager | None = None
+        # Netops: lazy-initialized SSH client
+        self._ssh_clients: dict[str, Any] = {}  # hostname → SSHClient
 
     @property
     def log(self) -> list[dict[str, Any]]:
@@ -1357,6 +1362,104 @@ class ActionExecutor:
         logger.info("Agent note: %s", text)
         return {"success": True, "output": text}
 
+    # -------------------------------------------------------------------
+    # Browser actions (v8.0 — Playwright web automation)
+    # -------------------------------------------------------------------
+
+    @property
+    def browser(self) -> BrowserManager:
+        """Lazy-initialized browser manager."""
+        if self._browser_manager is None:
+            self._browser_manager = BrowserManager(headless=True, ignore_https_errors=True)
+        return self._browser_manager
+
+    def _web_open(self, *, url: str, wait_until: str = "load", **_) -> dict:
+        """Navigate to a URL in the managed browser."""
+        return self.browser.open(url, wait_until=wait_until)
+
+    def _web_click(
+        self,
+        *,
+        selector: str | None = None,
+        text: str | None = None,
+        role: str | None = None,
+        name: str | None = None,
+        button: str = "left",
+        click_count: int = 1,
+        **_,
+    ) -> dict:
+        """Click an element in the browser by selector, text, or ARIA role."""
+        return self.browser.click(
+            selector=selector, text=text, role=role, name=name,
+            button=button, click_count=click_count,
+        )
+
+    def _web_type(
+        self,
+        *,
+        text: str,
+        selector: str | None = None,
+        label: str | None = None,
+        role: str | None = None,
+        name: str | None = None,
+        clear: bool = True,
+        **_,
+    ) -> dict:
+        """Type text into a browser form field."""
+        return self.browser.type_text(
+            text=text, selector=selector, label=label,
+            role=role, name=name, clear=clear,
+        )
+
+    def _web_read(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
+        """Read text content from the browser page or element."""
+        return self.browser.read(selector=selector, full_page=full_page)
+
+    def _web_extract(self, *, selector: str = "table", format: str = "json", **_) -> dict:
+        """Extract structured data from the browser page."""
+        return self.browser.extract(selector=selector, format=format)
+
+    def _web_wait_for(
+        self,
+        *,
+        selector: str | None = None,
+        text: str | None = None,
+        state: str = "visible",
+        timeout: float = 30.0,
+        **_,
+    ) -> dict:
+        """Wait for an element or condition in the browser."""
+        return self.browser.wait_for(
+            selector=selector, text=text, state=state, timeout=timeout * 1000,
+        )
+
+    def _web_screenshot(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
+        """Capture a screenshot of the browser viewport or element."""
+        return self.browser.screenshot(selector=selector, full_page=full_page)
+
+    def _web_eval_js(self, *, expression: str, **_) -> dict:
+        """Execute JavaScript in the browser context."""
+        return self.browser.eval_js(expression=expression)
+
+    def _web_download(self, *, url: str | None = None, save_path: str | None = None, **_) -> dict:
+        """Download a file from the browser."""
+        return self.browser.download(url=url, save_path=save_path)
+
+    def _web_upload(self, *, selector: str, file_paths: list[str], **_) -> dict:
+        """Upload files to a web form."""
+        return self.browser.upload(selector=selector, file_paths=file_paths)
+
+    def _web_tabs(
+        self,
+        *,
+        action: str = "list",
+        index: int | None = None,
+        url: str | None = None,
+        **_,
+    ) -> dict:
+        """Manage browser tabs."""
+        return self.browser.tabs(action=action, index=index, url=url)
+
     def _finish(self, *, summary: str = "", **_) -> dict:
         """Signal that the agent is done."""
         return {"success": True, "output": summary, "done": True}
@@ -1398,6 +1501,130 @@ class ActionExecutor:
         except Exception as exc:
             return {"success": False, "output": f"Script error: {exc}", "error": "script_failed"}
 
+    # -------------------------------------------------------------------
+    # Netops actions (v9.0 — SSH network device control)
+    # -------------------------------------------------------------------
+
+    def _ssh_connect(
+        self,
+        *,
+        hostname: str,
+        username: str = "",
+        password: str = "",
+        port: int = 22,
+        key_filename: str | None = None,
+        **_,
+    ) -> dict:
+        """Connect to a network device via SSH."""
+        try:
+            from core.netops.ssh_client import SSHClient
+
+            client = SSHClient(
+                hostname=hostname, username=username, password=password,
+                port=port, key_filename=key_filename,
+            )
+            client.connect()
+            self._ssh_clients[hostname] = client
+            return {"success": True, "output": f"Connected to {hostname}"}
+        except Exception as exc:
+            return {"success": False, "output": f"SSH connect error: {exc}", "error": "ssh_connect_failed"}
+
+    def _ssh_disconnect(self, *, hostname: str, **_) -> dict:
+        """Disconnect from an SSH device."""
+        client = self._ssh_clients.pop(hostname, None)
+        if client is None:
+            return {"success": False, "output": f"No connection to {hostname}"}
+        client.close()
+        return {"success": True, "output": f"Disconnected from {hostname}"}
+
+    def _ssh_run(
+        self,
+        *,
+        hostname: str,
+        command: str,
+        timeout: float | None = None,
+        **_,
+    ) -> dict:
+        """Run a command on a connected SSH device."""
+        client = self._ssh_clients.get(hostname)
+        if client is None:
+            return {"success": False, "output": f"Not connected to {hostname}", "error": "ssh_not_connected"}
+        result = client.run_command(command, timeout=timeout)
+        return {
+            "success": result.success,
+            "output": result.stdout[:5000],
+            "stderr": result.stderr[:2000],
+            "exit_code": result.exit_code,
+        }
+
+    def _ssh_show(
+        self,
+        *,
+        hostname: str,
+        what: str,
+        device_type: str = "generic",
+        **_,
+    ) -> dict:
+        """Run a device-aware show command on an SSH device."""
+        from core.netops.command_runner import CommandRunner
+        from core.netops.output_parser import (
+            parse_arp_table,
+            parse_interfaces,
+            parse_routing_table,
+            parse_version,
+        )
+
+        client = self._ssh_clients.get(hostname)
+        if client is None:
+            return {"success": False, "output": f"Not connected to {hostname}", "error": "ssh_not_connected"}
+
+        runner = CommandRunner(client, device_type=device_type)
+        parsers = {
+            "version": (runner.show_version, parse_version),
+            "interfaces": (runner.show_interfaces, parse_interfaces),
+            "routing": (runner.show_routing, parse_routing_table),
+            "arp": (runner.show_arp, parse_arp_table),
+            "cpu": (runner.show_cpu, None),
+            "logging": (runner.show_logging, None),
+            "config": (runner.show_running_config, None),
+        }
+
+        if what not in parsers:
+            return {"success": False, "output": f"Unknown show command: {what}. Options: {list(parsers.keys())}"}
+
+        cmd_fn, parser_fn = parsers[what]
+        result = cmd_fn()
+        if not result.success:
+            return {"success": False, "output": result.stderr or result.stdout}
+
+        if parser_fn:
+            parsed = parser_fn(result.stdout)
+            return {"success": True, "output": parsed, "raw": result.stdout[:3000]}
+
+        return {"success": True, "output": result.stdout[:5000]}
+
+    def _ssh_ping(
+        self,
+        *,
+        hostname: str,
+        target: str,
+        count: int = 4,
+        device_type: str = "generic",
+        **_,
+    ) -> dict:
+        """Ping a target from a connected SSH device."""
+        from core.netops.command_runner import CommandRunner
+        from core.netops.output_parser import parse_ping
+
+        client = self._ssh_clients.get(hostname)
+        if client is None:
+            return {"success": False, "output": f"Not connected to {hostname}", "error": "ssh_not_connected"}
+
+        runner = CommandRunner(client, device_type=device_type)
+        result = runner.ping(target, count=count)
+        parsed = parse_ping(result.stdout)
+        return {"success": parsed["success"], "output": parsed, "raw": result.stdout}
+
     # Dispatch table
     _dispatch_table: dict[str, Callable] = {
         "click": _click,
@@ -1410,6 +1637,23 @@ class ActionExecutor:
         "click_mark": _click_mark,
         "list_controls": _list_controls,
         "list_elements": _list_elements,
+        "web_open": _web_open,
+        "web_click": _web_click,
+        "web_type": _web_type,
+        "web_read": _web_read,
+        "web_extract": _web_extract,
+        "web_wait_for": _web_wait_for,
+        "web_screenshot": _web_screenshot,
+        "web_eval_js": _web_eval_js,
+        "web_download": _web_download,
+        "web_upload": _web_upload,
+        "web_tabs": _web_tabs,
+        # Netops (v9.0)
+        "ssh_connect": _ssh_connect,
+        "ssh_disconnect": _ssh_disconnect,
+        "ssh_run": _ssh_run,
+        "ssh_show": _ssh_show,
+        "ssh_ping": _ssh_ping,
         "set_text": _set_text,
         "read_text": _read_text,
         "read_window": _read_window,

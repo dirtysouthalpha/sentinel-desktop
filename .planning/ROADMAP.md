@@ -6,10 +6,10 @@ Embedded browser control via Playwright with DOM-aware web actions. Drive any we
 
 ## Phases
 
-- [ ] **Phase 1: Browser Core** — Playwright integration, browser lifecycle, basic web actions
-- [ ] **Phase 2: Advanced Web Actions** — Wait, screenshot, JS eval, download, upload, tabs, extract
-- [ ] **Phase 3: Dual-Mode & Appliance UX** — Mode detection, handoff, self-signed certs, login detection
-- [ ] **Phase 4: Session Vault & Web Recorder** — Cookie persistence, session restore, browser recording
+- [x] **Phase 1: Browser Core** — Playwright integration, browser lifecycle, basic web actions ✅
+- [x] **Phase 2: Advanced Web Actions** — Wait, screenshot, JS eval, download, upload, tabs, extract ✅
+- [x] **Phase 3: Dual-Mode & Appliance UX** — Mode detection, handoff, self-signed certs, login detection ✅
+- [x] **Phase 4: Session Vault & Web Recorder** — Cookie persistence, session restore, browser recording ✅
 
 ## Phase Details
 
@@ -24,9 +24,9 @@ Embedded browser control via Playwright with DOM-aware web actions. Drive any we
   4. web_type fills form fields and clears existing content first
   5. web_read extracts text from the page or specific elements
 **Plans**:
-- [ ] 01-01: Browser manager (core/browser.py) — launch, close, status, page access
-- [ ] 01-02: web_open + web_read actions — navigation and text extraction
-- [ ] 01-03: web_click + web_type actions — element interaction by selector/text/role
+- [x] 01-01: Browser manager (core/browser.py) — launch, close, status, page access
+- [x] 01-02: web_open + web_read actions — navigation and text extraction
+- [x] 01-03: web_click + web_type actions — element interaction by selector/text/role
 
 ### Phase 2: Advanced Web Actions
 **Goal**: Full web interaction toolkit — waiting, screenshots, JS execution, file I/O, tabs
@@ -41,9 +41,9 @@ Embedded browser control via Playwright with DOM-aware web actions. Drive any we
   6. web_tabs lists, switches, creates, and closes tabs
   7. web_extract pulls structured data from tables and lists
 **Plans**:
-- [ ] 02-01: web_wait_for + web_screenshot + web_eval_js — observation actions
-- [ ] 02-02: web_download + web_upload — file I/O actions
-- [ ] 02-03: web_tabs + web_extract — tab management and data extraction
+- [x] 02-01: web_wait_for + web_screenshot + web_eval_js — observation actions
+- [x] 02-02: web_download + web_upload — file I/O actions
+- [x] 02-03: web_tabs + web_extract — tab management and data extraction
 
 ### Phase 3: Dual-Mode & Appliance UX
 **Goal**: Auto-detect web vs native, handle appliance quirks, enable mid-task handoff
@@ -55,8 +55,8 @@ Embedded browser control via Playwright with DOM-aware web actions. Drive any we
   3. Self-signed cert warnings auto-accepted for whitelisted hosts
   4. Common IT admin login pages detected and credentials offered
 **Plans**:
-- [ ] 03-01: Dual-mode detection and routing in engine
-- [ ] 03-02: Self-signed cert handling and login form detection
+- [x] 03-01: Dual-mode detection and routing in engine
+- [x] 03-02: Self-signed cert handling and login form detection
 
 ### Phase 4: Session Vault & Web Recorder
 **Goal**: Persist browser sessions across runs, record browser actions as scripts
@@ -67,8 +67,8 @@ Embedded browser control via Playwright with DOM-aware web actions. Drive any we
   2. Saved sessions restored on return visits without re-login
   3. Browser interactions captured into replayable Sentinel script JSON
 **Plans**:
-- [ ] 04-01: Session vault — save/restore cookies encrypted
-- [ ] 04-02: Web recorder integration with core/recorder.py
+- [x] 04-01: Session vault — save/restore cookies encrypted
+- [x] 04-02: Web recorder integration with core/recorder.py
 
 ## Progress
 
@@ -76,7 +76,7 @@ Embedded browser control via Playwright with DOM-aware web actions. Drive any we
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Browser Core | 0/3 | Not started | - |
-| 2. Advanced Web Actions | 0/3 | Not started | - |
-| 3. Dual-Mode & Appliance UX | 0/2 | Not started | - |
-| 4. Session Vault & Web Recorder | 0/2 | Not started | - |
+| 1. Browser Core | 3/3 | ✅ Complete | 2026-06-06 |
+| 2. Advanced Web Actions | 3/3 | ✅ Complete | 2026-06-06 |
+| 3. Dual-Mode & Appliance UX | 2/2 | ✅ Complete | 2026-06-06 |
+| 4. Session Vault & Web Recorder | 2/2 | ✅ Complete | 2026-06-06 |

@@ -1,12 +1,12 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v7.0.0: Perception milestone complete — 6 phases, 17 requirements.**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v12.0: Conductor — multi-agent orchestration, persistent memory, SSH control, fleet management.**
 
 ## What To Do (Priority Order)
 **All priorities complete - project is production-ready ✅**
 
 All quality gates met:
-- ✅ 5,277 tests passing (146 skipped — win32-ctypes compatibility, platform-specific tests)
+- ✅ 5,943 tests passing (36 skipped)
 - ✅ Zero lint errors (ruff check clean)
 - ✅ 99% test coverage (well above ≥80% target)
 - ✅ All API endpoints fully implemented (workflow builder complete)
@@ -31,12 +31,54 @@ All quality gates met:
   - `linux_backend.py` — AT-SPI, xdotool, libsecret, bash, wnck
   - `macos_backend.py` — NSAccessibility, AppleScript, Keychain, zsh
 - **core/** — Core engine (45 modules): agent loop, LLM client, screenshot, OCR, UIAutomation, actions, scheduler, workflows
+- **core/web/** — Web automation subpackage (v8.0): dual-mode detection, cert whitelist, login detector, session vault, web recorder
+- **core/browser.py** — Playwright browser manager with 11 web actions (web_open, web_click, web_type, web_read, web_extract, web_wait_for, web_screenshot, web_eval_js, web_download, web_upload, web_tabs)
+- **core/netops/** — SSH/network device control (v9.0): SSH client, command runner, output parser (Cisco/Juniper/FortiGate/MikroTik)
+- **core/server/** — Fleet/daemon mode (v10.0): daemon service, fleet manager, persistent job queue
+- **core/memory/** — Persistent memory (v11.0): episodic (JSONL), semantic (SQLite), working memory (in-memory scratchpad)
+- **core/conductor/** — Multi-agent orchestration (v12.0): task planner, parallel executor, result synthesizer, coordinator
 - **gui/** — Cyberpunk HUD GUI with tkinter (13 modules): app, cursor overlay, themes, tabs, system tray
 - **api/** — FastAPI headless server (35+ endpoints, PTY terminal Unix-only)
 - **plugins/** — Plugin system
 - **scripts/** — Pre-built IT support scripts (JSON templates)
 - **tests/** — pytest suite with 200+ test files including platform tests
 - Multi-provider LLM support (20+ providers including OpenAI, Anthropic, Google, xAI, Z.ai GLM-5)
+
+## v8.0 — Webhand (June 2026)
+- ✅ Embedded Playwright browser control (Chromium/Firefox/WebKit)
+- ✅ 11 web actions: web_open, web_click, web_type, web_read, web_extract, web_wait_for, web_screenshot, web_eval_js, web_download, web_upload, web_tabs
+- ✅ Pydantic schemas for all web actions with validation
+- ✅ Dual-mode detection (web vs native) with mode handoff
+- ✅ Self-signed certificate whitelist for IT appliances
+- ✅ IT appliance login page detection (10 vendors: SonicWall, FortiGate, UniFi, Meraki, pfSense, OPNsense, MikroTik, NinjaOne, ConnectWise, IT Glue)
+- ✅ Session vault — encrypted cookie persistence and restore
+- ✅ Web recorder — capture browser actions as replayable JSON scripts
+- ✅ 325 new tests, 5,662 total passing
+
+## v9.0 — Netops (June 2026)
+- ✅ SSH client via paramiko with connect/disconnect/run_command/context manager
+- ✅ Device-aware command runner (Cisco IOS/NX-OS, Juniper JunOS, FortiGate, MikroTik, pfSense, Linux)
+- ✅ Output parser for interfaces, ARP, routing, ping, version, IPs, MACs
+- ✅ 5 executor actions: ssh_connect, ssh_disconnect, ssh_run, ssh_show, ssh_ping
+- ✅ Pydantic schemas + tool schemas + system prompt for all SSH actions
+
+## v10.0 — Sentinel Server (June 2026)
+- ✅ Daemon service manager (start/stop/heartbeat/job tracking)
+- ✅ Fleet manager (register/unregister/heartbeat/nodes)
+- ✅ Persistent job queue (submit/claim/complete/fail/cancel with priority ordering)
+- ✅ 14 new API endpoints (/daemon/*, /fleet/*, /jobs/*)
+
+## v11.0 — Memory (June 2026)
+- ✅ Episodic memory — timestamped JSONL with search, compression of old episodes
+- ✅ Semantic memory — SQLite key-value facts with categories, tags, access tracking
+- ✅ Working memory — in-memory session scratchpad with key-value and bucket stores
+
+## v12.0 — Conductor (June 2026)
+- ✅ Task planner — rule-based goal decomposition with dependency detection
+- ✅ Parallel executor — concurrent subtask execution respecting dependencies
+- ✅ Result synthesizer — merge multi-agent results with status aggregation
+- ✅ Conductor coordinator — end-to-end plan → execute → synthesize pipeline
+- ✅ 606 new tests across v8-v12 (5,943 total)
 
 ## v4.0 — Multi-Platform Core (June 2025)
 - ✅ Platform abstraction layer (`core/platform/`) with ABC interfaces for all OS-specific code

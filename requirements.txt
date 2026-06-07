@@ -42,6 +42,13 @@ uiautomation ~= 2.0; sys_platform == "win32"
 # ── System-tray support (optional — enables minimize-to-tray + background mode)
 pystray ~= 0.19
 
+# ── Browser automation (optional — enables web_* actions via Playwright) ──
+# Install: pip install playwright && playwright install
+playwright ~= 1.52
+
+# ── SSH / network device control (v9.0 — enables ssh_* actions) ─────────
+paramiko ~= 5.0
+
 # ── Windows-specific ────────────────────────────────────────────────────
 # pygetwindow only works on Windows and its dependency pyrect ships a
 # distutils-based setup.py that fails to build on Python 3.12+. Gate it

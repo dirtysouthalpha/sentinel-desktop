@@ -356,6 +356,17 @@ class SentinelServer:
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
         app.websocket("/ws")(self._handle_ws)
         app.websocket("/ws/terminal")(self._handle_terminal_ws)
+        # v10.0 — Sentinel Server routes
+        app.get("/daemon/status")(self._handle_daemon_status)
+        app.post("/daemon/start")(self._handle_daemon_start)
+        app.post("/daemon/stop")(self._handle_daemon_stop)
+        app.get("/fleet/nodes")(self._handle_fleet_nodes)
+        app.post("/fleet/register")(self._handle_fleet_register)
+        app.post("/fleet/unregister")(self._handle_fleet_unregister)
+        app.get("/jobs")(self._handle_jobs_list)
+        app.post("/jobs/submit")(self._handle_jobs_submit)
+        app.get("/jobs/{job_id}")(self._handle_job_status)
+        app.post("/jobs/{job_id}/cancel")(self._handle_job_cancel)
         # Dashboard UI — serve static files (must be last; mount catches all sub-paths)
         app.get("/")(self._handle_dashboard_index)
         static_dir = str(Path(__file__).parent / "static")
@@ -365,6 +376,118 @@ class SentinelServer:
     # ── Dashboard UI ────────────────────────────────────────────────────
 
     async def _handle_dashboard_index(self) -> FileResponse:
+        """Serve the dashboard HTML page."""
+        return FileResponse(os.path.join(os.path.dirname(__file__), "static", "index.html"))
+
+    # ── v10.0 — Sentinel Server handlers ────────────────────────────────
+
+    async def _handle_daemon_status(self) -> dict:
+        """GET /daemon/status — Get daemon service status."""
+        try:
+            from core.server.daemon import SentinelDaemon
+            daemon = SentinelDaemon()
+            return {"success": True, "data": daemon.get_status()}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_daemon_start(self) -> dict:
+        """POST /daemon/start — Start the daemon service."""
+        try:
+            from core.server.daemon import SentinelDaemon
+            daemon = SentinelDaemon()
+            result = daemon.start()
+            return {"success": True, "data": result}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_daemon_stop(self) -> dict:
+        """POST /daemon/stop — Stop the daemon service."""
+        try:
+            from core.server.daemon import SentinelDaemon
+            daemon = SentinelDaemon()
+            result = daemon.stop()
+            return {"success": True, "data": result}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_fleet_nodes(self) -> dict:
+        """GET /fleet/nodes — List all fleet nodes."""
+        try:
+            from core.server.fleet import FleetManager
+            fleet = FleetManager()
+            return {"success": True, "data": fleet.list_nodes()}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_fleet_register(self, data: dict) -> dict:
+        """POST /fleet/register — Register a fleet node."""
+        try:
+            from core.server.fleet import FleetManager
+            fleet = FleetManager()
+            result = fleet.register_node(
+                node_id=data.get("node_id", ""),
+                hostname=data.get("hostname", ""),
+                ip_address=data.get("ip_address", ""),
+                role=data.get("role", "agent"),
+                tags=data.get("tags"),
+            )
+            return result
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_fleet_unregister(self, data: dict) -> dict:
+        """POST /fleet/unregister — Unregister a fleet node."""
+        try:
+            from core.server.fleet import FleetManager
+            fleet = FleetManager()
+            return fleet.unregister_node(data.get("node_id", ""))
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_jobs_list(self, status: str | None = None) -> dict:
+        """GET /jobs — List jobs."""
+        try:
+            from core.server.job_queue import JobQueue
+            queue = JobQueue()
+            return {"success": True, "data": queue.list_jobs(status=status)}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_jobs_submit(self, data: dict) -> dict:
+        """POST /jobs/submit — Submit a new job."""
+        try:
+            from core.server.job_queue import JobQueue
+            queue = JobQueue()
+            job_id = queue.submit(
+                goal=data.get("goal", ""),
+                priority=data.get("priority", 0),
+                node_id=data.get("node_id"),
+            )
+            return {"success": True, "job_id": job_id}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_job_status(self, job_id: str) -> dict:
+        """GET /jobs/{job_id} — Get job status."""
+        try:
+            from core.server.job_queue import JobQueue
+            queue = JobQueue()
+            job = queue.get_job(job_id)
+            if job is None:
+                return {"success": False, "error": "Job not found"}
+            return {"success": True, "data": job}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_job_cancel(self, job_id: str) -> dict:
+        """POST /jobs/{job_id}/cancel — Cancel a job."""
+        try:
+            from core.server.job_queue import JobQueue
+            queue = JobQueue()
+            result = queue.cancel(job_id)
+            return {"success": result}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
         """Serve the Sentinel Prime Master Control Dashboard."""
         static_dir = Path(__file__).parent / "static"
         return FileResponse(static_dir / "index.html", media_type="text/html")

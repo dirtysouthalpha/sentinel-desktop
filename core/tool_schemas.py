@@ -650,6 +650,313 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    # ── Web / Browser actions (v8.0 — Playwright) ─────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "web_open",
+            "description": (
+                "Open a URL in the embedded browser. Use for web app automation — "
+                "firewalls, routers, admin portals, dashboards."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to navigate to"},
+                    "wait_until": {
+                        "type": "string",
+                        "enum": ["load", "domcontentloaded", "networkidle", "commit"],
+                        "default": "load",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_click",
+            "description": (
+                "Click an element in the browser by CSS selector, visible text, "
+                "or ARIA role. Auto-scrolls into view."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector, e.g. '#login-btn'"},
+                    "text": {"type": "string", "description": "Visible text to click"},
+                    "role": {"type": "string", "description": "ARIA role, e.g. 'button', 'link'"},
+                    "name": {"type": "string", "description": "Accessible name (use with role)"},
+                    "button": {
+                        "type": "string",
+                        "enum": ["left", "right", "middle"],
+                        "default": "left",
+                    },
+                    "click_count": {"type": "integer", "default": 1},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_type",
+            "description": (
+                "Type text into a browser form field. Clears existing content by default. "
+                "Find field by CSS selector, label text, or ARIA role."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to type"},
+                    "selector": {"type": "string", "description": "CSS selector for the input"},
+                    "label": {"type": "string", "description": "Label text associated with input"},
+                    "role": {"type": "string", "description": "ARIA role, e.g. 'textbox'"},
+                    "name": {"type": "string", "description": "Accessible name"},
+                    "clear": {"type": "boolean", "default": True},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_read",
+            "description": (
+                "Read text content from the browser page. Pass a selector to read "
+                "a specific element, or omit for the full page."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector (omit for full page)"},
+                    "full_page": {"type": "boolean", "default": False},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_extract",
+            "description": (
+                "Extract structured data from the browser page. Defaults to HTML tables "
+                "→ JSON. Also works with lists and other elements."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "default": "table",
+                        "description": "CSS selector for the data container",
+                    },
+                    "format": {"type": "string", "enum": ["json", "text"], "default": "json"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_wait_for",
+            "description": "Wait for an element, text, or network idle in the browser.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector to wait for"},
+                    "text": {"type": "string", "description": "Text to wait for on the page"},
+                    "state": {
+                        "type": "string",
+                        "enum": ["visible", "hidden", "attached", "detached"],
+                        "default": "visible",
+                    },
+                    "timeout": {"type": "number", "default": 30, "description": "Max wait in seconds"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_screenshot",
+            "description": "Capture a screenshot of the browser viewport or element.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector (omit for viewport)"},
+                    "full_page": {"type": "boolean", "default": False},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_eval_js",
+            "description": "Execute JavaScript in the browser context and return the result.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {"type": "string", "description": "JavaScript expression"},
+                },
+                "required": ["expression"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_download",
+            "description": "Download a file from the browser.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to download"},
+                    "save_path": {"type": "string", "description": "Local path to save file"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_upload",
+            "description": "Upload files to a web form via a file input element.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector for the file input",
+                    },
+                    "file_paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Paths of files to upload",
+                    },
+                },
+                "required": ["selector", "file_paths"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_tabs",
+            "description": "Manage browser tabs — list, switch, create, or close.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tab_action": {
+                        "type": "string",
+                        "enum": ["list", "switch", "new", "close"],
+                        "default": "list",
+                    },
+                    "index": {"type": "integer", "description": "Tab index for switch/close"},
+                    "url": {"type": "string", "description": "URL for new tab"},
+                },
+            },
+        },
+    },
+    # ── Netops / SSH actions (v9.0 — network device control) ────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "ssh_connect",
+            "description": (
+                "Connect to a network device (router, switch, firewall) via SSH. "
+                "Must connect before running any ssh_run/ssh_show/ssh_ping commands."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hostname": {"type": "string", "description": "Device IP or hostname"},
+                    "username": {"type": "string", "description": "SSH username"},
+                    "password": {"type": "string", "description": "SSH password"},
+                    "port": {"type": "integer", "default": 22},
+                    "key_filename": {"type": "string", "description": "Path to SSH private key"},
+                },
+                "required": ["hostname"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ssh_disconnect",
+            "description": "Disconnect from an SSH device.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hostname": {"type": "string", "description": "Device to disconnect from"},
+                },
+                "required": ["hostname"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ssh_run",
+            "description": "Run a raw command on a connected SSH device.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hostname": {"type": "string", "description": "Connected device hostname"},
+                    "command": {"type": "string", "description": "Command to execute"},
+                    "timeout": {"type": "number", "default": 30},
+                },
+                "required": ["hostname", "command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ssh_show",
+            "description": (
+                "Run a device-aware show command. Knows syntax for Cisco IOS, "
+                "JunOS, FortiGate, MikroTik, pfSense, Linux. "
+                "Options: version, interfaces, routing, arp, cpu, logging, config"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hostname": {"type": "string", "description": "Connected device"},
+                    "what": {
+                        "type": "string",
+                        "enum": ["version", "interfaces", "routing", "arp", "cpu", "logging", "config"],
+                    },
+                    "device_type": {
+                        "type": "string",
+                        "default": "generic",
+                        "description": "cisco_ios, cisco_nxos, juniper_junos, fortigate, mikrotik, pfsense, linux, generic",
+                    },
+                },
+                "required": ["hostname", "what"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ssh_ping",
+            "description": "Ping a target from a connected network device.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hostname": {"type": "string", "description": "Connected device"},
+                    "target": {"type": "string", "description": "IP or hostname to ping"},
+                    "count": {"type": "integer", "default": 4},
+                    "device_type": {"type": "string", "default": "generic"},
+                },
+                "required": ["hostname", "target"],
+            },
+        },
+    },
 ]
 
 

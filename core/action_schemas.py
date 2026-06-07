@@ -121,6 +121,162 @@ class KillProcessAction(_ActionBase):
 
 
 # ---------------------------------------------------------------------------
+# Web / Browser actions (v8.0 — Playwright)
+# ---------------------------------------------------------------------------
+
+_UrlStr = Annotated[str, Field(min_length=1, max_length=2048)]
+
+
+class WebOpenAction(_ActionBase):
+    """Navigate to a URL in the managed browser."""
+
+    action: Literal["web_open"]
+    url: _UrlStr
+    wait_until: Literal["load", "domcontentloaded", "networkidle", "commit"] = "load"
+
+
+class WebClickAction(_ActionBase):
+    """Click an element in the browser by selector, text, or ARIA role."""
+
+    action: Literal["web_click"]
+    selector: str | None = None
+    text: str | None = None
+    role: str | None = None
+    name: str | None = None
+    button: Literal["left", "right", "middle"] = "left"
+    click_count: Annotated[int, Field(ge=1, le=3)] = 1
+
+
+class WebTypeAction(_ActionBase):
+    """Type text into a browser form field."""
+
+    action: Literal["web_type"]
+    text: str
+    selector: str | None = None
+    label: str | None = None
+    role: str | None = None
+    name: str | None = None
+    clear: bool = True
+
+
+class WebReadAction(_ActionBase):
+    """Read text content from the browser page or element."""
+
+    action: Literal["web_read"]
+    selector: str | None = None
+    full_page: bool = False
+
+
+class WebExtractAction(_ActionBase):
+    """Extract structured data (tables, lists) from the browser page."""
+
+    action: Literal["web_extract"]
+    selector: str = "table"
+    format: Literal["json", "text"] = "json"
+
+
+class WebWaitForAction(_ActionBase):
+    """Wait for an element or condition in the browser."""
+
+    action: Literal["web_wait_for"]
+    selector: str | None = None
+    text: str | None = None
+    state: Literal["visible", "hidden", "attached", "detached"] = "visible"
+    timeout: Annotated[float, Field(ge=0.1, le=120.0)] = 30.0
+
+
+class WebScreenshotAction(_ActionBase):
+    """Capture a screenshot of the browser viewport or element."""
+
+    action: Literal["web_screenshot"]
+    selector: str | None = None
+    full_page: bool = False
+
+
+class WebEvalJsAction(_ActionBase):
+    """Execute JavaScript in the browser context."""
+
+    action: Literal["web_eval_js"]
+    expression: _NonEmptyStr
+
+
+class WebDownloadAction(_ActionBase):
+    """Download a file from the browser."""
+
+    action: Literal["web_download"]
+    url: str | None = None
+    save_path: str | None = None
+
+
+class WebUploadAction(_ActionBase):
+    """Upload files to a web form."""
+
+    action: Literal["web_upload"]
+    selector: _NonEmptyStr
+    file_paths: list[_NonEmptyStr] = Field(min_length=1)
+
+
+class WebTabsAction(_ActionBase):
+    """Manage browser tabs — list, switch, new, close."""
+
+    action: Literal["web_tabs"]
+    tab_action: Literal["list", "switch", "new", "close"] = "list"
+    index: Annotated[int, Field(ge=0)] | None = None
+    url: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Netops / SSH actions (v9.0 — network device control)
+# ---------------------------------------------------------------------------
+
+
+class SSHConnectAction(_ActionBase):
+    """Connect to a network device via SSH."""
+
+    action: Literal["ssh_connect"]
+    hostname: _NonEmptyStr
+    username: str = ""
+    password: str = ""
+    port: Annotated[int, Field(ge=1, le=65535)] = 22
+    key_filename: str | None = None
+
+
+class SSHDisconnectAction(_ActionBase):
+    """Disconnect from an SSH device."""
+
+    action: Literal["ssh_disconnect"]
+    hostname: _NonEmptyStr
+
+
+class SSHRunAction(_ActionBase):
+    """Run a command on a connected SSH device."""
+
+    action: Literal["ssh_run"]
+    hostname: _NonEmptyStr
+    command: _NonEmptyStr
+    timeout: Annotated[float, Field(ge=1.0, le=300.0)] = 30.0
+
+
+class SSHShowAction(_ActionBase):
+    """Run a device-aware show command via SSH."""
+
+    action: Literal["ssh_show"]
+    hostname: _NonEmptyStr
+    what: Literal["version", "interfaces", "routing", "arp", "cpu", "logging", "config"]
+    device_type: str = "generic"
+
+
+class SSHPingAction(_ActionBase):
+    """Ping a target from an SSH device."""
+
+    action: Literal["ssh_ping"]
+    hostname: _NonEmptyStr
+    target: _NonEmptyStr
+    count: Annotated[int, Field(ge=1, le=100)] = 4
+    device_type: str = "generic"
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -136,6 +292,24 @@ ACTION_MODELS: dict[str, type[_ActionBase]] = {
     "write_file": WriteFileAction,
     "read_file": ReadFileAction,
     "kill_process": KillProcessAction,
+    # Web / Browser (v8.0)
+    "web_open": WebOpenAction,
+    "web_click": WebClickAction,
+    "web_type": WebTypeAction,
+    "web_read": WebReadAction,
+    "web_extract": WebExtractAction,
+    "web_wait_for": WebWaitForAction,
+    "web_screenshot": WebScreenshotAction,
+    "web_eval_js": WebEvalJsAction,
+    "web_download": WebDownloadAction,
+    "web_upload": WebUploadAction,
+    "web_tabs": WebTabsAction,
+    # Netops (v9.0)
+    "ssh_connect": SSHConnectAction,
+    "ssh_disconnect": SSHDisconnectAction,
+    "ssh_run": SSHRunAction,
+    "ssh_show": SSHShowAction,
+    "ssh_ping": SSHPingAction,
 }
 
 

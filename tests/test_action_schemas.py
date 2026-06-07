@@ -142,3 +142,181 @@ def test_button_enum_constraint():
 def test_high_impact_actions_are_modeled(name):
     """Don't accidentally drop a high-impact action from the registry."""
     assert name in ACTION_MODELS
+
+
+# ---------------------------------------------------------------------------
+# Web / Browser action schemas (v8.0)
+# ---------------------------------------------------------------------------
+
+
+class TestWebOpenSchema:
+    def test_valid(self):
+        out, errs = validate_action({"action": "web_open", "url": "https://example.com"})
+        assert errs == []
+        assert out["url"] == "https://example.com"
+        assert out["wait_until"] == "load"  # default
+
+    def test_missing_url(self):
+        _, errs = validate_action({"action": "web_open"})
+        assert errs
+
+    def test_invalid_wait_until(self):
+        _, errs = validate_action({"action": "web_open", "url": "https://x.com", "wait_until": "bad"})
+        assert errs
+
+
+class TestWebClickSchema:
+    def test_by_selector(self):
+        out, errs = validate_action({"action": "web_click", "selector": "#btn"})
+        assert errs == []
+        assert out["button"] == "left"  # default
+        assert out["click_count"] == 1
+
+    def test_by_role_and_name(self):
+        out, errs = validate_action({"action": "web_click", "role": "button", "name": "Go"})
+        assert errs == []
+
+    def test_invalid_button(self):
+        _, errs = validate_action({"action": "web_click", "selector": "#x", "button": "toe"})
+        assert errs
+
+    def test_click_count_too_high(self):
+        _, errs = validate_action({"action": "web_click", "selector": "#x", "click_count": 10})
+        assert errs
+
+
+class TestWebTypeSchema:
+    def test_valid(self):
+        out, errs = validate_action({"action": "web_type", "text": "hello", "selector": "#q"})
+        assert errs == []
+        assert out["clear"] is True  # default
+
+    def test_missing_text(self):
+        _, errs = validate_action({"action": "web_type", "selector": "#q"})
+        assert errs
+
+    def test_by_label(self):
+        out, errs = validate_action({"action": "web_type", "text": "user@x.com", "label": "Email"})
+        assert errs == []
+
+
+class TestWebReadSchema:
+    def test_defaults(self):
+        out, errs = validate_action({"action": "web_read"})
+        assert errs == []
+        assert out["full_page"] is False
+
+    def test_with_selector(self):
+        out, errs = validate_action({"action": "web_read", "selector": "#content"})
+        assert errs == []
+
+
+class TestWebExtractSchema:
+    def test_defaults(self):
+        out, errs = validate_action({"action": "web_extract"})
+        assert errs == []
+        assert out["selector"] == "table"
+        assert out["format"] == "json"
+
+    def test_invalid_format(self):
+        _, errs = validate_action({"action": "web_extract", "format": "csv"})
+        assert errs
+
+
+class TestWebWaitForSchema:
+    def test_defaults(self):
+        out, errs = validate_action({"action": "web_wait_for"})
+        assert errs == []
+        assert out["timeout"] == 30.0
+
+    def test_timeout_bounds(self):
+        _, errs = validate_action({"action": "web_wait_for", "timeout": 0.0})
+        assert errs
+        _, errs = validate_action({"action": "web_wait_for", "timeout": 200.0})
+        assert errs
+
+    def test_invalid_state(self):
+        _, errs = validate_action({"action": "web_wait_for", "state": "floating"})
+        assert errs
+
+
+class TestWebScreenshotSchema:
+    def test_defaults(self):
+        out, errs = validate_action({"action": "web_screenshot"})
+        assert errs == []
+        assert out["full_page"] is False
+
+
+class TestWebEvalJsSchema:
+    def test_valid(self):
+        out, errs = validate_action({"action": "web_eval_js", "expression": "1+1"})
+        assert errs == []
+
+    def test_empty_expression(self):
+        _, errs = validate_action({"action": "web_eval_js", "expression": ""})
+        assert errs
+
+
+class TestWebDownloadSchema:
+    def test_no_args_ok(self):
+        out, errs = validate_action({"action": "web_download"})
+        assert errs == []
+        assert out["url"] is None
+
+    def test_with_url_and_path(self):
+        out, errs = validate_action({
+            "action": "web_download",
+            "url": "https://x.com/f.pdf",
+            "save_path": "/tmp/f.pdf",
+        })
+        assert errs == []
+
+
+class TestWebUploadSchema:
+    def test_valid(self):
+        out, errs = validate_action({
+            "action": "web_upload",
+            "selector": "#file",
+            "file_paths": ["/tmp/a.pdf"],
+        })
+        assert errs == []
+
+    def test_missing_selector(self):
+        _, errs = validate_action({"action": "web_upload", "file_paths": ["/tmp/a"]})
+        assert errs
+
+    def test_empty_file_paths(self):
+        _, errs = validate_action({"action": "web_upload", "selector": "#f", "file_paths": []})
+        assert errs
+
+
+class TestWebTabsSchema:
+    def test_defaults(self):
+        out, errs = validate_action({"action": "web_tabs"})
+        assert errs == []
+        assert out["tab_action"] == "list"
+
+    def test_switch_with_index(self):
+        out, errs = validate_action({"action": "web_tabs", "tab_action": "switch", "index": 2})
+        assert errs == []
+
+    def test_invalid_tab_action(self):
+        _, errs = validate_action({"action": "web_tabs", "tab_action": "explode"})
+        assert errs
+
+    def test_negative_index(self):
+        _, errs = validate_action({"action": "web_tabs", "tab_action": "switch", "index": -1})
+        assert errs
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "web_open", "web_click", "web_type", "web_read", "web_extract",
+        "web_wait_for", "web_screenshot", "web_eval_js", "web_download",
+        "web_upload", "web_tabs",
+    ],
+)
+def test_web_actions_are_modeled(name):
+    """All web actions are in the ACTION_MODELS registry."""
+    assert name in ACTION_MODELS

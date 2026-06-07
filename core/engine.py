@@ -181,6 +181,35 @@ Supports: outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc
 {"action": "note", "text": "observation — no side effects"}
 {"action": "finish", "summary": "Task completed. Opened Chrome and navigated to example.com."}
 
+### Web / Browser (for web apps, admin portals, firewalls, routers)
+{"action": "web_open", "url": "https://192.168.1.1"} — navigate in embedded browser
+{"action": "web_click", "selector": "#login-btn"} — click by CSS selector
+{"action": "web_click", "text": "Submit"} — click by visible text
+{"action": "web_click", "role": "button", "name": "Login"} — click by ARIA role
+{"action": "web_type", "text": "admin", "selector": "#username"} — type into form field
+{"action": "web_type", "text": "user@x.com", "label": "Email"} — type by label
+{"action": "web_read"} — read full page text
+{"action": "web_read", "selector": "#status"} — read specific element
+{"action": "web_extract", "selector": "table"} — extract table data as JSON
+{"action": "web_wait_for", "selector": "#loaded"} — wait for element
+{"action": "web_wait_for", "text": "Dashboard"} — wait for text
+{"action": "web_screenshot"} — capture browser viewport
+{"action": "web_eval_js", "expression": "document.title"} — run JavaScript
+{"action": "web_download", "url": "https://x.com/file.pdf", "save_path": "C:/Downloads/file.pdf"}
+{"action": "web_upload", "selector": "#file-input", "file_paths": ["C:/doc.pdf"]}
+{"action": "web_tabs", "tab_action": "list"} — list tabs
+{"action": "web_tabs", "tab_action": "new", "url": "https://new.com"} — new tab
+
+### SSH / Network Devices (for routers, switches, firewalls)
+{"action": "ssh_connect", "hostname": "192.168.1.1", "username": "admin", "password": "secret"}
+{"action": "ssh_disconnect", "hostname": "192.168.1.1"}
+{"action": "ssh_run", "hostname": "192.168.1.1", "command": "show version"}
+{"action": "ssh_show", "hostname": "192.168.1.1", "what": "interfaces", "device_type": "cisco_ios"}
+{"action": "ssh_show", "hostname": "192.168.1.1", "what": "version"}
+{"action": "ssh_show", "hostname": "10.0.0.1", "what": "arp"}
+{"action": "ssh_show", "hostname": "10.0.0.1", "what": "routing"}
+{"action": "ssh_ping", "hostname": "192.168.1.1", "target": "8.8.8.8"}
+
 ## Self-Healing — ALWAYS try alternatives before reporting failure
 
 PREFER click_element over raw coordinates when element IDs are available.
@@ -357,6 +386,9 @@ class AgentEngine:
         self._vault = None
         self._audit_exporter = None
         self._agent_pool = None
+        self._web_recorder = None
+        self._session_vault = None
+        self._interaction_mode = None  # set by dual-mode detection
 
     # ── Lazy subsystem accessors ─────────────────────────────────────
 
@@ -472,6 +504,35 @@ class AgentEngine:
             self._agent_pool = AgentPool(max_agents=self.config.get("max_agents", 3))
         return self._agent_pool
 
+    # ── Web subsystems (v8.0) ──────────────────────────────────────────
+
+    @property
+    def web_recorder(self):
+        """Lazily create and return the WebRecorder instance."""
+        if self._web_recorder is None:
+            from core.web.web_recorder import WebRecorder
+
+            self._web_recorder = WebRecorder()
+        return self._web_recorder
+
+    @property
+    def session_vault(self):
+        """Lazily create and return the SessionVault instance."""
+        if self._session_vault is None:
+            from core.web.session_vault import SessionVault
+
+            self._session_vault = SessionVault()
+        return self._session_vault
+
+    @property
+    def interaction_mode(self):
+        """Current interaction mode (native or web), auto-detected from goal."""
+        if self._interaction_mode is None:
+            from core.web.dual_mode import InteractionMode
+
+            self._interaction_mode = InteractionMode.NATIVE
+        return self._interaction_mode
+
     # ── Sync entry point ────────────────────────────────────────────────
 
     def run(self, goal: str) -> dict[str, Any]:
@@ -481,6 +542,16 @@ class AgentEngine:
         self.notes = []
         self.forensic_log = []
         self.finish_summary = ""
+
+        # v8.0: Auto-detect web vs native mode from goal
+        from core.web.dual_mode import InteractionMode, detect_mode_from_goal
+
+        self._interaction_mode = detect_mode_from_goal(goal)
+        if self._interaction_mode == InteractionMode.WEB:
+            logger.info("Dual-mode: detected WEB goal — %s", goal[:80])
+            # Auto-start web recorder for web goals
+            if self.config.get("web_recording_enabled"):
+                self.web_recorder.start(name=goal[:60], goal=goal)
 
         # Auto-start scheduler if configured
         if self.config.get("scheduler_enabled"):
@@ -584,6 +655,14 @@ class AgentEngine:
             self.notes.append(self.finish_summary)
             self._log_step(action, {"ok": True, "msg": self.finish_summary})
             self.running = False
+            # v8.0: Stop web recorder and save recording if active
+            if hasattr(self, "_web_recorder") and self._web_recorder and self._web_recorder.is_recording:
+                recording = self._web_recorder.stop()
+                if recording and recording.step_count > 0:
+                    try:
+                        recording.save(f"recordings/{goal[:40].replace(' ', '_')}.json")
+                    except Exception as exc:
+                        logger.warning("Failed to save web recording: %s", exc)
             return "abort", screenshot_b64
 
         action, gate_outcome = self._check_approval_gate(action, action_name, messages)
@@ -686,6 +765,10 @@ class AgentEngine:
         action_error = None
         result = None
         try:
+            # v8.0: Capture web actions to the web recorder if active
+            if hasattr(self, "_web_recorder") and self._web_recorder and self._web_recorder.is_recording:
+                self._web_recorder.capture(action)
+
             result = self.executor.execute_sync(action)
         except (KeyboardInterrupt, SystemExit, MemoryError):
             raise
@@ -777,7 +860,8 @@ class AgentEngine:
             raw_image = capture_screen(monitor=self.config.get("monitor"))
             perception_result = self._run_perception(raw_image)
             if perception_result is not None:
-                self.executor.perception_result = perception_result
+                if hasattr(self, "executor") and self.executor is not None:
+                    self.executor.perception_result = perception_result
                 perception_context = perception_result.to_llm_context()
                 if perception_result.annotated_image is not None:
                     screenshot_b64 = image_to_base64(perception_result.annotated_image)

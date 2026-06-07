@@ -6,30 +6,31 @@
 milestone:
   version: "8.0.0"
   name: "Webhand"
-  status: "in_progress"
+  status: "complete"
   started: 2026-06-06
+  completed: 2026-06-06
 
 progress:
-  phases_completed: 0
-  requirements_completed: 0
+  phases_completed: 4
+  requirements_completed: 19
   total_phases: 4
   total_requirements: 19
 
 metadata:
   last_updated: 2026-06-06
-  last_phase: Phase 1
+  last_phase: Phase 4
 ```
 
 ---
 
 ## Current Position
 
-Phase: 1 of 4 (Browser Core)
-Plan: 0 of 5 in current phase
-Status: Ready to build
-Last activity: 2026-06-06 — Milestone v8.0.0 Webhand started
+Phase: 4 of 4 (Session Vault & Web Recorder)
+Plan: 2 of 2 in current phase
+Status: ✅ Milestone Complete
+Last activity: 2026-06-06 — Phase 4 Session Vault & Web Recorder complete
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ---
 
@@ -39,6 +40,39 @@ Progress: [░░░░░░░░░░] 0%
 - Playwright chosen over Selenium for modern API, auto-wait, and multi-browser support
 - Browser module is optional dependency behind `pip install sentinel-desktop[web]`
 - Session vault reuses existing core/encryption.py for cookie storage
+
+### Phase 1 — Browser Core (COMPLETE)
+- WEB-01: BrowserManager with Playwright integration ✅
+- WEB-02: web_open action — navigation + page load ✅
+- WEB-03: web_click action — selector/text/role targeting ✅
+- WEB-04: web_type action — form fill with clear ✅
+- WEB-05: web_read action — page/element text extraction ✅
+- Pydantic schemas for all 11 web actions ✅
+- Playwright added as optional dependency ✅
+- 178 new tests (browser + schemas + executor dispatch) ✅
+
+### Phase 2 — Advanced Web Actions (COMPLETE)
+- WEB-06: web_extract — table → JSON, lists, generic element text ✅
+- WEB-07: web_wait_for — selector, text, network idle, state transitions ✅
+- WEB-08: web_screenshot — viewport, element, full page, base64 ✅
+- WEB-09: web_eval_js — expressions, complex objects, null returns ✅
+- WEB-10: web_download — URL download, save path, suggested filename ✅
+- WEB-11: web_upload — single/multi file, non-file-input error ✅
+- WEB-12: web_tabs — full lifecycle (new/switch/list/close) ✅
+- 32 new edge case tests ✅
+
+### Phase 3 — Dual-Mode & Appliance UX (COMPLETE)
+- DUAL-01: core/web/dual_mode.py — goal/action mode detection ✅
+- DUAL-02: classify_handoff() — mode transitions ✅
+- CERT-01: core/web/appliance.py — cert whitelist load/save/check ✅
+- CERT-02: core/web/login_detector.py — 10 IT appliance profiles ✅
+- 76 new tests (dual_mode + cert + login_detector) ✅
+
+### Phase 4 — Session Vault & Web Recorder (COMPLETE)
+- SESS-01: core/web/session_vault.py — save cookies + localStorage per site ✅
+- SESS-02: restore_to_browser() — reload saved cookies on return visits ✅
+- REC-01: core/web/web_recorder.py — capture web actions into replayable JSON ✅
+- 39 new tests (session_vault + web_recorder) ✅
 
 ### Blockers
 
@@ -59,6 +93,11 @@ Progress: [░░░░░░░░░░] 0%
 | Date | Event | Details |
 |------|-------|---------|
 | 2026-06-06 | v8.0.0 Webhand started | Browser automation milestone |
+| 2026-06-06 | Phase 1 Browser Core complete | WEB-01–05, 178 new tests, 5,515 total |
+| 2026-06-06 | Phase 2 Advanced Web Actions complete | WEB-06–12, 32 new tests, 5,547 total |
+| 2026-06-06 | Phase 3 Dual-Mode & Appliance UX complete | DUAL/CERT, 76 new tests, 5,623 total |
+| 2026-06-06 | Phase 4 Session Vault & Web Recorder complete | SESS/REC, 39 new tests, 5,662 total |
+| 2026-06-06 | v8.0.0 Webhand milestone complete | 4 phases, 19 requirements, 325 new tests |
 | 2026-06-06 | v7.0.0 Perception shipped | 6 phases, 17 requirements, 5,337 tests |
 
 ---
