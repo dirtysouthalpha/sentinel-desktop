@@ -135,7 +135,7 @@ class SSHClient:
             try:
                 self._client.close()
             except Exception:
-                pass
+                logger.debug("SSH close raised exception", exc_info=True)
             self._client = None
             self._connected = False
             logger.info("SSH disconnected from %s", self.hostname)

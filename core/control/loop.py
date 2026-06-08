@@ -140,7 +140,7 @@ class ControlLoop:
                 try:
                     on_step_callback(step, grounded, report)
                 except Exception:
-                    pass
+                    logger.debug("on_step_callback raised exception", exc_info=True)
 
         elapsed = (time.monotonic() - start_time) * 1000
 
