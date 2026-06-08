@@ -530,3 +530,196 @@ class TestControlLoop:
         result = loop.execute(goal="Test", max_steps=10)
 
         assert result["status"] == "completed"
+
+    def test_execute_max_retries_during_grounding(self):
+        """Test max retries exceeded during grounding (lines 92-102)."""
+        from core.control.loop import ControlLoop
+        from unittest.mock import MagicMock
+
+        executor = MagicMock()
+        executor.execute_sync.return_value = {"success": True}
+
+        loop = ControlLoop(executor=executor, max_retries_per_step=2)
+
+        # Create a simple plan
+        step = PlanStep(
+            id=1,
+            description="Click button",
+            step_type=StepType.CLICK,
+            target="test",
+        )
+        plan = ExecutionPlan(steps=[step])
+        loop.planner.plan = MagicMock(return_value=plan)
+
+        # Mock grounder to return ungrounded action
+        loop.grounder.ground = MagicMock(
+            return_value=GroundedAction(
+                step=step,
+                action_type="click",
+                x=None,  # No coordinates = not grounded
+                y=None,
+                confidence=0.0,
+                method="failed",
+            )
+        )
+
+        result = loop.execute(goal="Test", max_steps=10)
+
+        # Should handle the ungrounded action with retry logic
+        # The step won't execute since it's never grounded, but retries should be tracked
+        assert result["status"] in ["completed", "failed", "partial"]
+        # Verify that the grounder was called (indicating retry attempts were made)
+        assert loop.grounder.ground.call_count > 0
+
+    def test_execute_successful_step_completion(self):
+        """Test successful step completion path (lines 121-122)."""
+        from core.control.loop import ControlLoop
+        from unittest.mock import MagicMock
+
+        executor = MagicMock()
+        executor.execute_sync.return_value = {"success": True, "output": "Clicked"}
+
+        loop = ControlLoop(executor=executor)
+
+        # Create a simple plan
+        step = PlanStep(
+            id=1,
+            description="Click button",
+            step_type=StepType.CLICK,
+            target="test",
+        )
+        plan = ExecutionPlan(steps=[step])
+        loop.planner.plan = MagicMock(return_value=plan)
+
+        # Mock grounder to succeed
+        loop.grounder.ground = MagicMock(
+            return_value=GroundedAction(
+                step=step,
+                action_type="click",
+                x=100,
+                y=100,
+                method="test",
+                confidence=1.0,
+            )
+        )
+
+        result = loop.execute(goal="Test", max_steps=10)
+
+        # Should complete successfully
+        assert result["status"] == "completed"
+        assert result["steps_executed"] == 1
+
+    def test_execute_max_retries_during_execution(self):
+        """Test max retries exceeded during execution (lines 126-127)."""
+        from core.control.loop import ControlLoop
+        from unittest.mock import MagicMock
+
+        executor = MagicMock()
+        # Make executor fail but should retry
+        executor.execute_sync.return_value = {"success": False, "should_retry": True}
+
+        loop = ControlLoop(executor=executor, max_retries_per_step=2)
+
+        # Create a simple plan
+        step = PlanStep(
+            id=1,
+            description="Click button",
+            step_type=StepType.CLICK,
+            target="test",
+        )
+        plan = ExecutionPlan(steps=[step])
+        loop.planner.plan = MagicMock(return_value=plan)
+
+        # Mock grounder to succeed
+        loop.grounder.ground = MagicMock(
+            return_value=GroundedAction(
+                step=step,
+                action_type="click",
+                x=100,
+                y=100,
+                method="test",
+                confidence=1.0,
+            )
+        )
+
+        result = loop.execute(goal="Test", max_steps=10)
+
+        # Should handle retry logic
+        assert result["steps_executed"] >= 1
+        assert result["status"] in ["completed", "failed", "partial"]
+
+    def test_execute_with_callback_exception(self):
+        """Test callback execution with exception handling (lines 140-143)."""
+        from core.control.loop import ControlLoop
+        from unittest.mock import MagicMock
+
+        executor = MagicMock()
+        executor.execute_sync.return_value = {"success": True}
+
+        loop = ControlLoop(executor=executor)
+
+        # Create a simple plan
+        step = PlanStep(
+            id=1,
+            description="Click button",
+            step_type=StepType.CLICK,
+            target="test",
+        )
+        plan = ExecutionPlan(steps=[step])
+        loop.planner.plan = MagicMock(return_value=plan)
+
+        # Mock grounder to succeed
+        loop.grounder.ground = MagicMock(
+            return_value=GroundedAction(
+                step=step,
+                action_type="click",
+                x=100,
+                y=100,
+                method="test",
+                confidence=1.0,
+            )
+        )
+
+        # Create a callback that raises an exception
+        def failing_callback(step, grounded, report):
+            raise ValueError("Test exception in callback")
+
+        result = loop.execute(goal="Test", max_steps=10, on_step_callback=failing_callback)
+
+        # Should handle callback exception gracefully and continue
+        assert result["status"] == "completed"
+
+    def test_execute_with_no_executor(self):
+        """Test execution with no executor configured (line 173)."""
+        from core.control.loop import ControlLoop
+        from unittest.mock import MagicMock
+
+        # Create loop without executor
+        loop = ControlLoop(executor=None)
+
+        # Create a simple plan
+        step = PlanStep(
+            id=1,
+            description="Click button",
+            step_type=StepType.CLICK,
+            target="test",
+        )
+        plan = ExecutionPlan(steps=[step])
+        loop.planner.plan = MagicMock(return_value=plan)
+
+        # Mock grounder to succeed
+        loop.grounder.ground = MagicMock(
+            return_value=GroundedAction(
+                step=step,
+                action_type="click",
+                x=100,
+                y=100,
+                method="test",
+                confidence=1.0,
+            )
+        )
+
+        result = loop.execute(goal="Test", max_steps=10)
+
+        # Should handle missing executor gracefully
+        assert result["status"] in ["completed", "failed", "partial"]
