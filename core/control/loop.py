@@ -16,6 +16,7 @@ from core.control.grounder import ActionGrounder
 from core.control.planner import StepStatus, StepType, TaskPlanner
 from core.control.verifier import ActionVerifier
 from core.perception.pipeline import PerceptionPipeline
+from core.perception.types import PerceptionResult
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,7 @@ class ControlLoop:
         except Exception as exc:
             return {"success": False, "output": str(exc)}
 
-    def _verify_action(self, before_perception, after_perception):
+    def _verify_action(self, before_perception: PerceptionResult, after_perception: PerceptionResult):
         """Verify action success using before/after perception."""
         before_img = before_perception.annotated_image
         after_img = after_perception.annotated_image
