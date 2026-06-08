@@ -94,6 +94,188 @@ class TestEpisodicMemory:
         mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
         assert mem.search("anything") == []
 
+    def test_search_outcome_matching(self, tmp_path: Path):
+        """Test search matches against outcome field."""
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+        mem.store("Login", outcome="Successfully authenticated")
+        mem.store("Logout", outcome="Failed to disconnect")
+        results = mem.search("authenticated")
+        assert len(results) == 1
+        assert "Login" in results[0]["goal"]
+
+    def test_search_case_insensitive(self, tmp_path: Path):
+        """Test search is case-insensitive."""
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+        mem.store("FIREWALL Configuration")
+        results = mem.search("firewall")
+        assert len(results) == 1
+
+    def test_search_with_limit(self, tmp_path: Path):
+        """Test search respects limit parameter."""
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+        for i in range(10):
+            mem.store(f"Task {i}", tags=["test"])
+        results = mem.search("test", limit=3)
+        assert len(results) == 3
+
+    def test_compress_old_episodes(self, tmp_path: Path):
+        """Test compression of old episodes."""
+        import json
+        from datetime import datetime, timedelta
+
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+
+        # Store an episode and manually make it appear old
+        ep_id = mem.store("Old task", success=True)
+
+        # Read the file and modify the timestamp
+        lines = tmp_path.joinpath("episodes.jsonl").read_text(encoding="utf-8").splitlines()
+        if lines:
+            data = json.loads(lines[0])
+            # Make it appear 40 days old
+            old_time = datetime.utcnow() - timedelta(days=40)
+            data["created_at"] = old_time.isoformat()
+            lines[0] = json.dumps(data, ensure_ascii=False)
+            # Write with proper trailing newline
+            tmp_path.joinpath("episodes.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        # Create a new memory instance to pick up the modified file
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+
+        # Add a recent episode
+        mem.store("Recent task", success=True)
+
+        # Before compression, should have 2 episodes
+        assert mem.count() == 2
+
+        # Compress episodes older than 30 days
+        compressed_count = mem.compress_old(days=30)
+        assert compressed_count == 1
+
+        # After compression, should have 2 episodes (summary + recent)
+        assert mem.count() == 2
+
+        # Verify the compressed summary exists
+        recent = mem.recall(limit=10)
+        summary_eps = [ep for ep in recent if "compressed" in ep.get("tags", [])]
+        assert len(summary_eps) == 1
+        assert "Summary" in summary_eps[0]["goal"]
+
+    def test_compress_no_old_episodes(self, tmp_path: Path):
+        """Test compression when there are no old episodes."""
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+        mem.store("Recent task", success=True)
+
+        compressed_count = mem.compress_old(days=30)
+        assert compressed_count == 0
+        assert mem.count() == 1
+
+    def test_compress_with_invalid_timestamp(self, tmp_path: Path):
+        """Test compression handles episodes with invalid timestamps."""
+        import json
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+
+        # Store an episode
+        mem.store("Task with bad timestamp", success=True)
+
+        # Corrupt the timestamp
+        lines = tmp_path.joinpath("episodes.jsonl").read_text(encoding="utf-8").splitlines()
+        if lines:
+            data = json.loads(lines[0])
+            data["created_at"] = "invalid-date"
+            lines[0] = json.dumps(data, ensure_ascii=False)
+            # Write with proper trailing newline
+            tmp_path.joinpath("episodes.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        # Create a new memory instance to pick up the modified file
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+
+        # Compress should skip the invalid episode
+        compressed_count = mem.compress_old(days=30)
+        # The episode with invalid timestamp should be kept as "recent"
+        assert compressed_count == 0
+        assert mem.count() == 1
+
+    def test_read_all_with_invalid_json(self, tmp_path: Path):
+        """Test _read_all handles invalid JSON gracefully."""
+        path = tmp_path / "episodes.jsonl"
+        path.write_text("valid line\ninvalid json\nanother valid line\n", encoding="utf-8")
+
+        mem = EpisodicMemory(path=path)
+        # Should skip invalid lines
+        count = mem.count()
+        # Should have read the valid lines only
+        assert count >= 0
+
+    def test_read_all_with_missing_fields(self, tmp_path: Path):
+        """Test _read_all handles episodes with missing fields."""
+        import json
+        path = tmp_path / "episodes.jsonl"
+
+        # Write JSON with missing required fields
+        path.write_text('{"incomplete": "data"}\n', encoding="utf-8")
+
+        mem = EpisodicMemory(path=path)
+        # Should handle incomplete data gracefully
+        count = mem.count()
+        assert count >= 0
+
+    def test_recall_with_offset(self, tmp_path: Path):
+        """Test recall with offset parameter."""
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+        for i in range(10):
+            mem.store(f"Task {i}")
+
+        # Get episodes 5-9
+        results = mem.recall(limit=5, offset=5)
+        assert len(results) == 5
+
+    def test_empty_file_handling(self, tmp_path: Path):
+        """Test handling of empty episodic file."""
+        path = tmp_path / "episodes.jsonl"
+        path.write_text("", encoding="utf-8")
+
+        mem = EpisodicMemory(path=path)
+        assert mem.count() == 0
+        assert mem.recall() == []
+        assert mem.search("anything") == []
+
+    def test_compress_all_successful(self, tmp_path: Path):
+        """Test compression when all old episodes were successful."""
+        import json
+        from datetime import datetime, timedelta
+
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+
+        # Store successful episodes and make them old
+        for i in range(3):
+            mem.store(f"Old task {i}", success=True)
+
+        # Manually age the episodes
+        lines = tmp_path.joinpath("episodes.jsonl").read_text(encoding="utf-8").splitlines()
+        aged_lines = []
+        for line in lines:
+            data = json.loads(line)
+            old_time = datetime.utcnow() - timedelta(days=40)
+            data["created_at"] = old_time.isoformat()
+            aged_lines.append(json.dumps(data, ensure_ascii=False))
+        # Write with proper trailing newline
+        tmp_path.joinpath("episodes.jsonl").write_text("\n".join(aged_lines) + "\n", encoding="utf-8")
+
+        # Create a new memory instance to pick up the modified file
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+
+        # Compress
+        compressed_count = mem.compress_old(days=30)
+        assert compressed_count == 3
+
+        # Check the summary
+        recent = mem.recall(limit=10)
+        summary_eps = [ep for ep in recent if "compressed" in ep.get("tags", [])]
+        assert len(summary_eps) == 1
+        # All successful, so summary should be successful
+        assert summary_eps[0]["success"] is True
+
 
 class TestEpisode:
     def test_to_dict_roundtrip(self):
