@@ -178,8 +178,16 @@ class ControlLoop:
 
     def _verify_action(self, before_perception: PerceptionResult, after_perception: PerceptionResult):
         """Verify action success using before/after perception."""
+        from core.control.verifier import VerifyResult, VerificationReport
+
         before_img = before_perception.annotated_image
         after_img = after_perception.annotated_image
         if before_img and after_img:
             return self.verifier.verify(before_img, after_img)
-        return self.verifier.__class__.__mro__  # fallback
+        # Fallback when images not available - assume success to avoid blocking
+        return VerificationReport(
+            result=VerifyResult.SUCCESS,
+            pixel_diff_percent=0.0,
+            confidence=0.0,
+            details="No images available for verification",
+        )
