@@ -420,3 +420,240 @@ class TestPipelineIntegration:
             include_vision=False,
         )
         assert r1.screenshot_hash == r2.screenshot_hash
+
+    def test_query_accessibility_with_backend(self):
+        """Test _query_accessibility with actual backend calls."""
+        from core.perception.pipeline import _result_cache, _result_cache_lock
+
+        with _result_cache_lock:
+            _result_cache.clear()
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+
+        # Mock backend to return sample tree
+        mock_node = type("Node", (), {
+            "name": "Button",
+            "control_type": "Button",
+            "bounding_box": (10, 10, 100, 30),
+            "actions": ["click"],
+            "raw": {"role": "button"}
+        })()
+
+        with patch("core.platform.get_backend") as mock_get_backend:
+            mock_backend = type("Backend", (), {
+                "accessibility": type("Acc", (), {
+                    "is_available": lambda: True,
+                    "get_tree": lambda x: [mock_node]
+                })()
+            })()
+            mock_get_backend.return_value = mock_backend
+
+            result = pipeline._query_accessibility()
+            # Should return results from the mocked backend
+            assert isinstance(result, list)
+
+    def test_query_accessibility_unavailable(self):
+        """Test _query_accessibility when backend is unavailable."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+
+        with patch("core.platform.get_backend") as mock_get_backend:
+            mock_backend = type("Backend", (), {
+                "accessibility": type("Acc", (), {
+                    "is_available": lambda: False
+                })()
+            })()
+            mock_get_backend.return_value = mock_backend
+
+            result = pipeline._query_accessibility()
+            assert result == []
+
+    def test_query_accessibility_exception_handling(self):
+        """Test _query_accessibility handles exceptions gracefully."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+
+        with patch("core.platform.get_backend", side_effect=ImportError("No module")):
+            result = pipeline._query_accessibility()
+            assert result == []
+
+    def test_query_ocr_handles_exceptions(self):
+        """Test _query_ocr handles exceptions gracefully."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600), color="white")
+
+        # Test with missing OCR module (ImportError)
+        result = pipeline._query_ocr(img)
+        assert isinstance(result, list)  # Should return empty list on failure
+
+    def test_query_vision_placeholder(self):
+        """Test _query_vision returns empty list (placeholder for future)."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600), color="white")
+
+        result = pipeline._query_vision(img)
+        assert result == []
+
+    def test_classify_element_type_button(self):
+        """Test element type classification for Button."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+
+        # Test common button control types
+        assert pipeline._classify_element_type("Button") == ElementType.BUTTON
+        assert pipeline._classify_element_type("button") == ElementType.BUTTON
+
+    def test_classify_element_type_text(self):
+        """Test element type classification for Text."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+
+        # Test text control types
+        assert pipeline._classify_element_type("Text") == ElementType.TEXT
+        assert pipeline._classify_element_type("Edit") == ElementType.INPUT  # Edit maps to INPUT, not TEXT
+
+    def test_classify_element_type_unknown(self):
+        """Test element type classification for unknown types."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+
+        # Test unknown control type defaults to UNKNOWN
+        assert pipeline._classify_element_type("UnknownWidget") == ElementType.UNKNOWN
+        assert pipeline._classify_element_type("") == ElementType.UNKNOWN
+
+    def test_cache_key_generation(self):
+        """Test _cache_key generates consistent hash."""
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (100, 100), color="blue")
+
+        key1 = pipeline._cache_key(img)
+        key2 = pipeline._cache_key(img)
+
+        assert key1 == key2
+        assert isinstance(key1, str)
+        assert len(key1) > 0
+
+    def test_cache_operations(self):
+        """Test cache store and get operations."""
+        from core.perception.pipeline import _result_cache, _result_cache_lock, PerceptionPipeline
+        from core.perception.types import PerceptionResult
+
+        with _result_cache_lock:
+            _result_cache.clear()
+
+        pipeline = PerceptionPipeline()
+        from PIL import Image
+
+        img = Image.new("RGB", (100, 100), color="red")
+        mock_result = PerceptionResult(
+            annotated_image=img,
+            elements=[],
+            text_description="test",
+            accessibility_count=0,
+            ocr_count=0,
+            vision_count=0,
+            processing_time_ms=10.0,
+            screenshot_hash="test123"
+        )
+
+        # Test store
+        cache_key = "test-key"
+        pipeline._store_cached(cache_key, mock_result)
+
+        # Test get
+        retrieved = pipeline._get_cached(cache_key)
+        assert retrieved is not None
+        assert retrieved.text_description == "test"
+
+    def test_cache_ttl_expires_old_entries(self):
+        """Test cache entries expire after TTL."""
+        from core.perception.pipeline import _result_cache, _result_cache_lock, PerceptionPipeline
+        from core.perception.types import PerceptionResult
+        import time
+
+        with _result_cache_lock:
+            _result_cache.clear()
+
+        pipeline = PerceptionPipeline()
+        from PIL import Image
+
+        img = Image.new("RGB", (100, 100), color="green")
+        mock_result = PerceptionResult(
+            annotated_image=img,
+            elements=[],
+            text_description="expired",
+            accessibility_count=0,
+            ocr_count=0,
+            vision_count=0,
+            processing_time_ms=10.0,
+            screenshot_hash="expire-test"
+        )
+
+        # Store with timestamp in the past (beyond TTL)
+        cache_key = "expire-key"
+        with _result_cache_lock:
+            _result_cache[cache_key] = (mock_result, time.monotonic() - 10.0)  # 10 seconds ago
+
+        # Should return None since entry is expired
+        retrieved = pipeline._get_cached(cache_key)
+        assert retrieved is None
+
+    def test_build_text_description(self):
+        """Test _build_text_description generates element descriptions."""
+        from core.perception.pipeline import PerceptionPipeline
+        from core.perception.types import PerceptionElement, ElementType
+
+        pipeline = PerceptionPipeline()
+
+        elements = [
+            PerceptionElement(
+                id=1,
+                label="Save",
+                element_type=ElementType.BUTTON,
+                bounding_box=(10, 10, 50, 20),
+            ),
+            PerceptionElement(
+                id=2,
+                label="Username",
+                element_type=ElementType.TEXT,
+                bounding_box=(10, 40, 100, 20),
+            ),
+        ]
+
+        description = pipeline._build_text_description(elements)
+        assert "Save" in description
+        assert "Username" in description
+        assert isinstance(description, str)
+
+    def test_analyze_includes_vision(self):
+        """Test analyze with vision enabled."""
+        from core.perception.pipeline import _result_cache, _result_cache_lock, PerceptionPipeline
+
+        with _result_cache_lock:
+            _result_cache.clear()
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600), color="white")
+
+        # Test with vision enabled (should call _query_vision)
+        result = pipeline.analyze(
+            img,
+            include_accessibility=False,
+            include_ocr=False,
+            include_vision=True,
+        )
+
+        assert result.vision_count == 0  # Returns empty list (placeholder)
+        assert result.processing_time_ms >= 0

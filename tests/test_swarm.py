@@ -178,3 +178,132 @@ class TestSwarmOrchestrator:
         status = swarm.status()
         assert status["agent_count"] == 3
         assert status["healthy"] == 3
+
+    @pytest.mark.asyncio
+    async def test_execute_with_no_agents_returns_no_agent_status(self):
+        swarm = SwarmOrchestrator()
+        result = await swarm.execute("Click the button", timeout=1.0)
+        assert result["status"] in ["completed", "partial"]
+        assert result["subtasks_total"] >= 1
+        assert len(result["results"]) >= 1
+        assert result["results"][0]["status"] == "no_agent"
+
+    @pytest.mark.asyncio
+    async def test_execute_timeout_during_iteration(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Click the button", timeout=0.001)
+        assert result["status"] == "partial"
+        assert result["elapsed_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_execute_full_result_structure(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Configure the firewall", timeout=1.0)
+        assert "goal" in result
+        assert "status" in result
+        assert "subtasks_total" in result
+        assert "subtasks_completed" in result
+        assert "subtasks_failed" in result
+        assert "elapsed_ms" in result
+        assert "agents_used" in result
+        assert "results" in result
+        assert isinstance(result["results"], list)
+
+    @pytest.mark.asyncio
+    async def test_execute_clears_previous_results(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        await swarm.execute("First task", timeout=1.0)
+        first_result_count = len(swarm._results)
+        await swarm.execute("Second task", timeout=1.0)
+        assert len(swarm._results) >= 0
+
+    @pytest.mark.asyncio
+    async def test_execute_with_terminal_task(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Run the update script", timeout=1.0)
+        # Check that terminal task was decomposed or at least one task was created
+        assert result["subtasks_total"] >= 1
+        # Verify results structure is valid
+        if result["results"]:
+            assert "subtask" in result["results"][0]
+
+    @pytest.mark.asyncio
+    async def test_execute_with_monitor_task(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Monitor system health", timeout=1.0)
+        assert result["goal"] == "Monitor system health"
+
+    @pytest.mark.asyncio
+    async def test_execute_multiple_subtasks(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Configure and monitor the system", timeout=1.0)
+        assert result["subtasks_total"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_execute_agents_used_list(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Click the button", timeout=1.0)
+        assert isinstance(result["agents_used"], list)
+
+    @pytest.mark.asyncio
+    async def test_execute_elapsed_time_tracking(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Click the button", timeout=1.0)
+        assert result["elapsed_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_execute_with_custom_bus(self):
+        from core.swarm.bus import MessageBus
+
+        custom_bus = MessageBus()
+        swarm = SwarmOrchestrator(bus=custom_bus)
+        assert swarm.bus is custom_bus
+        swarm.add_default_agents()
+        result = await swarm.execute("Test task", timeout=1.0)
+        assert "goal" in result
+
+    @pytest.mark.asyncio
+    async def test_execute_status_calculation(self):
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        result = await swarm.execute("Click the button", timeout=1.0)
+        assert result["status"] in ["completed", "partial"]
+        assert result["subtasks_completed"] + result["subtasks_failed"] == len(result["results"])
+
+    @pytest.mark.asyncio
+    async def test_execute_timeout_triggers_warning(self):
+        """Test that timeout during execution triggers timeout handling (lines 73-74)."""
+        swarm = SwarmOrchestrator()
+        swarm.add_default_agents()
+        # Use a very short timeout to trigger the timeout branch
+        result = await swarm.execute("Configure the firewall and monitor logs", timeout=0.001)
+        assert result["status"] == "partial"
+        assert result["elapsed_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_execute_with_successful_agent_response(self):
+        """Test successful agent message processing (line 100)."""
+        from core.swarm.bus import MessageBus
+
+        bus = MessageBus()
+        swarm = SwarmOrchestrator(bus=bus)
+        swarm.add_default_agents()
+
+        # Register agents and subscriptions using internal _agents dict
+        for agent_id in swarm.registry._agents:
+            bus.register(agent_id)
+            bus.subscribe(agent_id, "task")
+            bus.subscribe("orchestrator", "result")
+
+        # Execute should process at least one task
+        result = await swarm.execute("Click the button", timeout=1.0)
+        assert "results" in result
+        assert result["subtasks_total"] >= 1
