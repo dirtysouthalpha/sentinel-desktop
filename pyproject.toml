@@ -38,6 +38,7 @@ dependencies = [
     "pydantic ~= 2.13",
     "pygetwindow ~= 0.0.9; sys_platform == 'win32'",
     "bcrypt ~= 4.3",
+    "pyotp ~= 2.9",
 ]
 
 [project.optional-dependencies]

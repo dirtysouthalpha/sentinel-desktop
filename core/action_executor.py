@@ -1460,6 +1460,25 @@ class ActionExecutor:
         """Manage browser tabs."""
         return self.browser.tabs(action=action, index=index, url=url)
 
+    def _mfa_detect(self, **_: Any) -> dict:
+        """Detect MFA on the current browser page."""
+        return self.browser.detect_mfa()
+
+    def _mfa_handle(
+        self,
+        *,
+        code: str | None = None,
+        service_name: str | None = None,
+        selector: str | None = None,
+        **_: Any,
+    ) -> dict:
+        """Handle MFA on the current browser page."""
+        return self.browser.handle_mfa(
+            code=code,
+            service_name=service_name,
+            selector=selector,
+        )
+
     def _finish(self, *, summary: str = "", **_: Any) -> dict:
         """Signal that the agent is done."""
         return {"success": True, "output": summary, "done": True}
@@ -1648,6 +1667,9 @@ class ActionExecutor:
         "web_download": _web_download,
         "web_upload": _web_upload,
         "web_tabs": _web_tabs,
+        # MFA (v13.0)
+        "mfa_detect": _mfa_detect,
+        "mfa_handle": _mfa_handle,
         # Netops (v9.0)
         "ssh_connect": _ssh_connect,
         "ssh_disconnect": _ssh_disconnect,

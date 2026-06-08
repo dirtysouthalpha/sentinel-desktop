@@ -680,3 +680,230 @@ class BrowserManager:
         if role:
             return f"role={role}, name={name}"
         return "unknown"
+
+    # -------------------------------------------------------------------
+    # MFA Support (v13.0)
+    # -------------------------------------------------------------------
+
+    def detect_mfa(self) -> dict[str, Any]:
+        """Detect MFA on the current page.
+
+        Returns:
+            Dict with detection results including has_mfa, mfa_fields,
+            confidence, and detection_methods.
+        """
+        self._ensure_launched()
+        page = self.active_page
+
+        try:
+            from core.web.mfa_detector import MFADetector
+
+            # Gather page data for MFA detection
+            page_data = {
+                "url": page.url,
+                "title": page.title(),
+                "text": page.inner_text("body"),
+                "inputs": [],
+                "forms": [],
+            }
+
+            # Extract input fields
+            inputs = page.query_selector_all("input")
+            for inp in inputs:
+                try:
+                    input_data = {
+                        "type": inp.get_attribute("type") or "text",
+                        "name": inp.get_attribute("name") or "",
+                        "id": inp.get_attribute("id") or "",
+                        "placeholder": inp.get_attribute("placeholder") or "",
+                        "maxlength": inp.get_attribute("maxlength"),
+                        "inputmode": inp.get_attribute("inputmode") or "",
+                        "autocomplete": inp.get_attribute("autocomplete") or "",
+                        "aria-label": inp.get_attribute("aria-label") or "",
+                        "title": inp.get_attribute("title") or "",
+                    }
+                    page_data["inputs"].append(input_data)
+                except Exception:
+                    continue
+
+            # Extract forms
+            forms = page.query_selector_all("form")
+            for form in forms:
+                try:
+                    form_data = {
+                        "action": form.get_attribute("action") or "",
+                        "method": form.get_attribute("method") or "",
+                        "id": form.get_attribute("id") or "",
+                    }
+                    page_data["forms"].append(form_data)
+                except Exception:
+                    continue
+
+            # Run MFA detection
+            detector = MFADetector()
+            result = detector.detect_mfa(page_data)
+
+            return {
+                "success": True,
+                "has_mfa": result.has_mfa,
+                "mfa_fields": [
+                    {
+                        "element_id": f.element_id,
+                        "input_type": f.input_type.value,
+                        "label": f.label,
+                        "confidence": f.confidence,
+                    }
+                    for f in result.mfa_fields
+                ],
+                "detection_methods": result.detection_methods,
+                "confidence": result.confidence,
+                "page_type": result.page_type,
+            }
+
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"MFA detection failed: {exc}",
+                "has_mfa": False,
+            }
+
+    def handle_mfa(
+        self,
+        *,
+        code: str | None = None,
+        user_callback: callable | None = None,
+        service_name: str | None = None,
+        selector: str | None = None,
+    ) -> dict[str, Any]:
+        """Handle MFA on the current page.
+
+        Args:
+            code: Optional MFA code to use directly.
+            user_callback: Optional async callback to prompt user for code.
+            service_name: Optional service name for TOTP lookup.
+            selector: Optional selector for MFA input field.
+
+        Returns:
+            Dict with success, method_used, and code_used.
+        """
+        self._ensure_launched()
+        page = self.active_page
+
+        try:
+            from core.web.mfa_handler import MFAHandler, MFAResolutionMethod
+
+            # Detect MFA fields
+            detection_result = self.detect_mfa()
+            if not detection_result.get("success"):
+                return {
+                    "success": False,
+                    "error": "MFA detection failed",
+                    "has_mfa": False,
+                }
+
+            if not detection_result.get("has_mfa"):
+                return {
+                    "success": False,
+                    "error": "No MFA detected on page",
+                    "has_mfa": False,
+                }
+
+            # Get MFA fields
+            mfa_fields_data = detection_result.get("mfa_fields", [])
+            if not mfa_fields_data:
+                return {
+                    "success": False,
+                    "error": "No MFA fields found",
+                    "has_mfa": True,
+                }
+
+            # Use provided selector or detected field
+            target_selector = selector or mfa_fields_data[0].get("element_id")
+            if not target_selector:
+                return {
+                    "success": False,
+                    "error": "No MFA field selector available",
+                    "has_mfa": True,
+                }
+
+            # If code provided directly, use it
+            if code:
+                result = self._fill_mfa_code(target_selector, code)
+                if result.get("success"):
+                    result["method_used"] = MFAResolutionMethod.USER_PROMPT.value
+                    result["code_used"] = code
+                return result
+
+            # Try to resolve MFA using handler
+            handler = MFAHandler()
+
+            # Try each resolution strategy
+            for field_data in mfa_fields_data:
+                from core.web.mfa_detector import MFAField, MFAInputType
+
+                field = MFAField(
+                    element_id=field_data.get("element_id", ""),
+                    input_type=MFAInputType[field_data.get("input_type", "TOTP").upper()],
+                    label=field_data.get("label"),
+                    confidence=field_data.get("confidence", 0.0),
+                )
+
+                resolution_result = handler.resolve_mfa(
+                    field,
+                    page.url,
+                    user_callback,
+                    service_name,
+                )
+
+                if resolution_result.success and resolution_result.code_used:
+                    # Fill the code
+                    fill_result = self._fill_mfa_code(
+                        target_selector,
+                        resolution_result.code_used,
+                    )
+                    if fill_result.get("success"):
+                        fill_result["method_used"] = resolution_result.method_used.value
+                        fill_result["code_used"] = resolution_result.code_used
+                        return fill_result
+
+            # All strategies failed
+            return {
+                "success": False,
+                "error": "Unable to resolve MFA automatically",
+                "has_mfa": True,
+                "hint": "Provide code directly or set up user_callback",
+            }
+
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"MFA handling failed: {exc}",
+                "has_mfa": True,
+            }
+
+    def _fill_mfa_code(self, selector: str, code: str) -> dict[str, Any]:
+        """Fill an MFA code into an input field and submit."""
+        self._ensure_launched()
+        page = self.active_page
+
+        try:
+            # Find and fill the input
+            locator = page.locator(selector)
+            locator.wait_for(state="visible", timeout=5000)
+            locator.fill(code)
+
+            # Try to submit (look for submit button)
+            submit_buttons = page.query_selector_all('button[type="submit"], input[type="submit"]')
+            if submit_buttons:
+                submit_buttons[0].click()
+
+            return {
+                "success": True,
+                "output": f"MFA code filled ({len(code)} digits)",
+            }
+
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"Failed to fill MFA code: {exc}",
+            }
