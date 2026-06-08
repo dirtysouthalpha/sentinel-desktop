@@ -178,7 +178,7 @@ class ControlLoop:
 
     def _verify_action(self, before_perception: PerceptionResult, after_perception: PerceptionResult):
         """Verify action success using before/after perception."""
-        from core.control.verifier import VerifyResult, VerificationReport
+        from core.control.verifier import VerificationReport, VerifyResult
 
         before_img = before_perception.annotated_image
         after_img = after_perception.annotated_image
