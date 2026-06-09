@@ -9,15 +9,24 @@ import io
 import logging
 import time
 
-import pyautogui
 from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-_FailSafeException = pyautogui.FailSafeException
+# Lazy import pyautogui to avoid DISPLAY requirement on headless systems
+pyautogui = None
+_FailSafeException = None
 
-pyautogui.PAUSE = 0.1
-pyautogui.FAILSAFE = True
+def _ensure_pyautogui():
+    """Import pyautogui on first use to avoid headless system failures."""
+    global pyautogui, _FailSafeException
+    if pyautogui is None:
+        import pyautogui as _pyautogui
+        pyautogui = _pyautogui
+        _FailSafeException = pyautogui.FailSafeException
+        pyautogui.PAUSE = 0.1
+        pyautogui.FAILSAFE = True
+    return pyautogui
 
 
 class DesktopController:
@@ -26,6 +35,7 @@ class DesktopController:
     def __init__(self) -> None:
         """Initialize the controller and detect the current screen resolution."""
         try:
+            _ensure_pyautogui()
             self._screen_size: tuple[int, int] = pyautogui.size()
         except (OSError, RuntimeError, ValueError):
             logger.warning("Could not detect screen size, defaulting to 1920x1080")
@@ -40,6 +50,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             return pyautogui.screenshot()
         except (OSError, RuntimeError) as exc:
             logger.warning("screenshot failed: %s", exc)
@@ -78,6 +89,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             return pyautogui.screenshot(region=(x, y, w, h))
         except (OSError, RuntimeError) as exc:
             logger.warning("screenshot_region failed: %s", exc)
@@ -103,6 +115,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.click(x=x, y=y, button=button, clicks=clicks)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("click failed: %s", exc)
@@ -116,6 +129,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.doubleClick(x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("double_click failed: %s", exc)
@@ -129,6 +143,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.rightClick(x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("right_click failed: %s", exc)
@@ -143,6 +158,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.moveTo(x=x, y=y, duration=duration)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("move_to failed: %s", exc)
@@ -168,6 +184,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.moveTo(from_x, from_y)
             pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)
         except (_FailSafeException, OSError, RuntimeError) as exc:
@@ -183,6 +200,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.scroll(amount, x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("scroll failed: %s", exc)
@@ -195,6 +213,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             return pyautogui.position()
         except (OSError, RuntimeError) as exc:
             logger.warning("get_mouse_position failed: %s", exc)
@@ -209,6 +228,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.write(text, interval=interval)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("type_text failed: %s", exc)
@@ -221,6 +241,7 @@ class DesktopController:
 
         """
         try:
+            _ensure_pyautogui()
             pyautogui.press(key)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("press_key failed: %s", exc)
@@ -228,6 +249,7 @@ class DesktopController:
     def hotkey(self, *keys: str) -> None:
         """Press multiple keys simultaneously as a keyboard shortcut."""
         try:
+            _ensure_pyautogui()
             pyautogui.hotkey(*keys)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("hotkey failed: %s", exc)

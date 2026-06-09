@@ -15,10 +15,20 @@ import sys
 import threading
 import time
 
-import pyautogui
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+# Lazy import pyautogui to avoid DISPLAY requirement on headless systems
+pyautogui = None
+
+def _ensure_pyautogui():
+    """Import pyautogui on first use to avoid headless system failures."""
+    global pyautogui
+    if pyautogui is None:
+        import pyautogui as _pyautogui
+        pyautogui = _pyautogui
+    return pyautogui
 
 # Thread lock for screenshot cache — shared by agent pool and concurrent access.
 _cache_lock = threading.Lock()
@@ -272,6 +282,7 @@ def list_monitors() -> list[dict[str, int | bool]]:
             logger.warning("mss.monitors failed, falling back: %s", exc)
 
     try:
+        _ensure_pyautogui()
         w, h = pyautogui.size()
     except OSError as exc:
         logger.debug("pyautogui.size() failed: %s", exc)
@@ -362,6 +373,7 @@ def _capture_screen_with_methods(monitor: int | str | None) -> Image.Image:
 
     if captured_image is None:
         try:
+            _ensure_pyautogui()
             captured_image = pyautogui.screenshot()
         except (OSError, RuntimeError) as exc:
             logger.error("pyautogui screenshot failed: %s", exc)
@@ -483,6 +495,7 @@ def capture_region(x: int, y: int, w: int, h: int, use_cache: bool = True) -> Im
 
     if captured_image is None:
         try:
+            _ensure_pyautogui()
             captured_image = pyautogui.screenshot(region=(x, y, w, h))
         except (OSError, RuntimeError) as exc:
             logger.error("pyautogui region capture failed: %s", exc)
