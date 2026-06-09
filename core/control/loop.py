@@ -16,6 +16,7 @@ from core.control.grounder import ActionGrounder
 from core.control.planner import StepStatus, StepType, TaskPlanner
 from core.control.verifier import ActionVerifier
 from core.perception.pipeline import PerceptionPipeline
+from core.perception.types import PerceptionResult
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ class ControlLoop:
                 try:
                     on_step_callback(step, grounded, report)
                 except Exception:
-                    pass
+                    logger.debug("on_step_callback raised exception", exc_info=True)
 
         elapsed = (time.monotonic() - start_time) * 1000
 
@@ -175,10 +176,18 @@ class ControlLoop:
         except Exception as exc:
             return {"success": False, "output": str(exc)}
 
-    def _verify_action(self, before_perception, after_perception):
+    def _verify_action(self, before_perception: PerceptionResult, after_perception: PerceptionResult):
         """Verify action success using before/after perception."""
+        from core.control.verifier import VerificationReport, VerifyResult
+
         before_img = before_perception.annotated_image
         after_img = after_perception.annotated_image
         if before_img and after_img:
             return self.verifier.verify(before_img, after_img)
-        return self.verifier.__class__.__mro__  # fallback
+        # Fallback when images not available - assume success to avoid blocking
+        return VerificationReport(
+            result=VerifyResult.SUCCESS,
+            pixel_diff_percent=0.0,
+            confidence=0.0,
+            details="No images available for verification",
+        )

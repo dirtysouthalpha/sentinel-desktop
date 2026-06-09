@@ -21,9 +21,13 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _HAS_PARAMIKO = False
-try:
-    import paramiko
+paramiko = None  # Define as None for test patching
 
+try:
+    import paramiko as _paramiko
+
+    # Override the None placeholder with the real import
+    paramiko = _paramiko
     _HAS_PARAMIKO = True
 except ImportError:
     pass
@@ -131,7 +135,7 @@ class SSHClient:
             try:
                 self._client.close()
             except Exception:
-                pass
+                logger.debug("SSH close raised exception", exc_info=True)
             self._client = None
             self._connected = False
             logger.info("SSH disconnected from %s", self.hostname)

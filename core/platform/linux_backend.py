@@ -230,7 +230,7 @@ class LinuxAccessibility(AccessibilityBackend):
                 if child is not None:
                     self._walk_atspi(child, elements, depth + 1, max_depth)
         except Exception:
-            pass
+            logger.debug("AT-SPI tree walk raised exception", exc_info=True)
 
     def _atspi_to_element(self, node: Any) -> UIElement:
         """Convert an AT-SPI node to UIElement."""
@@ -258,7 +258,7 @@ class LinuxAccessibility(AccessibilityBackend):
             if n > 0:
                 actions.append("invoke")
         except Exception:
-            pass
+            logger.debug("AT-SPI action detection raised exception", exc_info=True)
 
         return UIElement(
             name=node.get_name() or "",

@@ -102,7 +102,7 @@ class Workflow:
         action: str,
         name: str = "",
         params: dict | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> WorkflowStep:
         """Append a new step to the end of the workflow.
 
@@ -126,7 +126,7 @@ class Workflow:
         self.updated_at = datetime.now(timezone.utc)
         return step
 
-    def insert_step(self, index: int, action: str, name: str = "", **kwargs) -> WorkflowStep:
+    def insert_step(self, index: int, action: str, name: str = "", **kwargs: Any) -> WorkflowStep:
         """Insert a new step at a specific position in the workflow.
 
         Args:

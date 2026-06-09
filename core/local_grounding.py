@@ -15,6 +15,7 @@ Configuration:
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -177,16 +178,16 @@ class LocalGroundingModel:
 _BACKEND_LOADERS: dict[str, Any] = {}
 
 
-def _register_backend(name: str):
+def _register_backend(name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register a backend loader."""
-    def decorator(fn):
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         _BACKEND_LOADERS[name] = fn
         return fn
     return decorator
 
 
 @_register_backend("omniparser")
-def _load_omniparser():
+def _load_omniparser() -> Any:
     """Load OmniParser model (optional dependency)."""
     try:
         from omniparser import OmniParser  # type: ignore
@@ -196,14 +197,14 @@ def _load_omniparser():
 
 
 @_register_backend("florence2")
-def _load_florence2():
+def _load_florence2() -> Any:
     """Load Florence-2 model (optional dependency)."""
     try:
         from transformers import AutoModelForCausalLM, AutoProcessor  # type: ignore
 
         class _Florence2Wrapper:
             """Wraps Florence-2 for grounding predictions."""
-            def __init__(self):
+            def __init__(self) -> None:
                 self.model = AutoModelForCausalLM.from_pretrained(
                     "microsoft/Florence-2-large",
                     trust_remote_code=True,
@@ -213,7 +214,7 @@ def _load_florence2():
                     trust_remote_code=True,
                 )
 
-            def predict(self, screenshot, prompt):
+            def predict(self, screenshot: Image.Image, prompt: str) -> LocalGroundingResult:
                 # Simplified interface — actual implementation would use
                 # Florence-2's grounded captioning
                 raise NotImplementedError("Florence-2 grounding not yet implemented")
@@ -224,7 +225,7 @@ def _load_florence2():
 
 
 @_register_backend("uground")
-def _load_uground():
+def _load_uground() -> Any:
     """Load UGround model (optional dependency)."""
     try:
         import uground  # type: ignore
@@ -234,19 +235,19 @@ def _load_uground():
 
 
 @_register_backend("yolo")
-def _load_yolo():
+def _load_yolo() -> Any:
     """Load YOLO-based UI element detector (optional dependency)."""
     try:
         from ultralytics import YOLO  # type: ignore
 
         class _YOLOWrapper:
             """Wraps YOLO for UI element detection."""
-            def __init__(self):
+            def __init__(self) -> None:
                 # Use a general-purpose YOLO model — could be replaced with
                 # a UI-specific trained model
                 self.model = YOLO("yolov8n.pt")
 
-            def predict(self, screenshot, prompt):
+            def predict(self, screenshot: Image.Image, prompt: str) -> LocalGroundingResult:
                 # YOLO doesn't do text-to-bbox natively, but detects objects
                 # We return the first detection as a rough grounding
                 import numpy as np

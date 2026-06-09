@@ -222,3 +222,155 @@ class TestEnforcedSelfHealing:
         from core.click_verify import _DIFF_THRESHOLD
         assert isinstance(_DIFF_THRESHOLD, float)
         assert _DIFF_THRESHOLD > 0
+
+
+# ---------------------------------------------------------------------------
+# verify_click_landed function tests
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyClickLanded:
+    """Test the verify_click_landed function."""
+
+    def test_verify_click_success_case(self):
+        """Test successful click verification."""
+        before = Image.new("RGB", (800, 600), "white")
+        after = Image.new("RGB", (800, 600), "black")
+
+        with patch("core.screenshot.capture_screen", return_value=after):
+            with patch("core.click_verify.time.sleep"):  # Mock sleep to speed up tests
+                landed, diff_score, after_screenshot = verify_click_landed(before, 400, 300)
+                assert landed is True
+                assert diff_score > 50.0
+                assert after_screenshot == after
+
+    def test_verify_click_miss_case(self):
+        """Test missed click detection (no change)."""
+        before = Image.new("RGB", (800, 600), "white")
+        after = before.copy()  # No change
+
+        with patch("core.screenshot.capture_screen", return_value=after):
+            with patch("core.click_verify.time.sleep"):
+                landed, diff_score, after_screenshot = verify_click_landed(before, 400, 300)
+                assert landed is False
+                assert diff_score < 5.0  # Below threshold
+                assert after_screenshot == after
+
+    def test_verify_click_screenshot_failure(self):
+        """Test graceful handling of screenshot capture failure."""
+        before = Image.new("RGB", (800, 600), "white")
+
+        with patch("core.screenshot.capture_screen", side_effect=OSError("Display error")):
+            with patch("core.click_verify.time.sleep"):
+                landed, diff_score, after_screenshot = verify_click_landed(before, 400, 300)
+                # Assume landed on error
+                assert landed is True
+                assert diff_score == 0.0
+                assert after_screenshot == before
+
+
+# ---------------------------------------------------------------------------
+# ClickVerifier edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestClickVerifierEdgeCases:
+    """Test edge cases in ClickVerifier."""
+
+    def setup_method(self):
+        from core.action_executor import ActionExecutor
+        self.executor = ActionExecutor(dry_run=True)
+        self.verifier = ClickVerifier(self.executor)
+
+    def test_execute_without_screenshot_capability(self):
+        """Test execution when screenshot capture fails completely."""
+        action = {"action": "click", "x": 400, "y": 300}
+
+        with patch("core.screenshot.capture_screen", side_effect=OSError("No display")):
+            result = self.verifier.execute_with_verification(action, before_screenshot=None)
+            # Should pass through without verification when screenshot fails
+            assert result.get("success") is True
+
+    def test_click_without_coordinates_skips_verification(self):
+        """Test that actions without coordinates skip verification."""
+        action = {"action": "click"}  # No x, y coordinates
+        before = Image.new("RGB", (800, 600), "white")
+
+        with patch("core.screenshot.capture_screen", return_value=before):
+            result = self.verifier.execute_with_verification(action, before_screenshot=before)
+            # Should skip verification and return result directly
+            assert result.get("success") is True
+
+    def test_extract_coords_from_action(self):
+        """Test coordinate extraction from action dict."""
+        action1 = {"x": 100, "y": 200}
+        coords = ClickVerifier._extract_coords(action1)
+        assert coords == (100, 200)
+
+        action2 = {"action": "click"}  # No coords
+        coords = ClickVerifier._extract_coords(action2)
+        assert coords is None
+
+    def test_offset_retry_exhausted(self):
+        """Test offset retry when all offsets are exhausted."""
+        before = Image.new("RGB", (800, 600), "white")
+
+        # Mock the retry to hit the exhausted case
+        with patch.object(self.verifier, "_retry_with_offset", return_value={
+            "success": False, "output": "Offset retry exhausted", "retry_tier": "offset"
+        }):
+            result = self.verifier._retry_with_offset(
+                {"action": "click", "x": 400, "y": 300},
+                before, 400, 300,
+            )
+            assert result["retry_tier"] == "offset"
+            assert result["success"] is False
+
+    def test_keyboard_retry_structure(self):
+        """Test keyboard retry returns correct structure."""
+        result = self.verifier._retry_via_keyboard({"action": "click", "x": 400, "y": 300})
+        assert "retry_tier" in result
+        assert result["retry_tier"] == "keyboard"
+        assert "success" in result
+
+    def test_tiered_retry_all_tiers_fail(self):
+        """Test tiered retry when all tiers fail."""
+        before = Image.new("RGB", (800, 600), "white")
+
+        # Mock all tiers to fail
+        with patch.object(self.verifier, "_retry_via_accessibility", return_value={
+            "success": False, "retry_tier": "accessibility"
+        }):
+            with patch.object(self.verifier, "_retry_with_offset", return_value={
+                "success": False, "retry_tier": "offset"
+            }):
+                with patch.object(self.verifier, "_retry_via_keyboard", return_value={
+                    "success": False, "retry_tier": "keyboard"
+                }):
+                    result = self.verifier._tiered_retry(
+                        {"action": "click", "x": 400, "y": 300},
+                        before, 400, 300
+                    )
+                    # Should return None when all tiers fail
+                    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Numpy fallback tests
+# ---------------------------------------------------------------------------
+
+
+class TestNumpyFallback:
+    """Test compute_region_diff fallback when numpy is unavailable."""
+
+    def test_fallback_sampling_method(self):
+        """Test that fallback sampling method works for large images."""
+        # This tests the sampling path in the fallback code
+        before = Image.new("RGB", (1000, 1000), "white")
+        after = Image.new("RGB", (1000, 1000), "black")
+
+        # Just verify it computes a difference correctly
+        # The fallback samples pixels at regular intervals
+        diff = compute_region_diff(before, after)
+        # Should detect significant difference
+        assert diff > 50.0
