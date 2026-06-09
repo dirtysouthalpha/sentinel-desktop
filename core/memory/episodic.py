@@ -35,7 +35,8 @@ class Episode:
         tags: list[str] | None = None,
         episode_id: str | None = None,
     ) -> None:
-        self.episode_id = episode_id or datetime.utcnow().strftime("%Y%m%d%H%M%S") + f"_{id(self) % 10000:04d}"
+        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        self.episode_id = episode_id or f"{ts}_{id(self) % 10000:04d}"
         self.goal = goal
         self.actions = actions or []
         self.outcome = outcome

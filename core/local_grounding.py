@@ -99,7 +99,9 @@ class LocalGroundingModel:
 
         # Try backends in order of preference
         backends_to_try = (
-            [self.backend] if self.backend != "auto" else ["omniparser", "florence2", "uground", "yolo"]
+            [self.backend]
+            if self.backend != "auto"
+            else ["omniparser", "florence2", "uground", "yolo"]
         )
 
         for backend_name in backends_to_try:

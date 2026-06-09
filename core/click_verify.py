@@ -182,7 +182,11 @@ class ClickVerifier:
         action_name = action.get("action", "")
 
         # Only verify click-like actions
-        if action_name not in ("click", "click_element", "click_mark", "double_click", "right_click"):
+        _click_actions = (
+            "click", "click_element",
+            "click_mark", "double_click", "right_click",
+        )
+        if action_name not in _click_actions:
             return self.executor.execute_sync(action)
 
         # Capture before screenshot if not provided
@@ -301,7 +305,11 @@ class ClickVerifier:
                     result["retry_action"] = retry_action
                     return result
 
-        return {"success": False, "output": "No accessibility data for retry", "retry_tier": "accessibility"}
+        return {
+            "success": False,
+            "output": "No accessibility data for retry",
+            "retry_tier": "accessibility",
+        }
 
     def _retry_with_offset(
         self,

@@ -1,5 +1,6 @@
-"""Gap tests for scheduler.py — _exec_goal no-success-key, _exec_powershell command, load OSError."""
-
+"""Gap tests for scheduler.py — _exec_goal no-success-key, _exec_powershell command, load
+OSError.
+"""
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch

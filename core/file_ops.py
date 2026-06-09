@@ -116,3 +116,165 @@ def list_directory(path: str = ".") -> list[dict[str, Any]] | None:
     except OSError:
         logger.exception("list_directory(%s) failed", path)
         return None
+
+
+def delete_file(path: str, force: bool = False) -> bool:
+    """Delete a file or directory. Returns True on success."""
+    try:
+        safe = _resolve_safe(path)
+    except PermissionError:
+        logger.exception("delete_file(%s) blocked", path)
+        return False
+    try:
+        if safe.is_dir():
+            import shutil
+            shutil.rmtree(safe) if force else safe.rmdir()
+        else:
+            safe.unlink(missing_ok=True)
+        return True
+    except OSError:
+        logger.exception("delete_file(%s) failed", path)
+        return False
+
+
+def move_file(src: str, dst: str) -> bool:
+    """Move/rename a file or directory. Returns True on success."""
+    try:
+        safe_src = _resolve_safe(src)
+        safe_dst = _resolve_safe(dst)
+    except PermissionError:
+        logger.exception("move_file(%s→%s) blocked", src, dst)
+        return False
+    try:
+        safe_dst.parent.mkdir(parents=True, exist_ok=True)
+        safe_src.rename(safe_dst)
+        return True
+    except OSError:
+        logger.exception("move_file(%s→%s) failed", src, dst)
+        return False
+
+
+def copy_file(src: str, dst: str) -> bool:
+    """Copy a file. Returns True on success."""
+    import shutil
+    try:
+        safe_src = _resolve_safe(src)
+        safe_dst = _resolve_safe(dst)
+    except PermissionError:
+        logger.exception("copy_file(%s→%s) blocked", src, dst)
+        return False
+    try:
+        safe_dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(safe_src, safe_dst)
+        return True
+    except OSError:
+        logger.exception("copy_file(%s→%s) failed", src, dst)
+        return False
+
+
+def mkdir(path: str, parents: bool = True) -> bool:
+    """Create a directory. Returns True on success."""
+    try:
+        safe = _resolve_safe(path)
+    except PermissionError:
+        logger.exception("mkdir(%s) blocked", path)
+        return False
+    try:
+        safe.mkdir(parents=parents, exist_ok=True)
+        return True
+    except OSError:
+        logger.exception("mkdir(%s) failed", path)
+        return False
+
+
+def stat_file(path: str) -> dict[str, Any] | None:
+    """Get file metadata. Returns dict or None on error."""
+    try:
+        safe = _resolve_safe(path)
+    except PermissionError:
+        logger.exception("stat_file(%s) blocked", path)
+        return None
+    try:
+        st = safe.stat()
+        return {
+            "path": str(safe),
+            "name": safe.name,
+            "size": st.st_size,
+            "is_dir": safe.is_dir(),
+            "is_file": safe.is_file(),
+            "modified": st.st_mtime,
+            "created": st.st_ctime,
+            "permissions": oct(st.st_mode)[-3:],
+        }
+    except OSError:
+        logger.exception("stat_file(%s) failed", path)
+        return None
+
+
+def find_files(
+    pattern: str,
+    root: str = ".",
+    max_results: int = 100,
+) -> list[str] | None:
+    """Search for files matching a glob pattern. Returns list of paths."""
+    from glob import glob as _glob
+    try:
+        safe_root = _resolve_safe(root)
+    except PermissionError:
+        logger.exception("find_files(%s in %s) blocked", pattern, root)
+        return None
+    try:
+        full_pattern = str(safe_root / "**" / pattern)
+        matches = _glob(full_pattern, recursive=True)
+        return [str(Path(m).relative_to(safe_root)) for m in matches[:max_results]]
+    except OSError:
+        logger.exception("find_files(%s in %s) failed", pattern, root)
+        return None
+
+
+def archive_create(
+    archive_path: str,
+    files: list[str],
+    base_dir: str = ".",
+) -> bool:
+    """Create a zip archive from a list of files. Returns True on success."""
+    import zipfile
+    try:
+        safe_archive = _resolve_safe(archive_path)
+        safe_base = _resolve_safe(base_dir)
+    except PermissionError:
+        logger.exception("archive_create(%s) blocked", archive_path)
+        return False
+    try:
+        safe_archive.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(safe_archive, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in files:
+                full = safe_base / f
+                if full.exists():
+                    zf.write(full, arcname=f)
+        return True
+    except (OSError, zipfile.BadZipFile):
+        logger.exception("archive_create(%s) failed", archive_path)
+        return False
+
+
+def archive_extract(
+    archive_path: str,
+    dest_dir: str = ".",
+) -> bool:
+    """Extract a zip archive to a directory. Returns True on success."""
+    import zipfile
+    try:
+        safe_archive = _resolve_safe(archive_path)
+        safe_dest = _resolve_safe(dest_dir)
+    except PermissionError:
+        logger.exception("archive_extract(%s) blocked", archive_path)
+        return False
+    try:
+        safe_dest.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(safe_archive, "r") as zf:
+            zf.extractall(safe_dest)
+        return True
+    except (OSError, zipfile.BadZipFile):
+        logger.exception("archive_extract(%s) failed", archive_path)
+        return False

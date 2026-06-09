@@ -144,24 +144,27 @@ def translate_anthropic_action(response_block: dict[str, Any]) -> dict[str, Any]
 
     inp = response_block.get("input", {})
     action_type = inp.get("action", "").lower()
+    _coord = inp.get("coordinate", [0, 0])
+    _cx, _cy = _coord[0], _coord[1]
+    _start = inp.get("start_coordinate", [0, 0])
+    _sx, _sy = _start[0], _start[1]
 
-    # Map Anthropic computer actions to our format
     action_map: dict[str, dict[str, Any]] = {
-        "click": {"action": "click", "x": inp.get("coordinate", [0, 0])[0], "y": inp.get("coordinate", [0, 0])[1]},
-        "left_click": {"action": "click", "x": inp.get("coordinate", [0, 0])[0], "y": inp.get("coordinate", [0, 0])[1]},
-        "right_click": {"action": "right_click", "x": inp.get("coordinate", [0, 0])[0], "y": inp.get("coordinate", [0, 0])[1]},
-        "double_click": {"action": "double_click", "x": inp.get("coordinate", [0, 0])[0], "y": inp.get("coordinate", [0, 0])[1]},
-        "middle_click": {"action": "click", "x": inp.get("coordinate", [0, 0])[0], "y": inp.get("coordinate", [0, 0])[1], "button": "middle"},
+        "click": {"action": "click", "x": _cx, "y": _cy},
+        "left_click": {"action": "click", "x": _cx, "y": _cy},
+        "right_click": {"action": "right_click", "x": _cx, "y": _cy},
+        "double_click": {"action": "double_click", "x": _cx, "y": _cy},
+        "middle_click": {"action": "click", "x": _cx, "y": _cy, "button": "middle"},
         "type": {"action": "type_text", "text": inp.get("text", "")},
         "key": {"action": "hotkey", "keys": _parse_anthropic_key(inp.get("text", ""))},
         "screenshot": {"action": "screenshot"},
-        "mouse_move": {"action": "mouse_move", "x": inp.get("coordinate", [0, 0])[0], "y": inp.get("coordinate", [0, 0])[1]},
+        "mouse_move": {"action": "mouse_move", "x": _cx, "y": _cy},
         "left_click_drag": {
             "action": "drag",
-            "from_x": inp.get("start_coordinate", [0, 0])[0],
-            "from_y": inp.get("start_coordinate", [0, 0])[1],
-            "to_x": inp.get("coordinate", [0, 0])[0],
-            "to_y": inp.get("coordinate", [0, 0])[1],
+            "from_x": _sx,
+            "from_y": _sy,
+            "to_x": _cx,
+            "to_y": _cy,
         },
         "scroll": {
             "action": "scroll",
@@ -237,12 +240,26 @@ def translate_openai_action(response_item: dict[str, Any]) -> dict[str, Any] | N
         "mouse_move": {"action": "mouse_move", "x": x, "y": y},
         "drag": {
             "action": "drag",
-            "from_x": args.get("start_coordinate", [0, 0])[0] if isinstance(args.get("start_coordinate"), list) else 0,
-            "from_y": args.get("start_coordinate", [0, 0])[1] if isinstance(args.get("start_coordinate"), list) else 0,
+            "from_x": (
+                args.get("start_coordinate", [0, 0])[0]
+                if isinstance(args.get("start_coordinate"), list)
+                else 0
+            ),
+            "from_y": (
+                args.get("start_coordinate", [0, 0])[1]
+                if isinstance(args.get("start_coordinate"), list)
+                else 0
+            ),
             "to_x": x,
             "to_y": y,
         },
-        "scroll": {"action": "scroll", "amount": _parse_scroll_direction(args.get("direction", "down"), args.get("amount", 1))},
+        "scroll": {
+            "action": "scroll",
+            "amount": _parse_scroll_direction(
+                args.get("direction", "down"),
+                args.get("amount", 1),
+            ),
+        },
         "wait": {"action": "wait", "seconds": 2},
     }
 

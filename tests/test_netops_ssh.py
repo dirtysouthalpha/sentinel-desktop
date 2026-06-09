@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -142,8 +142,12 @@ class TestSSHResult:
         from core.netops.ssh_client import SSHResult
 
         result = SSHResult(
-            success=True, stdout="output", stderr="",
-            exit_code=0, command="show version", duration_ms=150.0,
+            success=True,
+            stdout="output",
+            stderr="",
+            exit_code=0,
+            command="show version",
+            duration_ms=150.0,
         )
         d = result.to_dict()
         assert d["success"] is True
@@ -155,8 +159,8 @@ class TestSSHResult:
 class TestCommandRunner:
     def test_show_version_cisco(self, mock_paramiko):
         mock_pw, mock_client = mock_paramiko
-        from core.netops.ssh_client import SSHClient
         from core.netops.command_runner import CommandRunner
+        from core.netops.ssh_client import SSHClient
 
         mock_stdout = MagicMock()
         mock_stdout.read.return_value = b"Cisco IOS Version 15.0\n"
@@ -174,8 +178,8 @@ class TestCommandRunner:
 
     def test_ping_cisco(self, mock_paramiko):
         mock_pw, mock_client = mock_paramiko
-        from core.netops.ssh_client import SSHClient
         from core.netops.command_runner import CommandRunner
+        from core.netops.ssh_client import SSHClient
 
         mock_stdout = MagicMock()
         mock_stdout.read.return_value = b"Success rate is 100 percent (4/4)\n"
@@ -193,8 +197,8 @@ class TestCommandRunner:
 
     def test_ping_linux(self, mock_paramiko):
         mock_pw, mock_client = mock_paramiko
-        from core.netops.ssh_client import SSHClient
         from core.netops.command_runner import CommandRunner
+        from core.netops.ssh_client import SSHClient
 
         mock_stdout = MagicMock()
         mock_stdout.read.return_value = b"4 packets transmitted, 4 received\n"
@@ -206,13 +210,13 @@ class TestCommandRunner:
         client = SSHClient(hostname="10.0.0.1")
         client.connect()
         runner = CommandRunner(client, device_type="linux")
-        result = runner.ping("192.168.1.1")
+        runner.ping("192.168.1.1")
         mock_client.exec_command.assert_called_with("ping -c 4 192.168.1.1", timeout=30.0)
 
     def test_run_raw(self, mock_paramiko):
         mock_pw, mock_client = mock_paramiko
-        from core.netops.ssh_client import SSHClient
         from core.netops.command_runner import CommandRunner
+        from core.netops.ssh_client import SSHClient
 
         mock_stdout = MagicMock()
         mock_stdout.read.return_value = b"raw output\n"
@@ -229,8 +233,8 @@ class TestCommandRunner:
 
     def test_show_interfaces(self, mock_paramiko):
         mock_pw, mock_client = mock_paramiko
-        from core.netops.ssh_client import SSHClient
         from core.netops.command_runner import CommandRunner
+        from core.netops.ssh_client import SSHClient
 
         mock_stdout = MagicMock()
         mock_stdout.read.return_value = b"interface output\n"

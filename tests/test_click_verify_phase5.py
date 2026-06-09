@@ -1,18 +1,14 @@
 """Tests for Phase 5: Click Verification & Self-Correction — diff, retry, enforced self-healing."""
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from PIL import Image
 
 from core.click_verify import (
     ClickVerifier,
-    compute_region_diff,
     capture_region,
-    verify_click_landed,
+    compute_region_diff,
 )
-
 
 # ---------------------------------------------------------------------------
 # Region capture
@@ -82,6 +78,7 @@ class TestRegionDiff:
         after = before.copy()
         # Draw a black rectangle in the center
         from PIL import ImageDraw
+
         draw = ImageDraw.Draw(after)
         draw.rectangle([80, 30, 120, 70], fill="black")
         diff = compute_region_diff(before, after)
@@ -98,6 +95,7 @@ class TestClickVerifier:
 
     def setup_method(self):
         from core.action_executor import ActionExecutor
+
         self.executor = ActionExecutor(dry_run=True)
         self.verifier = ClickVerifier(self.executor)
 
@@ -134,9 +132,11 @@ class TestClickVerifier:
     def test_failed_action_skips_verification(self):
         """If the action itself fails, no verification is attempted."""
         # Use execute_sync that returns a failure result
-        with patch.object(self.executor, "execute_sync", return_value={
-            "success": False, "output": "click failed", "error": "click_failed"
-        }):
+        with patch.object(
+            self.executor,
+            "execute_sync",
+            return_value={"success": False, "output": "click failed", "error": "click_failed"},
+        ):
             with patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (800, 600))):
                 action = {"action": "click", "x": 400, "y": 300}
                 result = self.verifier.execute_with_verification(action)
@@ -162,17 +162,27 @@ class TestClickVerifier:
         before = Image.new("RGB", (800, 600), "white")
         result = self.verifier._retry_with_offset(
             {"action": "click", "x": 400, "y": 300},
-            before, 400, 300,
+            before,
+            400,
+            300,
         )
         assert result["retry_tier"] == "offset"
 
     def test_accessibility_retry_with_perception(self):
         """Accessibility retry uses perception data when available."""
-        from core.perception.types import PerceptionElement, PerceptionResult, ElementType, ElementSource
+        from core.perception.types import (
+            ElementSource,
+            ElementType,
+            PerceptionElement,
+            PerceptionResult,
+        )
 
         elem = PerceptionElement(
-            id=1, label="OK", element_type=ElementType.BUTTON,
-            bounding_box=(100, 100, 80, 30), source=ElementSource.ACCESSIBILITY,
+            id=1,
+            label="OK",
+            element_type=ElementType.BUTTON,
+            bounding_box=(100, 100, 80, 30),
+            source=ElementSource.ACCESSIBILITY,
             is_interactable=True,
         )
         self.executor.perception_result = PerceptionResult(elements=[elem])
@@ -205,6 +215,7 @@ class TestEnforcedSelfHealing:
     def test_click_verify_module_exists(self):
         """core.click_verify module exists and is importable."""
         import core.click_verify
+
         assert hasattr(core.click_verify, "ClickVerifier")
 
     def test_verifier_has_tiered_retry(self):
@@ -220,6 +231,7 @@ class TestEnforcedSelfHealing:
     def test_diff_threshold_is_configurable_constant(self):
         """Verification threshold is defined as a module constant."""
         from core.click_verify import _DIFF_THRESHOLD
+
         assert isinstance(_DIFF_THRESHOLD, float)
         assert _DIFF_THRESHOLD > 0
 

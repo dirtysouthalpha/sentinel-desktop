@@ -51,11 +51,30 @@ class TaskPlanner:
 
     # Task type detection rules: (keywords, task_type)
     _TYPE_RULES: list[tuple[list[str], str]] = [
-        (["ssh", "ssh_connect", "ssh_run", "ssh_show", "ssh_ping", "router", "switch", "firewall config", "show version", "show interface"], "network"),
-        (["browser", "website", "web ", "navigate", "portal", "login to", "open url", "http"], "browser"),
-        (["terminal", "command", "powershell", "bash", "script", "execute", "run "], "terminal"),
-        (["monitor", "watch", "alert", "check ", "verify", "status", "health", "uptime"], "monitor"),
-        (["click", "type", "window", "app", "open ", "desktop", "screenshot", "ocr"], "desktop"),
+        (
+            [
+                "ssh", "ssh_connect", "ssh_run", "ssh_show",
+                "ssh_ping", "router", "switch", "firewall config",
+                "show version", "show interface",
+            ],
+            "network",
+        ),
+        (
+            ["browser", "website", "web ", "navigate", "portal", "login to", "open url", "http"],
+            "browser",
+        ),
+        (
+            ["terminal", "command", "powershell", "bash", "script", "execute", "run "],
+            "terminal",
+        ),
+        (
+            ["monitor", "watch", "alert", "check ", "verify", "status", "health", "uptime"],
+            "monitor",
+        ),
+        (
+            ["click", "type", "window", "app", "open ", "desktop", "screenshot", "ocr"],
+            "desktop",
+        ),
     ]
 
     # Conjunction patterns that indicate multiple subtasks
@@ -95,7 +114,7 @@ class TaskPlanner:
                 subtask_id=f"t-{i + 1}",
                 description=fragment.strip(),
                 task_type=self._detect_type(fragment),
-                priority=len(fragments) - i,  # Earlier tasks get higher priority
+                priority=len(fragments) - i,
             )
             # Add sequential dependency (each task depends on previous)
             if i > 0:
@@ -107,7 +126,11 @@ class TaskPlanner:
             for subtask in subtasks:
                 subtask.dependencies = []
 
-        logger.info("Decomposed goal into %d subtasks: %s", len(subtasks), [s.task_type for s in subtasks])
+        logger.info(
+            "Decomposed goal into %d subtasks: %s",
+            len(subtasks),
+            [s.task_type for s in subtasks],
+        )
         return subtasks
 
     def _split_goal(self, goal: str) -> list[str]:

@@ -127,6 +127,8 @@ class ActionExecutor:
         self._browser_manager: BrowserManager | None = None
         # Netops: lazy-initialized SSH client
         self._ssh_clients: dict[str, Any] = {}  # hostname → SSHClient
+        # Memory: lazy-initialized semantic memory
+        self._semantic_memory: Any | None = None
 
     @property
     def log(self) -> list[dict[str, Any]]:
@@ -296,7 +298,7 @@ class ActionExecutor:
         y: int,
         button: str = "left",
         clicks: int = 1,
-        **_: Any,
+        **_,
     ) -> dict[str, Any]:
         """Click at screen coordinates with optional stealth mode via PostMessage."""
         # Translate from captured-image coords to absolute screen coords for
@@ -395,7 +397,7 @@ class ActionExecutor:
             ),
         }
 
-    def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_: Any) -> dict:
+    def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_) -> dict:
         """OCR-backed click: locate visible text and click its centre.
 
         Self-healing: if OCR fails, tries UIAutomation click by name.
@@ -419,7 +421,7 @@ class ActionExecutor:
                 "error": "click_text_failed",
             }
 
-    def _read_text(self, *, scope: str = "focused", window: str | None = None, **_: Any) -> dict:
+    def _read_text(self, *, scope: str = "focused", window: str | None = None, **_) -> dict:
         """OCR text from the screen.
 
         Args:
@@ -470,7 +472,7 @@ class ActionExecutor:
                 "error": "read_text_failed",
             }
 
-    def _read_window(self, *, title: str, **_: Any) -> dict:
+    def _read_window(self, *, title: str, **_) -> dict:
         """OCR a specific window by partial title match — convenience for the LLM."""
         try:
             text = ocr.read_window_text(title)
@@ -505,7 +507,7 @@ class ActionExecutor:
         control_type: str | None = None,
         window_title: str | None = None,
         button: str = "left",
-        **_: Any,
+        **_,
     ) -> dict:
         """Click a native Windows control by its accessibility name/id/type.
 
@@ -574,7 +576,7 @@ class ActionExecutor:
         *,
         window_title: str | None = None,
         max_results: int = 60,
-        **_: Any,
+        **_,
     ) -> dict:
         """List accessible controls in a window for the LLM to choose from."""
         try:
@@ -612,7 +614,7 @@ class ActionExecutor:
         *,
         element_id: int,
         button: str = "left",
-        **_: Any,
+        **_,
     ) -> dict[str, Any]:
         """Click a perception element by its numeric ID.
 
@@ -643,7 +645,7 @@ class ActionExecutor:
         *,
         mark_id: int,
         button: str = "left",
-        **_: Any,
+        **_,
     ) -> dict[str, Any]:
         """Click a Set-of-Marks target by its numbered mark ID.
 
@@ -653,7 +655,7 @@ class ActionExecutor:
         """
         return self._click_element(element_id=mark_id, button=button)
 
-    def _list_elements(self, **_: Any) -> dict[str, Any]:
+    def _list_elements(self, **_) -> dict[str, Any]:
         """Return the current perception element list for the LLM.
 
         Provides a compact summary of all detected elements with their IDs,
@@ -685,7 +687,7 @@ class ActionExecutor:
         name: str | None = None,
         automation_id: str | None = None,
         window_title: str | None = None,
-        **_: Any,
+        **_,
     ) -> dict:
         """Set the value of a named edit/textbox control deterministically.
 
@@ -763,7 +765,7 @@ class ActionExecutor:
             "hint": "Try click_text() on the field label, then type_text()",
         }
 
-    def _click_image(self, *, template_path: str, confidence: float = 0.8, **_: Any) -> dict:
+    def _click_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
         """Find a template image on screen and click it, using stealth if available."""
         # Find the template position; click via stealth if enabled so the
         # cursor stays put.
@@ -790,7 +792,7 @@ class ActionExecutor:
                 "error": "click_image_failed",
             }
 
-    def _type_text(self, *, text: str, **_: Any) -> dict:
+    def _type_text(self, *, text: str, **_) -> dict:
         """Type text via keyboard input, falling back to clipboard paste if needed."""
         # Sensitive field check
         if _contains_sensitive(text):
@@ -819,7 +821,7 @@ class ActionExecutor:
             except Exception as exc2:
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
-    def _press_key(self, *, key: str, **_: Any) -> dict:
+    def _press_key(self, *, key: str, **_) -> dict:
         """Press a single named key (e.g. 'enter', 'tab', 'escape')."""
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_named_key(key):
@@ -834,7 +836,7 @@ class ActionExecutor:
                 "error": "press_key_failed",
             }
 
-    def _hotkey(self, *, keys: list, **_: Any) -> dict:
+    def _hotkey(self, *, keys: list, **_) -> dict:
         """Press a keyboard shortcut combination (e.g. ['ctrl', 'c'])."""
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_hotkey(keys):
@@ -850,7 +852,7 @@ class ActionExecutor:
         *,
         x: int,
         y: int,
-        **_: Any,
+        **_,
     ) -> dict:
         """Move the mouse cursor to screen coordinates without clicking."""
         sx = int(x) + self.click_offset[0]
@@ -874,7 +876,7 @@ class ActionExecutor:
         to_y: int,
         duration: float = 0.5,
         button: str = "left",
-        **_: Any,
+        **_,
     ) -> dict:
         """Drag from one screen position to another with stealth PostMessage support."""
         sx = int(from_x) + self.click_offset[0]
@@ -928,7 +930,7 @@ class ActionExecutor:
             logger.debug("Stealth drag failed, falling back: %s", exc)
             return None
 
-    def _scroll(self, *, amount: int, **_: Any) -> dict:
+    def _scroll(self, *, amount: int, **_) -> dict:
         """Scroll the mouse wheel by the given amount (positive = up, negative = down)."""
         try:
             self._desktop.scroll(amount)
@@ -936,7 +938,7 @@ class ActionExecutor:
         except Exception as exc:
             return {"success": False, "output": f"Scroll failed: {exc}", "error": "scroll_failed"}
 
-    def _screenshot(self, **_: Any) -> dict:
+    def _screenshot(self, **_) -> dict:
         """Capture a screenshot and return it as a base64-encoded string."""
         try:
             b64 = capture_to_base64(monitor=self.monitor)
@@ -952,7 +954,7 @@ class ActionExecutor:
                 "error": "capture_failed",
             }
 
-    def _find_image(self, *, template_path: str, confidence: float = 0.8, **_: Any) -> dict:
+    def _find_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
         """Locate a template image on screen and return its position."""
         try:
             pos = find_template(template_path, confidence)
@@ -974,7 +976,7 @@ class ActionExecutor:
                 "error": "find_image_failed",
             }
 
-    def _wait(self, *, seconds: float = 1.0, **_: Any) -> dict:
+    def _wait(self, *, seconds: float = 1.0, **_) -> dict:
         """Sleep for the given duration, capped at 60s to prevent runaway waits."""
         import time as _time
 
@@ -987,7 +989,7 @@ class ActionExecutor:
         except Exception as exc:
             return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
-    def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_: Any) -> dict:
+    def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_) -> dict:
         """Poll until a template image appears on screen or timeout elapses."""
         try:
             pos = wait_for_template(template_path, float(timeout))
@@ -1005,7 +1007,7 @@ class ActionExecutor:
                 "error": "wait_for_image_failed",
             }
 
-    def _smart_wait(self, *, timeout: float = 10, region: list | None = None, **_: Any) -> dict:
+    def _smart_wait(self, *, timeout: float = 10, region: list | None = None, **_) -> dict:
         """Wait until the screen changes (visual diff)."""
         try:
             from core.smart_wait import SmartWait
@@ -1039,7 +1041,7 @@ class ActionExecutor:
         timeout: float = 10,
         stable_time: float = 1.5,
         region: list | None = None,
-        **_: Any,
+        **_,
     ) -> dict:
         """Wait until the screen stops changing."""
         try:
@@ -1075,7 +1077,7 @@ class ActionExecutor:
         text: str,
         timeout: float = 10,
         region: list | None = None,
-        **_: Any,
+        **_,
     ) -> dict:
         """Wait until specific text appears on screen via OCR."""
         try:
@@ -1098,7 +1100,7 @@ class ActionExecutor:
                 "error": "wait_for_text_failed",
             }
 
-    def _open_app(self, *, path: str, args: list | None = None, **_: Any) -> dict:
+    def _open_app(self, *, path: str, args: list | None = None, **_) -> dict:
         """Launch an application by executable path with optional arguments."""
         try:
             pid = pm.start_process(path, args)
@@ -1112,7 +1114,7 @@ class ActionExecutor:
                 "error": "open_app_failed",
             }
 
-    def _smart_open(self, *, name: str, **_: Any) -> dict:
+    def _smart_open(self, *, name: str, **_) -> dict:
         """Focus an existing window if the app is already running, else launch.
 
         Self-healing: if normal launch fails, tries PowerShell Start-Process.
@@ -1148,7 +1150,7 @@ class ActionExecutor:
         result["hint"] = "Try open_app() with the full executable path"
         return result
 
-    def _close_app(self, *, name: str | None = None, pid: int | None = None, **_: Any) -> dict:
+    def _close_app(self, *, name: str | None = None, pid: int | None = None, **_) -> dict:
         """Kill a running process by name or PID."""
         target = pid or name
         if target is None:
@@ -1170,7 +1172,7 @@ class ActionExecutor:
                 "error": "close_app_failed",
             }
 
-    def _focus_window(self, *, title: str, **_: Any) -> dict:
+    def _focus_window(self, *, title: str, **_) -> dict:
         """Focus a window by partial title match.
 
         Self-healing: if exact focus fails, scans visible windows for
@@ -1212,7 +1214,7 @@ class ActionExecutor:
                 "error": "focus_window_failed",
             }
 
-    def _close_window(self, *, title: str, **_: Any) -> dict:
+    def _close_window(self, *, title: str, **_) -> dict:
         """Close a window by partial title match."""
         try:
             ok = wm.close_window(title)
@@ -1224,7 +1226,7 @@ class ActionExecutor:
                 "error": "close_window_failed",
             }
 
-    def _list_windows(self, **_: Any) -> dict:
+    def _list_windows(self, **_) -> dict:
         """List all visible windows with titles and positions."""
         try:
             windows = wm.list_windows()
@@ -1236,7 +1238,7 @@ class ActionExecutor:
                 "error": "list_windows_failed",
             }
 
-    def _read_file(self, *, path: str, **_: Any) -> dict:
+    def _read_file(self, *, path: str, **_) -> dict:
         """Read a file's contents and return up to 5000 chars as a preview."""
         try:
             content = file_ops.read_file(path)
@@ -1255,7 +1257,7 @@ class ActionExecutor:
                 "error": "read_file_failed",
             }
 
-    def _write_file(self, *, path: str, content: str, **_: Any) -> dict:
+    def _write_file(self, *, path: str, content: str, **_) -> dict:
         """Write content to a file on disk."""
         try:
             ok = file_ops.write_file(path, content)
@@ -1267,7 +1269,7 @@ class ActionExecutor:
                 "error": "write_file_failed",
             }
 
-    def _list_directory(self, *, path: str = ".", **_: Any) -> dict:
+    def _list_directory(self, *, path: str = ".", **_) -> dict:
         """List files and subdirectories in the given directory path."""
         try:
             entries = file_ops.list_directory(path)
@@ -1281,7 +1283,231 @@ class ActionExecutor:
                 "error": "list_directory_failed",
             }
 
-    def _clipboard_read(self, **_: Any) -> dict:
+    # -------------------------------------------------------------------
+    # File Operations Plus (v13.0 — extended file management)
+    # -------------------------------------------------------------------
+
+    def _delete_file(self, *, path: str, force: bool = False, **_) -> dict:
+        """Delete a file or directory."""
+        ok = file_ops.delete_file(path, force=force)
+        if ok:
+            return {"success": True, "output": f"Deleted {path}"}
+        return {"success": False, "output": f"Failed to delete {path}"}
+
+    def _move_file(self, *, src: str, dst: str, **_) -> dict:
+        """Move or rename a file."""
+        ok = file_ops.move_file(src, dst)
+        if ok:
+            return {"success": True, "output": f"Moved {src} → {dst}"}
+        return {"success": False, "output": f"Failed to move {src} → {dst}"}
+
+    def _copy_file(self, *, src: str, dst: str, **_) -> dict:
+        """Copy a file to a new location."""
+        ok = file_ops.copy_file(src, dst)
+        if ok:
+            return {"success": True, "output": f"Copied {src} → {dst}"}
+        return {"success": False, "output": f"Failed to copy {src} → {dst}"}
+
+    def _mkdir(self, *, path: str, parents: bool = True, **_) -> dict:
+        """Create a directory."""
+        ok = file_ops.mkdir(path, parents=parents)
+        if ok:
+            return {"success": True, "output": f"Created directory {path}"}
+        return {"success": False, "output": f"Failed to create {path}"}
+
+    def _stat_file(self, *, path: str, **_) -> dict:
+        """Get file metadata."""
+        info = file_ops.stat_file(path)
+        if info is not None:
+            return {"success": True, "output": info}
+        return {
+            "success": False,
+            "output": f"Failed to stat {path}",
+            "error": "stat_failed",
+        }
+
+    def _find_files(
+        self,
+        *,
+        pattern: str,
+        root: str = ".",
+        max_results: int = 100,
+        **_,
+    ) -> dict:
+        """Search for files matching a glob pattern."""
+        results = file_ops.find_files(
+            pattern, root=root, max_results=max_results,
+        )
+        if results is not None:
+            return {
+                "success": True,
+                "output": results,
+                "count": len(results),
+            }
+        return {
+            "success": False,
+            "output": f"Failed to search {pattern}",
+            "error": "find_failed",
+        }
+
+    def _archive_create(
+        self,
+        *,
+        archive_path: str,
+        files: list[str],
+        base_dir: str = ".",
+        **_,
+    ) -> dict:
+        """Create a zip archive."""
+        ok = file_ops.archive_create(
+            archive_path, files, base_dir=base_dir,
+        )
+        if ok:
+            return {
+                "success": True,
+                "output": f"Created {archive_path} ({len(files)} files)",
+            }
+        return {
+            "success": False,
+            "output": f"Failed to create {archive_path}",
+        }
+
+    def _archive_extract(
+        self,
+        *,
+        archive_path: str,
+        dest_dir: str = ".",
+        **_,
+    ) -> dict:
+        """Extract a zip archive."""
+        ok = file_ops.archive_extract(archive_path, dest_dir=dest_dir)
+        if ok:
+            return {
+                "success": True,
+                "output": f"Extracted {archive_path} → {dest_dir}",
+            }
+        return {
+            "success": False,
+            "output": f"Failed to extract {archive_path}",
+        }
+
+    # -------------------------------------------------------------------
+    # Process & Service Control (v13.0)
+    # -------------------------------------------------------------------
+
+    def _set_priority(self, *, pid: int, priority: str, **_) -> dict:
+        """Set process priority."""
+        from core.process_manager import set_priority
+        ok = set_priority(pid, priority)
+        return {
+            "success": ok,
+            "output": f"Priority {'set' if ok else 'failed'} for PID {pid}",
+        }
+
+    def _get_env(self, *, name: str, **_) -> dict:
+        """Read an environment variable."""
+        from core.process_manager import get_env
+        value = get_env(name)
+        if value is not None:
+            return {"success": True, "output": value, "name": name}
+        return {
+            "success": False,
+            "output": f"Variable {name} not set",
+            "error": "env_not_found",
+        }
+
+    def _set_env(
+        self, *, name: str, value: str, permanent: bool = False, **_,
+    ) -> dict:
+        """Set an environment variable."""
+        from core.process_manager import set_env
+        ok = set_env(name, value, permanent=permanent)
+        return {
+            "success": ok,
+            "output": f"{'Set' if ok else 'Failed to set'} {name}",
+        }
+
+    def _service_control(
+        self, *, name: str, control_action: str, **_,
+    ) -> dict:
+        """Control a Windows service."""
+        from core.process_manager import service_control
+        return service_control(name, control_action)
+
+    # -------------------------------------------------------------------
+    # Credential Vault (v13.0)
+    # -------------------------------------------------------------------
+
+    def _cred_store(self, *, key: str, value: str, **_) -> dict:
+        """Store a credential in the vault."""
+        from core.encryption import CredentialVault
+        vault = CredentialVault()
+        ok = vault.store(key, value)
+        return {
+            "success": ok,
+            "output": f"{'Stored' if ok else 'Failed'} {key}",
+        }
+
+    def _cred_read(self, *, key: str, **_) -> dict:
+        """Read a credential from the vault."""
+        from core.encryption import CredentialVault
+        vault = CredentialVault()
+        value = vault.retrieve(key)
+        if value is not None:
+            return {"success": True, "output": value, "key": key}
+        return {
+            "success": False,
+            "output": f"Key {key} not found",
+            "error": "cred_not_found",
+        }
+
+    # -------------------------------------------------------------------
+    # Registry (v13.0)
+    # -------------------------------------------------------------------
+
+    def _registry_read(
+        self, *, path: str, value_name: str = "", **_,
+    ) -> dict:
+        """Read a registry value."""
+        from core.registry import registry_read
+        result = registry_read(path, value_name)
+        if result is not None:
+            return {"success": True, "output": result}
+        return {
+            "success": False,
+            "output": f"Failed to read {path}",
+            "error": "registry_read_failed",
+        }
+
+    def _registry_write(
+        self,
+        *,
+        path: str,
+        value_name: str,
+        data: str,
+        reg_type: str = "REG_SZ",
+        **_,
+    ) -> dict:
+        """Write a registry value."""
+        from core.registry import registry_write
+        ok = registry_write(path, value_name, data, reg_type)
+        return {
+            "success": ok,
+            "output": f"{'Wrote' if ok else 'Failed'} {path}",
+        }
+
+    def _registry_delete(
+        self, *, path: str, value_name: str | None = None, **_,
+    ) -> dict:
+        """Delete a registry key or value."""
+        from core.registry import registry_delete
+        ok = registry_delete(path, value_name)
+        return {
+            "success": ok,
+            "output": f"{'Deleted' if ok else 'Failed'} {path}",
+        }
+
+    def _clipboard_read(self, **_) -> dict:
         """Read the current contents of the system clipboard."""
         try:
             text = clip.clipboard_read()
@@ -1293,7 +1519,7 @@ class ActionExecutor:
                 "error": "clipboard_failed",
             }
 
-    def _clipboard_write(self, *, text: str, **_: Any) -> dict:
+    def _clipboard_write(self, *, text: str, **_) -> dict:
         """Write text to the system clipboard."""
         try:
             ok = clip.clipboard_write(text)
@@ -1305,7 +1531,7 @@ class ActionExecutor:
                 "error": "clipboard_failed",
             }
 
-    def _system_info(self, **_: Any) -> dict:
+    def _system_info(self, **_) -> dict:
         """Return OS, CPU, memory, and disk information."""
         try:
             info = sysinfo.system_info()
@@ -1317,7 +1543,7 @@ class ActionExecutor:
                 "error": "system_info_failed",
             }
 
-    def _list_processes(self, **_: Any) -> dict:
+    def _list_processes(self, **_) -> dict:
         """List running processes (up to 100 entries)."""
         try:
             procs = pm.list_processes()
@@ -1329,7 +1555,7 @@ class ActionExecutor:
                 "error": "list_processes_failed",
             }
 
-    def _start_process(self, *, path: str, args: list | None = None, **_: Any) -> dict:
+    def _start_process(self, *, path: str, args: list | None = None, **_) -> dict:
         """Start a new process by executable path and return its PID."""
         try:
             pid = pm.start_process(path, args)
@@ -1341,7 +1567,7 @@ class ActionExecutor:
                 "error": "start_process_failed",
             }
 
-    def _kill_process(self, *, pid: int | None = None, name: str | None = None, **_: Any) -> dict:
+    def _kill_process(self, *, pid: int | None = None, name: str | None = None, **_) -> dict:
         """Terminate a process by PID or name."""
         target = pid or name
         try:
@@ -1357,7 +1583,7 @@ class ActionExecutor:
                 "error": "kill_process_failed",
             }
 
-    def _note(self, *, text: str, **_: Any) -> dict:
+    def _note(self, *, text: str, **_) -> dict:
         """Agent makes a note to itself — no-op for execution, logged."""
         logger.info("Agent note: %s", text)
         return {"success": True, "output": text}
@@ -1373,7 +1599,7 @@ class ActionExecutor:
             self._browser_manager = BrowserManager(headless=True, ignore_https_errors=True)
         return self._browser_manager
 
-    def _web_open(self, *, url: str, wait_until: str = "load", **_: Any) -> dict:
+    def _web_open(self, *, url: str, wait_until: str = "load", **_) -> dict:
         """Navigate to a URL in the managed browser."""
         return self.browser.open(url, wait_until=wait_until)
 
@@ -1386,7 +1612,7 @@ class ActionExecutor:
         name: str | None = None,
         button: str = "left",
         click_count: int = 1,
-        **_: Any,
+        **_,
     ) -> dict:
         """Click an element in the browser by selector, text, or ARIA role."""
         return self.browser.click(
@@ -1403,7 +1629,7 @@ class ActionExecutor:
         role: str | None = None,
         name: str | None = None,
         clear: bool = True,
-        **_: Any,
+        **_,
     ) -> dict:
         """Type text into a browser form field."""
         return self.browser.type_text(
@@ -1411,11 +1637,11 @@ class ActionExecutor:
             role=role, name=name, clear=clear,
         )
 
-    def _web_read(self, *, selector: str | None = None, full_page: bool = False, **_: Any) -> dict:
+    def _web_read(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
         """Read text content from the browser page or element."""
         return self.browser.read(selector=selector, full_page=full_page)
 
-    def _web_extract(self, *, selector: str = "table", format: str = "json", **_: Any) -> dict:
+    def _web_extract(self, *, selector: str = "table", format: str = "json", **_) -> dict:
         """Extract structured data from the browser page."""
         return self.browser.extract(selector=selector, format=format)
 
@@ -1426,26 +1652,26 @@ class ActionExecutor:
         text: str | None = None,
         state: str = "visible",
         timeout: float = 30.0,
-        **_: Any,
+        **_,
     ) -> dict:
         """Wait for an element or condition in the browser."""
         return self.browser.wait_for(
             selector=selector, text=text, state=state, timeout=timeout * 1000,
         )
 
-    def _web_screenshot(self, *, selector: str | None = None, full_page: bool = False, **_: Any) -> dict:
+    def _web_screenshot(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
         """Capture a screenshot of the browser viewport or element."""
         return self.browser.screenshot(selector=selector, full_page=full_page)
 
-    def _web_eval_js(self, *, expression: str, **_: Any) -> dict:
+    def _web_eval_js(self, *, expression: str, **_) -> dict:
         """Execute JavaScript in the browser context."""
         return self.browser.eval_js(expression=expression)
 
-    def _web_download(self, *, url: str | None = None, save_path: str | None = None, **_: Any) -> dict:
+    def _web_download(self, *, url: str | None = None, save_path: str | None = None, **_) -> dict:
         """Download a file from the browser."""
         return self.browser.download(url=url, save_path=save_path)
 
-    def _web_upload(self, *, selector: str, file_paths: list[str], **_: Any) -> dict:
+    def _web_upload(self, *, selector: str, file_paths: list[str], **_) -> dict:
         """Upload files to a web form."""
         return self.browser.upload(selector=selector, file_paths=file_paths)
 
@@ -1455,35 +1681,16 @@ class ActionExecutor:
         action: str = "list",
         index: int | None = None,
         url: str | None = None,
-        **_: Any,
+        **_,
     ) -> dict:
         """Manage browser tabs."""
         return self.browser.tabs(action=action, index=index, url=url)
 
-    def _mfa_detect(self, **_: Any) -> dict:
-        """Detect MFA on the current browser page."""
-        return self.browser.detect_mfa()
-
-    def _mfa_handle(
-        self,
-        *,
-        code: str | None = None,
-        service_name: str | None = None,
-        selector: str | None = None,
-        **_: Any,
-    ) -> dict:
-        """Handle MFA on the current browser page."""
-        return self.browser.handle_mfa(
-            code=code,
-            service_name=service_name,
-            selector=selector,
-        )
-
-    def _finish(self, *, summary: str = "", **_: Any) -> dict:
+    def _finish(self, *, summary: str = "", **_) -> dict:
         """Signal that the agent is done."""
         return {"success": True, "output": summary, "done": True}
 
-    def _powershell(self, *, command: str, **_: Any) -> dict:
+    def _powershell(self, *, command: str, **_) -> dict:
         """Run a PowerShell command and return output."""
         try:
             from core.powershell import get_default_runner
@@ -1503,7 +1710,7 @@ class ActionExecutor:
                 "error": "powershell_failed",
             }
 
-    def _run_script(self, *, path: str, params: dict | None = None, **_: Any) -> dict:
+    def _run_script(self, *, path: str, params: dict | None = None, **_) -> dict:
         """Replay a recorded script from a JSON file."""
         try:
             from core.script_engine import ScriptEngine
@@ -1532,7 +1739,7 @@ class ActionExecutor:
         password: str = "",
         port: int = 22,
         key_filename: str | None = None,
-        **_: Any,
+        **_,
     ) -> dict:
         """Connect to a network device via SSH."""
         try:
@@ -1546,9 +1753,13 @@ class ActionExecutor:
             self._ssh_clients[hostname] = client
             return {"success": True, "output": f"Connected to {hostname}"}
         except Exception as exc:
-            return {"success": False, "output": f"SSH connect error: {exc}", "error": "ssh_connect_failed"}
+            return {
+                "success": False,
+                "output": f"SSH connect error: {exc}",
+                "error": "ssh_connect_failed",
+            }
 
-    def _ssh_disconnect(self, *, hostname: str, **_: Any) -> dict:
+    def _ssh_disconnect(self, *, hostname: str, **_) -> dict:
         """Disconnect from an SSH device."""
         client = self._ssh_clients.pop(hostname, None)
         if client is None:
@@ -1562,12 +1773,16 @@ class ActionExecutor:
         hostname: str,
         command: str,
         timeout: float | None = None,
-        **_: Any,
+        **_,
     ) -> dict:
         """Run a command on a connected SSH device."""
         client = self._ssh_clients.get(hostname)
         if client is None:
-            return {"success": False, "output": f"Not connected to {hostname}", "error": "ssh_not_connected"}
+            return {
+                "success": False,
+                "output": f"Not connected to {hostname}",
+                "error": "ssh_not_connected",
+            }
         result = client.run_command(command, timeout=timeout)
         return {
             "success": result.success,
@@ -1582,7 +1797,7 @@ class ActionExecutor:
         hostname: str,
         what: str,
         device_type: str = "generic",
-        **_: Any,
+        **_,
     ) -> dict:
         """Run a device-aware show command on an SSH device."""
         from core.netops.command_runner import CommandRunner
@@ -1595,7 +1810,11 @@ class ActionExecutor:
 
         client = self._ssh_clients.get(hostname)
         if client is None:
-            return {"success": False, "output": f"Not connected to {hostname}", "error": "ssh_not_connected"}
+            return {
+                "success": False,
+                "output": f"Not connected to {hostname}",
+                "error": "ssh_not_connected",
+            }
 
         runner = CommandRunner(client, device_type=device_type)
         parsers = {
@@ -1609,7 +1828,10 @@ class ActionExecutor:
         }
 
         if what not in parsers:
-            return {"success": False, "output": f"Unknown show command: {what}. Options: {list(parsers.keys())}"}
+            return {
+                "success": False,
+                "output": f"Unknown show command: {what}. Options: {list(parsers.keys())}",
+            }
 
         cmd_fn, parser_fn = parsers[what]
         result = cmd_fn()
@@ -1629,7 +1851,7 @@ class ActionExecutor:
         target: str,
         count: int = 4,
         device_type: str = "generic",
-        **_: Any,
+        **_,
     ) -> dict:
         """Ping a target from a connected SSH device."""
         from core.netops.command_runner import CommandRunner
@@ -1637,12 +1859,162 @@ class ActionExecutor:
 
         client = self._ssh_clients.get(hostname)
         if client is None:
-            return {"success": False, "output": f"Not connected to {hostname}", "error": "ssh_not_connected"}
+            return {
+                "success": False,
+                "output": f"Not connected to {hostname}",
+                "error": "ssh_not_connected",
+            }
 
         runner = CommandRunner(client, device_type=device_type)
         result = runner.ping(target, count=count)
         parsed = parse_ping(result.stdout)
         return {"success": parsed["success"], "output": parsed, "raw": result.stdout}
+
+    def _ssh_traceroute(
+        self,
+        *,
+        hostname: str,
+        target: str,
+        device_type: str = "generic",
+        **_,
+    ) -> dict:
+        """Traceroute to a target from a connected SSH device."""
+        from core.netops.command_runner import CommandRunner
+        from core.netops.output_parser import parse_traceroute
+
+        client = self._ssh_clients.get(hostname)
+        if client is None:
+            return {
+                "success": False,
+                "output": f"Not connected to {hostname}",
+                "error": "ssh_not_connected",
+            }
+
+        runner = CommandRunner(client, device_type=device_type)
+        result = runner.traceroute(target)
+        parsed = parse_traceroute(result.stdout)
+        return {
+            "success": parsed["success"],
+            "output": parsed,
+            "raw": result.stdout,
+        }
+    # -------------------------------------------------------------------
+    # Memory actions (v11.0 — persistent memory)
+    # -------------------------------------------------------------------
+
+    def _memory_store(
+        self,
+        *,
+        key: str,
+        value: str,
+        category: str = "",
+        tags: list[str] | None = None,
+        **_,
+    ) -> dict:
+        """Store a fact in semantic memory."""
+        try:
+            mem = self._get_semantic_memory()
+            fact_id = mem.store(key=key, value=value, category=category, tags=tags)
+            return {"success": True, "fact_id": fact_id, "key": key}
+        except Exception as exc:
+            return {
+                "success": False,
+                "output": f"Memory store error: {exc}",
+                "error": "memory_store_failed",
+            }
+
+    def _memory_recall(self, *, key: str, **_) -> dict:
+        """Recall a fact from semantic memory by key."""
+        try:
+            mem = self._get_semantic_memory()
+            result = mem.recall(key)
+            if result is None:
+                return {"success": False, "output": f"No fact found for key: {key}"}
+            return {"success": True, "fact": result}
+        except Exception as exc:
+            return {
+                "success": False,
+                "output": f"Memory recall error: {exc}",
+                "error": "memory_recall_failed",
+            }
+
+    def _memory_search(self, *, query: str, limit: int = 10, **_) -> dict:
+        """Search semantic memory by keyword."""
+        try:
+            mem = self._get_semantic_memory()
+            results = mem.query(query, limit=limit)
+            return {"success": True, "results": results, "count": len(results)}
+        except Exception as exc:
+            return {
+                "success": False,
+                "output": f"Memory search error: {exc}",
+                "error": "memory_search_failed",
+            }
+
+    def _memory_forget(self, *, key: str, **_) -> dict:
+        """Delete a fact from semantic memory."""
+        try:
+            mem = self._get_semantic_memory()
+            deleted = mem.delete(key)
+            if deleted:
+                return {"success": True, "output": f"Forgot: {key}"}
+            return {"success": False, "output": f"Key not found: {key}"}
+        except Exception as exc:
+            return {
+                "success": False,
+                "output": f"Memory forget error: {exc}",
+                "error": "memory_forget_failed",
+            }
+
+    def _get_semantic_memory(self) -> Any:
+        """Lazy-init semantic memory."""
+        if self._semantic_memory is None:
+            from core.memory.semantic import SemanticMemory
+            self._semantic_memory = SemanticMemory()
+        return self._semantic_memory
+
+    # -------------------------------------------------------------------
+    # Conductor actions (v12.0 — multi-agent orchestration)
+    # -------------------------------------------------------------------
+
+    async def _conductor_run(
+        self,
+        *,
+        goal: str,
+        timeout: float = 120.0,
+        **_,
+    ) -> dict:
+        """Decompose and execute a complex goal via conductor."""
+        try:
+            from core.conductor.coordinator import Conductor
+            conductor = Conductor()
+            result = await conductor.run(goal, timeout=timeout)
+            return result
+        except Exception as exc:
+            return {
+                "goal": goal,
+                "status": "failed",
+                "success": False,
+                "summary": f"Conductor error: {exc}",
+                "error": "conductor_run_failed",
+            }
+
+    def _conductor_run_sync(
+        self,
+        *,
+        goal: str,
+        timeout: float = 120.0,
+        **_,
+    ) -> dict:
+        """Synchronous wrapper for conductor_run."""
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            future = pool.submit(
+                asyncio.run,
+                self._conductor_run(goal=goal, timeout=timeout),
+            )
+            return future.result(timeout=timeout + 10)
 
     # Dispatch table
     _dispatch_table: dict[str, Callable] = {
@@ -1667,15 +2039,20 @@ class ActionExecutor:
         "web_download": _web_download,
         "web_upload": _web_upload,
         "web_tabs": _web_tabs,
-        # MFA (v13.0)
-        "mfa_detect": _mfa_detect,
-        "mfa_handle": _mfa_handle,
         # Netops (v9.0)
         "ssh_connect": _ssh_connect,
         "ssh_disconnect": _ssh_disconnect,
         "ssh_run": _ssh_run,
         "ssh_show": _ssh_show,
         "ssh_ping": _ssh_ping,
+        "ssh_traceroute": _ssh_traceroute,
+        # Memory (v11.0)
+        "memory_store": _memory_store,
+        "memory_recall": _memory_recall,
+        "memory_search": _memory_search,
+        "memory_forget": _memory_forget,
+        # Conductor (v12.0)
+        "conductor_run": _conductor_run_sync,
         "set_text": _set_text,
         "read_text": _read_text,
         "read_window": _read_window,
@@ -1701,6 +2078,27 @@ class ActionExecutor:
         "read_file": _read_file,
         "write_file": _write_file,
         "list_directory": _list_directory,
+        # File Operations Plus (v13.0)
+        "delete_file": _delete_file,
+        "move_file": _move_file,
+        "copy_file": _copy_file,
+        "mkdir": _mkdir,
+        "stat_file": _stat_file,
+        "find_files": _find_files,
+        "archive_create": _archive_create,
+        "archive_extract": _archive_extract,
+        # Process & Service Control (v13.0)
+        "set_priority": _set_priority,
+        "get_env": _get_env,
+        "set_env": _set_env,
+        "service_control": _service_control,
+        # Credential Vault (v13.0)
+        "cred_store": _cred_store,
+        "cred_read": _cred_read,
+        # Registry (v13.0)
+        "registry_read": _registry_read,
+        "registry_write": _registry_write,
+        "registry_delete": _registry_delete,
         "clipboard_read": _clipboard_read,
         "clipboard_write": _clipboard_write,
         "system_info": _system_info,

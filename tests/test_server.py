@@ -5,12 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from core.server.daemon import DaemonStatus, SentinelDaemon
 from core.server.fleet import FleetManager, FleetNode
-from core.server.job_queue import JobQueue, JobStatus
-
+from core.server.job_queue import JobQueue
 
 # ===========================================================================
 # Daemon tests

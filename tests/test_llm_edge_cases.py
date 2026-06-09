@@ -499,7 +499,11 @@ class TestAnthropicMalformedToolUse:
             json=MagicMock(
                 return_value={
                     "content": [
-                        {"type": "tool_use", "name": "computer", "input": {"action": "click"}},  # missing id, partial input
+                        {
+                            "type": "tool_use",
+                            "name": "computer",
+                            "input": {"action": "click"},
+                        },  # missing id, partial input
                     ]
                 }
             ),

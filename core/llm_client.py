@@ -586,7 +586,10 @@ class LLMClient:
                         "type": "function",
                         "function": {
                             "name": action["action"],
-                            "arguments": json.dumps({k: v for k, v in action.items() if k not in ("action", "_original_id")}),
+                            "arguments": json.dumps({
+                                k: v for k, v in action.items()
+                                if k not in ("action", "_original_id")
+                            }),
                         },
                     })
             return json.dumps({"tool_calls": tool_calls})

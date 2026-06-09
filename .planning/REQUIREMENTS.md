@@ -1,84 +1,92 @@
-# Requirements: Sentinel Desktop v8.0.0 Webhand
+# Requirements: Sentinel Desktop v9.0–v12.0
 
-**Defined:** 2026-06-06
+**Defined:** 2026-06-07
 **Core Value:** Automate any Windows desktop task through natural language — safely, reliably, and with full visibility.
 
-## v8 Requirements
+## v9 Requirements — Netops (SSH/Network Device Control)
 
-### Browser Core
+- [x] **NET-01**: SSH client via paramiko — connect, run_command, run_commands, context manager
+- [x] **NET-02**: Device-aware command runner — Cisco IOS/NX-OS, Juniper JunOS, FortiGate, SonicWall, MikroTik, pfSense, Linux
+- [x] **NET-03**: Output parser — interfaces, ARP, routing, ping, version, IPs, MACs
+- [x] **NET-04**: `ssh_connect` action — connect to device with password or key auth
+- [x] **NET-05**: `ssh_disconnect` action — disconnect from device
+- [x] **NET-06**: `ssh_run` action — execute raw command on connected device
+- [x] **NET-07**: `ssh_show` action — device-aware show commands with parsed output
+- [x] **NET-08**: `ssh_ping` action — ping from connected device with parsed results
+- [x] **NET-09**: Pydantic action schemas for all SSH actions
+- [x] **NET-10**: Tool schemas for LLM tool calling
+- [x] **NET-11**: Executor dispatch handlers for all SSH actions
 
-- [x] **WEB-01**: Embedded controlled browser via Playwright (Chromium/Firefox/WebKit) with CDP — launches a managed browser instance the agent drives directly
-- [x] **WEB-02**: `web_open` action — navigate to a URL in the managed browser, handles redirects and page load events
-- [x] **WEB-03**: `web_click` action — click elements by CSS selector, text content, or ARIA role; auto-scrolls element into view
-- [x] **WEB-04**: `web_type` action — type text into form fields identified by selector, label, or placeholder; clears existing content by default
-- [x] **WEB-05**: `web_read` action — extract text content from the full page or a specific element by selector
-- [x] **WEB-06**: `web_extract` action — extract structured data (HTML tables → JSON, lists, form values, page metadata)
+## v10 Requirements — Sentinel Server (Fleet/Daemon Mode)
 
-### Browser Advanced
+- [x] **SRV-01**: Daemon service manager — start, stop, heartbeat, job tracking
+- [x] **SRV-02**: Fleet manager — register, unregister, heartbeat, node listing
+- [x] **SRV-03**: Persistent job queue — submit, claim, complete, fail, cancel with priority
+- [x] **SRV-04**: API endpoints for daemon — GET /daemon/status, POST /daemon/start, POST /daemon/stop
+- [x] **SRV-05**: API endpoints for fleet — GET /fleet/nodes, POST /fleet/register, POST /fleet/unregister
+- [x] **SRV-06**: API endpoints for jobs — GET /jobs, POST /jobs/submit, GET /jobs/{id}, POST /jobs/{id}/cancel
 
-- [x] **WEB-07**: `web_wait_for` action — wait for element visibility, navigation complete, network idle, or specific text on page
-- [x] **WEB-08**: `web_screenshot` action — capture browser viewport or element screenshot as PIL Image
-- [x] **WEB-09**: `web_eval_js` action — execute arbitrary JavaScript in browser context and return result
-- [x] **WEB-10**: `web_download` action — download files from browser with progress tracking
-- [x] **WEB-11**: `web_upload` action — upload files to web forms by setting file input elements
-- [x] **WEB-12**: `web_tabs` action — list open tabs, switch between tabs, create new tabs, close tabs
+## v11 Requirements — Memory (Persistent Memory)
 
-### Dual-Mode Unification
+- [x] **MEM-01**: Episodic memory — timestamped JSONL episodes with search and compression
+- [x] **MEM-02**: Semantic memory — SQLite key-value facts with categories, tags, access tracking
+- [x] **MEM-03**: Working memory — in-memory session scratchpad with key-value and bucket stores
+- [x] **MEM-04**: `memory_store` action — store facts in semantic memory via agent
+- [x] **MEM-05**: `memory_recall` action — recall facts by exact key
+- [x] **MEM-06**: `memory_search` action — keyword search across keys, values, tags
+- [x] **MEM-07**: `memory_forget` action — delete facts by key
+- [x] **MEM-08**: Pydantic action schemas for all memory actions
+- [x] **MEM-09**: Tool schemas for LLM tool calling
+- [x] **MEM-10**: Executor dispatch handlers for all memory actions
 
-- [x] **DUAL-01**: Engine auto-detects whether the target is a web app or native desktop and routes to browser DOM mode or native vision mode accordingly
-- [x] **DUAL-02**: Mid-task handoff — agent can download a file in the browser, then open it natively (browser → native transition)
+## v12 Requirements — Conductor (Multi-Agent Orchestration)
 
-### Appliance UX & Sessions
-
-- [x] **CERT-01**: Auto-accept self-signed certificate warnings for explicitly whitelisted appliance hostnames only (configurable whitelist)
-- [x] **CERT-02**: Login form detection — recognize common IT admin login pages (SonicWall, FortiGate, UniFi, Meraki, etc.) and offer to fill credentials
-- [x] **SESS-01**: Session vault — save cookies + localStorage per site, encrypted via core/encryption.py
-- [x] **SESS-02**: Session vault restore — reload saved cookies on return visits so the agent doesn't re-login every run
-
-### Web Recorder
-
-- [x] **REC-01**: Web recorder captures browser interactions (navigations, clicks, form fills) into replayable Sentinel script JSON format
+- [x] **CON-01**: Task planner — rule-based goal decomposition with dependency detection
+- [x] **CON-02**: Parallel executor — concurrent subtask execution respecting dependencies
+- [x] **CON-03**: Result synthesizer — merge multi-agent results with status aggregation
+- [x] **CON-04**: Conductor coordinator — end-to-end plan → execute → synthesize pipeline
+- [x] **CON-05**: `conductor_run` action — decompose and execute complex goals
+- [x] **CON-06**: Pydantic action schema for conductor
+- [x] **CON-07**: Tool schema for LLM tool calling
+- [x] **CON-08**: Executor dispatch handler with sync wrapper for async conductor
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| SSH/network device control | v9.0 "Netops" |
-| Fleet/daemon mode | v10.0 "Sentinel Server" |
-| Persistent memory / RAG | v11.0 "Memory" |
-| Multi-agent orchestration | v12.0 "Conductor" |
-| Browser extension install | Not needed for DOM control |
 | Visual regression testing | Not core to IT automation |
+| Voice input | Text-based NL only |
+| Mobile platform | Windows-only |
+| Custom action plugins | Not priority |
+| Auto-updates | Manual updates only |
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| WEB-01 | Phase 1 | ✅ Complete |
-| WEB-02 | Phase 1 | ✅ Complete |
-| WEB-03 | Phase 1 | ✅ Complete |
-| WEB-04 | Phase 1 | ✅ Complete |
-| WEB-05 | Phase 1 | ✅ Complete |
-| WEB-06 | Phase 2 | ✅ Complete |
-| WEB-07 | Phase 2 | ✅ Complete |
-| WEB-08 | Phase 2 | ✅ Complete |
-| WEB-09 | Phase 2 | ✅ Complete |
-| WEB-10 | Phase 2 | ✅ Complete |
-| WEB-11 | Phase 2 | ✅ Complete |
-| WEB-12 | Phase 2 | ✅ Complete |
-| DUAL-01 | Phase 3 | ✅ Complete |
-| DUAL-02 | Phase 3 | ✅ Complete |
-| CERT-01 | Phase 3 | ✅ Complete |
-| CERT-02 | Phase 3 | ✅ Complete |
-| SESS-01 | Phase 4 | ✅ Complete |
-| SESS-02 | Phase 4 | ✅ Complete |
-| REC-01 | Phase 4 | ✅ Complete |
+| Requirement | Module | Status |
+|-------------|--------|--------|
+| NET-01 | core/netops/ssh_client.py | ✅ Complete |
+| NET-02 | core/netops/command_runner.py | ✅ Complete |
+| NET-03 | core/netops/output_parser.py | ✅ Complete |
+| NET-04–08 | core/action_executor.py + tool_schemas.py | ✅ Complete |
+| NET-09–11 | core/action_schemas.py + action_executor.py + tool_schemas.py | ✅ Complete |
+| SRV-01 | core/server/daemon.py | ✅ Complete |
+| SRV-02 | core/server/fleet.py | ✅ Complete |
+| SRV-03 | core/server/job_queue.py | ✅ Complete |
+| SRV-04–06 | api/server.py | ✅ Complete |
+| MEM-01 | core/memory/episodic.py | ✅ Complete |
+| MEM-02 | core/memory/semantic.py | ✅ Complete |
+| MEM-03 | core/memory/working.py | ✅ Complete |
+| MEM-04–10 | core/action_schemas.py + action_executor.py + tool_schemas.py | ✅ Complete |
+| CON-01 | core/conductor/planner.py | ✅ Complete |
+| CON-02 | core/conductor/parallel.py | ✅ Complete |
+| CON-03 | core/conductor/synthesizer.py | ✅ Complete |
+| CON-04 | core/conductor/coordinator.py | ✅ Complete |
+| CON-05–08 | core/action_schemas.py + action_executor.py + tool_schemas.py | ✅ Complete |
 
 **Coverage:**
-- v8 requirements: 19 total
-- Mapped to phases: 19
+- v9–v12 requirements: 35 total
+- Mapped to modules: 35
 - Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-06-06*
-*Last updated: 2026-06-06 after initial definition*
+*Requirements defined: 2026-06-07*

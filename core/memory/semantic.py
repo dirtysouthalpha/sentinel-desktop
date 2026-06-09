@@ -75,16 +75,22 @@ class SemanticMemory:
 
         with self._connect() as conn:
             # Check if key already exists
-            existing = conn.execute("SELECT id FROM facts WHERE key = ?", (key,)).fetchone()
+            existing = conn.execute(
+                "SELECT id FROM facts WHERE key = ?", (key,)
+            ).fetchone()
             if existing:
                 conn.execute(
-                    "UPDATE facts SET value=?, category=?, tags=?, updated_at=?, source=? WHERE key=?",
+                    "UPDATE facts "
+                    "SET value=?, category=?, tags=?, updated_at=?, source=? "
+                    "WHERE key=?",
                     (value, category, tags_json, now, source, key),
                 )
                 return existing[0]
 
             cursor = conn.execute(
-                "INSERT INTO facts (key, value, category, tags, created_at, source) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO facts "
+                "(key, value, category, tags, created_at, source) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 (key, value, category, tags_json, now, source),
             )
             return cursor.lastrowid  # type: ignore
@@ -96,7 +102,10 @@ class SemanticMemory:
             if row is None:
                 return None
             # Increment access count
-            conn.execute("UPDATE facts SET access_count = access_count + 1 WHERE key = ?", (key,))
+            conn.execute(
+                "UPDATE facts SET access_count = access_count + 1 WHERE key = ?",
+                (key,),
+            )
             return self._row_to_dict(row)
 
     def query(self, search: str, limit: int = 20) -> list[dict[str, Any]]:
@@ -104,7 +113,9 @@ class SemanticMemory:
         pattern = f"%{search}%"
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM facts WHERE key LIKE ? OR value LIKE ? OR tags LIKE ? ORDER BY updated_at DESC, created_at DESC LIMIT ?",
+                "SELECT * FROM facts "
+                "WHERE key LIKE ? OR value LIKE ? OR tags LIKE ? "
+                "ORDER BY updated_at DESC, created_at DESC LIMIT ?",
                 (pattern, pattern, pattern, limit),
             ).fetchall()
             return [self._row_to_dict(row) for row in rows]
@@ -128,7 +139,11 @@ class SemanticMemory:
         """List all fact keys, optionally filtered by category."""
         with self._connect() as conn:
             if category:
-                rows = conn.execute("SELECT key FROM facts WHERE category = ? ORDER BY key", (category,)).fetchall()
+                rows = conn.execute(
+                    "SELECT key FROM facts WHERE category = ? "
+                    "ORDER BY key",
+                    (category,),
+                ).fetchall()
             else:
                 rows = conn.execute("SELECT key FROM facts ORDER BY key").fetchall()
             return [row[0] for row in rows]

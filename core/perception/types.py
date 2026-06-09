@@ -147,7 +147,8 @@ class PerceptionResult:
             tag_str = f" [{tags}]" if tags else ""
             x, y = elem.center
             lines.append(
-                f"[{elem.id}] {elem.element_type.value.title()} '{elem.label}' at ({x},{y}){tag_str}"
+                f"[{elem.id}] {elem.element_type.value.title()} "
+                f"'{elem.label}' at ({x},{y}){tag_str}"
             )
         return "\n".join(lines)
 

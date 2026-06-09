@@ -18,7 +18,11 @@ BROWSER_PATH = "core.browser"
 def executor_with_mock_browser():
     """ActionExecutor with a mocked BrowserManager."""
     mock_browser = MagicMock()
-    mock_browser.open.return_value = {"success": True, "url": "https://example.com", "title": "Test"}
+    mock_browser.open.return_value = {
+        "success": True,
+        "url": "https://example.com",
+        "title": "Test",
+    }
     mock_browser.click.return_value = {"success": True, "target": "selector=#btn"}
     mock_browser.type_text.return_value = {"success": True, "text_length": 5}
     mock_browser.read.return_value = {"success": True, "text": "Hello", "char_count": 5}
@@ -48,7 +52,9 @@ class TestWebOpenDispatch:
 
     def test_passes_wait_until(self, executor_with_mock_browser):
         executor, mock_browser = executor_with_mock_browser
-        executor.execute_sync({"action": "web_open", "url": "https://x.com", "wait_until": "networkidle"})
+        executor.execute_sync(
+            {"action": "web_open", "url": "https://x.com", "wait_until": "networkidle"}
+        )
         mock_browser.open.assert_called_once_with("https://x.com", wait_until="networkidle")
 
 
@@ -63,12 +69,14 @@ class TestWebClickDispatch:
 
     def test_passes_all_params(self, executor_with_mock_browser):
         executor, mock_browser = executor_with_mock_browser
-        executor.execute_sync({
-            "action": "web_click",
-            "selector": "#btn",
-            "button": "right",
-            "click_count": 2,
-        })
+        executor.execute_sync(
+            {
+                "action": "web_click",
+                "selector": "#btn",
+                "button": "right",
+                "click_count": 2,
+            }
+        )
         call_kwargs = mock_browser.click.call_args[1]
         assert call_kwargs["button"] == "right"
         assert call_kwargs["click_count"] == 2
@@ -135,11 +143,13 @@ class TestWebEvalJsDispatch:
 class TestWebDownloadDispatch:
     def test_dispatches_to_browser_download(self, executor_with_mock_browser):
         executor, mock_browser = executor_with_mock_browser
-        result = executor.execute_sync({
-            "action": "web_download",
-            "url": "https://x.com/f.pdf",
-            "save_path": "/tmp/f.pdf",
-        })
+        result = executor.execute_sync(
+            {
+                "action": "web_download",
+                "url": "https://x.com/f.pdf",
+                "save_path": "/tmp/f.pdf",
+            }
+        )
         assert result["success"] is True
         mock_browser.download.assert_called_once_with(
             url="https://x.com/f.pdf", save_path="/tmp/f.pdf"
@@ -149,15 +159,15 @@ class TestWebDownloadDispatch:
 class TestWebUploadDispatch:
     def test_dispatches_to_browser_upload(self, executor_with_mock_browser):
         executor, mock_browser = executor_with_mock_browser
-        result = executor.execute_sync({
-            "action": "web_upload",
-            "selector": "#file",
-            "file_paths": ["/tmp/a.pdf"],
-        })
-        assert result["success"] is True
-        mock_browser.upload.assert_called_once_with(
-            selector="#file", file_paths=["/tmp/a.pdf"]
+        result = executor.execute_sync(
+            {
+                "action": "web_upload",
+                "selector": "#file",
+                "file_paths": ["/tmp/a.pdf"],
+            }
         )
+        assert result["success"] is True
+        mock_browser.upload.assert_called_once_with(selector="#file", file_paths=["/tmp/a.pdf"])
 
 
 class TestWebTabsDispatch:

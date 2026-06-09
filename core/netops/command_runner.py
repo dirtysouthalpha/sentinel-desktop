@@ -52,22 +52,42 @@ class CommandRunner:
 
     def show_version(self) -> SSHResult:
         """Run 'show version' (or equivalent)."""
-        cmd = self._cmd("show version", "show version", "show system", "system/resource", "/system/resource/print", "uname -a")
+        cmd = self._cmd(
+            "show version", "show version",
+            "show system", "system/resource",
+            "/system/resource/print", "uname -a",
+        )
         return self.client.run_command(cmd)
 
     def show_interfaces(self) -> SSHResult:
         """Run 'show interfaces' (or equivalent)."""
-        cmd = self._cmd(cisco_ios="show ip interface brief", cisco_nxos="show interface", juniper="show interface terse", fortigate="get system interface", mikrotik="/interface/print", linux="ip addr")
+        cmd = self._cmd(
+            cisco_ios="show ip interface brief",
+            cisco_nxos="show interface",
+            juniper="show interface terse",
+            fortigate="get system interface",
+            mikrotik="/interface/print",
+            linux="ip addr",
+        )
         return self.client.run_command(cmd)
 
     def show_routing(self) -> SSHResult:
         """Show routing table."""
-        cmd = self._cmd("show ip route", "show route", "show route", "get router info routing-table all", "show route", "/ip route print", "ip route")
+        cmd = self._cmd(
+            "show ip route", "show route",
+            "show route",
+            "get router info routing-table all",
+            "show route", "/ip route print", "ip route",
+        )
         return self.client.run_command(cmd)
 
     def show_arp(self) -> SSHResult:
         """Show ARP table."""
-        cmd = self._cmd("show ip arp", "show arp", "show arp", "get system arp", "show arp", "/ip arp print", "arp -a")
+        cmd = self._cmd(
+            "show ip arp", "show arp", "show arp",
+            "get system arp", "show arp",
+            "/ip arp print", "arp -a",
+        )
         return self.client.run_command(cmd)
 
     def show_running_config(self) -> SSHResult:

@@ -980,6 +980,7 @@ class TestRunInnerAutoScreenshot:
     @patch("core.engine.time")
     def test_screenshot_captured_between_steps(self, mock_time, mock_failsafe, mock_cap):
         from PIL import Image
+
         mock_time.time.side_effect = [0.0, 1.0, 2.0]
         eng = _make_bare_engine()
         eng.config["auto_screenshot"] = True
@@ -988,7 +989,9 @@ class TestRunInnerAutoScreenshot:
             '{"action": "finish", "summary": "done"}',
         ]
         eng.executor.execute_sync.return_value = {"success": True, "output": "ok"}
-        with patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100), "white")) as mock_screen:
+        with patch(
+            "core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100), "white")
+        ) as mock_screen:
             with patch("core.perception.PerceptionPipeline"):
                 eng._run_inner("test")
         # capture_screen called: initial + 1 auto screenshot

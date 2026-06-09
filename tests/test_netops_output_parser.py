@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from core.netops.output_parser import (
     extract_ips,
     extract_macs,

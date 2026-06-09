@@ -78,11 +78,12 @@ class BrowserManager:
             browser_type: "chromium", "firefox", or "webkit".
             slow_mo: Slow down operations by N milliseconds (for debugging).
             viewport: Override viewport size, e.g. {"width": 1920, "height": 1080}.
-            ignore_https_errors: Ignore HTTPS certificate errors (for self-signed certs).
+            ignore_https_errors: Ignore cert errors (for self-signed).
         """
         if not _HAS_PLAYWRIGHT:
             raise BrowserError(
-                "Playwright not installed. Install with: pip install playwright && playwright install"
+                "Playwright not installed. "
+                "Install with: pip install playwright && playwright install"
             )
 
         self.headless = headless
@@ -495,10 +496,14 @@ class BrowserManager:
                     const tables = document.querySelectorAll(sel);
                     const results = [];
                     tables.forEach(table => {
-                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
+                    const headers = Array.from(
+                        table.querySelectorAll('th')
+                    ).map(th => th.innerText.trim());
                         const rows = table.querySelectorAll('tbody tr');
                         rows.forEach(row => {
-                            const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
+                            const cells = Array.from(
+                                row.querySelectorAll('td')
+                            ).map(td => td.innerText.trim());
                             if (headers.length && cells.length) {
                                 const obj = {};
                                 headers.forEach((h, i) => obj[h] = cells[i] || '');
@@ -571,7 +576,12 @@ class BrowserManager:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    def tabs(self, action: str = "list", index: int | None = None, url: str | None = None) -> dict[str, Any]:
+    def tabs(
+        self,
+        action: str = "list",
+        index: int | None = None,
+        url: str | None = None,
+    ) -> dict[str, Any]:
         """Manage browser tabs (web_tabs action).
 
         Args:

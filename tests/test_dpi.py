@@ -1,10 +1,7 @@
 """Tests for core.dpi — DPI detection, coordinate transformation, and calibration."""
 
-import json
-import sys
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -23,7 +20,6 @@ from core.dpi import (
     save_calibration,
     transform_action_coordinates,
 )
-
 
 # ---------------------------------------------------------------------------
 # MonitorInfo dataclass
@@ -71,14 +67,18 @@ class TestCoordinateTransform:
 
     def test_identity_at_100_percent(self):
         """100% scaling → physical == logical."""
-        monitors = [MonitorInfo(index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True)]
+        monitors = [
+            MonitorInfo(index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True)
+        ]
         assert physical_to_logical(500, 300, monitors) == (500, 300)
         assert logical_to_physical(500, 300, monitors) == (500, 300)
 
     def test_150_percent_single_monitor(self):
         """150% scaling on primary monitor."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True
+            ),
         ]
         # Physical center (1440, 810) → Logical center (960, 540)
         lx, ly = physical_to_logical(1440, 810, monitors)
@@ -93,7 +93,9 @@ class TestCoordinateTransform:
     def test_200_percent_single_monitor(self):
         """200% scaling."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=3840, height=2160, scale_factor=2.0, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=3840, height=2160, scale_factor=2.0, is_primary=True
+            ),
         ]
         lx, ly = physical_to_logical(2000, 1000, monitors)
         assert lx == 1000
@@ -106,7 +108,9 @@ class TestCoordinateTransform:
     def test_125_percent_corner_coordinates(self):
         """125% scaling — edge cases near corners."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=2400, height=1350, scale_factor=1.25, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=2400, height=1350, scale_factor=1.25, is_primary=True
+            ),
         ]
         # Top-left corner
         lx, ly = physical_to_logical(0, 0, monitors)
@@ -121,7 +125,9 @@ class TestCoordinateTransform:
     def test_fallback_no_monitor_match(self):
         """If no monitor matches the point, pass through unchanged."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.5, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.5, is_primary=True
+            ),
         ]
         # Point way outside any monitor
         lx, ly = physical_to_logical(5000, 5000, monitors)
@@ -132,7 +138,9 @@ class TestCoordinateTransform:
         """Index 0 (virtual desktop aggregate) should be skipped."""
         monitors = [
             MonitorInfo(index=0, x=-1920, y=0, width=5760, height=1080, scale_factor=1.0),
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True
+            ),
         ]
         # Point at (100, 100) — should match index 1, not 0
         lx, ly = physical_to_logical(100, 100, monitors)
@@ -152,7 +160,9 @@ class TestMultiMonitorTransform:
         """Two monitors at 100% — offsets only, no scaling."""
         monitors = [
             MonitorInfo(index=0, x=0, y=0, width=3840, height=1080, scale_factor=1.0),
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True
+            ),
             MonitorInfo(index=2, x=1920, y=0, width=1920, height=1080, scale_factor=1.0),
         ]
         # Primary monitor point
@@ -168,7 +178,9 @@ class TestMultiMonitorTransform:
     def test_mixed_scaling(self):
         """Primary at 150%, secondary at 100%."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True
+            ),
             MonitorInfo(index=2, x=2880, y=0, width=1920, height=1080, scale_factor=1.0),
         ]
         # Point on primary (physical 1440, 810 → logical 960, 540)
@@ -184,7 +196,9 @@ class TestMultiMonitorTransform:
     def test_secondary_150_percent(self):
         """Primary at 100%, secondary at 150% with offset."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True
+            ),
             MonitorInfo(index=2, x=1920, y=0, width=2880, height=1620, scale_factor=1.5),
         ]
         # Point on secondary: local_x = 3000 - 1920 = 1080
@@ -212,7 +226,9 @@ class TestTransformAction:
     def test_click_with_150_percent(self):
         """Click action gets coordinates transformed."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True
+            ),
         ]
         action = {"action": "click", "x": 1440, "y": 810}
         result = transform_action_coordinates(action, monitors)
@@ -223,7 +239,9 @@ class TestTransformAction:
     def test_drag_action(self):
         """Drag action transforms from/to coordinates."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True
+            ),
         ]
         action = {
             "action": "drag",
@@ -243,7 +261,9 @@ class TestTransformAction:
     def test_non_coordinate_action_unchanged(self):
         """Actions without coordinates pass through."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True
+            ),
         ]
         action = {"action": "type_text", "text": "hello"}
         result = transform_action_coordinates(action, monitors)
@@ -252,7 +272,9 @@ class TestTransformAction:
     def test_does_not_mutate_original(self):
         """Original action dict should not be modified."""
         monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True),
+            MonitorInfo(
+                index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True
+            ),
         ]
         action = {"action": "click", "x": 1440, "y": 810}
         original_x = action["x"]
@@ -327,18 +349,33 @@ class TestCalibration:
 
     def test_is_calibration_current_when_no_file(self, tmp_path):
         with patch("core.dpi._CALIBRATION_FILE", tmp_path / "nonexistent.json"):
-            with patch("core.dpi._get_mss_monitors", return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}]):
+            with patch(
+                "core.dpi._get_mss_monitors",
+                return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}],
+            ):
                 assert is_calibration_current() is False
 
     def test_calibration_probe_saves(self, tmp_path):
         calib_file = tmp_path / "displays.json"
         with patch("core.dpi._CALIBRATION_FILE", calib_file):
             with patch("core.dpi._CALIBRATION_DIR", tmp_path):
-                with patch("core.dpi._get_mss_monitors", return_value=[
-                    {"left": 0, "top": 0, "width": 1920, "height": 1080},
-                ]):
+                with patch(
+                    "core.dpi._get_mss_monitors",
+                    return_value=[
+                        {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                    ],
+                ):
                     monitors = [
-                        MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True, device_id="mon1"),
+                        MonitorInfo(
+                            index=1,
+                            x=0,
+                            y=0,
+                            width=1920,
+                            height=1080,
+                            scale_factor=1.0,
+                            is_primary=True,
+                            device_id="mon1",
+                        ),
                     ]
                     calib = run_calibration_probe(monitors=monitors)
                     assert calib.config_hash != ""
@@ -350,11 +387,23 @@ class TestCalibration:
         calib_file = tmp_path / "displays.json"
         with patch("core.dpi._CALIBRATION_FILE", calib_file):
             with patch("core.dpi._CALIBRATION_DIR", tmp_path):
-                with patch("core.dpi._get_mss_monitors", return_value=[
-                    {"left": 0, "top": 0, "width": 1920, "height": 1080},
-                ]):
+                with patch(
+                    "core.dpi._get_mss_monitors",
+                    return_value=[
+                        {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                    ],
+                ):
                     monitors = [
-                        MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True, device_id="mon1"),
+                        MonitorInfo(
+                            index=1,
+                            x=0,
+                            y=0,
+                            width=1920,
+                            height=1080,
+                            scale_factor=1.0,
+                            is_primary=True,
+                            device_id="mon1",
+                        ),
                     ]
                     # First probe — saves
                     first = run_calibration_probe(monitors=monitors)
@@ -369,11 +418,23 @@ class TestCalibration:
         calib_file = tmp_path / "displays.json"
         with patch("core.dpi._CALIBRATION_FILE", calib_file):
             with patch("core.dpi._CALIBRATION_DIR", tmp_path):
-                with patch("core.dpi._get_mss_monitors", return_value=[
-                    {"left": 0, "top": 0, "width": 1920, "height": 1080},
-                ]):
+                with patch(
+                    "core.dpi._get_mss_monitors",
+                    return_value=[
+                        {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                    ],
+                ):
                     monitors = [
-                        MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0, is_primary=True, device_id="mon1"),
+                        MonitorInfo(
+                            index=1,
+                            x=0,
+                            y=0,
+                            width=1920,
+                            height=1080,
+                            scale_factor=1.0,
+                            is_primary=True,
+                            device_id="mon1",
+                        ),
                     ]
                     first = run_calibration_probe(monitors=monitors)
                     time.sleep(0.01)
@@ -403,10 +464,13 @@ class TestDetectMonitors:
 
     def test_with_mss_single_monitor(self):
         """Single monitor from mss."""
-        with patch("core.dpi._get_mss_monitors", return_value=[
-            {"left": 0, "top": 0, "width": 3840, "height": 2160},
-            {"left": 0, "top": 0, "width": 3840, "height": 2160},
-        ]):
+        with patch(
+            "core.dpi._get_mss_monitors",
+            return_value=[
+                {"left": 0, "top": 0, "width": 3840, "height": 2160},
+                {"left": 0, "top": 0, "width": 3840, "height": 2160},
+            ],
+        ):
             with patch("core.dpi._get_windows_dpi_scaling", return_value={1: 2.0}):
                 monitors = detect_monitors()
                 assert len(monitors) == 2  # virtual (0) + primary (1)
@@ -415,11 +479,14 @@ class TestDetectMonitors:
 
     def test_with_mss_multi_monitor(self):
         """Multiple monitors from mss."""
-        with patch("core.dpi._get_mss_monitors", return_value=[
-            {"left": 0, "top": 0, "width": 4800, "height": 1620},  # virtual
-            {"left": 0, "top": 0, "width": 2880, "height": 1620},  # primary 150%
-            {"left": 2880, "top": 0, "width": 1920, "height": 1080},  # secondary 100%
-        ]):
+        with patch(
+            "core.dpi._get_mss_monitors",
+            return_value=[
+                {"left": 0, "top": 0, "width": 4800, "height": 1620},  # virtual
+                {"left": 0, "top": 0, "width": 2880, "height": 1620},  # primary 150%
+                {"left": 2880, "top": 0, "width": 1920, "height": 1080},  # secondary 100%
+            ],
+        ):
             with patch("core.dpi._get_windows_dpi_scaling", return_value={1: 1.5, 2: 1.0}):
                 monitors = detect_monitors()
                 assert len(monitors) == 3
@@ -428,10 +495,13 @@ class TestDetectMonitors:
 
     def test_dpi_fallback_to_1(self):
         """When Windows DPI detection fails, defaults to 1.0."""
-        with patch("core.dpi._get_mss_monitors", return_value=[
-            {"left": 0, "top": 0, "width": 1920, "height": 1080},
-            {"left": 0, "top": 0, "width": 1920, "height": 1080},
-        ]):
+        with patch(
+            "core.dpi._get_mss_monitors",
+            return_value=[
+                {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                {"left": 0, "top": 0, "width": 1920, "height": 1080},
+            ],
+        ):
             with patch("core.dpi._get_windows_dpi_scaling", return_value={}):
                 monitors = detect_monitors()
                 assert monitors[1].scale_factor == 1.0
@@ -457,9 +527,12 @@ class TestMonitorCache:
             mock_detect.return_value = [
                 MonitorInfo(index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True),
             ]
-            with patch("core.dpi._get_mss_monitors", return_value=[
-                {"left": 0, "top": 0, "width": 1920, "height": 1080},
-            ]):
+            with patch(
+                "core.dpi._get_mss_monitors",
+                return_value=[
+                    {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                ],
+            ):
                 get_monitors()
                 get_monitors()
                 # detect_monitors should only be called once (cache hit on second)
@@ -470,9 +543,12 @@ class TestMonitorCache:
             mock_detect.return_value = [
                 MonitorInfo(index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True),
             ]
-            with patch("core.dpi._get_mss_monitors", return_value=[
-                {"left": 0, "top": 0, "width": 1920, "height": 1080},
-            ]):
+            with patch(
+                "core.dpi._get_mss_monitors",
+                return_value=[
+                    {"left": 0, "top": 0, "width": 1920, "height": 1080},
+                ],
+            ):
                 get_monitors()
                 clear_monitor_cache()
                 get_monitors()
@@ -489,10 +565,10 @@ class TestExecutorIntegration:
 
     def test_executor_imports_dpi(self):
         """Action executor should import transform_action_coordinates."""
-        from core.action_executor import ActionExecutor
 
         # Verify the import exists (no ImportError)
         import core.action_executor as ae
+
         assert hasattr(ae, "transform_action_coordinates")
 
     def test_execute_sync_transforms_coordinates(self):
@@ -503,7 +579,9 @@ class TestExecutorIntegration:
 
         with patch("core.dpi.get_monitors") as mock_mon:
             mock_mon.return_value = [
-                MonitorInfo(index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True),
+                MonitorInfo(
+                    index=1, x=0, y=0, width=2880, height=1620, scale_factor=1.5, is_primary=True
+                ),
             ]
             # The action should have its coordinates transformed before dry-run
             result = executor.execute_sync({"action": "click", "x": 1440, "y": 810})
@@ -537,5 +615,9 @@ class TestRoundTrip:
             lx, ly = physical_to_logical(px, py, monitors)
             rpx, rpy = logical_to_physical(lx, ly, monitors)
             # Allow 1px rounding error
-            assert abs(rpx - px) <= 1, f"Round-trip failed for ({px},{py}) at {scale}x: got ({rpx},{rpy})"
-            assert abs(rpy - py) <= 1, f"Round-trip failed for ({px},{py}) at {scale}x: got ({rpx},{rpy})"
+            assert abs(rpx - px) <= 1, (
+                f"Round-trip failed for ({px},{py}) at {scale}x: got ({rpx},{rpy})"
+            )
+            assert abs(rpy - py) <= 1, (
+                f"Round-trip failed for ({px},{py}) at {scale}x: got ({rpx},{rpy})"
+            )

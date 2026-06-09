@@ -1,5 +1,6 @@
-"""Additional gap tests for forensic_log.py — infer_event_type, CSV ok-match, auto-save TypeError."""
-
+"""Additional gap tests for forensic_log.py — infer_event_type, CSV ok-match, auto-save
+TypeError.
+"""
 import csv
 import tempfile
 from pathlib import Path

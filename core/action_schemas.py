@@ -276,9 +276,226 @@ class SSHPingAction(_ActionBase):
     device_type: str = "generic"
 
 
+class SSHTracerouteAction(_ActionBase):
+    """Traceroute to a target from an SSH device."""
+
+    action: Literal["ssh_traceroute"]
+    hostname: _NonEmptyStr
+    target: _NonEmptyStr
+    device_type: str = "generic"
+
+
+# ---------------------------------------------------------------------------
+# Memory actions (v11.0 — persistent memory)
+# ---------------------------------------------------------------------------
+
+
+class MemoryStoreAction(_ActionBase):
+    """Store a fact in semantic memory."""
+
+    action: Literal["memory_store"]
+    key: _NonEmptyStr
+    value: _NonEmptyStr
+    category: str = ""
+    tags: list[str] | None = None
+
+
+class MemoryRecallAction(_ActionBase):
+    """Recall a fact from semantic memory by key."""
+
+    action: Literal["memory_recall"]
+    key: _NonEmptyStr
+
+
+class MemorySearchAction(_ActionBase):
+    """Search semantic memory by keyword."""
+
+    action: Literal["memory_search"]
+    query: _NonEmptyStr
+    limit: Annotated[int, Field(ge=1, le=100)] = 10
+
+
+class MemoryForgetAction(_ActionBase):
+    """Delete a fact from semantic memory."""
+
+    action: Literal["memory_forget"]
+    key: _NonEmptyStr
+
+
+# ---------------------------------------------------------------------------
+# Conductor actions (v12.0 — multi-agent orchestration)
+# ---------------------------------------------------------------------------
+
+
+class ConductorRunAction(_ActionBase):
+    """Decompose a complex goal into subtasks and execute in parallel."""
+
+    action: Literal["conductor_run"]
+    goal: _NonEmptyStr
+    timeout: Annotated[float, Field(ge=10.0, le=600.0)] = 120.0
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# File Operations Plus (v13.0 — extended file management)
+# ---------------------------------------------------------------------------
+
+
+class DeleteFileAction(_ActionBase):
+    """Delete a file or empty directory."""
+
+    action: Literal["delete_file"]
+    path: _NonEmptyStr
+    force: bool = False
+
+
+class MoveFileAction(_ActionBase):
+    """Move or rename a file or directory."""
+
+    action: Literal["move_file"]
+    src: _NonEmptyStr
+    dst: _NonEmptyStr
+
+
+class CopyFileAction(_ActionBase):
+    """Copy a file to a new location."""
+
+    action: Literal["copy_file"]
+    src: _NonEmptyStr
+    dst: _NonEmptyStr
+
+
+class MkdirAction(_ActionBase):
+    """Create a directory."""
+
+    action: Literal["mkdir"]
+    path: _NonEmptyStr
+    parents: bool = True
+
+
+class StatFileAction(_ActionBase):
+    """Get file metadata (size, modified, permissions)."""
+
+    action: Literal["stat_file"]
+    path: _NonEmptyStr
+
+
+class FindFilesAction(_ActionBase):
+    """Search for files matching a glob pattern."""
+
+    action: Literal["find_files"]
+    pattern: _NonEmptyStr
+    root: str = "."
+    max_results: Annotated[int, Field(ge=1, le=1000)] = 100
+
+
+class ArchiveCreateAction(_ActionBase):
+    """Create a zip archive from a list of files."""
+
+    action: Literal["archive_create"]
+    archive_path: _NonEmptyStr
+    files: list[_NonEmptyStr] = Field(min_length=1)
+    base_dir: str = "."
+
+
+class ArchiveExtractAction(_ActionBase):
+    """Extract a zip archive to a directory."""
+
+    action: Literal["archive_extract"]
+    archive_path: _NonEmptyStr
+    dest_dir: str = "."
+
+
+# ---------------------------------------------------------------------------
+# Process & Service Control (v13.0 — OS integration)
+# ---------------------------------------------------------------------------
+
+
+class SetPriorityAction(_ActionBase):
+    """Change process priority."""
+
+    action: Literal["set_priority"]
+    pid: Annotated[int, Field(ge=1)]
+    priority: Literal["idle", "low", "normal", "high", "realtime"]
+
+
+class GetEnvAction(_ActionBase):
+    """Read an environment variable."""
+
+    action: Literal["get_env"]
+    name: _NonEmptyStr
+
+
+class SetEnvAction(_ActionBase):
+    """Set an environment variable."""
+
+    action: Literal["set_env"]
+    name: _NonEmptyStr
+    value: str
+    permanent: bool = False
+
+
+class ServiceControlAction(_ActionBase):
+    """Control a Windows service (start/stop/restart/query)."""
+
+    action: Literal["service_control"]
+    name: _NonEmptyStr
+    control_action: Literal["start", "stop", "restart", "query"]
+
+
+# ---------------------------------------------------------------------------
+# Credential Vault (v13.0 — OS credential store)
+# ---------------------------------------------------------------------------
+
+
+class CredStoreAction(_ActionBase):
+    """Store a credential in the OS credential vault."""
+
+    action: Literal["cred_store"]
+    key: _NonEmptyStr
+    value: _NonEmptyStr
+
+
+class CredReadAction(_ActionBase):
+    """Read a credential from the OS credential vault."""
+
+    action: Literal["cred_read"]
+    key: _NonEmptyStr
+
+
+# ---------------------------------------------------------------------------
+# Registry (v13.0 — Windows registry operations)
+# ---------------------------------------------------------------------------
+
+
+class RegistryReadAction(_ActionBase):
+    """Read a Windows registry value."""
+
+    action: Literal["registry_read"]
+    path: _NonEmptyStr
+    value_name: str = ""
+
+
+class RegistryWriteAction(_ActionBase):
+    """Write a Windows registry value."""
+
+    action: Literal["registry_write"]
+    path: _NonEmptyStr
+    value_name: _NonEmptyStr
+    data: str
+    reg_type: str = "REG_SZ"
+
+
+class RegistryDeleteAction(_ActionBase):
+    """Delete a Windows registry key or value."""
+
+    action: Literal["registry_delete"]
+    path: _NonEmptyStr
+    value_name: str | None = None
+
 
 ACTION_MODELS: dict[str, type[_ActionBase]] = {
     "click": ClickAction,
@@ -310,6 +527,35 @@ ACTION_MODELS: dict[str, type[_ActionBase]] = {
     "ssh_run": SSHRunAction,
     "ssh_show": SSHShowAction,
     "ssh_ping": SSHPingAction,
+    "ssh_traceroute": SSHTracerouteAction,
+    # Memory (v11.0)
+    "memory_store": MemoryStoreAction,
+    "memory_recall": MemoryRecallAction,
+    "memory_search": MemorySearchAction,
+    "memory_forget": MemoryForgetAction,
+    # Conductor (v12.0)
+    "conductor_run": ConductorRunAction,
+    # File Operations Plus (v13.0)
+    "delete_file": DeleteFileAction,
+    "move_file": MoveFileAction,
+    "copy_file": CopyFileAction,
+    "mkdir": MkdirAction,
+    "stat_file": StatFileAction,
+    "find_files": FindFilesAction,
+    "archive_create": ArchiveCreateAction,
+    "archive_extract": ArchiveExtractAction,
+    # Process & Service Control (v13.0)
+    "set_priority": SetPriorityAction,
+    "get_env": GetEnvAction,
+    "set_env": SetEnvAction,
+    "service_control": ServiceControlAction,
+    # Credential Vault (v13.0)
+    "cred_store": CredStoreAction,
+    "cred_read": CredReadAction,
+    # Registry (v13.0)
+    "registry_read": RegistryReadAction,
+    "registry_write": RegistryWriteAction,
+    "registry_delete": RegistryDeleteAction,
 }
 
 

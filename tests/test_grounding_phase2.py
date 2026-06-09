@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.action_executor import ActionExecutor
 from core.perception.types import (
     ElementSource,
@@ -11,7 +9,6 @@ from core.perception.types import (
     PerceptionElement,
     PerceptionResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -105,11 +102,13 @@ class TestClickElement:
         """Supports button parameter."""
         executor = ActionExecutor(dry_run=True)
         executor.perception_result = _make_result()
-        result = executor.execute_sync({
-            "action": "click_element",
-            "element_id": 1,
-            "button": "right",
-        })
+        result = executor.execute_sync(
+            {
+                "action": "click_element",
+                "element_id": 1,
+                "button": "right",
+            }
+        )
         assert result["success"] is True
 
 
@@ -277,6 +276,7 @@ class TestEnginePerception:
     def test_engine_has_run_perception(self):
         """Engine should have _run_perception method."""
         from core.engine import AgentEngine
+
         assert hasattr(AgentEngine, "_run_perception")
 
     @patch("core.dpi.detect_monitors")
@@ -284,10 +284,13 @@ class TestEnginePerception:
     def test_perception_stores_on_executor(self, mock_mss, mock_detect):
         mock_mss.return_value = [{"left": 0, "top": 0, "width": 1920, "height": 1080}]
         mock_detect.return_value = [
-            MagicMock(index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True, x=0, y=0),
+            MagicMock(
+                index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True, x=0, y=0
+            ),
         ]
 
         from core.engine import AgentEngine
+
         engine = AgentEngine(config={"dry_run": True})
 
         # Mock perception pipeline
@@ -297,6 +300,7 @@ class TestEnginePerception:
             mock_pipeline.analyze.return_value = mock_result
 
             from PIL import Image
+
             img = Image.new("RGB", (100, 100), "white")
             result = engine._run_perception(img)
 
@@ -308,14 +312,18 @@ class TestEnginePerception:
     def test_perception_returns_none_on_import_error(self, mock_mss, mock_detect):
         mock_mss.return_value = [{"left": 0, "top": 0, "width": 1920, "height": 1080}]
         mock_detect.return_value = [
-            MagicMock(index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True, x=0, y=0),
+            MagicMock(
+                index=1, width=1920, height=1080, scale_factor=1.0, is_primary=True, x=0, y=0
+            ),
         ]
 
         from core.engine import AgentEngine
+
         engine = AgentEngine(config={"dry_run": True})
 
         with patch("core.perception.PerceptionPipeline", side_effect=ImportError):
             from PIL import Image
+
             img = Image.new("RGB", (100, 100), "white")
             result = engine._run_perception(img)
             assert result is None

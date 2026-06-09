@@ -209,6 +209,20 @@ Supports: outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc
 {"action": "ssh_show", "hostname": "10.0.0.1", "what": "arp"}
 {"action": "ssh_show", "hostname": "10.0.0.1", "what": "routing"}
 {"action": "ssh_ping", "hostname": "192.168.1.1", "target": "8.8.8.8"}
+{"action": "ssh_traceroute", "hostname": "192.168.1.1", "target": "8.8.8.8"}
+
+### Memory (persistent knowledge across sessions)
+{"action": "memory_store", "key": "firewall_ip", "value": "192.168.1.1", \
+"category": "network"}
+{"action": "memory_store", "key": "fw_creds", "value": "admin/password", \
+"category": "credentials", "tags": ["sonicwall"]}
+{"action": "memory_recall", "key": "firewall_ip"} — recall by exact key
+{"action": "memory_search", "query": "firewall"} — search across keys, values, tags
+{"action": "memory_forget", "key": "firewall_ip"} — delete a fact
+
+### Multi-Agent (decompose complex goals into parallel subtasks)
+{"action": "conductor_run", "goal": "Check all firewalls and generate report"} \
+— auto-decomposes and runs in parallel
 
 ## Self-Healing — ALWAYS try alternatives before reporting failure
 
@@ -543,6 +557,11 @@ class AgentEngine:
         self.forensic_log = []
         self.finish_summary = ""
 
+        # v11.0: Initialize working memory for this session
+        from core.memory.working import WorkingMemory
+        self._working_memory = WorkingMemory()
+        self._working_memory.set("goal", goal)
+
         # v8.0: Auto-detect web vs native mode from goal
         from core.web.dual_mode import InteractionMode, detect_mode_from_goal
 
@@ -656,7 +675,11 @@ class AgentEngine:
             self._log_step(action, {"ok": True, "msg": self.finish_summary})
             self.running = False
             # v8.0: Stop web recorder and save recording if active
-            if hasattr(self, "_web_recorder") and self._web_recorder and self._web_recorder.is_recording:
+            if (
+                hasattr(self, "_web_recorder")
+                and self._web_recorder
+                and self._web_recorder.is_recording
+            ):
                 recording = self._web_recorder.stop()
                 if recording and recording.step_count > 0:
                     try:
@@ -766,7 +789,11 @@ class AgentEngine:
         result = None
         try:
             # v8.0: Capture web actions to the web recorder if active
-            if hasattr(self, "_web_recorder") and self._web_recorder and self._web_recorder.is_recording:
+            if (
+                hasattr(self, "_web_recorder")
+                and self._web_recorder
+                and self._web_recorder.is_recording
+            ):
                 self._web_recorder.capture(action)
 
             result = self.executor.execute_sync(action)
@@ -845,6 +872,14 @@ class AgentEngine:
         # (Python's str.format raises KeyError: '"action"' on those).
         env_context = self._build_env_context()
         system_prompt = SYSTEM_PROMPT.replace("{env_context}", env_context)
+
+        # v11.0: Inject memory context if available
+        memory_context = self._build_memory_context()
+        if memory_context:
+            system_prompt = system_prompt.replace(
+                "{app_context}",
+                f"{memory_context}\n{{app_context}}",
+            )
 
         # Inject app profile context — detect active window and add profile hints
         app_context = self._build_app_context()
@@ -1267,6 +1302,20 @@ class AgentEngine:
         elapsed = time.time() - start_time
         logger.info("Agent run finished: steps=%d, elapsed=%.1fs", self.step, elapsed)
 
+        # v11.0: Store episode in episodic memory
+        try:
+            from core.memory.episodic import EpisodicMemory
+            em = EpisodicMemory()
+            em.store(
+                goal=goal,
+                actions=self.forensic_log[:50],  # cap to avoid huge entries
+                outcome=self.finish_summary or "Run ended without finish",
+                success=bool(self.finish_summary),
+                tags=[self.config.get("provider", "unknown")],
+            )
+        except Exception as exc:
+            logger.debug("Episodic memory store failed: %s", exc)
+
         # Sound notification
         try:
             from core.sound import play_sound
@@ -1539,6 +1588,24 @@ class AgentEngine:
             if self.config.get("tenant_lockdown"):
                 tenant += " (LOCKDOWN MODE)"
         return info + active_win + tenant
+
+    def _build_memory_context(self) -> str:
+        """Build context from relevant semantic memory facts."""
+        try:
+            from core.memory.semantic import SemanticMemory
+            mem = SemanticMemory()
+            if mem.count() == 0:
+                return ""
+            recent = mem.query("", limit=10)
+            if not recent:
+                return ""
+            lines = ["## Known Facts (from memory)"]
+            for fact in recent[:10]:
+                lines.append(f"- {fact['key']}: {fact['value']}")
+            return "\n".join(lines) + "\n"
+        except Exception as exc:
+            logger.debug("Memory context build failed: %s", exc)
+            return ""
 
     def _build_app_context(self) -> str:
         """Build app-profile context for the system prompt."""

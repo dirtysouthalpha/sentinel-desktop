@@ -161,7 +161,9 @@ class TestWebOpenSchema:
         assert errs
 
     def test_invalid_wait_until(self):
-        _, errs = validate_action({"action": "web_open", "url": "https://x.com", "wait_until": "bad"})
+        _, errs = validate_action(
+            {"action": "web_open", "url": "https://x.com", "wait_until": "bad"}
+        )
         assert errs
 
 
@@ -264,21 +266,25 @@ class TestWebDownloadSchema:
         assert out["url"] is None
 
     def test_with_url_and_path(self):
-        out, errs = validate_action({
-            "action": "web_download",
-            "url": "https://x.com/f.pdf",
-            "save_path": "/tmp/f.pdf",
-        })
+        out, errs = validate_action(
+            {
+                "action": "web_download",
+                "url": "https://x.com/f.pdf",
+                "save_path": "/tmp/f.pdf",
+            }
+        )
         assert errs == []
 
 
 class TestWebUploadSchema:
     def test_valid(self):
-        out, errs = validate_action({
-            "action": "web_upload",
-            "selector": "#file",
-            "file_paths": ["/tmp/a.pdf"],
-        })
+        out, errs = validate_action(
+            {
+                "action": "web_upload",
+                "selector": "#file",
+                "file_paths": ["/tmp/a.pdf"],
+            }
+        )
         assert errs == []
 
     def test_missing_selector(self):
@@ -312,9 +318,17 @@ class TestWebTabsSchema:
 @pytest.mark.parametrize(
     "name",
     [
-        "web_open", "web_click", "web_type", "web_read", "web_extract",
-        "web_wait_for", "web_screenshot", "web_eval_js", "web_download",
-        "web_upload", "web_tabs",
+        "web_open",
+        "web_click",
+        "web_type",
+        "web_read",
+        "web_extract",
+        "web_wait_for",
+        "web_screenshot",
+        "web_eval_js",
+        "web_download",
+        "web_upload",
+        "web_tabs",
     ],
 )
 def test_web_actions_are_modeled(name):

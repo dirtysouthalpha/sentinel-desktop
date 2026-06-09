@@ -4,31 +4,30 @@
 
 ```yaml
 milestone:
-  version: "8.0.0"
-  name: "Webhand"
+  version: "9.0-12.0"
+  name: "Netops + Server + Memory + Conductor"
   status: "complete"
-  started: 2026-06-06
-  completed: 2026-06-06
+  started: 2026-06-07
+  completed: 2026-06-07
 
 progress:
-  phases_completed: 4
-  requirements_completed: 19
-  total_phases: 4
-  total_requirements: 19
+  phases_completed: 5
+  requirements_completed: 35
+  total_phases: 5
+  total_requirements: 35
 
 metadata:
-  last_updated: 2026-06-06
-  last_phase: Phase 4
+  last_updated: 2026-06-07
+  last_phase: Phase 5
 ```
 
 ---
 
 ## Current Position
 
-Phase: 4 of 4 (Session Vault & Web Recorder)
-Plan: 2 of 2 in current phase
+Phase: 5 of 5 (Testing & Verification)
 Status: ✅ Milestone Complete
-Last activity: 2026-06-06 — Phase 4 Session Vault & Web Recorder complete
+Last activity: 2026-06-07 — All v9-v12 milestones shipped with full agent integration
 
 Progress: [██████████] 100%
 
@@ -36,43 +35,37 @@ Progress: [██████████] 100%
 
 ## Decisions
 
-- Milestone v8.0.0 "Webhand" — Playwright browser automation for IT admin web UIs
-- Playwright chosen over Selenium for modern API, auto-wait, and multi-browser support
-- Browser module is optional dependency behind `pip install sentinel-desktop[web]`
-- Session vault reuses existing core/encryption.py for cookie storage
+### v9.0 — Netops (COMPLETE)
+- paramiko chosen for SSH (industry standard, well-maintained)
+- Device-aware command runner handles Cisco/Juniper/FortiGate/MikroTik/pfSense/Linux
+- Output parser returns structured data (lists of dicts) for agent consumption
+- SSH actions are optional dependency (paramiko not required for desktop-only use)
+- 5 executor actions: ssh_connect, ssh_disconnect, ssh_run, ssh_show, ssh_ping
+- NET-01–11: 11 requirements ✅
 
-### Phase 1 — Browser Core (COMPLETE)
-- WEB-01: BrowserManager with Playwright integration ✅
-- WEB-02: web_open action — navigation + page load ✅
-- WEB-03: web_click action — selector/text/role targeting ✅
-- WEB-04: web_type action — form fill with clear ✅
-- WEB-05: web_read action — page/element text extraction ✅
-- Pydantic schemas for all 11 web actions ✅
-- Playwright added as optional dependency ✅
-- 178 new tests (browser + schemas + executor dispatch) ✅
+### v10.0 — Sentinel Server (COMPLETE)
+- Daemon service manager with start/stop/heartbeat/job tracking
+- Fleet manager with node registration and health monitoring
+- Job queue with priority ordering and persistent JSON storage
+- 14 API endpoints: /daemon/*, /fleet/*, /jobs/*
+- SRV-01–06: 6 requirements ✅
 
-### Phase 2 — Advanced Web Actions (COMPLETE)
-- WEB-06: web_extract — table → JSON, lists, generic element text ✅
-- WEB-07: web_wait_for — selector, text, network idle, state transitions ✅
-- WEB-08: web_screenshot — viewport, element, full page, base64 ✅
-- WEB-09: web_eval_js — expressions, complex objects, null returns ✅
-- WEB-10: web_download — URL download, save path, suggested filename ✅
-- WEB-11: web_upload — single/multi file, non-file-input error ✅
-- WEB-12: web_tabs — full lifecycle (new/switch/list/close) ✅
-- 32 new edge case tests ✅
+### v11.0 — Memory (COMPLETE)
+- Episodic memory: JSONL with search and 30-day compression
+- Semantic memory: SQLite with categories, tags, access tracking
+- Working memory: in-memory scratchpad with auto-trimming buckets
+- NEW: 4 agent actions (memory_store, memory_recall, memory_search, memory_forget)
+- NEW: Pydantic schemas, executor handlers, tool schemas
+- MEM-01–10: 10 requirements ✅
 
-### Phase 3 — Dual-Mode & Appliance UX (COMPLETE)
-- DUAL-01: core/web/dual_mode.py — goal/action mode detection ✅
-- DUAL-02: classify_handoff() — mode transitions ✅
-- CERT-01: core/web/appliance.py — cert whitelist load/save/check ✅
-- CERT-02: core/web/login_detector.py — 10 IT appliance profiles ✅
-- 76 new tests (dual_mode + cert + login_detector) ✅
-
-### Phase 4 — Session Vault & Web Recorder (COMPLETE)
-- SESS-01: core/web/session_vault.py — save cookies + localStorage per site ✅
-- SESS-02: restore_to_browser() — reload saved cookies on return visits ✅
-- REC-01: core/web/web_recorder.py — capture web actions into replayable JSON ✅
-- 39 new tests (session_vault + web_recorder) ✅
+### v12.0 — Conductor (COMPLETE)
+- Task planner: rule-based decomposition with dependency detection
+- Parallel executor: concurrent execution with dependency respect
+- Result synthesizer: merge multi-agent results
+- Coordinator: end-to-end plan → execute → synthesize
+- NEW: conductor_run action with async→sync bridge
+- NEW: Pydantic schema, executor handler, tool schema
+- CON-01–08: 8 requirements ✅
 
 ### Blockers
 
@@ -80,7 +73,8 @@ Progress: [██████████] 100%
 
 ### Known Issues
 
-- 13 test files excluded from suite due to pre-existing win32 ctypes mock recursion
+- 2 test files crash on access violation (sklearn/torch import on Python 3.13)
+- 36 platform-specific test skips (Win32 ctypes on Linux)
 
 ### Todos
 
@@ -92,13 +86,13 @@ Progress: [██████████] 100%
 
 | Date | Event | Details |
 |------|-------|---------|
-| 2026-06-06 | v8.0.0 Webhand started | Browser automation milestone |
-| 2026-06-06 | Phase 1 Browser Core complete | WEB-01–05, 178 new tests, 5,515 total |
-| 2026-06-06 | Phase 2 Advanced Web Actions complete | WEB-06–12, 32 new tests, 5,547 total |
-| 2026-06-06 | Phase 3 Dual-Mode & Appliance UX complete | DUAL/CERT, 76 new tests, 5,623 total |
-| 2026-06-06 | Phase 4 Session Vault & Web Recorder complete | SESS/REC, 39 new tests, 5,662 total |
-| 2026-06-06 | v8.0.0 Webhand milestone complete | 4 phases, 19 requirements, 325 new tests |
-| 2026-06-06 | v7.0.0 Perception shipped | 6 phases, 17 requirements, 5,337 tests |
+| 2026-06-07 | v9-v12 milestones started | Assess existing code + plan integration |
+| 2026-06-07 | Phase 1 Netops Integration complete | Verified SSH actions + schemas |
+| 2026-06-07 | Phase 2 Server API complete | Verified daemon/fleet/jobs endpoints |
+| 2026-06-07 | Phase 3 Memory Integration complete | Added 4 memory actions + tests |
+| 2026-06-07 | Phase 4 Conductor Integration complete | Added conductor_run action + tests |
+| 2026-06-07 | Phase 5 Testing complete | 41 new tests, 5,937 total |
+| 2026-06-07 | v9-v12 milestones complete | 35 requirements, 5 phases |
 
 ---
 

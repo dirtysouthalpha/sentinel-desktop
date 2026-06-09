@@ -650,6 +650,368 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    # ── File Operations Plus (v13.0 — extended file management) ──────
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_file",
+            "description": "Delete a file or directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to delete",
+                    },
+                    "force": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Force delete non-empty dirs",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "move_file",
+            "description": "Move or rename a file or directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "src": {"type": "string", "description": "Source path"},
+                    "dst": {"type": "string", "description": "Destination path"},
+                },
+                "required": ["src", "dst"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "copy_file",
+            "description": "Copy a file to a new location.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "src": {"type": "string", "description": "Source path"},
+                    "dst": {"type": "string", "description": "Destination path"},
+                },
+                "required": ["src", "dst"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mkdir",
+            "description": "Create a directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Directory to create"},
+                    "parents": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Create parent dirs",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "stat_file",
+            "description": "Get file metadata (size, modified, type).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path to inspect",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_files",
+            "description": "Search for files matching a glob pattern.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern (e.g. *.txt)",
+                    },
+                    "root": {
+                        "type": "string",
+                        "default": ".",
+                        "description": "Root directory to search",
+                    },
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "archive_create",
+            "description": "Create a zip archive from files.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "archive_path": {
+                        "type": "string",
+                        "description": "Output zip path",
+                    },
+                    "files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Files to include",
+                    },
+                    "base_dir": {
+                        "type": "string",
+                        "default": ".",
+                    },
+                },
+                "required": ["archive_path", "files"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "archive_extract",
+            "description": "Extract a zip archive.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "archive_path": {
+                        "type": "string",
+                        "description": "Zip file to extract",
+                    },
+                    "dest_dir": {
+                        "type": "string",
+                        "default": ".",
+                        "description": "Destination directory",
+                    },
+                },
+                "required": ["archive_path"],
+            },
+        },
+    },
+    # ── Process & Service Control (v13.0) ────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "set_priority",
+            "description": "Change process priority.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pid": {
+                        "type": "integer",
+                        "description": "Process ID",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "idle", "low", "normal", "high", "realtime",
+                        ],
+                    },
+                },
+                "required": ["pid", "priority"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_env",
+            "description": "Read an environment variable.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Variable name",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_env",
+            "description": "Set an environment variable.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Variable name",
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Variable value",
+                    },
+                    "permanent": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Persist across restarts",
+                    },
+                },
+                "required": ["name", "value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "service_control",
+            "description": "Control a Windows service.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Service name",
+                    },
+                    "control_action": {
+                        "type": "string",
+                        "enum": [
+                            "start", "stop", "restart", "query",
+                        ],
+                    },
+                },
+                "required": ["name", "control_action"],
+            },
+        },
+    },
+    # ── Credential Vault (v13.0) ─────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "cred_store",
+            "description": "Store a credential in the encrypted vault.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Credential name",
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Secret value to store",
+                    },
+                },
+                "required": ["key", "value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cred_read",
+            "description": "Read a credential from the encrypted vault.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Credential name",
+                    },
+                },
+                "required": ["key"],
+            },
+        },
+    },
+    # ── Registry (v13.0) ─────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "registry_read",
+            "description": "Read a Windows registry value.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Registry key path (e.g. HKLM\\Software\\Foo)",
+                    },
+                    "value_name": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Value name (empty = default)",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "registry_write",
+            "description": "Write a Windows registry value.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Registry key path",
+                    },
+                    "value_name": {
+                        "type": "string",
+                        "description": "Value name",
+                    },
+                    "data": {
+                        "type": "string",
+                        "description": "Value data",
+                    },
+                    "reg_type": {
+                        "type": "string",
+                        "default": "REG_SZ",
+                        "description": "Registry type (REG_SZ, REG_DWORD, etc)",
+                    },
+                },
+                "required": ["path", "value_name", "data"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "registry_delete",
+            "description": "Delete a Windows registry key or value.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Registry key path",
+                    },
+                    "value_name": {
+                        "type": "string",
+                        "description": "Value name (omit to delete entire key)",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
     # ── Web / Browser actions (v8.0 — Playwright) ─────────────────────────
     {
         "type": "function",
@@ -684,7 +1046,10 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "selector": {"type": "string", "description": "CSS selector, e.g. '#login-btn'"},
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector, e.g. '#login-btn'",
+                    },
                     "text": {"type": "string", "description": "Visible text to click"},
                     "role": {"type": "string", "description": "ARIA role, e.g. 'button', 'link'"},
                     "name": {"type": "string", "description": "Accessible name (use with role)"},
@@ -731,7 +1096,10 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "selector": {"type": "string", "description": "CSS selector (omit for full page)"},
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector (omit for full page)",
+                    },
                     "full_page": {"type": "boolean", "default": False},
                 },
             },
@@ -773,7 +1141,11 @@ TOOLS: list[dict[str, Any]] = [
                         "enum": ["visible", "hidden", "attached", "detached"],
                         "default": "visible",
                     },
-                    "timeout": {"type": "number", "default": 30, "description": "Max wait in seconds"},
+                    "timeout": {
+                        "type": "number",
+                        "default": 30,
+                        "description": "Max wait in seconds",
+                    },
                 },
             },
         },
@@ -786,7 +1158,10 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "selector": {"type": "string", "description": "CSS selector (omit for viewport)"},
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector (omit for viewport)",
+                    },
                     "full_page": {"type": "boolean", "default": False},
                 },
             },
@@ -928,12 +1303,18 @@ TOOLS: list[dict[str, Any]] = [
                     "hostname": {"type": "string", "description": "Connected device"},
                     "what": {
                         "type": "string",
-                        "enum": ["version", "interfaces", "routing", "arp", "cpu", "logging", "config"],
+                        "enum": [
+                            "version", "interfaces", "routing",
+                            "arp", "cpu", "logging", "config",
+                        ],
                     },
                     "device_type": {
                         "type": "string",
                         "default": "generic",
-                        "description": "cisco_ios, cisco_nxos, juniper_junos, fortigate, mikrotik, pfsense, linux, generic",
+                        "description": (
+                            "cisco_ios, cisco_nxos, juniper_junos, "
+                            "fortigate, mikrotik, pfsense, linux, generic"
+                        ),
                     },
                 },
                 "required": ["hostname", "what"],
@@ -954,6 +1335,140 @@ TOOLS: list[dict[str, Any]] = [
                     "device_type": {"type": "string", "default": "generic"},
                 },
                 "required": ["hostname", "target"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ssh_traceroute",
+            "description": (
+                "Traceroute to a target from a connected network device."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hostname": {
+                        "type": "string",
+                        "description": "Connected device",
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "IP or hostname to trace",
+                    },
+                    "device_type": {
+                        "type": "string",
+                        "default": "generic",
+                    },
+                },
+                "required": ["hostname", "target"],
+            },
+        },
+    },
+    # ── Memory actions (v11.0 — persistent memory) ──────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "memory_store",
+            "description": (
+                "Store a key-value fact in persistent memory. "
+                "Use this to remember things across sessions: credentials, "
+                "IP addresses, configuration details, procedures."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Unique key for the fact"},
+                    "value": {"type": "string", "description": "The fact value to store"},
+                    "category": {
+                        "type": "string",
+                        "description": "Category (credentials, network, procedures)",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags for search",
+                    },
+                },
+                "required": ["key", "value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "memory_recall",
+            "description": "Recall a specific fact from memory by its exact key.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "The exact key to look up"},
+                },
+                "required": ["key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "memory_search",
+            "description": (
+                "Search memory for facts matching a keyword. "
+                "Searches across keys, values, and tags."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search keyword or phrase"},
+                    "limit": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Max results",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "memory_forget",
+            "description": "Delete a fact from memory by key.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "The key to delete"},
+                },
+                "required": ["key"],
+            },
+        },
+    },
+    # ── Conductor actions (v12.0 — multi-agent orchestration) ─────────
+    {
+        "type": "function",
+        "function": {
+            "name": "conductor_run",
+            "description": (
+                "Decompose a complex goal into subtasks and execute them in parallel. "
+                "Use for multi-step goals like 'check all firewalls and generate report'. "
+                "Automatically detects task types (desktop, browser, network, terminal) "
+                "and runs independent tasks concurrently."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "goal": {
+                        "type": "string",
+                        "description": "Goal to decompose and execute",
+                    },
+                    "timeout": {
+                        "type": "number",
+                        "default": 120,
+                        "description": "Max execution time (seconds)",
+                    },
+                },
+                "required": ["goal"],
             },
         },
     },

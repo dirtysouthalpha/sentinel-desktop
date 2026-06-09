@@ -2,17 +2,15 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PIL import Image
 
 from core.local_grounding import (
+    FEATURE_FLAG,
     LocalGroundingModel,
     LocalGroundingResult,
-    is_local_grounding_enabled,
     get_grounding_backend,
-    FEATURE_FLAG,
+    is_local_grounding_enabled,
 )
-
 
 # ---------------------------------------------------------------------------
 # LocalGroundingResult
@@ -216,11 +214,19 @@ class TestPipelineLocalGrounding:
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (800, 600), "white")
 
-        with patch.object(pipeline, "_cv_contour_detection", return_value=[
-            MagicMock(source="cv"),
-        ]):
-            with patch.object(pipeline, "_local_grounding_detection", return_value=[
-                MagicMock(source="local"),
-            ]):
+        with patch.object(
+            pipeline,
+            "_cv_contour_detection",
+            return_value=[
+                MagicMock(source="cv"),
+            ],
+        ):
+            with patch.object(
+                pipeline,
+                "_local_grounding_detection",
+                return_value=[
+                    MagicMock(source="local"),
+                ],
+            ):
                 elements = pipeline._query_vision(img)
                 assert len(elements) == 2

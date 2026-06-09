@@ -189,7 +189,8 @@ def test_stop_swallows_errors():
 
 
 def test_quit_callback_without_on_quit_still_stops_icon():
-    """_quit with on_quit=None skips the callback but still calls icon.stop (line 89 False branch)."""
+    """_quit with on_quit=None skips the callback but still calls icon.stop (line 89 False
+    branch)."""
     import gui.tray as tray_mod
     from gui.tray import SentinelTray
 

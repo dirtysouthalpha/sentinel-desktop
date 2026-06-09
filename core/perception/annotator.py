@@ -99,7 +99,8 @@ def annotate_screenshot(
         color = get_color(elem.element_type)
 
         # Thicker outline for interactable elements
-        box_width = _BOX_WIDTH + 1 if (highlight_interactable and elem.is_interactable) else _BOX_WIDTH
+        thicker = highlight_interactable and elem.is_interactable
+        box_width = _BOX_WIDTH + 1 if thicker else _BOX_WIDTH
 
         # Draw bounding box
         draw.rectangle(

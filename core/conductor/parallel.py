@@ -101,7 +101,14 @@ class ParallelExecutor:
         logger.info("Parallel execution complete: %d tasks, %.0fms", len(subtasks), elapsed_ms)
 
         # Return in original order
-        return [results.get(t.subtask_id, {"subtask_id": t.subtask_id, "status": "missing"}) for t in subtasks]
+        _missing = {"subtask_id": "", "status": "missing"}
+        return [
+            results.get(
+                t.subtask_id,
+                {**_missing, "subtask_id": t.subtask_id},
+            )
+            for t in subtasks
+        ]
 
     async def _execute_one(self, subtask: Subtask) -> dict[str, Any]:
         """Execute a single subtask."""

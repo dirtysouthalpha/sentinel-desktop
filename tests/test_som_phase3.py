@@ -1,12 +1,12 @@
 """Tests for Phase 3: Set-of-Marks Screenshots — CV contours, annotation, multi-source marks."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from PIL import Image
 
 from core.perception.annotator import annotate_screenshot, get_color
-from core.perception.fusion import FusionEngine, compute_iou, boxes_overlap
+from core.perception.fusion import FusionEngine, boxes_overlap, compute_iou
 from core.perception.pipeline import PerceptionPipeline
 from core.perception.types import (
     ElementSource,
@@ -14,7 +14,6 @@ from core.perception.types import (
     PerceptionElement,
     PerceptionResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -226,16 +225,28 @@ class TestMultiSourceMarks:
         pipeline = PerceptionPipeline()
         img = _blank_screenshot()
 
-        with patch.object(pipeline, "_query_accessibility", return_value=[
-            _elem(1, "Btn1", (100, 100, 80, 30), source=ElementSource.ACCESSIBILITY),
-        ]):
-            with patch.object(pipeline, "_query_ocr", return_value=[
-                _elem(0, "Btn1", (101, 101, 79, 29), source=ElementSource.OCR),
-                _elem(0, "Text2", (300, 100, 80, 30), source=ElementSource.OCR),
-            ]):
-                with patch.object(pipeline, "_query_vision", return_value=[
-                    _elem(0, "", (400, 200, 60, 60), source=ElementSource.VISION),
-                ]):
+        with patch.object(
+            pipeline,
+            "_query_accessibility",
+            return_value=[
+                _elem(1, "Btn1", (100, 100, 80, 30), source=ElementSource.ACCESSIBILITY),
+            ],
+        ):
+            with patch.object(
+                pipeline,
+                "_query_ocr",
+                return_value=[
+                    _elem(0, "Btn1", (101, 101, 79, 29), source=ElementSource.OCR),
+                    _elem(0, "Text2", (300, 100, 80, 30), source=ElementSource.OCR),
+                ],
+            ):
+                with patch.object(
+                    pipeline,
+                    "_query_vision",
+                    return_value=[
+                        _elem(0, "", (400, 200, 60, 60), source=ElementSource.VISION),
+                    ],
+                ):
                     result = pipeline.analyze(img)
 
                     # Should have fused elements from all 3 sources

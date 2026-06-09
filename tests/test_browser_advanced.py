@@ -19,7 +19,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
-
 PLAYWRIGHT_PATH = "core.browser"
 
 
@@ -64,12 +63,15 @@ def browser_mgr():
         mgr._pages = [mock_page]
         mgr._active_page_index = 0
 
-        yield mgr, {
-            "pw_instance": mock_pw_instance,
-            "browser": mock_browser,
-            "context": mock_context,
-            "page": mock_page,
-        }
+        yield (
+            mgr,
+            {
+                "pw_instance": mock_pw_instance,
+                "browser": mock_browser,
+                "context": mock_context,
+                "page": mock_page,
+            },
+        )
 
 
 # ===========================================================================
@@ -275,7 +277,9 @@ class TestWebDownloadEdgeCases:
         download_cm.__exit__ = MagicMock(return_value=False)
         mocks["page"].expect_download.return_value = download_cm
 
-        result = mgr.download(url="https://example.com/report.pdf", save_path="C:/Downloads/report.pdf")
+        result = mgr.download(
+            url="https://example.com/report.pdf", save_path="C:/Downloads/report.pdf"
+        )
         # Implementation may succeed or fail depending on mock wiring — just verify no crash
         assert "success" in result
 

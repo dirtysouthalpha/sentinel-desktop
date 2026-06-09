@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-from unittest.mock import MagicMock
-
 import pytest
 
-from core.conductor.planner import Subtask, TaskPlanner
-from core.conductor.parallel import ParallelExecutor
-from core.conductor.synthesizer import ResultSynthesizer
 from core.conductor.coordinator import Conductor
-
+from core.conductor.parallel import ParallelExecutor
+from core.conductor.planner import Subtask, TaskPlanner
+from core.conductor.synthesizer import ResultSynthesizer
 
 # ===========================================================================
 # Task Planner
@@ -47,7 +43,9 @@ class TestTaskPlanner:
 
     def test_multi_task_split(self):
         planner = TaskPlanner()
-        plan = planner.decompose("Login to the firewall and check the ARP table and export the config")
+        plan = planner.decompose(
+            "Login to the firewall and check the ARP table and export the config"
+        )
         assert len(plan) >= 2
 
     def test_sequential_dependencies(self):
@@ -68,10 +66,12 @@ class TestTaskPlanner:
         planner = TaskPlanner()
         plan = planner.decompose("Do A and B and C")
         ids = [s.subtask_id for s in plan]
-        assert ids == [f"t-{i+1}" for i in range(len(plan))]
+        assert ids == [f"t-{i + 1}" for i in range(len(plan))]
 
     def test_subtask_to_dict(self):
-        subtask = Subtask(subtask_id="t-1", description="Test", task_type="desktop", dependencies=["t-0"])
+        subtask = Subtask(
+            subtask_id="t-1", description="Test", task_type="desktop", dependencies=["t-0"]
+        )
         d = subtask.to_dict()
         assert d["subtask_id"] == "t-1"
         assert d["task_type"] == "desktop"
@@ -120,7 +120,9 @@ class TestParallelExecutor:
         executor = ParallelExecutor()
         subtasks = [
             Subtask(subtask_id="t-1", description="First", task_type="desktop"),
-            Subtask(subtask_id="t-2", description="Second", task_type="desktop", dependencies=["t-1"]),
+            Subtask(
+                subtask_id="t-2", description="Second", task_type="desktop", dependencies=["t-1"]
+            ),
         ]
         results = await executor.execute_all(subtasks)
         assert len(results) == 2

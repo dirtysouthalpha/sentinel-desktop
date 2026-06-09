@@ -343,6 +343,7 @@ class TestBuildInitialMessages:
         eng.notes = []
         # Add mock executor to avoid AttributeError
         from unittest.mock import MagicMock
+
         eng.executor = MagicMock()
         eng.executor.perception_result = None
         return eng

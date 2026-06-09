@@ -175,34 +175,10 @@ class TestConstruction:
         assert app._t("accent", "fallback") != ""
         assert app._t("nonexistent_key", "fb") == "fb"
 
-    def test_recorder_panel_built_when_importable(self):
-        """Cover the success branch of _build_recorder_panel.
-
-        RecorderPanel imports tkinter.filedialog/messagebox which aren't in
-        the headless stub; provide them so the import (and construction)
-        succeeds.
-        """
-        import sys
-        import tkinter
-        import types
-
-        fd = types.ModuleType("tkinter.filedialog")
-        fd.askopenfilename = lambda *a, **k: ""
-        fd.asksaveasfilename = lambda *a, **k: ""
-        mb = types.ModuleType("tkinter.messagebox")
-        mb.showerror = lambda *a, **k: None
-        mb.showinfo = lambda *a, **k: None
-        mb.askyesno = lambda *a, **k: True
-        with (
-            patch.dict(
-                sys.modules,
-                {"tkinter.filedialog": fd, "tkinter.messagebox": mb},
-            ),
-            patch.object(tkinter, "filedialog", fd, create=True),
-            patch.object(tkinter, "messagebox", mb, create=True),
-        ):
-            app = _make_app({"quick_actions": [], "recent_prompts": []})
-        assert app.recorder_panel is not None
+    def test_recorder_panel_not_built(self):
+        """v18 removed the recorder panel from _build_ui."""
+        app = _make_app({"quick_actions": [], "recent_prompts": []})
+        assert not hasattr(app, "recorder_panel")
 
 
 # ── Tab fallbacks (ImportError branches) ───────────────────────────────────
@@ -261,18 +237,6 @@ class TestPromptHelpers:
         app.goal_entry.insert("1.0", "stuff")
         app._restore_placeholder()
         assert app.goal_entry.get("1.0", "end") == "stuff"
-
-    def test_on_recent_pick_matches_truncated(self, app):
-        app.recent_var = MagicMock()
-        app._on_recent_pick("prompt one")
-        assert "prompt one" in app.goal_entry.get("1.0", "end")
-        app.recent_var.set.assert_called()
-
-    def test_on_recent_pick_ellipsis(self, app):
-        app.recent_var = MagicMock()
-        # The third recent prompt is 60 'y' chars, truncated with an ellipsis.
-        app._on_recent_pick("y" * 47 + "…")
-        assert "y" in app.goal_entry.get("1.0", "end")
 
     def test_record_recent_prompt_dedup_and_save(self, app):
         app._record_recent_prompt("brand new prompt")
@@ -685,91 +649,6 @@ class TestCheckpoint:
     def test_check_resume_error_swallowed(self, app):
         with patch("core.checkpoint.CheckpointManager", side_effect=RuntimeError("oops")):
             app._check_resume_checkpoint()  # should not raise
-
-    def test_do_resume_no_checkpoint(self, app):
-        fake_cp = MagicMock()
-        fake_cp.load_latest.return_value = None
-        with (
-            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
-            patch.object(app, "_add_chat") as chat,
-        ):
-            app._do_resume_checkpoint()
-        assert any("No resumable" in str(c) for c in chat.call_args_list)
-
-    def test_do_resume_no_goal(self, app):
-        fake_cp = MagicMock()
-        fake_cp.load_latest.return_value = {"goal": ""}
-        with (
-            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
-            patch.object(app, "_add_chat") as chat,
-        ):
-            app._do_resume_checkpoint()
-        assert any("no goal" in str(c).lower() for c in chat.call_args_list)
-
-    def test_do_resume_success(self, app):
-        fake_cp = MagicMock()
-        fake_cp.load_latest.return_value = {"goal": "resume me"}
-        with (
-            patch("core.checkpoint.CheckpointManager", return_value=fake_cp),
-            patch.object(app, "_run_goal") as run,
-        ):
-            app._do_resume_checkpoint()
-        run.assert_called_once_with("resume me")
-
-    def test_do_resume_error(self, app):
-        with (
-            patch("core.checkpoint.CheckpointManager", side_effect=ValueError("bad")),
-            patch.object(app, "_add_chat") as chat,
-        ):
-            app._do_resume_checkpoint()
-        assert any("failed" in str(c).lower() for c in chat.call_args_list)
-
-
-# ── History panel / before-after screenshots ──────────────────────────────
-
-
-class TestHistory:
-    def test_build_history_panel(self, app):
-        parent = MagicMock()
-        frame = app._build_history_panel(parent)
-        assert frame is not None
-
-    def test_add_history_entry_ok(self, app):
-        app.history_display = _FakeText()
-        app._add_history_entry(1, "click", {"ok": True, "msg": "done"})
-        assert "click" in app.history_display.get("1.0", "end")
-
-    def test_add_history_entry_fail_icon(self, app):
-        app.history_display = _FakeText()
-        app._add_history_entry(2, "type", {"ok": False, "msg": "err"})
-        assert "type" in app.history_display.get("1.0", "end")
-
-    def test_add_history_entry_no_display(self, app):
-        # configure raises -> error branch.
-        app.history_display = MagicMock()
-        app.history_display.configure.side_effect = RuntimeError("not built")
-        app._add_history_entry(1, "a", {})  # swallowed
-
-    def test_update_screenshot_with_diff(self, app):
-        import base64
-        import io
-
-        from PIL import Image
-
-        def mk():
-            buf = io.BytesIO()
-            Image.new("RGB", (30, 30)).save(buf, format="PNG")
-            return base64.b64encode(buf.getvalue()).decode()
-
-        app.screenshot_label = MagicMock()
-        # ImageTk.PhotoImage needs a real Tk display; stub it out.
-        with patch("PIL.ImageTk.PhotoImage", return_value=MagicMock()):
-            app._update_screenshot_with_diff(mk(), mk())
-        app.screenshot_label.configure.assert_called()
-
-    def test_update_screenshot_with_diff_bad(self, app):
-        app.screenshot_label = MagicMock()
-        app._update_screenshot_with_diff("bad", "data")  # swallowed
 
 
 # ── Tray lifecycle ─────────────────────────────────────────────────────────

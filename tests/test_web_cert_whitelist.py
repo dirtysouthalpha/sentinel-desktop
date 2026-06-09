@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-
-import pytest
 
 from core.web.appliance import (
     is_whitelisted,
@@ -43,34 +40,49 @@ class TestIsWhitelisted:
 
 class TestShouldIgnoreCertErrors:
     def test_https_whitelisted(self):
-        assert should_ignore_cert_errors(
-            "https://192.168.1.1/login",
-            ["192.168.1.1"],
-        ) is True
+        assert (
+            should_ignore_cert_errors(
+                "https://192.168.1.1/login",
+                ["192.168.1.1"],
+            )
+            is True
+        )
 
     def test_https_not_whitelisted(self):
-        assert should_ignore_cert_errors(
-            "https://192.168.1.1/login",
-            ["10.0.0.1"],
-        ) is False
+        assert (
+            should_ignore_cert_errors(
+                "https://192.168.1.1/login",
+                ["10.0.0.1"],
+            )
+            is False
+        )
 
     def test_url_with_port(self):
-        assert should_ignore_cert_errors(
-            "https://firewall.local:8443/admin",
-            ["firewall.local"],
-        ) is True
+        assert (
+            should_ignore_cert_errors(
+                "https://firewall.local:8443/admin",
+                ["firewall.local"],
+            )
+            is True
+        )
 
     def test_http_url(self):
-        assert should_ignore_cert_errors(
-            "http://192.168.1.1/",
-            ["192.168.1.1"],
-        ) is True
+        assert (
+            should_ignore_cert_errors(
+                "http://192.168.1.1/",
+                ["192.168.1.1"],
+            )
+            is True
+        )
 
     def test_ip_only_url(self):
-        assert should_ignore_cert_errors(
-            "10.0.0.1/config",
-            ["10.0.0.1"],
-        ) is True
+        assert (
+            should_ignore_cert_errors(
+                "10.0.0.1/config",
+                ["10.0.0.1"],
+            )
+            is True
+        )
 
     def test_empty_url(self):
         assert should_ignore_cert_errors("", ["10.0.0.1"]) is False

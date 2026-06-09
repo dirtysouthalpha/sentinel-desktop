@@ -7,12 +7,10 @@ when Playwright is not installed.
 
 from __future__ import annotations
 
-import base64
 import io
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers — mock Playwright primitives
@@ -159,7 +157,7 @@ class TestBrowserLifecycle:
             mgr._browser.is_connected.return_value = True
             mgr._pages = []
             with pytest.raises(BrowserError, match="No pages open"):
-                mgr.active_page
+                _ = mgr.active_page  # noqa: B018
 
 
 class TestPlaywrightNotInstalled:
@@ -175,12 +173,9 @@ class TestPlaywrightNotInstalled:
     def test_is_available_false(self):
         with patch(f"{PLAYWRIGHT_PATH}._HAS_PLAYWRIGHT", False):
             # Need to reimport to pick up the flag
-            import importlib
             import core.browser as bm
 
             with patch.object(bm, "_HAS_PLAYWRIGHT", False):
-                from core.browser import BrowserManager
-
                 # This would raise on init, but is_available is a class-level check
                 assert bm._HAS_PLAYWRIGHT is False
 
@@ -478,9 +473,7 @@ class TestWebDownload:
         mocks["page"].expect_download.return_value.__enter__ = MagicMock(
             return_value=MagicMock(value=mock_download)
         )
-        mocks["page"].expect_download.return_value.__exit__ = MagicMock(
-            return_value=False
-        )
+        mocks["page"].expect_download.return_value.__exit__ = MagicMock(return_value=False)
 
         # Simulate the context manager pattern
         with patch.object(mocks["page"], "goto"):

@@ -1,5 +1,6 @@
-"""Gap tests for stealth_input.py — direct function coverage for post_click, post_text, post_key, post_named_key, post_hotkey, _get_focus_hwnd."""
-
+"""Gap tests for stealth_input.py — direct function coverage for post_click, post_text,
+post_key, post_named_key, post_hotkey, _get_focus_hwnd.
+"""
 import importlib
 import sys
 

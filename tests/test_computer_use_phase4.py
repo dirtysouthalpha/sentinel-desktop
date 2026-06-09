@@ -1,20 +1,16 @@
 """Tests for Phase 4: Native Computer-Use Adapters — Anthropic + OpenAI tool formats."""
 
 import json
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from core.computer_use import (
+    _parse_anthropic_key,
+    _parse_scroll_direction,
     build_anthropic_tools,
     build_openai_tools,
     get_computer_use_type,
     translate_anthropic_action,
     translate_openai_action,
-    _parse_anthropic_key,
-    _parse_scroll_direction,
 )
-
 
 # ---------------------------------------------------------------------------
 # Provider capability detection (NCU-01, NCU-02)
@@ -383,4 +379,5 @@ class TestMouseMoveAction:
 
     def test_mouse_move_registered(self):
         from core.action_executor import ActionExecutor
+
         assert "mouse_move" in ActionExecutor._dispatch_table

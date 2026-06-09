@@ -1,5 +1,6 @@
-"""Tests for uncovered functions: read_screen_text_with_confidence, ActionExecutor.log, LLMClient.chat."""
-
+"""Tests for uncovered functions: read_screen_text_with_confidence, ActionExecutor.log,
+LLMClient.chat.
+"""
 from unittest.mock import MagicMock
 
 import pytest

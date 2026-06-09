@@ -1,5 +1,6 @@
-"""Gap tests for workflow.py — _handle_step_error unknown policy, _exec_script/_exec_sub_workflow exception paths."""
-
+"""Gap tests for workflow.py — _handle_step_error unknown policy,
+_exec_script/_exec_sub_workflow exception paths.
+"""
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

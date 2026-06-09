@@ -32,7 +32,8 @@ class TestHaveTesseractSuccess:
         utils._pytesseract = None
 
     def test_success_path_sets_globals(self):
-        """Lines 119-120: import + get_tesseract_version succeed -> _pytesseract and _TESSERACT_OK."""
+        """Lines 119-120: import + get_tesseract_version succeed -> _pytesseract and
+        _TESSERACT_OK."""
         # Old import pattern removed
 
         fake_pytesseract = MagicMock()

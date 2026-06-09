@@ -127,6 +127,87 @@ def parse_ping(output: str) -> dict[str, Any]:
     return result
 
 
+def parse_traceroute(output: str) -> dict[str, Any]:
+    """Parse traceroute output for hops and path.
+
+    Returns:
+        Dict with: success, target, hops (list of hop dicts),
+        total_hops, reached_target.
+    """
+    result: dict[str, Any] = {
+        "success": False,
+        "target": "",
+        "hops": [],
+        "total_hops": 0,
+        "reached_target": False,
+    }
+
+    # Extract target from first line
+    target_match = re.search(
+        r"traceroute\s+(?:to\s+)?(\S+)", output, re.IGNORECASE,
+    )
+    if target_match:
+        result["target"] = target_match.group(1)
+
+    # Cisco: " 1 10.0.0.1 4 msec 4 msec 4 msec"
+    # Also:  " 1 192.168.1.1 1.0 ms 1.0 ms 1.0 ms"
+    cisco_hop = re.compile(
+        r"^\s*(\d+)\s+"
+        r"(\S+)"  # IP or hostname
+        r"(?:\s+\([\d.]+\))?"  # optional (resolved IP)
+        r"((?:\s+[\d.]+\s*m?s(?:ec)?|\s+\*)+)",
+        re.MULTILINE,
+    )
+    # Linux: " 1  gateway (192.168.1.1)  0.456 ms  0.398 ms  0.382 ms"
+    linux_hop = re.compile(
+        r"^\s*(\d+)\s+"
+        r"(\S+)"  # hostname
+        r"\s+\(([\d.]+)\)"  # (IP)
+        r"((?:\s+[\d.]+\s*m?s(?:ec)?|\s+\*)+)",
+        re.MULTILINE,
+    )
+
+    for pattern in (linux_hop, cisco_hop):
+        for m in pattern.finditer(output):
+            hop_num = int(m.group(1))
+            host = m.group(2)
+            timings_raw = m.group(m.lastindex)
+
+            # Extract timing values (handles ms, msec, and * hops)
+            times = re.findall(
+                r"([\d.]+)\s*m?s(?:ec)?", timings_raw,
+            )
+            avg_rtt = None
+            if times:
+                avg_rtt = round(
+                    sum(float(t) for t in times) / len(times), 2,
+                )
+
+            hop = {
+                "hop": hop_num,
+                "host": host,
+                "avg_rtt_ms": avg_rtt,
+            }
+            # Avoid duplicates (Cisco may match with both patterns)
+            if not any(h["hop"] == hop_num for h in result["hops"]):
+                result["hops"].append(hop)
+
+    result["total_hops"] = len(result["hops"])
+
+    # Check if target was reached
+    if result["hops"]:
+        last = result["hops"][-1]
+        target_ip = result["target"].strip("()\"'")
+        if (
+            last["host"] == target_ip
+            or last["host"] == result["target"]
+        ):
+            result["reached_target"] = True
+
+    result["success"] = result["total_hops"] > 0
+    return result
+
+
 def parse_routing_table(output: str) -> list[dict[str, str]]:
     """Parse routing table output.
 
@@ -136,7 +217,8 @@ def parse_routing_table(output: str) -> list[dict[str, str]]:
     routes = []
     for line in output.splitlines():
         line = line.strip()
-        if not line or line.startswith("Codes") or line.startswith("Destination") or line.startswith("---") or line.startswith("Kernel"):
+        _skip_prefixes = ("Codes", "Destination", "---", "Kernel")
+        if not line or any(line.startswith(p) for p in _skip_prefixes):
             continue
 
         parts = line.split()

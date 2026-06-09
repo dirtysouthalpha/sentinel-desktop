@@ -432,7 +432,7 @@ class TestToolInventory:
 
     def test_tool_count_reasonable(self):
         # We should have roughly 35-50 tools
-        assert 30 <= len(TOOLS) <= 60
+        assert 30 <= len(TOOLS) <= 80
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
-"""Tests for core/smart_wait.py -- additional edge cases for visual diff, stability, and wait_for_change."""
-
+"""Tests for core/smart_wait.py -- additional edge cases for visual diff, stability, and
+wait_for_change.
+"""
 from unittest.mock import patch
 
 from PIL import Image
@@ -201,7 +202,8 @@ class TestWaitForStableAdditional:
 
 class TestCancelEdgeCases:
     def test_cancel_before_wait(self):
-        """wait_for_change resets the cancel flag before starting — verify _reset_cancel is called."""
+        """wait_for_change resets the cancel flag before starting — verify _reset_cancel is
+        called."""
         sw = SmartWait()
         sw.cancel()
         with (

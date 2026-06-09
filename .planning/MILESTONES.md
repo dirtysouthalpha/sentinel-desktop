@@ -45,6 +45,61 @@ Project milestones and their release dates.
 - Test suite expansion (83 new tests)
 - Docstrings and code quality improvements
 
+## v12.0 — Conductor: Multi-Agent Orchestration (2026-06-07)
+
+**Shipped:**
+- Task planner — rule-based goal decomposition with dependency detection
+- Parallel executor — concurrent subtask execution respecting dependencies
+- Result synthesizer — merge multi-agent results with status aggregation
+- Conductor coordinator — end-to-end plan → execute → synthesize pipeline
+- conductor_run agent action with async→sync bridge
+- Pydantic schema, executor handler, tool schema for LLM tool calling
+- 8 requirements (CON-01–08)
+
+## v11.0 — Memory: Persistent Agent Memory (2026-06-07)
+
+**Shipped:**
+- Episodic memory — timestamped JSONL with search, compression of old episodes
+- Semantic memory — SQLite key-value facts with categories, tags, access tracking
+- Working memory — in-memory session scratchpad with key-value and bucket stores
+- 4 agent actions: memory_store, memory_recall, memory_search, memory_forget
+- Pydantic schemas, executor handlers, tool schemas for all memory actions
+- End-to-end integration tests (store → recall → search → forget)
+- 10 requirements (MEM-01–10)
+
+## v10.0 — Sentinel Server: Fleet/Daemon Mode (2026-06-07)
+
+**Shipped:**
+- Daemon service manager (start/stop/heartbeat/job tracking)
+- Fleet manager (register/unregister/heartbeat/nodes)
+- Persistent job queue (submit/claim/complete/fail/cancel with priority)
+- 14 API endpoints (/daemon/*, /fleet/*, /jobs/*)
+- 6 requirements (SRV-01–06)
+
+## v9.0 — Netops: SSH Network Device Control (2026-06-07)
+
+**Shipped:**
+- SSH client via paramiko (connect, run_command, context manager)
+- Device-aware command runner (Cisco IOS/NX-OS, Juniper JunOS, FortiGate, SonicWall, MikroTik, pfSense, Linux)
+- Output parser for interfaces, ARP, routing, ping, version, IPs, MACs
+- 5 executor actions: ssh_connect, ssh_disconnect, ssh_run, ssh_show, ssh_ping
+- Pydantic schemas + tool schemas + system prompt for all SSH actions
+- 54 tests (ssh_client, output_parser, executor dispatch)
+- 11 requirements (NET-01–11)
+
+## v8.0.0 — Webhand: Browser Automation (2026-06-06)
+
+**Shipped:**
+- Embedded Playwright browser control (Chromium/Firefox/WebKit)
+- 11 web actions: web_open, web_click, web_type, web_read, web_extract, web_wait_for, web_screenshot, web_eval_js, web_download, web_upload, web_tabs
+- Dual-mode detection (web vs native) with mode handoff
+- Self-signed certificate whitelist for IT appliances
+- IT appliance login page detection (10 vendors)
+- Session vault — encrypted cookie persistence and restore
+- Web recorder — capture browser actions as replayable JSON scripts
+- 325 new tests, 5,662 total passing
+- 19 requirements
+
 ## Future Milestones
 
 *To be added...*

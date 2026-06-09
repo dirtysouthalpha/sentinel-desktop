@@ -4,12 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from core.memory.episodic import EpisodicMemory, Episode
+from core.memory.episodic import Episode, EpisodicMemory
 from core.memory.semantic import SemanticMemory
 from core.memory.working import WorkingMemory
-
 
 # ===========================================================================
 # Episodic Memory
@@ -19,7 +16,12 @@ from core.memory.working import WorkingMemory
 class TestEpisodicMemory:
     def test_store_and_recall(self, tmp_path: Path):
         mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
-        ep_id = mem.store("Login to firewall", actions=[{"action": "web_open", "url": "https://192.168.1.1"}], outcome="Logged in", success=True)
+        mem.store(
+            "Login to firewall",
+            actions=[{"action": "web_open", "url": "https://192.168.1.1"}],
+            outcome="Logged in",
+            success=True,
+        )
         recent = mem.recall(limit=1)
         assert len(recent) == 1
         assert recent[0]["goal"] == "Login to firewall"

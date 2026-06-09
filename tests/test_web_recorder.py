@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from core.web.web_recorder import WebRecorder, WebRecording
 
 
@@ -181,9 +179,17 @@ class TestWebRecorder:
         rec = WebRecorder()
         rec.start(name="all")
         web_actions = [
-            "web_open", "web_click", "web_type", "web_read", "web_extract",
-            "web_wait_for", "web_screenshot", "web_eval_js", "web_download",
-            "web_upload", "web_tabs",
+            "web_open",
+            "web_click",
+            "web_type",
+            "web_read",
+            "web_extract",
+            "web_wait_for",
+            "web_screenshot",
+            "web_eval_js",
+            "web_download",
+            "web_upload",
+            "web_tabs",
         ]
         for action_name in web_actions:
             captured = rec.capture({"action": action_name})

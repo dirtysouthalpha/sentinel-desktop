@@ -191,7 +191,10 @@ def _compute_config_hash(monitors: list[dict[str, Any]]) -> str:
     """
     parts = []
     for m in monitors:
-        parts.append(f"{m.get('left', 0)}x{m.get('top', 0)}+{m.get('width', 0)}x{m.get('height', 0)}")
+        parts.append(
+            f"{m.get('left', 0)}x{m.get('top', 0)}"
+            f"+{m.get('width', 0)}x{m.get('height', 0)}"
+        )
     config_str = "|".join(parts)
     import hashlib
 
@@ -235,7 +238,10 @@ def detect_monitors() -> list[MonitorInfo]:
         scale = dpi_scales.get(i, 1.0)
 
         # Build device_id for persistence: use position+size as fingerprint
-        device_id = f"mon{i}_{m.get('width', 0)}x{m.get('height', 0)}@{m.get('left', 0)},{m.get('top', 0)}"
+        device_id = (
+            f"mon{i}_{m.get('width', 0)}x{m.get('height', 0)}"
+            f"@{m.get('left', 0)},{m.get('top', 0)}"
+        )
 
         info = MonitorInfo(
             index=i,

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from core.web.dual_mode import (
     InteractionMode,
     classify_handoff,
@@ -26,7 +24,9 @@ class TestDetectModeFromGoal:
         assert detect_mode_from_goal("Navigate to http://router.local") == InteractionMode.WEB
 
     def test_keyword_browser(self):
-        assert detect_mode_from_goal("Open the browser and check the SonicWall") == InteractionMode.WEB
+        assert (
+            detect_mode_from_goal("Open the browser and check the SonicWall") == InteractionMode.WEB
+        )
 
     def test_keyword_firewall_ui(self):
         assert detect_mode_from_goal("Configure the firewall UI") == InteractionMode.WEB
@@ -41,10 +41,15 @@ class TestDetectModeFromGoal:
         assert detect_mode_from_goal("Use the web app to export data") == InteractionMode.WEB
 
     def test_native_goal_open_excel(self):
-        assert detect_mode_from_goal("Open Excel and create a spreadsheet") == InteractionMode.NATIVE
+        assert (
+            detect_mode_from_goal("Open Excel and create a spreadsheet") == InteractionMode.NATIVE
+        )
 
     def test_native_goal_move_file(self):
-        assert detect_mode_from_goal("Move the file from Downloads to Documents") == InteractionMode.NATIVE
+        assert (
+            detect_mode_from_goal("Move the file from Downloads to Documents")
+            == InteractionMode.NATIVE
+        )
 
     def test_native_goal_print(self):
         assert detect_mode_from_goal("Print the document") == InteractionMode.NATIVE
@@ -62,13 +67,21 @@ class TestDetectModeFromGoal:
 
 class TestDetectModeFromAction:
     def test_web_open_action(self):
-        assert detect_mode_from_action({"action": "web_open", "url": "https://x.com"}) == InteractionMode.WEB
+        assert (
+            detect_mode_from_action({"action": "web_open", "url": "https://x.com"})
+            == InteractionMode.WEB
+        )
 
     def test_web_click_action(self):
-        assert detect_mode_from_action({"action": "web_click", "selector": "#btn"}) == InteractionMode.WEB
+        assert (
+            detect_mode_from_action({"action": "web_click", "selector": "#btn"})
+            == InteractionMode.WEB
+        )
 
     def test_web_type_action(self):
-        assert detect_mode_from_action({"action": "web_type", "text": "hello"}) == InteractionMode.WEB
+        assert (
+            detect_mode_from_action({"action": "web_type", "text": "hello"}) == InteractionMode.WEB
+        )
 
     def test_web_read_action(self):
         assert detect_mode_from_action({"action": "web_read"}) == InteractionMode.WEB
@@ -92,13 +105,21 @@ class TestDetectModeFromAction:
         assert detect_mode_from_action({"action": "web_tabs"}) == InteractionMode.WEB
 
     def test_native_click_action(self):
-        assert detect_mode_from_action({"action": "click", "x": 100, "y": 200}) == InteractionMode.NATIVE
+        assert (
+            detect_mode_from_action({"action": "click", "x": 100, "y": 200})
+            == InteractionMode.NATIVE
+        )
 
     def test_native_type_text_action(self):
-        assert detect_mode_from_action({"action": "type_text", "text": "hi"}) == InteractionMode.NATIVE
+        assert (
+            detect_mode_from_action({"action": "type_text", "text": "hi"}) == InteractionMode.NATIVE
+        )
 
     def test_native_open_app_action(self):
-        assert detect_mode_from_action({"action": "open_app", "name": "Excel"}) == InteractionMode.NATIVE
+        assert (
+            detect_mode_from_action({"action": "open_app", "name": "Excel"})
+            == InteractionMode.NATIVE
+        )
 
     def test_unknown_action_defaults_native(self):
         assert detect_mode_from_action({"action": "unknown_thing"}) == InteractionMode.NATIVE
@@ -110,10 +131,14 @@ class TestDetectModeFromAction:
 class TestClassifyHandoff:
     def test_no_handoff_same_mode(self):
         assert classify_handoff(InteractionMode.NATIVE, {"action": "click", "x": 1, "y": 2}) is None
-        assert classify_handoff(InteractionMode.WEB, {"action": "web_click", "selector": "#x"}) is None
+        assert (
+            classify_handoff(InteractionMode.WEB, {"action": "web_click", "selector": "#x"}) is None
+        )
 
     def test_handoff_native_to_web(self):
-        result = classify_handoff(InteractionMode.NATIVE, {"action": "web_open", "url": "https://x.com"})
+        result = classify_handoff(
+            InteractionMode.NATIVE, {"action": "web_open", "url": "https://x.com"}
+        )
         assert result == InteractionMode.WEB
 
     def test_handoff_web_to_native(self):
