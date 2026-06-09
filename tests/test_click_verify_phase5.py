@@ -8,6 +8,7 @@ from core.click_verify import (
     ClickVerifier,
     capture_region,
     compute_region_diff,
+    verify_click_landed,
 )
 
 # ---------------------------------------------------------------------------
