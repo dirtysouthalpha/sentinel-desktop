@@ -53,13 +53,13 @@ from core.workflow_builder import TEMPLATES, workflow_store
 _HAS_PTY = False
 try:
     import fcntl  # type: ignore[import-not-found]
-    import pty  # type: ignore[import-not-found]  # noqa: F811
+    import pty  # type: ignore[import-not-found]
     import termios  # type: ignore[import-not-found]
 
     _HAS_PTY = True
 except ImportError:
     fcntl = None  # type: ignore[assignment]
-    pty = None  # type: ignore[assignment]  # noqa: F811
+    pty = None  # type: ignore[assignment]
     termios = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ LONG_OPERATION_TIMEOUT = 300  # 5 minutes for complex operations
 # Optional shared-secret auth. Set SENTINEL_API_TOKEN in the environment to
 # require an Authorization: Bearer <token> header on every request. Unset →
 # no auth (legacy behaviour, OK for localhost-only use).
-API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # noqa: S105 - environment variable name, not a hardcoded password
+API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # environment variable name, not a hardcoded password
 
 # Length limits for input validation
 MAX_GOAL_LENGTH = 2000
@@ -367,6 +367,16 @@ class SentinelServer:
         app.post("/jobs/submit")(self._handle_jobs_submit)
         app.get("/jobs/{job_id}")(self._handle_job_status)
         app.post("/jobs/{job_id}/cancel")(self._handle_job_cancel)
+        # v11.0 — Memory routes
+        app.get("/memory/facts")(self._handle_memory_list)
+        app.get("/memory/facts/{key}")(self._handle_memory_get)
+        app.post("/memory/facts")(self._handle_memory_store)
+        app.delete("/memory/facts/{key}")(self._handle_memory_delete)
+        app.get("/memory/search")(self._handle_memory_search)
+        app.get("/memory/episodes")(self._handle_episodes_list)
+        app.get("/memory/episodes/search")(self._handle_episodes_search)
+        # v12.0 — Conductor route
+        app.post("/conductor/run")(self._handle_conductor_run)
         # Dashboard UI — serve static files (must be last; mount catches all sub-paths)
         app.get("/")(self._handle_dashboard_index)
         static_dir = str(Path(__file__).parent / "static")
@@ -488,9 +498,107 @@ class SentinelServer:
             return {"success": result}
         except Exception as exc:
             return {"success": False, "error": str(exc)}
-        """Serve the Sentinel Prime Master Control Dashboard."""
-        static_dir = Path(__file__).parent / "static"
-        return FileResponse(static_dir / "index.html", media_type="text/html")
+
+    # ── v11.0 — Memory handlers ──────────────────────────────────────────
+
+    async def _handle_memory_list(self, category: str = "") -> dict:
+        """GET /memory/facts — List all memory facts."""
+        try:
+            from core.memory.semantic import SemanticMemory
+            mem = SemanticMemory()
+            keys = mem.list_keys(category=category)
+            return {"success": True, "keys": keys, "count": len(keys)}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_memory_get(self, key: str) -> dict:
+        """GET /memory/facts/{key} — Get a specific fact."""
+        try:
+            from core.memory.semantic import SemanticMemory
+            mem = SemanticMemory()
+            result = mem.recall(key)
+            if result is None:
+                return {"success": False, "error": "Key not found"}
+            return {"success": True, "data": result}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_memory_store(self, data: dict) -> dict:
+        """POST /memory/facts — Store a new fact."""
+        try:
+            from core.memory.semantic import SemanticMemory
+            mem = SemanticMemory()
+            fact_id = mem.store(
+                key=data.get("key", ""),
+                value=data.get("value", ""),
+                category=data.get("category", ""),
+                tags=data.get("tags"),
+                source=data.get("source", "api"),
+            )
+            return {"success": True, "fact_id": fact_id}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_memory_delete(self, key: str) -> dict:
+        """DELETE /memory/facts/{key} — Delete a fact."""
+        try:
+            from core.memory.semantic import SemanticMemory
+            mem = SemanticMemory()
+            deleted = mem.delete(key)
+            return {"success": deleted}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_memory_search(
+        self, query: str = "", limit: int = 20,
+    ) -> dict:
+        """GET /memory/search?query=... — Search memory facts."""
+        try:
+            from core.memory.semantic import SemanticMemory
+            mem = SemanticMemory()
+            results = mem.query(query, limit=limit)
+            return {"success": True, "results": results, "count": len(results)}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_episodes_list(self, limit: int = 20) -> dict:
+        """GET /memory/episodes — List recent episodes."""
+        try:
+            from core.memory.episodic import EpisodicMemory
+            mem = EpisodicMemory()
+            episodes = mem.recall(limit=limit)
+            return {"success": True, "data": episodes, "count": len(episodes)}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    async def _handle_episodes_search(
+        self, query: str = "", limit: int = 10,
+    ) -> dict:
+        """GET /memory/episodes/search?query=... — Search episodes."""
+        try:
+            from core.memory.episodic import EpisodicMemory
+            mem = EpisodicMemory()
+            results = mem.search(query, limit=limit)
+            return {"success": True, "data": results, "count": len(results)}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    # ── v12.0 — Conductor handler ─────────────────────────────────────────
+
+    async def _handle_conductor_run(self, data: dict) -> dict:
+        """POST /conductor/run — Decompose and execute a complex goal."""
+        try:
+
+            from core.conductor.coordinator import Conductor
+            conductor = Conductor()
+            goal = data.get("goal", "")
+            timeout = data.get("timeout", 120.0)
+            result = await conductor.run(goal, timeout=timeout)
+            return {"success": True, "data": result}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    # ── Dashboard ──────────────────────────────────────────────────────
 
     # ── Terminal WebSocket (PTY shell proxy) ────────────────────────────
 
