@@ -71,7 +71,7 @@ LONG_OPERATION_TIMEOUT = 300  # 5 minutes for complex operations
 # Optional shared-secret auth. Set SENTINEL_API_TOKEN in the environment to
 # require an Authorization: Bearer <token> header on every request. Unset →
 # no auth (legacy behaviour, OK for localhost-only use).
-API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # environment variable name, not a hardcoded password
+API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # noqa: S105 — environment variable name, not a hardcoded password
 
 # Length limits for input validation
 MAX_GOAL_LENGTH = 2000
