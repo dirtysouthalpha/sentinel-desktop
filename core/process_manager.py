@@ -6,6 +6,7 @@ Integrates with psutil for cross-platform process operations.
 
 import logging
 import subprocess
+import sys
 from typing import Any
 
 import psutil
@@ -108,3 +109,125 @@ def kill_process(target: int | str | None) -> bool:
     except (psutil.AccessDenied, psutil.ZombieProcess, OSError):
         logger.exception("kill_process(%s) failed", target)
         return False
+
+
+def set_priority(pid: int, priority: str) -> bool:
+    """Set process priority. Returns True on success.
+
+    Priority values: idle, low, normal, high, realtime.
+    """
+    try:
+        p = psutil.Process(pid)
+        priority_map = {
+            "idle": psutil.IDLE_PRIORITY_CLASS if hasattr(psutil, "IDLE_PRIORITY_CLASS") else psutil.IOPRIO_IDLE,
+            "low": psutil.BELOW_NORMAL_PRIORITY_CLASS if hasattr(psutil, "BELOW_NORMAL_PRIORITY_CLASS") else psutil.IOPRIO_LOW,
+            "normal": psutil.NORMAL_PRIORITY_CLASS if hasattr(psutil, "NORMAL_PRIORITY_CLASS") else psutil.IOPRIO_NORMAL,
+            "high": psutil.ABOVE_NORMAL_PRIORITY_CLASS if hasattr(psutil, "ABOVE_NORMAL_PRIORITY_CLASS") else psutil.IOPRIO_HIGH,
+            "realtime": psutil.REALTIME_PRIORITY_CLASS if hasattr(psutil, "REALTIME_PRIORITY_CLASS") else psutil.IOPRIO_HIGH,
+        }
+        pri = priority_map.get(priority.lower())
+        if pri is None:
+            logger.warning("Unknown priority: %s", priority)
+            return False
+        p.nice(pri)
+        return True
+    except psutil.NoSuchProcess:
+        logger.debug("Process %d not found", pid)
+        return False
+    except (psutil.AccessDenied, OSError):
+        logger.exception("set_priority(%d) failed", pid)
+        return False
+
+
+def get_env(name: str) -> str | None:
+    """Get an environment variable value."""
+    import os
+    return os.environ.get(name)
+
+
+def set_env(name: str, value: str, permanent: bool = False) -> bool:
+    """Set an environment variable. Returns True on success."""
+    import os
+    try:
+        os.environ[name] = value
+        if permanent and sys.platform == "win32":
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, "Environment",
+                0, winreg.KEY_SET_VALUE,
+            )
+            winreg.SetValueEx(key, name, 0, winreg.REG_SZ, value)
+            winreg.CloseKey(key)
+        return True
+    except OSError:
+        logger.exception("set_env(%s) failed", name)
+        return False
+
+
+def service_control(
+    name: str,
+    action: str,
+) -> dict[str, Any]:
+    """Control a Windows service. Returns result dict.
+
+    Actions: start, stop, restart, query.
+    """
+    import sys
+    if sys.platform != "win32":
+        return {"success": False, "error": "Windows services not available on this platform"}
+
+    import ctypes
+
+    if action == "query":
+        try:
+            advapi = ctypes.windll.advapi32  # type: ignore[attr-defined]
+            # Set prototypes so ctypes properly marshals 64-bit HANDLE values.
+            advapi.OpenSCManagerW.restype = ctypes.c_void_p
+            advapi.OpenSCManagerW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint32]
+            advapi.OpenServiceW.restype = ctypes.c_void_p
+            advapi.OpenServiceW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint32]
+            advapi.CloseServiceHandle.restype = ctypes.c_int
+            advapi.CloseServiceHandle.argtypes = [ctypes.c_void_p]
+            advapi.QueryServiceStatus.restype = ctypes.c_int
+            advapi.QueryServiceStatus.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+
+            sc = advapi.OpenSCManagerW(None, None, 0x0001)
+            if not sc:
+                return {"success": False, "error": "Failed to open SCManager (access denied)"}
+
+            svc = advapi.OpenServiceW(sc, name, 0x0004)
+            if not svc:
+                advapi.CloseServiceHandle(sc)
+                return {"success": False, "error": f"Service '{name}' not found"}
+
+            status = ctypes.c_uint32()
+            advapi.QueryServiceStatus(svc, ctypes.byref(status))
+            advapi.CloseServiceHandle(svc)
+            advapi.CloseServiceHandle(sc)
+            state_map = {
+                1: "stopped", 2: "start_pending", 3: "stop_pending",
+                4: "running", 5: "continue_pending", 6: "pause_pending",
+                7: "paused",
+            }
+            return {
+                "success": True,
+                "service": name,
+                "state": state_map.get(status.value, f"unknown({status.value})"),
+            }
+        except OSError as exc:
+            return {"success": False, "error": str(exc)}
+
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["net", action, name],
+            capture_output=True, text=True, timeout=30,
+        )
+        return {
+            "success": result.returncode == 0,
+            "service": name,
+            "action": action,
+            "output": (result.stdout + result.stderr).strip(),
+        }
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"success": False, "error": str(exc)}
