@@ -898,22 +898,24 @@ class SentinelApp:
         if result.get("error"):
             for n in notes:
                 self._add_chat(f"\u274c {n}", "error")
-        elif steps == 0 and notes and not summary:
-            for n in notes:
-                self._add_chat(f"\u26a0 {n}", "error")
+        elif not summary:
+            # Run ended without finish() \u2014 hit max steps, consecutive failures, or abort.
+            msg = f"\u26a0\ufe0f Run ended after {steps} step{'s' if steps != 1 else ''} without completing."
+            if notes:
+                msg += "\n" + "\n".join(notes[-3:])
+            self._add_chat(msg, "error")
         else:
             self._add_chat(
                 f"\u2705 Completed in {steps} step"
                 f"{'s' if steps != 1 else ''}."
-                + (f"\n{summary}" if summary else ""),
+                + f"\n{summary}",
                 "assistant",
             )
             if self.tray:
                 try:
                     self.tray.notify(
                         "Sentinel Desktop",
-                        f"Finished in {steps} steps. "
-                        + (summary[:120] if summary else ""),
+                        f"Finished in {steps} steps. " + summary[:120],
                     )
                 except (OSError, RuntimeError) as exc:
                     logger.debug("Tray notification failed: %s", exc)
