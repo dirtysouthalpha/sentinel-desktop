@@ -1472,6 +1472,379 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    # ── v14: Resilience ───────────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "retry_last",
+            "description": "Retry the last failed action.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_circuit_breakers",
+            "description": "Return the state of all circuit breakers (subsystem health).",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    # ── v15: Config & Network ─────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "config_get",
+            "description": "Read a persisted configuration value by dot-notation key.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Dot-notation key, e.g. 'llm.provider'"},
+                    "default": {"type": "string", "description": "Value to return if key not found"},
+                },
+                "required": ["key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "config_set",
+            "description": "Persist a configuration value by dot-notation key.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string"},
+                    "value": {"type": "string", "description": "JSON-serializable value to store"},
+                },
+                "required": ["key", "value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "dns_lookup",
+            "description": "Resolve a hostname to IP addresses (or reverse lookup). Supports A, AAAA, PTR, MX, TXT.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hostname": {"type": "string"},
+                    "record_type": {
+                        "type": "string",
+                        "enum": ["A", "AAAA", "PTR", "MX", "TXT", "NS", "CNAME"],
+                        "default": "A",
+                    },
+                    "server": {"type": "string", "description": "Optional DNS server IP"},
+                },
+                "required": ["hostname"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ping",
+            "description": "Ping a host and return latency statistics.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string"},
+                    "count": {"type": "integer", "default": 4, "minimum": 1, "maximum": 10},
+                    "timeout": {"type": "integer", "default": 3},
+                },
+                "required": ["host"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "port_scan",
+            "description": "Check if TCP ports are open on a host.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string"},
+                    "ports": {"type": "array", "items": {"type": "integer"}},
+                    "timeout": {"type": "number", "default": 2.0},
+                },
+                "required": ["host", "ports"],
+            },
+        },
+    },
+    # ── v16: Window management ────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "resize_window",
+            "description": "Resize a window to specified dimensions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Window title (partial match)"},
+                    "width": {"type": "integer"},
+                    "height": {"type": "integer"},
+                },
+                "required": ["title", "width", "height"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "move_window",
+            "description": "Move a window to specific screen coordinates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "x": {"type": "integer"},
+                    "y": {"type": "integer"},
+                },
+                "required": ["title", "x", "y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "minimize_window",
+            "description": "Minimize (iconify) a window by title.",
+            "parameters": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}},
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "maximize_window",
+            "description": "Maximize a window by title.",
+            "parameters": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}},
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "restore_window",
+            "description": "Restore a minimized or maximized window to its normal state.",
+            "parameters": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}},
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_window_state",
+            "description": "Return geometry and state (minimized/maximized/active) of a window.",
+            "parameters": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}},
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_monitors",
+            "description": "Return information about all connected monitors (resolution, position, primary flag).",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    # ── v16: HTTP client ──────────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "http_get",
+            "description": "Perform an HTTP GET request and return the response.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                    "headers": {"type": "object", "description": "Optional request headers"},
+                    "params": {"type": "object", "description": "Optional query parameters"},
+                    "timeout": {"type": "number", "default": 30.0},
+                    "verify_ssl": {"type": "boolean", "default": True},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "http_post",
+            "description": "Perform an HTTP POST request with optional JSON body.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                    "json": {"type": "object", "description": "JSON payload"},
+                    "body": {"type": "string", "description": "Raw string body (alternative to json)"},
+                    "headers": {"type": "object"},
+                    "timeout": {"type": "number", "default": 30.0},
+                    "verify_ssl": {"type": "boolean", "default": True},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "http_download",
+            "description": "Download a file from a URL to a local path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                    "save_path": {"type": "string", "description": "Local destination path"},
+                    "timeout": {"type": "number", "default": 120.0},
+                    "verify_ssl": {"type": "boolean", "default": True},
+                },
+                "required": ["url", "save_path"],
+            },
+        },
+    },
+    # ── v16: File/process monitoring ──────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "watch_file",
+            "description": "Wait until a file is created, modified, or deleted.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "event": {
+                        "type": "string",
+                        "enum": ["modify", "create", "delete"],
+                        "default": "modify",
+                    },
+                    "timeout": {"type": "number", "default": 60.0},
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "watch_file_content",
+            "description": "Wait until a text file contains a specific string (log watching).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "contains": {"type": "string", "description": "Substring to wait for"},
+                    "timeout": {"type": "number", "default": 60.0},
+                },
+                "required": ["path", "contains"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "watch_process",
+            "description": "Wait for a process to start, stop, or spike CPU.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Process name (partial match)"},
+                    "event": {
+                        "type": "string",
+                        "enum": ["start", "stop", "cpu_spike"],
+                        "default": "start",
+                    },
+                    "pid": {"type": "integer", "description": "Optional specific PID"},
+                    "timeout": {"type": "number", "default": 60.0},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    # ── v17: Audio / Voice ────────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "speak",
+            "description": "Speak text aloud via Windows text-to-speech (SAPI).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to speak"},
+                    "blocking": {"type": "boolean", "default": True, "description": "Wait for speech to finish"},
+                    "rate": {"type": "integer", "default": 0, "description": "Speaking rate -10 to +10"},
+                    "volume": {"type": "integer", "default": 100, "description": "Voice volume 0-100"},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listen",
+            "description": "Capture microphone input and return transcribed text.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {"type": "number", "default": 5.0, "description": "Seconds to wait for speech"},
+                    "phrase_limit": {"type": "number", "default": 10.0, "description": "Max seconds of speech"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "volume_get",
+            "description": "Get the current system master volume level (0-100).",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "volume_set",
+            "description": "Set the system master volume level (0-100).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "level": {"type": "integer", "minimum": 0, "maximum": 100},
+                },
+                "required": ["level"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mute_toggle",
+            "description": "Toggle system audio mute on/off.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_voices",
+            "description": "List available TTS voices installed on the system.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]
 
 

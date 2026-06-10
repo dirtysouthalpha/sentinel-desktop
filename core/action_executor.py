@@ -75,6 +75,18 @@ STATE_CHANGING_ACTIONS = {
     "close_window",
     "write_file",
     "clipboard_write",
+    # v14-v17
+    "config_set",
+    "resize_window",
+    "move_window",
+    "minimize_window",
+    "maximize_window",
+    "restore_window",
+    "http_post",
+    "http_download",
+    "volume_set",
+    "mute_toggle",
+    "speak",
 }
 
 
@@ -2016,6 +2028,286 @@ class ActionExecutor:
             )
             return future.result(timeout=timeout + 10)
 
+    # -------------------------------------------------------------------
+    # Resilience actions (v14.0)
+    # -------------------------------------------------------------------
+
+    def _retry_last(self, **_) -> dict:
+        """Retry the last failed action in the execution log."""
+        for entry in reversed(self._log):
+            if not entry.get("success", True):
+                action_type = entry["action"]
+                params = entry.get("params", {})
+                logger.info("retry_last: re-running '%s'", action_type)
+                return self.execute_sync({"action": action_type, **params})
+        return {"success": False, "output": "No failed action in log to retry"}
+
+    def _get_circuit_breakers(self, **_) -> dict:
+        """Return state of all circuit breakers."""
+        from core.resilience import get_all_breaker_stats
+        stats = get_all_breaker_stats()
+        return {"success": True, "output": stats, "breakers": stats}
+
+    # -------------------------------------------------------------------
+    # Config actions (v15.0)
+    # -------------------------------------------------------------------
+
+    def _config_get(self, *, key: str, default: Any = None, **_) -> dict:
+        """Read a persisted config value."""
+        from core.config_store import get_default_store
+        val = get_default_store().get(key, default)
+        return {"success": True, "key": key, "value": val, "output": str(val)}
+
+    def _config_set(self, *, key: str, value: Any, **_) -> dict:
+        """Persist a config value."""
+        from core.config_store import get_default_store
+        get_default_store().set(key, value)
+        return {"success": True, "key": key, "value": value, "output": f"Set {key} = {value!r}"}
+
+    # -------------------------------------------------------------------
+    # Network diagnostic actions (v15.0)
+    # -------------------------------------------------------------------
+
+    def _dns_lookup(
+        self,
+        *,
+        hostname: str,
+        record_type: str = "A",
+        server: str | None = None,
+        **_,
+    ) -> dict:
+        """Resolve a hostname via DNS."""
+        from core.net_tools import dns_lookup
+        result = dns_lookup(hostname, record_type=record_type, server=server)
+        result["success"] = not bool(result.get("error"))
+        result["output"] = result.get("addresses", [])
+        return result
+
+    def _ping(
+        self,
+        *,
+        host: str,
+        count: int = 4,
+        timeout: int = 3,
+        **_,
+    ) -> dict:
+        """Ping a host."""
+        from core.net_tools import ping_host
+        result = ping_host(host, count=count, timeout=timeout)
+        result["output"] = result.get("output", "")
+        return result
+
+    def _port_scan(
+        self,
+        *,
+        host: str,
+        ports: list[int],
+        timeout: float = 2.0,
+        **_,
+    ) -> dict:
+        """Scan TCP ports on a host."""
+        from core.net_tools import scan_ports
+        results = scan_ports(host, ports, timeout=timeout)
+        open_ports = [p for p, open_ in results.items() if open_]
+        return {
+            "success": True,
+            "host": host,
+            "results": results,
+            "open_ports": open_ports,
+            "output": f"{len(open_ports)}/{len(ports)} ports open on {host}",
+        }
+
+    # -------------------------------------------------------------------
+    # Window management actions (v16.0)
+    # -------------------------------------------------------------------
+
+    def _resize_window(self, *, title: str, width: int, height: int, **_) -> dict:
+        """Resize a window by title."""
+        from core.window_control import resize_window
+        return resize_window(title, width, height)
+
+    def _move_window(self, *, title: str, x: int, y: int, **_) -> dict:
+        """Move a window by title."""
+        from core.window_control import move_window
+        return move_window(title, x, y)
+
+    def _minimize_window(self, *, title: str, **_) -> dict:
+        """Minimize a window by title."""
+        from core.window_control import minimize_window
+        return minimize_window(title)
+
+    def _maximize_window(self, *, title: str, **_) -> dict:
+        """Maximize a window by title."""
+        from core.window_control import maximize_window
+        return maximize_window(title)
+
+    def _restore_window(self, *, title: str, **_) -> dict:
+        """Restore a window by title."""
+        from core.window_control import restore_window
+        return restore_window(title)
+
+    def _get_window_state(self, *, title: str, **_) -> dict:
+        """Get window geometry and state."""
+        from core.window_control import get_window_state
+        return get_window_state(title)
+
+    def _get_monitors(self, **_) -> dict:
+        """Return all connected monitor info."""
+        from core.window_control import get_monitors
+        monitors = get_monitors()
+        return {"success": True, "monitors": monitors, "count": len(monitors), "output": monitors}
+
+    # -------------------------------------------------------------------
+    # HTTP client actions (v16.0)
+    # -------------------------------------------------------------------
+
+    def _http_get(
+        self,
+        *,
+        url: str,
+        headers: dict | None = None,
+        params: dict | None = None,
+        timeout: float = 30.0,
+        verify_ssl: bool = True,
+        **_,
+    ) -> dict:
+        """HTTP GET request."""
+        from core.http_client import http_get
+        return http_get(url, headers=headers, params=params,
+                        timeout=timeout, verify_ssl=verify_ssl)
+
+    def _http_post(
+        self,
+        *,
+        url: str,
+        json: dict | list | None = None,
+        body: str | None = None,
+        headers: dict | None = None,
+        params: dict | None = None,
+        timeout: float = 30.0,
+        verify_ssl: bool = True,
+        **_,
+    ) -> dict:
+        """HTTP POST request."""
+        from core.http_client import http_post
+        return http_post(url, body=body, json=json, headers=headers,
+                         params=params, timeout=timeout, verify_ssl=verify_ssl)
+
+    def _http_download(
+        self,
+        *,
+        url: str,
+        save_path: str,
+        headers: dict | None = None,
+        timeout: float = 120.0,
+        verify_ssl: bool = True,
+        **_,
+    ) -> dict:
+        """Download file via HTTP."""
+        from core.http_client import http_download
+        return http_download(url, save_path, headers=headers,
+                             timeout=timeout, verify_ssl=verify_ssl)
+
+    # -------------------------------------------------------------------
+    # File / process monitoring actions (v16.0)
+    # -------------------------------------------------------------------
+
+    def _watch_file(
+        self,
+        *,
+        path: str,
+        event: str = "modify",
+        timeout: float = 60.0,
+        poll_interval: float = 0.5,
+        **_,
+    ) -> dict:
+        """Wait for a file event (modify/create/delete)."""
+        from core.file_watcher import watch_file
+        return watch_file(path, timeout=timeout, poll_interval=poll_interval, event=event)
+
+    def _watch_file_content(
+        self,
+        *,
+        path: str,
+        contains: str,
+        timeout: float = 60.0,
+        **_,
+    ) -> dict:
+        """Wait until a file contains a specific string."""
+        from core.file_watcher import watch_file_content
+        return watch_file_content(path, contains, timeout=timeout)
+
+    def _watch_process(
+        self,
+        *,
+        name: str,
+        event: str = "start",
+        pid: int | None = None,
+        timeout: float = 60.0,
+        **_,
+    ) -> dict:
+        """Wait for a process event (start/stop/cpu_spike)."""
+        from core.file_watcher import watch_process
+        return watch_process(name, event=event, pid=pid, timeout=timeout)
+
+    # -------------------------------------------------------------------
+    # Audio / voice actions (v17.0)
+    # -------------------------------------------------------------------
+
+    def _speak(
+        self,
+        *,
+        text: str,
+        blocking: bool = True,
+        rate: int = 0,
+        volume: int = 100,
+        **_,
+    ) -> dict:
+        """Speak text via Windows TTS."""
+        from core.audio import speak
+        ok = speak(text, blocking=blocking, rate=rate, volume=volume)
+        return {"success": ok, "output": f"Spoke: {text[:80]}" if ok else "TTS failed"}
+
+    def _listen(
+        self,
+        *,
+        timeout: float = 5.0,
+        phrase_limit: float = 10.0,
+        **_,
+    ) -> dict:
+        """Capture microphone input and return transcription."""
+        from core.audio import listen
+        text = listen(timeout=timeout, phrase_limit=phrase_limit)
+        if text:
+            return {"success": True, "text": text, "output": text}
+        return {"success": False, "text": "", "output": "No speech detected"}
+
+    def _volume_get(self, **_) -> dict:
+        """Get system master volume."""
+        from core.audio import volume_get
+        level = volume_get()
+        if level < 0:
+            return {"success": False, "output": "Volume unavailable on this platform"}
+        return {"success": True, "level": level, "output": f"Volume: {level}%"}
+
+    def _volume_set(self, *, level: int, **_) -> dict:
+        """Set system master volume."""
+        from core.audio import volume_set
+        ok = volume_set(level)
+        return {"success": ok, "level": level, "output": f"Set volume to {level}%" if ok else "Volume set failed"}
+
+    def _mute_toggle(self, **_) -> dict:
+        """Toggle system mute."""
+        from core.audio import mute_toggle
+        muted = mute_toggle()
+        return {"success": True, "muted": muted, "output": "Muted" if muted else "Unmuted"}
+
+    def _list_voices(self, **_) -> dict:
+        """List available TTS voices."""
+        from core.audio import list_voices
+        voices = list_voices()
+        return {"success": True, "voices": voices, "count": len(voices), "output": voices}
+
     # Dispatch table
     _dispatch_table: dict[str, Callable] = {
         "click": _click,
@@ -2109,6 +2401,39 @@ class ActionExecutor:
         "finish": _finish,
         "powershell": _powershell,
         "run_script": _run_script,
+        # Resilience (v14.0)
+        "retry_last": _retry_last,
+        "get_circuit_breakers": _get_circuit_breakers,
+        # Config (v15.0)
+        "config_get": _config_get,
+        "config_set": _config_set,
+        # Network diagnostics (v15.0)
+        "dns_lookup": _dns_lookup,
+        "ping": _ping,
+        "port_scan": _port_scan,
+        # Window management (v16.0)
+        "resize_window": _resize_window,
+        "move_window": _move_window,
+        "minimize_window": _minimize_window,
+        "maximize_window": _maximize_window,
+        "restore_window": _restore_window,
+        "get_window_state": _get_window_state,
+        "get_monitors": _get_monitors,
+        # HTTP client (v16.0)
+        "http_get": _http_get,
+        "http_post": _http_post,
+        "http_download": _http_download,
+        # File / process monitoring (v16.0)
+        "watch_file": _watch_file,
+        "watch_file_content": _watch_file_content,
+        "watch_process": _watch_process,
+        # Audio / voice (v17.0)
+        "speak": _speak,
+        "listen": _listen,
+        "volume_get": _volume_get,
+        "volume_set": _volume_set,
+        "mute_toggle": _mute_toggle,
+        "list_voices": _list_voices,
     }
 
 

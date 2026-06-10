@@ -431,8 +431,7 @@ class TestToolInventory:
             pytest.skip(f"Extra tools found (update EXPECTED_TOOLS?): {extra}")
 
     def test_tool_count_reasonable(self):
-        # We should have roughly 35-50 tools
-        assert 30 <= len(TOOLS) <= 80
+        assert 30 <= len(TOOLS) <= 150
 
 
 # ---------------------------------------------------------------------------

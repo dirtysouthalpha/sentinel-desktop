@@ -95,7 +95,7 @@ class TestToolsCount:
         assert len(TOOLS) >= 30
 
     def test_at_most_80_tools(self):
-        assert len(TOOLS) <= 80
+        assert len(TOOLS) <= 150
 
 
 class TestToolFunctionFields:

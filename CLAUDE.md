@@ -1,20 +1,24 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v13.0: Sentinel-Plus — MFA support, enhanced web automation, multi-factor authentication handling.**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v17.0: Audio/Voice, Resilience Engine, Config Persistence, Network Diagnostics, Window Control, HTTP Client, File/Process Monitor.**
 
 ## What To Do (Priority Order)
 **All priorities complete - project is production-ready ✅**
 
 All quality gates met:
-- ✅ 5,978 tests passing (147 skipped)
+- ✅ 6,747 tests passing (36 skipped)
 - ✅ Zero lint errors (ruff check clean)
-- ✅ 89-94% test coverage (well above ≥80% target: 89% core/gui/api, 94% overall)
 - ✅ All API endpoints fully implemented (workflow builder complete)
 - ✅ All 19 IT support scripts validated and tested
-- ✅ Edge cases covered (popup handler 57 tests, scheduler overlap protection, recovery engine, LLM client)
-- ✅ Performance optimized (OCR caching, screenshot downsampling, async operations with timeouts)
-- ✅ Documentation complete (docstrings on all public functions, module headers)
-- ✅ Code quality excellent (proper exception handling, no functions over 50 lines needing refactor)
+- ✅ Full senses: see (screenshots/OCR), touch (mouse/keyboard/UIA), hear (TTS/STT via SAPI)
+- ✅ Resilience: @retryable decorator + CircuitBreaker pattern across all subsystems
+- ✅ Config persistence: dot-notation JSON store with auto-save
+- ✅ Network diagnostics: DNS lookup, ping, port scan, traceroute
+- ✅ Window management: resize, move, minimize, maximize, restore, monitor enumeration
+- ✅ HTTP client: GET/POST/PUT/DELETE/download with SSRF protection
+- ✅ File/process monitoring: watch_file, watch_file_content, watch_process (polling-based)
+- ✅ Audio/voice: speak (SAPI/PowerShell TTS), listen (SAPI dictation), volume_get/set/mute, list_voices
+- ✅ 105 LLM tool schemas covering all actions
 
 **Future work** should be driven by actual user feedback or new feature requirements, not theoretical improvements.
 
@@ -90,6 +94,44 @@ All quality gates met:
 - ✅ Code caching with TTL (5 min) to avoid regenerating codes
 - ✅ 81 comprehensive MFA tests with full coverage
 - ✅ Added pyotp ~= 2.9 dependency
+
+## v14.0 — Resilience Engine (June 2026)
+- ✅ `@retryable` decorator — exponential backoff with jitter, configurable exceptions, on_retry hook
+- ✅ `CircuitBreaker` — CLOSED/OPEN/HALF_OPEN state machine, context-manager interface
+- ✅ `RetryExhausted` / `CircuitBreakerOpen` typed exceptions
+- ✅ Pre-wired breakers for: ssh, browser, ocr, llm, desktop, netops
+- ✅ `get_all_breaker_stats()` / `reset_all_breakers()` for monitoring
+- ✅ `retry_last` and `get_circuit_breakers` executor actions + tool schemas
+- ✅ 30+ tests in `tests/test_resilience.py`
+
+## v15.0 — Config Persistence + DNS Tools (June 2026)
+- ✅ `ConfigStore` — dot-notation JSON persistence (`llm.provider`, `llm.model`, etc.)
+- ✅ Process-wide singleton via `get_default_store()`
+- ✅ `dns_lookup` — A/AAAA/MX/PTR/TXT via socket + dnspython fallback
+- ✅ `ping_host` — subprocess ping with Windows/Unix output parsing
+- ✅ `port_open` / `scan_ports` — TCP reachability checks
+- ✅ `traceroute` — hop-by-hop path tracing
+- ✅ `config_get`, `config_set`, `dns_lookup`, `ping`, `port_scan` executor actions
+- ✅ Tests: `tests/test_config_store.py`, `tests/test_net_tools.py`
+
+## v16.0 — Window Control, HTTP Client, File Monitor (June 2026)
+- ✅ Window management: `resize_window`, `move_window`, `minimize_window`, `maximize_window`, `restore_window`, `get_window_state`, `get_monitors`
+- ✅ HTTP client: `http_get`, `http_post`, `http_put`, `http_delete`, `http_download` (SSRF protection, 50k body cap)
+- ✅ File/process watcher: `watch_file` (modify/create/delete), `watch_file_content` (log tailing), `watch_process` (start/stop/cpu_spike)
+- ✅ All wired into executor dispatch table + tool schemas
+- ✅ Tests: `tests/test_window_control.py`, `tests/test_http_client.py`, `tests/test_file_watcher.py`
+
+## v17.0 — Audio/Voice (June 2026)
+- ✅ TTS via Windows SAPI `SpVoice` (no new deps — uses pywin32) + PowerShell fallback
+- ✅ STT via SAPI dictation grammar + SpeechRecognition library fallback
+- ✅ `speak(text, blocking, rate, volume)` — rate clamped ±10, volume clamped 0–100
+- ✅ `listen(timeout, phrase_limit)` — returns transcribed text
+- ✅ `volume_get()` / `volume_set(level)` — pycaw (optional) + PowerShell fallback
+- ✅ `mute_toggle()` — Windows audio endpoint mute
+- ✅ `list_voices()` / `set_voice(name_or_id)` — enumerate and select SAPI voices
+- ✅ Thread-safe `_tts_voice` cached instance
+- ✅ `speak`, `listen`, `volume_get`, `volume_set`, `mute_toggle`, `list_voices` executor actions
+- ✅ Tests: `tests/test_audio.py`
 
 ## v4.0 — Multi-Platform Core (June 2025)
 - ✅ Platform abstraction layer (`core/platform/`) with ABC interfaces for all OS-specific code
