@@ -449,6 +449,7 @@ class LLMClient:
             "Content-Type": "application/json",
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
+            "Accept-Encoding": "identity",  # prevent gzip mis-encoding from proxy layers
         }
 
         system_msg, converted_messages = self._convert_messages_for_anthropic(messages)
