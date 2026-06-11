@@ -230,3 +230,163 @@ class TestPipelineLocalGrounding:
             ):
                 elements = pipeline._query_vision(img)
                 assert len(elements) == 2
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap tests — targets all 24 missed lines
+# ---------------------------------------------------------------------------
+
+
+class TestLocalGroundingCoverage:
+    """Targets uncovered lines: 96, 164, 196, 207-224, 234, 245-267, 293."""
+
+    # Line 96 -------------------------------------------------------------------
+
+    def test_try_load_early_return_model_is_none(self):
+        """Line 96: _try_load returns False when already initialized but _model is None."""
+        model = LocalGroundingModel(backend="test")
+        model._initialized = True
+        model._model = None
+        assert model._try_load() is False
+
+    def test_try_load_early_return_model_set(self):
+        """Line 96: _try_load returns True when already initialized and _model exists."""
+        model = LocalGroundingModel(backend="test")
+        model._initialized = True
+        model._model = MagicMock()
+        assert model._try_load() is True
+
+    # Line 164 ------------------------------------------------------------------
+
+    def test_predict_unexpected_return_type(self):
+        """Line 164: model returns an unexpected type (not LocalGroundingResult or 4-tuple)."""
+        model = LocalGroundingModel(backend="test")
+        mock_backend = MagicMock()
+        mock_backend.predict.return_value = "unexpected string"
+
+        def mock_loader():
+            return mock_backend
+
+        with patch.dict("core.local_grounding._BACKEND_LOADERS", {"test": mock_loader}):
+            result = model.predict(Image.new("RGB", (100, 100)), "test")
+
+        assert result.model == "test"
+        assert result.is_valid is False
+        assert result.latency_ms >= 0
+
+    # Line 196 ------------------------------------------------------------------
+
+    def test_load_omniparser_success(self):
+        """Line 196: _load_omniparser returns OmniParser() when module is importable."""
+        from core.local_grounding import _load_omniparser
+
+        mock_omni_cls = MagicMock()
+        mock_omni_module = MagicMock()
+        mock_omni_module.OmniParser = mock_omni_cls
+
+        with patch.dict("sys.modules", {"omniparser": mock_omni_module}):
+            result = _load_omniparser()
+
+        mock_omni_cls.assert_called_once()
+        assert result is mock_omni_cls.return_value
+
+    # Lines 207-224 -------------------------------------------------------------
+
+    def test_load_florence2_success_and_predict_not_implemented(self):
+        """Lines 207-224: _load_florence2 creates wrapper; predict raises NotImplementedError."""
+        import pytest
+        from core.local_grounding import _load_florence2
+
+        mock_transformers = MagicMock()
+        mock_transformers.AutoModelForCausalLM.from_pretrained.return_value = MagicMock()
+        mock_transformers.AutoProcessor.from_pretrained.return_value = MagicMock()
+
+        with patch.dict("sys.modules", {"transformers": mock_transformers}):
+            wrapper = _load_florence2()
+
+        assert wrapper is not None
+        assert hasattr(wrapper, "predict")
+        with pytest.raises(NotImplementedError):
+            wrapper.predict(Image.new("RGB", (100, 100)), "test")
+
+    # Line 234 ------------------------------------------------------------------
+
+    def test_load_uground_success(self):
+        """Line 234: _load_uground returns uground.Model() when module is importable."""
+        from core.local_grounding import _load_uground
+
+        mock_uground = MagicMock()
+
+        with patch.dict("sys.modules", {"uground": mock_uground}):
+            result = _load_uground()
+
+        mock_uground.Model.assert_called_once()
+        assert result is mock_uground.Model.return_value
+
+    # Lines 245-267 -------------------------------------------------------------
+
+    def test_load_yolo_success_no_detections(self):
+        """Lines 245-252, 265, 267: _load_yolo creates wrapper; predict with empty boxes."""
+        import numpy as np
+        from core.local_grounding import _load_yolo, LocalGroundingResult
+
+        mock_yolo_instance = MagicMock()
+        mock_ultralytics = MagicMock()
+        mock_ultralytics.YOLO.return_value = mock_yolo_instance
+
+        with patch.dict("sys.modules", {"ultralytics": mock_ultralytics}):
+            wrapper = _load_yolo()
+
+        mock_ultralytics.YOLO.assert_called_once_with("yolov8n.pt")
+        assert wrapper is not None
+
+        # No detections: len(boxes) == 0 → return LocalGroundingResult() (line 265)
+        mock_result = MagicMock()
+        mock_result.boxes.__len__.return_value = 0
+        mock_yolo_instance.return_value = [mock_result]
+
+        result = wrapper.predict(Image.new("RGB", (200, 200)), "test button")
+        assert isinstance(result, LocalGroundingResult)
+        assert result.is_valid is False
+
+    def test_load_yolo_predict_with_detections(self):
+        """Lines 255-264: _YOLOWrapper.predict returns bbox when detections are present."""
+        import numpy as np
+        from core.local_grounding import _load_yolo, LocalGroundingResult
+
+        mock_yolo_instance = MagicMock()
+        mock_ultralytics = MagicMock()
+        mock_ultralytics.YOLO.return_value = mock_yolo_instance
+
+        with patch.dict("sys.modules", {"ultralytics": mock_ultralytics}):
+            wrapper = _load_yolo()
+
+        # Build mock detection: boxes[0].xyxy[0].cpu().numpy() = [10, 20, 110, 70]
+        box_coords = np.array([10.0, 20.0, 110.0, 70.0])
+        mock_xyxy_entry = MagicMock()
+        mock_xyxy_entry.cpu.return_value.numpy.return_value = box_coords
+
+        mock_box = MagicMock()
+        mock_box.xyxy = [mock_xyxy_entry]  # plain list so [0] works normally
+        mock_box.conf = [0.9]              # plain list so float(conf[0]) works
+
+        mock_boxes = MagicMock()
+        mock_boxes.__len__.return_value = 1
+        mock_boxes.__getitem__.return_value = mock_box
+
+        mock_result = MagicMock()
+        mock_result.boxes = mock_boxes
+        mock_yolo_instance.return_value = [mock_result]
+
+        result = wrapper.predict(Image.new("RGB", (200, 200)), "test button")
+        assert isinstance(result, LocalGroundingResult)
+        assert result.bbox == (10, 20, 100, 50)  # x2-x1=100, y2-y1=50
+        assert result.confidence == 0.9
+
+    # Line 293 ------------------------------------------------------------------
+
+    def test_is_local_grounding_enabled_non_bool_non_dict(self):
+        """Line 293: is_local_grounding_enabled returns False when setting is not bool or dict."""
+        assert is_local_grounding_enabled({"local_grounding": 42}) is False
+        assert is_local_grounding_enabled({"local_grounding": "yes"}) is False
+        assert is_local_grounding_enabled({"local_grounding": [True]}) is False
