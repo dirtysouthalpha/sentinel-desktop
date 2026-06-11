@@ -530,3 +530,53 @@ class TestProcessManagerSanitization:
 
         with pytest.raises(ValueError, match="metacharacter"):
             _sanitize_command("cmd ; evil")
+
+
+# ---------------------------------------------------------------------------
+# PlatformBackend ABC — all properties raise NotImplementedError
+# ---------------------------------------------------------------------------
+
+
+class TestPlatformBackendABC:
+    """PlatformBackend base class raises NotImplementedError on all properties."""
+
+    def setup_method(self):
+        from core.platform import PlatformBackend
+
+        self.backend = PlatformBackend()
+
+    def test_init_sets_private_attrs(self):
+        assert self.backend._accessibility is None
+        assert self.backend._stealth is None
+        assert self.backend._credentials is None
+        assert self.backend._shell is None
+        assert self.backend._window is None
+        assert self.backend._overlay is None
+
+    def test_accessibility_raises(self):
+        with pytest.raises(NotImplementedError):
+            _ = self.backend.accessibility
+
+    def test_stealth_raises(self):
+        with pytest.raises(NotImplementedError):
+            _ = self.backend.stealth
+
+    def test_credentials_raises(self):
+        with pytest.raises(NotImplementedError):
+            _ = self.backend.credentials
+
+    def test_shell_raises(self):
+        with pytest.raises(NotImplementedError):
+            _ = self.backend.shell
+
+    def test_window_raises(self):
+        with pytest.raises(NotImplementedError):
+            _ = self.backend.window
+
+    def test_overlay_raises(self):
+        with pytest.raises(NotImplementedError):
+            _ = self.backend.overlay
+
+    def test_default_shell_raises(self):
+        with pytest.raises(NotImplementedError):
+            _ = self.backend.default_shell

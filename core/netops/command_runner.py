@@ -74,28 +74,36 @@ class CommandRunner:
     def show_routing(self) -> SSHResult:
         """Show routing table."""
         cmd = self._cmd(
-            "show ip route", "show route",
-            "show route",
-            "get router info routing-table all",
-            "show route", "/ip route print", "ip route",
+            cisco_ios="show ip route",
+            cisco_nxos="show route",
+            juniper="show route",
+            fortigate="get router info routing-table all",
+            mikrotik="/ip route print",
+            linux="ip route",
         )
         return self.client.run_command(cmd)
 
     def show_arp(self) -> SSHResult:
         """Show ARP table."""
         cmd = self._cmd(
-            "show ip arp", "show arp", "show arp",
-            "get system arp", "show arp",
-            "/ip arp print", "arp -a",
+            cisco_ios="show ip arp",
+            cisco_nxos="show arp",
+            juniper="show arp",
+            fortigate="get system arp",
+            mikrotik="/ip arp print",
+            linux="arp -a",
         )
         return self.client.run_command(cmd)
 
     def show_running_config(self) -> SSHResult:
         """Show running configuration."""
         cmd = self._cmd(
-            "show running-config", "show running-config", "show configuration",
-            "show full-configuration", "show running-config", "/export",
-            "cat /etc/rc.conf",
+            cisco_ios="show running-config",
+            cisco_nxos="show running-config",
+            juniper="show configuration",
+            fortigate="show full-configuration",
+            mikrotik="/export",
+            linux="cat /etc/rc.conf",
         )
         return self.client.run_command(cmd)
 
