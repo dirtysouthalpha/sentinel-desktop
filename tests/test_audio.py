@@ -707,3 +707,96 @@ class TestMuteToggleWindows:
                         result = audio_mod.mute_toggle()
         assert result is False
         mock_ps.assert_called_once()
+
+
+# ── listen() non-Windows path (lines 172-173) ────────────────────────────────
+
+class TestListenNonWindows:
+    """Lines 172-173 — listen() logs warning and returns '' on non-Windows."""
+
+    def test_listen_non_windows_returns_empty(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", False)
+        result = audio_mod.listen()
+        assert result == ""
+
+
+# ── _listen_sapi() while-loop body (lines 200-201, 207-209) ──────────────────
+
+class TestListenSapiWhileLoop:
+    """Lines 200-201 — OnRecognition appends phrase; lines 207-209 — while body."""
+
+    def _make_win32com_mocks(self):
+        mock_win32com_client = MagicMock()
+        mock_win32com = MagicMock()
+        mock_win32com.client = mock_win32com_client
+        return mock_win32com, mock_win32com_client
+
+    def test_on_recognition_populates_result_and_breaks(self):
+        """Lines 200-201 and 207-208 — WithEvents triggers OnRecognition; loop breaks."""
+        import core.audio as audio_mod
+        from core.audio import _listen_sapi
+
+        mock_win32com, mock_win32com_client = self._make_win32com_mocks()
+
+        def fake_with_events(ctx, sink_class):
+            fake_result_obj = MagicMock()
+            fake_result_obj.PhraseInfo.GetText.return_value = "hello world"
+            instance = sink_class()
+            instance.OnRecognition(None, None, fake_result_obj)
+            return MagicMock()
+
+        mock_win32com_client.WithEvents.side_effect = fake_with_events
+
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}):
+            result = _listen_sapi(timeout=0.5, phrase_limit=0.0)
+
+        assert result == "hello world"
+
+    def test_empty_result_hits_sleep_line(self):
+        """Line 209 — result_text stays empty; time.sleep() is called in loop body."""
+        import core.audio as audio_mod
+        import time as time_module
+        from core.audio import _listen_sapi
+
+        mock_win32com, mock_win32com_client = self._make_win32com_mocks()
+
+        t0 = time_module.time()
+        call_count = [0]
+
+        def fake_time():
+            call_count[0] += 1
+            if call_count[0] <= 2:
+                return t0          # deadline calc + first while condition: enter loop
+            return t0 + 100        # subsequent checks: deadline exceeded, exit loop
+
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}), \
+             patch.object(audio_mod.time, "time", side_effect=fake_time), \
+             patch.object(audio_mod.time, "sleep") as mock_sleep:
+            result = _listen_sapi(timeout=0.5, phrase_limit=0.0)
+
+        assert result == ""
+        mock_sleep.assert_called_once_with(0.1)
+
+
+# ── volume_set() pycaw exception path (lines 319-320) ────────────────────────
+
+class TestVolumeSetPycawException:
+    """Lines 319-320 — except Exception in pycaw path falls through to PowerShell."""
+
+    def test_pycaw_exception_falls_to_powershell(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+
+        mock_pycaw_module = MagicMock()
+        mock_pycaw_module.AudioUtilities.GetSpeakers.side_effect = RuntimeError("COM error")
+        mock_pycaw = MagicMock()
+        mock_pycaw.pycaw = mock_pycaw_module
+        mock_comtypes = MagicMock()
+
+        with patch("core.audio._volume_set_powershell", return_value=True) as mock_ps, \
+             patch.dict("sys.modules", {"pycaw": mock_pycaw, "pycaw.pycaw": mock_pycaw_module, "comtypes": mock_comtypes}):
+            result = audio_mod.volume_set(75)
+
+        assert result is True
+        mock_ps.assert_called_once_with(75)
