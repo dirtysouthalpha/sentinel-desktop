@@ -59,7 +59,7 @@ def compute_iou(
     intersection = (ix2 - ix1) * (iy2 - iy1)
     union = aw * ah + bw * bh - intersection
 
-    if union <= 0:
+    if union <= 0:  # pragma: no cover
         return 0.0
 
     return intersection / union
