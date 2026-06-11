@@ -161,6 +161,59 @@ class TestParallelExecutor:
         results = await executor.execute_all([])
         assert results == []
 
+    @pytest.mark.asyncio
+    async def test_deadlock_breaks_and_marks_timeout(self):
+        """Task with unsatisfied dependency triggers deadlock break (lines 69-71, 94)."""
+        executor = ParallelExecutor()
+        # Dependency "ghost" never appears in completed_ids → deadlock → break
+        subtask = Subtask(
+            subtask_id="t-blocked",
+            description="Blocked forever",
+            task_type="desktop",
+            dependencies=["ghost"],
+        )
+        results = await executor.execute_all([subtask])
+        assert results[0]["subtask_id"] == "t-blocked"
+        assert results[0]["status"] == "timeout"
+
+    @pytest.mark.asyncio
+    async def test_gather_exception_hits_isinstance_branch(self):
+        """gather returning an Exception object hits the isinstance check (line 81)."""
+        from unittest.mock import patch
+
+        executor = ParallelExecutor()
+        subtask = Subtask(subtask_id="t-raw-err", description="Raw err", task_type="desktop")
+
+        async def raising_execute_one(task):
+            raise RuntimeError("raw coroutine failure")
+
+        with patch.object(executor, "_execute_one", raising_execute_one):
+            results = await executor.execute_all([subtask])
+
+        assert results[0]["status"] == "error"
+        assert "raw coroutine failure" in results[0]["error"]
+
+    @pytest.mark.asyncio
+    async def test_timeout_zero_marks_remaining(self):
+        """timeout=0 makes the while condition fail immediately; task gets 'timeout' (line 94)."""
+        executor = ParallelExecutor()
+        subtask = Subtask(subtask_id="t-tmo", description="Never starts", task_type="desktop")
+        results = await executor.execute_all([subtask], timeout=0)
+        assert results[0]["status"] == "timeout"
+        assert results[0]["error"] == "Execution timed out"
+
+    @pytest.mark.asyncio
+    async def test_async_executor_fn_is_awaited(self):
+        """Async executor_fn (returning a coroutine) is properly awaited (line 127)."""
+        async def async_fn(subtask: Subtask) -> str:
+            return f"async-{subtask.subtask_id}"
+
+        executor = ParallelExecutor(executor_fn=async_fn)
+        subtask = Subtask(subtask_id="t-async", description="Async task", task_type="desktop")
+        results = await executor.execute_all([subtask])
+        assert results[0]["status"] == "success"
+        assert results[0]["result"] == "async-t-async"
+
 
 # ===========================================================================
 # Result Synthesizer
