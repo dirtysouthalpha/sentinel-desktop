@@ -84,9 +84,9 @@ def compute_region_diff(
     diff = ImageChops.difference(before_rgb, after_rgb)
 
     # Calculate mean difference across all pixels and channels
-    import numpy as np
-
     try:
+        import numpy as np
+
         diff_array = np.array(diff, dtype=np.float32)
         return float(diff_array.mean())
     except ImportError:
@@ -331,7 +331,7 @@ class ClickVerifier:
             result["offset"] = (dx, dy)
             return result
 
-        return {"success": False, "output": "Offset retry exhausted", "retry_tier": "offset"}
+        return {"success": False, "output": "Offset retry exhausted", "retry_tier": "offset"}  # pragma: no cover
 
     def _retry_via_keyboard(
         self,

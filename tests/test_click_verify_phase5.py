@@ -1,6 +1,6 @@
 """Tests for Phase 5: Click Verification & Self-Correction — diff, retry, enforced self-healing."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from PIL import Image
 
@@ -387,3 +387,78 @@ class TestNumpyFallback:
         diff = compute_region_diff(before, after)
         # Should detect significant difference
         assert diff > 50.0
+
+
+# ── compute_region_diff() numpy-fallback (lines 92-101) ──────────────────────
+
+
+class TestComputeRegionDiffNoNumpy:
+    """Lines 92-101 — pixel-sampling fallback when numpy is unavailable."""
+
+    def test_fallback_identical_images(self):
+        """Identical images → diff close to 0.0 even without numpy."""
+        img = Image.new("RGB", (40, 40), "white")
+        with patch.dict("sys.modules", {"numpy": None}):
+            diff = compute_region_diff(img, img)
+        assert diff == 0.0
+
+    def test_fallback_different_images(self):
+        """Different images → positive diff via pixel sampling fallback."""
+        before = Image.new("RGB", (40, 40), "white")
+        after = Image.new("RGB", (40, 40), "black")
+        with patch.dict("sys.modules", {"numpy": None}):
+            diff = compute_region_diff(before, after)
+        assert diff > 50.0
+
+
+# ── ClickVerifier: retry_exhausted (lines 243-244) ───────────────────────────
+
+
+class TestClickVerifierRetryExhausted:
+    """Lines 243-244 — all retry tiers fail → retry_exhausted=True in result."""
+
+    def test_all_tiers_fail_sets_retry_exhausted(self):
+        from PIL import Image
+
+        from core.click_verify import ClickVerifier
+
+        executor = MagicMock()
+        executor.execute_sync.return_value = {"success": True, "output": "clicked"}
+
+        verifier = ClickVerifier(executor)
+
+        before = Image.new("RGB", (200, 200), "white")
+        action = {"action": "click", "x": 100, "y": 100}
+
+        with patch("core.click_verify.verify_click_landed", return_value=(False, 5.0, MagicMock())), \
+             patch.object(verifier, "_tiered_retry", return_value=None):
+            result = verifier.execute_with_verification(action, before)
+
+        assert result.get("retry_exhausted") is True
+
+
+# ── ClickVerifier: tier1 accessibility success (lines 269-270) ───────────────
+
+
+class TestClickVerifierTier1Success:
+    """Lines 269-270 — _retry_via_accessibility succeeds → returned immediately."""
+
+    def test_tier1_success_returns_result_with_retries(self):
+        from PIL import Image
+
+        from core.click_verify import ClickVerifier
+
+        executor = MagicMock()
+        verifier = ClickVerifier(executor)
+
+        before = Image.new("RGB", (200, 200), "white")
+        original_action = {"action": "click", "x": 50, "y": 50}
+
+        tier1_return = {"success": True, "verified": True, "output": "control clicked", "retry_tier": "accessibility"}
+
+        with patch.object(verifier, "_retry_via_accessibility", return_value=tier1_return):
+            result = verifier._tiered_retry(original_action, before, 50, 50)
+
+        assert result is tier1_return
+        assert "retries" in result
+        assert result["retries"][0] is tier1_return
