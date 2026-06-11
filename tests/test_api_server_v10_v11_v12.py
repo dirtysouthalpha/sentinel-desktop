@@ -598,3 +598,246 @@ class TestPtyHelpers:
         ws.send_json = AsyncMock()
         # Invalid fd raises OSError → loop breaks
         await server._read_pty(-1, ws)
+
+
+# ---------------------------------------------------------------------------
+# Additional _read_pty coverage
+# ---------------------------------------------------------------------------
+
+class TestReadPtyAdditional:
+    @pytest.mark.asyncio
+    async def test_read_pty_sends_data(self):
+        """Hit the ws.send_json line by writing real data to a pipe."""
+        server = _make_server()
+        r, w = os.pipe()
+        os.write(w, b"hello from pty")
+        os.close(w)
+
+        sent = []
+        ws = MagicMock()
+        async def fake_send_json(msg):
+            sent.append(msg)
+        ws.send_json = fake_send_json
+
+        await server._read_pty(r, ws)
+        os.close(r)
+        assert any(m.get("type") == "data" for m in sent)
+
+    @pytest.mark.asyncio
+    async def test_read_pty_blocking_io_error(self):
+        """BlockingIOError → asyncio.sleep path (line 673)."""
+        server = _make_server()
+        ws = MagicMock()
+        ws.send_json = AsyncMock()
+
+        call_count = 0
+        original_read = os.read
+
+        def fake_read(fd, n):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise BlockingIOError
+            return b""  # EOF on second call → break
+
+        with patch("os.read", side_effect=fake_read):
+            with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+                await server._read_pty(0, ws)
+        mock_sleep.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_read_pty_interrupted_error(self):
+        """InterruptedError → asyncio.sleep path (same line 673)."""
+        server = _make_server()
+        ws = MagicMock()
+        call_count = 0
+
+        def fake_read(fd, n):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise InterruptedError
+            return b""
+
+        with patch("os.read", side_effect=fake_read):
+            with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+                await server._read_pty(0, ws)
+        mock_sleep.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_read_pty_connection_error_breaks(self):
+        """ws.send_json raises ConnectionError → loop breaks (line 676)."""
+        server = _make_server()
+        r, w = os.pipe()
+        os.write(w, b"data")
+        os.close(w)
+
+        ws = MagicMock()
+        ws.send_json = AsyncMock(side_effect=ConnectionError("dead"))
+
+        await server._read_pty(r, ws)
+        os.close(r)
+
+    @pytest.mark.asyncio
+    async def test_read_pty_runtime_error_breaks(self):
+        """ws.send_json raises RuntimeError → loop breaks (line 677)."""
+        server = _make_server()
+        r, w = os.pipe()
+        os.write(w, b"data")
+        os.close(w)
+
+        ws = MagicMock()
+        ws.send_json = AsyncMock(side_effect=RuntimeError("closed"))
+
+        await server._read_pty(r, ws)
+        os.close(r)
+
+    @pytest.mark.asyncio
+    async def test_read_pty_timeout_error_breaks(self):
+        """asyncio.wait_for raises TimeoutError → loop breaks (line 676)."""
+        server = _make_server()
+        r, w = os.pipe()
+        os.write(w, b"data")
+        os.close(w)
+
+        ws = MagicMock()
+        ws.send_json = AsyncMock(side_effect=asyncio.TimeoutError())
+
+        await server._read_pty(r, ws)
+        os.close(r)
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY not on Windows")
+    @pytest.mark.asyncio
+    async def test_handle_resize_message_pty_success(self):
+        """Hit the return True after successful ioctl (line 706)."""
+        import api.server as mod
+        if not mod._HAS_PTY:
+            pytest.skip("PTY not available")
+        import pty as _pty
+        server = _make_server()
+        master_fd, slave_fd = _pty.openpty()
+        try:
+            result = await server._handle_resize_message(master_fd, {"rows": 30, "cols": 120})
+            assert result is True
+        finally:
+            os.close(master_fd)
+            os.close(slave_fd)
+
+
+# ---------------------------------------------------------------------------
+# _read_ws coverage
+# ---------------------------------------------------------------------------
+
+class TestReadWs:
+    @pytest.mark.asyncio
+    async def test_read_ws_input_message(self):
+        """Happy path: receive an input message and process it."""
+        server = _make_server()
+        r, w = os.pipe()
+
+        ws = MagicMock()
+        call_count = 0
+
+        async def fake_receive_text():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return '{"type": "input", "data": "hi"}'
+            raise ConnectionError("done")
+
+        ws.receive_text = fake_receive_text
+
+        await server._read_ws(w, ws)
+        data = os.read(r, 100)
+        assert data == b"hi"
+        os.close(r)
+        os.close(w)
+
+    @pytest.mark.asyncio
+    async def test_read_ws_timeout_then_ping_fails(self):
+        """TimeoutError → _handle_ws_timeout fails → break."""
+        server = _make_server()
+        ws = MagicMock()
+
+        async def fake_receive():
+            raise asyncio.TimeoutError()
+
+        ws.receive_text = fake_receive
+        ws.send_json = AsyncMock(side_effect=OSError("dead"))  # ping fails
+
+        await server._read_ws(0, ws)
+
+    @pytest.mark.asyncio
+    async def test_read_ws_timeout_then_ping_ok_then_connection_error(self):
+        """TimeoutError → ping OK → continue → ConnectionError → break."""
+        server = _make_server()
+        ws = MagicMock()
+        call_count = 0
+
+        async def fake_receive():
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                raise asyncio.TimeoutError()
+            raise ConnectionError("gone")
+
+        ws.receive_text = fake_receive
+        ws.send_json = AsyncMock()  # ping succeeds
+
+        await server._read_ws(0, ws)
+
+    @pytest.mark.asyncio
+    async def test_read_ws_json_decode_error_continues(self):
+        """JSONDecodeError → continue, then connection break."""
+        server = _make_server()
+        ws = MagicMock()
+        call_count = 0
+
+        async def fake_receive():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "not-valid-json"
+            raise ConnectionError("done")
+
+        ws.receive_text = fake_receive
+
+        await server._read_ws(0, ws)
+
+    @pytest.mark.asyncio
+    async def test_read_ws_connection_error_breaks(self):
+        """ConnectionError from receive_text → break."""
+        server = _make_server()
+        ws = MagicMock()
+        ws.receive_text = AsyncMock(side_effect=ConnectionError("closed"))
+
+        await server._read_ws(0, ws)
+
+    @pytest.mark.asyncio
+    async def test_read_ws_runtime_error_breaks(self):
+        """RuntimeError from receive_text → break."""
+        server = _make_server()
+        ws = MagicMock()
+        ws.receive_text = AsyncMock(side_effect=RuntimeError("starlette closed"))
+
+        await server._read_ws(0, ws)
+
+    @pytest.mark.asyncio
+    async def test_read_ws_process_returns_false_breaks(self):
+        """_process_ws_message returns False → break loop."""
+        server = _make_server()
+        ws = MagicMock()
+        call_count = 0
+
+        async def fake_receive():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return '{"type": "input", "data": ""}'
+            raise ConnectionError("done")
+
+        ws.receive_text = fake_receive
+
+        # Patch _process_ws_message to return False
+        with patch.object(server, "_process_ws_message", new_callable=AsyncMock, return_value=False):
+            await server._read_ws(0, ws)
