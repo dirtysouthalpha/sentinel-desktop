@@ -196,3 +196,514 @@ class TestAudioActions:
         executor = ActionExecutor()
         result = executor.execute_sync({"action": "volume_get"})
         assert result["success"] is False  # not available on non-Windows
+
+
+# ── _speak_powershell() ───────────────────────────────────────────────────────
+
+class TestSpeakPowershell:
+    def test_success(self):
+        from core.audio import _speak_powershell
+        with patch("subprocess.run") as mock_run:
+            result = _speak_powershell("hello world")
+        assert result is True
+        assert mock_run.called
+        cmd = mock_run.call_args[0][0]
+        assert cmd[0] == "powershell"
+
+    def test_sanitizes_single_quotes(self):
+        from core.audio import _speak_powershell
+        with patch("subprocess.run") as mock_run:
+            _speak_powershell("it's a test")
+        cmd_str = mock_run.call_args[0][0][-1]  # last element is the -Command value
+        assert "\\'" in cmd_str
+
+    def test_oserror_returns_false(self):
+        from core.audio import _speak_powershell
+        with patch("subprocess.run", side_effect=OSError("no powershell")):
+            result = _speak_powershell("hello")
+        assert result is False
+
+
+# ── _get_tts_voice() ──────────────────────────────────────────────────────────
+
+class TestGetTtsVoice:
+    def _make_win32com_mocks(self, dispatch_return=None, dispatch_raises=None):
+        mock_win32com_client = MagicMock()
+        if dispatch_raises:
+            mock_win32com_client.Dispatch.side_effect = dispatch_raises
+        else:
+            mock_win32com_client.Dispatch.return_value = dispatch_return or MagicMock()
+        mock_win32com = MagicMock()
+        mock_win32com.client = mock_win32com_client
+        return mock_win32com, mock_win32com_client
+
+    def test_non_windows_returns_none(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", False)
+        audio_mod._tts_voice = None
+        result = audio_mod._get_tts_voice()
+        assert result is None
+
+    def test_windows_success(self, monkeypatch):
+        import core.audio as audio_mod
+        mock_voice = MagicMock()
+        mock_win32com, mock_win32com_client = self._make_win32com_mocks(dispatch_return=mock_voice)
+        audio_mod._tts_voice = None
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}):
+            result = audio_mod._get_tts_voice()
+        assert result is mock_voice
+        audio_mod._tts_voice = None
+
+    def test_windows_cached_voice_returned(self, monkeypatch):
+        import core.audio as audio_mod
+        cached = MagicMock()
+        audio_mod._tts_voice = cached
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        result = audio_mod._get_tts_voice()
+        assert result is cached
+        audio_mod._tts_voice = None
+
+    def test_windows_exception_returns_none(self, monkeypatch):
+        import core.audio as audio_mod
+        mock_win32com, mock_win32com_client = self._make_win32com_mocks(
+            dispatch_raises=Exception("COM error")
+        )
+        audio_mod._tts_voice = None
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}):
+            result = audio_mod._get_tts_voice()
+        assert result is None
+        audio_mod._tts_voice = None
+
+
+# ── list_voices() Windows exception path ─────────────────────────────────────
+
+class TestListVoicesWindowsPaths:
+    def test_exception_returns_empty(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_win32com_client = MagicMock()
+        mock_win32com_client.Dispatch.side_effect = Exception("SAPI unavailable")
+        mock_win32com = MagicMock()
+        mock_win32com.client = mock_win32com_client
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}):
+            result = audio_mod.list_voices()
+        assert result == []
+
+    def test_success_returns_voice_list(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_voice_entry = MagicMock()
+        mock_voice_entry.GetDescription.return_value = "Microsoft David"
+        mock_voice_entry.Id = "HKEY_LOCAL_MACHINE\\TTS_DAVID"
+        mock_voice_obj = MagicMock()
+        mock_voice_obj.GetVoices.return_value = [mock_voice_entry]
+        mock_win32com_client = MagicMock()
+        mock_win32com_client.Dispatch.return_value = mock_voice_obj
+        mock_win32com = MagicMock()
+        mock_win32com.client = mock_win32com_client
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}):
+            result = audio_mod.list_voices()
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]["name"] == "Microsoft David"
+
+
+# ── set_voice() ───────────────────────────────────────────────────────────────
+
+class TestSetVoice:
+    def test_non_windows_returns_false(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", False)
+        from core.audio import set_voice
+        assert set_voice("David") is False
+
+    def test_no_voice_object_returns_false(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch("core.audio._get_tts_voice", return_value=None):
+            from core.audio import set_voice
+            result = set_voice("David")
+        assert result is False
+
+    def test_match_by_description(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_v = MagicMock()
+        mock_v.GetDescription.return_value = "Microsoft David Desktop"
+        mock_v.Id = "some_id"
+        mock_voice_obj = MagicMock()
+        mock_voice_obj.GetVoices.return_value = [mock_v]
+        with patch("core.audio._get_tts_voice", return_value=mock_voice_obj):
+            from core.audio import set_voice
+            result = set_voice("david")
+        assert result is True
+        assert mock_voice_obj.Voice == mock_v
+
+    def test_no_match_returns_false(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_v = MagicMock()
+        mock_v.GetDescription.return_value = "Microsoft Zira Desktop"
+        mock_v.Id = "some_zira_id"
+        mock_voice_obj = MagicMock()
+        mock_voice_obj.GetVoices.return_value = [mock_v]
+        with patch("core.audio._get_tts_voice", return_value=mock_voice_obj):
+            from core.audio import set_voice
+            result = set_voice("david_nonexistent")
+        assert result is False
+
+    def test_exception_returns_false(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_voice_obj = MagicMock()
+        mock_voice_obj.GetVoices.side_effect = Exception("COM error")
+        with patch("core.audio._get_tts_voice", return_value=mock_voice_obj):
+            from core.audio import set_voice
+            result = set_voice("David")
+        assert result is False
+
+
+# ── listen() Windows path ─────────────────────────────────────────────────────
+
+class TestListenWindows:
+    def test_sapi_result_returned(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch("core.audio._listen_sapi", return_value="hello world"):
+            from core.audio import listen
+            result = listen(timeout=1.0, phrase_limit=5.0)
+        assert result == "hello world"
+
+    def test_sapi_empty_falls_to_speech_recognition(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch("core.audio._listen_sapi", return_value=""):
+            with patch("core.audio._listen_speech_recognition", return_value="fallback text") as mock_sr:
+                from core.audio import listen
+                result = listen(timeout=1.0, phrase_limit=5.0)
+        assert result == "fallback text"
+        mock_sr.assert_called_once()
+
+
+# ── _listen_sapi() ────────────────────────────────────────────────────────────
+
+class TestListenSapi:
+    def _make_win32com_mocks(self):
+        mock_win32com_client = MagicMock()
+        mock_win32com = MagicMock()
+        mock_win32com.client = mock_win32com_client
+        return mock_win32com, mock_win32com_client
+
+    def test_timeout_no_speech_returns_empty(self):
+        from core.audio import _listen_sapi
+        mock_win32com, mock_win32com_client = self._make_win32com_mocks()
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}):
+            result = _listen_sapi(timeout=0.0, phrase_limit=0.0)
+        assert result == ""
+
+    def test_exception_returns_empty(self):
+        from core.audio import _listen_sapi
+        mock_win32com_client = MagicMock()
+        mock_win32com_client.Dispatch.side_effect = Exception("COM failure")
+        mock_win32com = MagicMock()
+        mock_win32com.client = mock_win32com_client
+        with patch.dict("sys.modules", {"win32com": mock_win32com, "win32com.client": mock_win32com_client}):
+            result = _listen_sapi(timeout=0.0, phrase_limit=0.0)
+        assert result == ""
+
+
+# ── _listen_speech_recognition() ─────────────────────────────────────────────
+
+class TestListenSpeechRecognition:
+    def _make_sr_mock(self):
+        WaitTimeoutError = type("WaitTimeoutError", (Exception,), {})
+        mock_sr = MagicMock()
+        mock_sr.WaitTimeoutError = WaitTimeoutError
+
+        mock_mic_source = MagicMock()
+        mock_mic_ctx = MagicMock()
+        mock_mic_ctx.__enter__ = MagicMock(return_value=mock_mic_source)
+        mock_mic_ctx.__exit__ = MagicMock(return_value=False)
+        mock_sr.Microphone.return_value = mock_mic_ctx
+
+        return mock_sr, WaitTimeoutError
+
+    def test_google_success(self):
+        from core.audio import _listen_speech_recognition
+        mock_sr, _ = self._make_sr_mock()
+        mock_audio = MagicMock()
+        mock_recognizer = MagicMock()
+        mock_recognizer.listen.return_value = mock_audio
+        mock_recognizer.recognize_google.return_value = "hello world"
+        mock_sr.Recognizer.return_value = mock_recognizer
+        with patch.dict("sys.modules", {"speech_recognition": mock_sr}):
+            result = _listen_speech_recognition(5.0, 10.0)
+        assert result == "hello world"
+
+    def test_wait_timeout_returns_empty(self):
+        from core.audio import _listen_speech_recognition
+        mock_sr, WaitTimeoutError = self._make_sr_mock()
+        mock_recognizer = MagicMock()
+        mock_recognizer.listen.side_effect = WaitTimeoutError()
+        mock_sr.Recognizer.return_value = mock_recognizer
+        with patch.dict("sys.modules", {"speech_recognition": mock_sr}):
+            result = _listen_speech_recognition(5.0, 10.0)
+        assert result == ""
+
+    def test_google_fails_sphinx_succeeds(self):
+        from core.audio import _listen_speech_recognition
+        mock_sr, _ = self._make_sr_mock()
+        mock_audio = MagicMock()
+        mock_recognizer = MagicMock()
+        mock_recognizer.listen.return_value = mock_audio
+        mock_recognizer.recognize_google.side_effect = Exception("no internet")
+        mock_recognizer.recognize_sphinx.return_value = "sphinx text"
+        mock_sr.Recognizer.return_value = mock_recognizer
+        with patch.dict("sys.modules", {"speech_recognition": mock_sr}):
+            result = _listen_speech_recognition(5.0, 10.0)
+        assert result == "sphinx text"
+
+    def test_both_fail_returns_empty(self):
+        from core.audio import _listen_speech_recognition
+        mock_sr, _ = self._make_sr_mock()
+        mock_audio = MagicMock()
+        mock_recognizer = MagicMock()
+        mock_recognizer.listen.return_value = mock_audio
+        mock_recognizer.recognize_google.side_effect = Exception("no internet")
+        mock_recognizer.recognize_sphinx.side_effect = Exception("no sphinx")
+        mock_sr.Recognizer.return_value = mock_recognizer
+        with patch.dict("sys.modules", {"speech_recognition": mock_sr}):
+            result = _listen_speech_recognition(5.0, 10.0)
+        assert result == ""
+
+    def test_import_error_returns_empty(self):
+        from core.audio import _listen_speech_recognition
+        with patch.dict("sys.modules", {"speech_recognition": None}):
+            result = _listen_speech_recognition(5.0, 10.0)
+        assert result == ""
+
+    def test_generic_exception_returns_empty(self):
+        from core.audio import _listen_speech_recognition
+        mock_sr = MagicMock()
+        mock_sr.Recognizer.side_effect = Exception("unexpected error")
+        with patch.dict("sys.modules", {"speech_recognition": mock_sr}):
+            result = _listen_speech_recognition(5.0, 10.0)
+        assert result == ""
+
+
+# ── _volume_get_powershell() ──────────────────────────────────────────────────
+
+class TestVolumeGetPowershell:
+    def test_digit_output_returns_integer(self):
+        from core.audio import _volume_get_powershell
+        mock_result = MagicMock()
+        mock_result.stdout = "75\n"
+        with patch("subprocess.run", return_value=mock_result):
+            result = _volume_get_powershell()
+        assert result == 75
+
+    def test_non_digit_output_returns_minus_one(self):
+        from core.audio import _volume_get_powershell
+        mock_result = MagicMock()
+        mock_result.stdout = "not a number"
+        with patch("subprocess.run", return_value=mock_result):
+            result = _volume_get_powershell()
+        assert result == -1
+
+    def test_exception_returns_minus_one(self):
+        from core.audio import _volume_get_powershell
+        with patch("subprocess.run", side_effect=OSError("powershell not found")):
+            result = _volume_get_powershell()
+        assert result == -1
+
+
+# ── volume_get() pycaw path ───────────────────────────────────────────────────
+
+class TestVolumeGetPycaw:
+    def _make_pycaw_mocks(self, scalar=0.75):
+        mock_vol_iface = MagicMock()
+        mock_vol_iface.GetMasterVolumeLevelScalar.return_value = scalar
+        mock_iav = MagicMock()
+        mock_pycaw_module = MagicMock()
+        mock_pycaw_module.AudioUtilities = MagicMock()
+        mock_pycaw_module.IAudioEndpointVolume = mock_iav
+        mock_pycaw = MagicMock()
+        mock_pycaw.pycaw = mock_pycaw_module
+        mock_comtypes = MagicMock()
+        return mock_vol_iface, mock_pycaw, mock_pycaw_module, mock_comtypes
+
+    def test_pycaw_success(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_vol_iface, mock_pycaw, mock_pycaw_module, mock_comtypes = self._make_pycaw_mocks(scalar=0.75)
+        with patch.dict("sys.modules", {"pycaw": mock_pycaw, "pycaw.pycaw": mock_pycaw_module, "comtypes": mock_comtypes}):
+            with patch("ctypes.POINTER", return_value=MagicMock()):
+                with patch("ctypes.cast", return_value=mock_vol_iface):
+                    result = audio_mod.volume_get()
+        assert result == 75
+
+    def test_pycaw_import_error_falls_to_powershell(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch("core.audio._volume_get_powershell", return_value=60) as mock_ps:
+            with patch.dict("sys.modules", {"pycaw": None, "pycaw.pycaw": None}):
+                result = audio_mod.volume_get()
+        assert result == 60
+        mock_ps.assert_called_once()
+
+    def test_pycaw_exception_falls_to_powershell(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_pycaw_module = MagicMock()
+        mock_pycaw_module.AudioUtilities.GetSpeakers.side_effect = RuntimeError("COM error")
+        mock_pycaw = MagicMock()
+        mock_pycaw.pycaw = mock_pycaw_module
+        mock_comtypes = MagicMock()
+        with patch("core.audio._volume_get_powershell", return_value=55) as mock_ps:
+            with patch.dict("sys.modules", {"pycaw": mock_pycaw, "pycaw.pycaw": mock_pycaw_module, "comtypes": mock_comtypes}):
+                with patch("ctypes.POINTER", return_value=MagicMock()):
+                    with patch("ctypes.cast", side_effect=RuntimeError("cast error")):
+                        result = audio_mod.volume_get()
+        assert result == 55
+        mock_ps.assert_called_once()
+
+
+# ── _volume_set_powershell() ──────────────────────────────────────────────────
+
+class TestVolumeSetPowershell:
+    def test_success_returns_true(self):
+        from core.audio import _volume_set_powershell
+        with patch("subprocess.run") as mock_run:
+            result = _volume_set_powershell(75)
+        assert result is True
+        assert mock_run.called
+
+    def test_exception_returns_false(self):
+        from core.audio import _volume_set_powershell
+        with patch("subprocess.run", side_effect=OSError("no powershell")):
+            result = _volume_set_powershell(75)
+        assert result is False
+
+
+# ── volume_set() pycaw path ───────────────────────────────────────────────────
+
+class TestVolumeSetPycaw:
+    def test_pycaw_success(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_vol_iface = MagicMock()
+        mock_iav = MagicMock()
+        mock_pycaw_module = MagicMock()
+        mock_pycaw_module.AudioUtilities = MagicMock()
+        mock_pycaw_module.IAudioEndpointVolume = mock_iav
+        mock_pycaw = MagicMock()
+        mock_pycaw.pycaw = mock_pycaw_module
+        mock_comtypes = MagicMock()
+        with patch.dict("sys.modules", {"pycaw": mock_pycaw, "pycaw.pycaw": mock_pycaw_module, "comtypes": mock_comtypes}):
+            with patch("ctypes.POINTER", return_value=MagicMock()):
+                with patch("ctypes.cast", return_value=mock_vol_iface):
+                    result = audio_mod.volume_set(80)
+        assert result is True
+        mock_vol_iface.SetMasterVolumeLevelScalar.assert_called_once_with(0.8, None)
+
+    def test_pycaw_import_error_falls_to_powershell(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch("core.audio._volume_set_powershell", return_value=True) as mock_ps:
+            with patch.dict("sys.modules", {"pycaw": None, "pycaw.pycaw": None}):
+                result = audio_mod.volume_set(50)
+        assert result is True
+        mock_ps.assert_called_once_with(50)
+
+
+# ── _mute_toggle_powershell() ─────────────────────────────────────────────────
+
+class TestMuteTogglePowershell:
+    def test_success_returns_true(self):
+        from core.audio import _mute_toggle_powershell
+        with patch("subprocess.run") as mock_run:
+            result = _mute_toggle_powershell()
+        assert result is True
+        assert mock_run.called
+        cmd = mock_run.call_args[0][0]
+        assert cmd[0] == "powershell"
+
+    def test_exception_returns_false(self):
+        from core.audio import _mute_toggle_powershell
+        with patch("subprocess.run", side_effect=OSError("no powershell")):
+            result = _mute_toggle_powershell()
+        assert result is False
+
+
+# ── mute_toggle() Windows path ────────────────────────────────────────────────
+
+class TestMuteToggleWindows:
+    def test_non_windows_returns_false(self, monkeypatch):
+        import core.audio as audio_mod
+        from core.audio import mute_toggle
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", False)
+        assert mute_toggle() is False
+
+    def test_pycaw_success_was_unmuted(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_vol_iface = MagicMock()
+        mock_vol_iface.GetMute.return_value = False  # currently unmuted
+        mock_iav = MagicMock()
+        mock_pycaw_module = MagicMock()
+        mock_pycaw_module.AudioUtilities = MagicMock()
+        mock_pycaw_module.IAudioEndpointVolume = mock_iav
+        mock_pycaw = MagicMock()
+        mock_pycaw.pycaw = mock_pycaw_module
+        mock_comtypes = MagicMock()
+        with patch.dict("sys.modules", {"pycaw": mock_pycaw, "pycaw.pycaw": mock_pycaw_module, "comtypes": mock_comtypes}):
+            with patch("ctypes.POINTER", return_value=MagicMock()):
+                with patch("ctypes.cast", return_value=mock_vol_iface):
+                    result = audio_mod.mute_toggle()
+        assert result is True  # was unmuted, now muted
+        mock_vol_iface.SetMute.assert_called_once_with(True, None)
+
+    def test_pycaw_success_was_muted(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_vol_iface = MagicMock()
+        mock_vol_iface.GetMute.return_value = True  # currently muted
+        mock_iav = MagicMock()
+        mock_pycaw_module = MagicMock()
+        mock_pycaw_module.AudioUtilities = MagicMock()
+        mock_pycaw_module.IAudioEndpointVolume = mock_iav
+        mock_pycaw = MagicMock()
+        mock_pycaw.pycaw = mock_pycaw_module
+        mock_comtypes = MagicMock()
+        with patch.dict("sys.modules", {"pycaw": mock_pycaw, "pycaw.pycaw": mock_pycaw_module, "comtypes": mock_comtypes}):
+            with patch("ctypes.POINTER", return_value=MagicMock()):
+                with patch("ctypes.cast", return_value=mock_vol_iface):
+                    result = audio_mod.mute_toggle()
+        assert result is False  # was muted, now unmuted
+
+    def test_pycaw_import_error_falls_to_powershell(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        with patch("core.audio._mute_toggle_powershell", return_value=True) as mock_ps:
+            with patch.dict("sys.modules", {"pycaw": None, "pycaw.pycaw": None}):
+                result = audio_mod.mute_toggle()
+        assert result is True
+        mock_ps.assert_called_once()
+
+    def test_pycaw_exception_falls_to_powershell(self, monkeypatch):
+        import core.audio as audio_mod
+        monkeypatch.setattr(audio_mod, "_IS_WINDOWS", True)
+        mock_pycaw_module = MagicMock()
+        mock_pycaw_module.AudioUtilities = MagicMock()
+        mock_pycaw = MagicMock()
+        mock_pycaw.pycaw = mock_pycaw_module
+        mock_comtypes = MagicMock()
+        with patch("core.audio._mute_toggle_powershell", return_value=False) as mock_ps:
+            with patch.dict("sys.modules", {"pycaw": mock_pycaw, "pycaw.pycaw": mock_pycaw_module, "comtypes": mock_comtypes}):
+                with patch("ctypes.POINTER", return_value=MagicMock()):
+                    with patch("ctypes.cast", side_effect=RuntimeError("cast error")):
+                        result = audio_mod.mute_toggle()
+        assert result is False
+        mock_ps.assert_called_once()
