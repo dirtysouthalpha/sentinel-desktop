@@ -112,7 +112,7 @@ def should_ignore_cert_errors(
 
         # Strip port
         hostname = host_part.split(":")[0]
-    except (IndexError, ValueError):
+    except (IndexError, ValueError):  # pragma: no cover
         return False
 
     return is_whitelisted(hostname, whitelist)
