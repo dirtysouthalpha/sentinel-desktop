@@ -7,7 +7,13 @@ import pytest
 from core.swarm.bus import AgentMessage, MessageBus, MessagePriority
 from core.swarm.orchestrator import SwarmOrchestrator
 from core.swarm.registry import AgentRegistry
-from core.swarm.specialist import AgentRole, AgentState, DesktopAgent, TerminalAgent
+from core.swarm.specialist import (
+    AgentRole,
+    AgentState,
+    DesktopAgent,
+    MonitorAgent,
+    TerminalAgent,
+)
 
 # ── v7.0 Swarm Tests ─────────────────────────────────────────────────────
 
@@ -307,3 +313,137 @@ class TestSwarmOrchestrator:
         result = await swarm.execute("Click the button", timeout=1.0)
         assert "results" in result
         assert result["subtasks_total"] >= 1
+
+
+# ── SpecialistAgent.run_once ─────────────────────────────────────────────────
+
+class TestSpecialistRunOnce:
+    @pytest.mark.asyncio
+    async def test_run_once_no_message_returns_none(self):
+        bus = MessageBus()
+        agent = DesktopAgent(bus)
+        result = await agent.run_once(timeout=0.05)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_run_once_control_stop(self):
+        bus = MessageBus()
+        agent = DesktopAgent(bus)
+        await bus.send(AgentMessage(
+            sender="orchestrator",
+            recipient=agent.agent_id,
+            msg_type="control",
+            payload={"command": "stop"},
+        ))
+        result = await agent.run_once(timeout=1.0)
+        assert result is not None
+        assert result["success"] is True
+        assert agent.state == AgentState.STOPPED
+
+    @pytest.mark.asyncio
+    async def test_run_once_control_other_returns_none(self):
+        bus = MessageBus()
+        agent = DesktopAgent(bus)
+        await bus.send(AgentMessage(
+            sender="orchestrator",
+            recipient=agent.agent_id,
+            msg_type="control",
+            payload={"command": "pause"},
+        ))
+        result = await agent.run_once(timeout=1.0)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_run_once_non_task_message_returns_none(self):
+        from unittest.mock import AsyncMock, patch
+        bus = MessageBus()
+        agent = DesktopAgent(bus)
+        msg = AgentMessage(
+            sender="monitor",
+            recipient=agent.agent_id,
+            msg_type="status",
+            payload={"healthy": True},
+        )
+        with patch.object(bus, "receive", new=AsyncMock(return_value=msg)):
+            result = await agent.run_once(timeout=1.0)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_run_once_task_success(self):
+        bus = MessageBus()
+        agent = DesktopAgent(bus)
+        await bus.send(AgentMessage(
+            sender="orchestrator",
+            recipient=agent.agent_id,
+            msg_type="task",
+            payload={"action": {"action": "click", "x": 10, "y": 20}},
+        ))
+        result = await agent.run_once(timeout=1.0)
+        assert result is not None
+        assert result["success"] is True
+        assert "elapsed_ms" in result
+        assert result["agent_id"] == agent.agent_id
+        assert agent.state == AgentState.IDLE
+        assert agent.task_count == 1
+
+    @pytest.mark.asyncio
+    async def test_run_once_task_exception(self):
+        from unittest.mock import AsyncMock, patch
+        bus = MessageBus()
+        agent = DesktopAgent(bus)
+        await bus.send(AgentMessage(
+            sender="orchestrator",
+            recipient=agent.agent_id,
+            msg_type="task",
+            payload={"action": {}},
+        ))
+        with patch.object(agent, "process_task", new=AsyncMock(side_effect=RuntimeError("boom"))):
+            result = await agent.run_once(timeout=1.0)
+        assert result is not None
+        assert result["success"] is False
+        assert agent.state == AgentState.ERROR
+        assert agent.error_count == 1
+
+
+# ── TerminalAgent and MonitorAgent ────────────────────────────────────────────
+
+class TestTerminalAndMonitorAgents:
+    @pytest.mark.asyncio
+    async def test_monitor_agent_process_task(self):
+        bus = MessageBus()
+        agent = MonitorAgent(bus)
+        result = await agent.process_task({"check": "cpu"})
+        assert result["success"] is True
+        assert "cpu" in result["output"]
+        assert result["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_monitor_agent_default_check(self):
+        bus = MessageBus()
+        agent = MonitorAgent(bus)
+        result = await agent.process_task({})
+        assert "screenshot" in result["output"]
+
+    @pytest.mark.asyncio
+    async def test_terminal_agent_process_task(self):
+        from unittest.mock import MagicMock, patch
+        bus = MessageBus()
+        agent = TerminalAgent(bus)
+        mock_backend = MagicMock()
+        mock_backend.shell.execute.return_value = {"exit_code": 0, "stdout": "ok", "stderr": ""}
+        with patch("core.platform.get_backend", return_value=mock_backend):
+            result = await agent.process_task({"command": "echo hello"})
+        assert result["success"] is True
+        mock_backend.shell.execute.assert_called_once_with("echo hello")
+
+    @pytest.mark.asyncio
+    async def test_terminal_agent_uses_description_fallback(self):
+        from unittest.mock import MagicMock, patch
+        bus = MessageBus()
+        agent = TerminalAgent(bus)
+        mock_backend = MagicMock()
+        mock_backend.shell.execute.return_value = {"exit_code": 1, "stdout": "", "stderr": "err"}
+        with patch("core.platform.get_backend", return_value=mock_backend):
+            result = await agent.process_task({"description": "ls /tmp"})
+        assert result["success"] is False
+        mock_backend.shell.execute.assert_called_once_with("ls /tmp")
