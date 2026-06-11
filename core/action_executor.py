@@ -19,8 +19,6 @@ from core.browser import BrowserManager
 from core.dpi import transform_action_coordinates
 from core.screenshot import capture_to_base64, find_template, wait_for_template
 
-_FailSafeException = desktop_mod._FailSafeException
-
 logger = logging.getLogger(__name__)
 
 # Sensitive field keywords — skip typing into these
@@ -341,7 +339,7 @@ class ActionExecutor:
                 else "Clicked"
             )
             return {"success": True, "output": f"{desc} ({sx}, {sy})"}
-        except (OSError, RuntimeError, _FailSafeException) as exc:
+        except (OSError, RuntimeError, desktop_mod._FailSafeException) as exc:
             return {
                 "success": False,
                 "output": f"click error at ({sx},{sy}): {exc}",
@@ -426,7 +424,7 @@ class ActionExecutor:
                 return uia_result
 
             return self._click_text_not_found_response(text=text)
-        except (OSError, RuntimeError, ValueError, _FailSafeException) as exc:
+        except (OSError, RuntimeError, ValueError, desktop_mod._FailSafeException) as exc:
             return {
                 "success": False,
                 "output": f"click_text error: {exc}",
@@ -872,7 +870,7 @@ class ActionExecutor:
         try:
             self._desktop.move_to(sx, sy)
             return {"success": True, "output": f"Moved to ({sx}, {sy})"}
-        except (OSError, RuntimeError, _FailSafeException) as exc:
+        except (OSError, RuntimeError, desktop_mod._FailSafeException) as exc:
             return {
                 "success": False,
                 "output": f"mouse_move error to ({sx},{sy}): {exc}",
