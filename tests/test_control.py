@@ -723,3 +723,127 @@ class TestControlLoop:
 
         # Should handle missing executor gracefully
         assert result["status"] in ["completed", "failed", "partial"]
+
+
+# ---------------------------------------------------------------------------
+# Planner coverage: current_step in-bounds, to_dict, plan(), _query_llm()
+# ---------------------------------------------------------------------------
+
+
+class TestTaskPlannerCoverage:
+    """Tests targeting previously uncovered lines in TaskPlanner / ExecutionPlan."""
+
+    def test_execution_plan_current_step_in_bounds(self):
+        """current_step returns the step when index is within range."""
+        step = PlanStep(id=1, description="Click OK", target="OK")
+        plan = ExecutionPlan(goal="test", steps=[step], current_step_index=0)
+        assert plan.current_step is step
+
+    def test_execution_plan_current_step_out_of_bounds(self):
+        """current_step returns None when index is past the end."""
+        plan = ExecutionPlan(goal="test", steps=[], current_step_index=0)
+        assert plan.current_step is None
+
+    def test_execution_plan_to_dict_structure(self):
+        """ExecutionPlan.to_dict() includes all expected fields."""
+        step = PlanStep(id=1, description="Click", step_type=StepType.CLICK, target="btn")
+        plan = ExecutionPlan(goal="save file", steps=[step])
+        d = plan.to_dict()
+        assert d["goal"] == "save file"
+        assert len(d["steps"]) == 1
+        assert "current_step" in d
+        assert "completed" in d
+        assert "failed" in d
+
+    def test_plan_success_path(self):
+        """plan() returns ExecutionPlan when LLM succeeds."""
+        from unittest.mock import MagicMock
+
+        steps_json = json.dumps([
+            {"description": "Click Save", "type": "click", "target": "Save button"},
+        ])
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = steps_json
+
+        planner = TaskPlanner(llm_client=mock_llm)
+        result = planner.plan("Save the document")
+
+        assert isinstance(result, ExecutionPlan)
+        assert result.goal == "Save the document"
+        assert len(result.steps) == 1
+        assert result.steps[0].description == "Click Save"
+
+    def test_plan_with_context(self):
+        """plan() includes context in the prompt when provided."""
+        from unittest.mock import MagicMock
+
+        steps_json = json.dumps([
+            {"description": "Click OK", "type": "click", "target": "OK button"},
+        ])
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = steps_json
+
+        planner = TaskPlanner(llm_client=mock_llm)
+        result = planner.plan("Close dialog", context="A modal dialog is visible")
+
+        assert isinstance(result, ExecutionPlan)
+        # Verify context was passed — LLM was called with a message containing context
+        call_args = mock_llm.chat.call_args
+        messages = call_args.kwargs.get("messages") or call_args.args[2]
+        user_content = next(m["content"] for m in messages if m["role"] == "user")
+        assert "A modal dialog is visible" in user_content
+
+    def test_plan_exception_returns_fallback(self):
+        """plan() returns a single-step fallback plan when LLM raises."""
+        from unittest.mock import MagicMock
+
+        mock_llm = MagicMock()
+        mock_llm.chat.side_effect = RuntimeError("LLM timeout")
+
+        planner = TaskPlanner(llm_client=mock_llm)
+        result = planner.plan("Restart the service")
+
+        assert isinstance(result, ExecutionPlan)
+        assert result.goal == "Restart the service"
+        assert len(result.steps) == 1
+        assert result.steps[0].step_type == StepType.OBSERVE
+
+    def test_query_llm_lazy_init(self):
+        """_query_llm creates LLMClient on first call when none injected."""
+        from unittest.mock import MagicMock, patch
+
+        steps_json = json.dumps([
+            {"description": "Type text", "type": "type", "target": "input"},
+        ])
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = steps_json
+        mock_client_class = MagicMock(return_value=mock_llm)
+
+        planner = TaskPlanner()  # no llm_client
+        assert planner._llm is None
+
+        with patch("core.control.planner.LLMClient", mock_client_class, create=True):
+            with patch("core.llm_client.LLMClient", mock_client_class):
+                steps = planner._query_llm("Do something")
+
+        assert planner._llm is mock_llm
+        assert len(steps) == 1
+
+    def test_query_llm_with_existing_client(self):
+        """_query_llm uses the existing client without re-creating it."""
+        from unittest.mock import MagicMock
+
+        steps_json = json.dumps([
+            {"description": "Press Enter", "type": "key", "target": "screen", "value": "enter"},
+        ])
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = steps_json
+
+        planner = TaskPlanner(llm_client=mock_llm)
+        steps = planner._query_llm("Press enter")
+
+        assert len(steps) == 1
+        mock_llm.chat.assert_called_once()
+        call_kwargs = mock_llm.chat.call_args.kwargs
+        assert call_kwargs.get("provider") == "openai"
+        assert call_kwargs.get("model") == "gpt-4o"

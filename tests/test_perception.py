@@ -657,3 +657,523 @@ class TestPipelineIntegration:
 
         assert result.vision_count == 0  # Returns empty list (placeholder)
         assert result.processing_time_ms >= 0
+
+
+# ---------------------------------------------------------------------------
+# Pipeline coverage: _query_accessibility body, _query_ocr body, cv/grounding,
+# cache eviction paths, cache_key error path
+# ---------------------------------------------------------------------------
+
+
+class TestPipelineCoverage:
+    """Tests targeting previously uncovered branches in PerceptionPipeline."""
+
+    def _clear_cache(self):
+        from core.perception.pipeline import _result_cache, _result_cache_lock
+        with _result_cache_lock:
+            _result_cache.clear()
+
+    # ── _query_accessibility body (lines 143-164) ─────────────────────────
+
+    def test_query_accessibility_returns_elements(self):
+        """_query_accessibility converts tree nodes to PerceptionElements."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+        from core.perception.types import ElementSource
+
+        node = MagicMock()
+        node.name = "Save"
+        node.control_type = "Button"
+        node.bounding_box = (10, 10, 80, 30)
+        node.actions = ["click"]
+        node.raw = {}
+
+        mock_backend = MagicMock()
+        mock_backend.accessibility.is_available.return_value = True
+        mock_backend.accessibility.get_tree.return_value = [node]
+
+        pipeline = PerceptionPipeline()
+        with patch("core.platform.get_backend", return_value=mock_backend):
+            elements = pipeline._query_accessibility("TestWindow")
+
+        assert len(elements) == 1
+        assert elements[0].label == "Save"
+        assert elements[0].source == ElementSource.ACCESSIBILITY
+        assert elements[0].is_interactable is True
+
+    def test_query_accessibility_unavailable_backend(self):
+        """_query_accessibility returns [] when backend is unavailable."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_backend = MagicMock()
+        mock_backend.accessibility.is_available.return_value = False
+
+        pipeline = PerceptionPipeline()
+        with patch("core.platform.get_backend", return_value=mock_backend):
+            elements = pipeline._query_accessibility(None)
+
+        assert elements == []
+
+    def test_query_accessibility_empty_tree(self):
+        """_query_accessibility with an empty tree returns []."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_backend = MagicMock()
+        mock_backend.accessibility.is_available.return_value = True
+        mock_backend.accessibility.get_tree.return_value = []
+
+        pipeline = PerceptionPipeline()
+        with patch("core.platform.get_backend", return_value=mock_backend):
+            elements = pipeline._query_accessibility("Main")
+
+        assert elements == []
+
+    def test_query_accessibility_node_no_bbox(self):
+        """_query_accessibility uses (0,0,0,0) when node.bounding_box is None."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        node = MagicMock()
+        node.name = "Label"
+        node.control_type = "Text"
+        node.bounding_box = None
+        node.actions = []
+        node.raw = {}
+
+        mock_backend = MagicMock()
+        mock_backend.accessibility.is_available.return_value = True
+        mock_backend.accessibility.get_tree.return_value = [node]
+
+        pipeline = PerceptionPipeline()
+        with patch("core.platform.get_backend", return_value=mock_backend):
+            elements = pipeline._query_accessibility(None)
+
+        assert elements[0].bounding_box == (0, 0, 0, 0)
+
+    # ── _query_ocr body (lines 181-222) ──────────────────────────────────
+
+    def test_query_ocr_with_boxes(self):
+        """_query_ocr produces PerceptionElements from OCR boxes."""
+        from unittest.mock import patch
+        from core.perception.pipeline import PerceptionPipeline
+        from core.perception.types import ElementSource
+
+        boxes = [
+            {"text": "Save", "bbox": (10, 10, 90, 40), "confidence": 90},
+            {"text": "cancel", "bbox": (100, 10, 180, 40), "confidence": 0.85},
+        ]
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch("core.ocr.find_text_boxes", return_value=boxes):
+            elements = pipeline._query_ocr(img)
+
+        assert len(elements) >= 1
+        sources = {e.source for e in elements}
+        assert ElementSource.OCR in sources
+
+    def test_query_ocr_skips_empty_text(self):
+        """_query_ocr skips boxes with empty text."""
+        from unittest.mock import patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        boxes = [
+            {"text": "", "bbox": (10, 10, 90, 40), "confidence": 0.9},
+            {"text": "  ", "bbox": (10, 50, 90, 80), "confidence": 0.9},
+            {"text": "OK", "bbox": (10, 90, 90, 120), "confidence": 0.9},
+        ]
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch("core.ocr.find_text_boxes", return_value=boxes):
+            elements = pipeline._query_ocr(img)
+
+        assert all(e.label.strip() for e in elements)
+
+    def test_query_ocr_skips_missing_bbox(self):
+        """_query_ocr skips boxes missing bbox."""
+        from unittest.mock import patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        boxes = [
+            {"text": "Save", "bbox": None, "confidence": 0.9},
+            {"text": "OK", "bbox": (10, 10, 90, 40), "confidence": 0.9},
+        ]
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch("core.ocr.find_text_boxes", return_value=boxes):
+            elements = pipeline._query_ocr(img)
+
+        labels = [e.label for e in elements]
+        assert "Save" not in labels
+
+    def test_query_ocr_confidence_normalization(self):
+        """_query_ocr normalizes confidence > 1 to 0-1 range."""
+        from unittest.mock import patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        boxes = [
+            {"text": "OK", "bbox": (10, 10, 90, 40), "confidence": 95},
+        ]
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch("core.ocr.find_text_boxes", return_value=boxes):
+            elements = pipeline._query_ocr(img)
+
+        if elements:
+            assert elements[0].confidence <= 1.0
+
+    def test_query_ocr_zero_dimension_box_skipped(self):
+        """_query_ocr skips boxes with zero width or height."""
+        from unittest.mock import patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        boxes = [
+            {"text": "Ghost", "bbox": (10, 10, 10, 40), "confidence": 0.9},  # w=0
+            {"text": "Real", "bbox": (10, 10, 90, 40), "confidence": 0.9},
+        ]
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch("core.ocr.find_text_boxes", return_value=boxes):
+            elements = pipeline._query_ocr(img)
+
+        labels = [e.label for e in elements]
+        assert "Ghost" not in labels
+        assert "Real" in labels
+
+    # ── _cv_contour_detection (lines 250-290) ────────────────────────────
+
+    def test_cv_contour_detection_no_cv2(self):
+        """_cv_contour_detection returns [] when cv2 is not available."""
+        from unittest.mock import patch
+        from core.perception.pipeline import PerceptionPipeline
+        import sys
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (200, 200))
+
+        saved_cv2 = sys.modules.get("cv2")
+        sys.modules["cv2"] = None  # type: ignore[assignment]
+        try:
+            elements = pipeline._cv_contour_detection(img)
+        finally:
+            if saved_cv2 is None:
+                sys.modules.pop("cv2", None)
+            else:
+                sys.modules["cv2"] = saved_cv2
+
+        assert elements == []
+
+    def test_cv_contour_detection_with_mock_cv2(self):
+        """_cv_contour_detection processes contours when cv2 is available."""
+        from unittest.mock import MagicMock, patch
+        import numpy as np
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_cv2 = MagicMock()
+        # Make a contour that passes all filters: area=300*100=30000, aspect=3, w>15, h>15
+        contour = np.array([[[0, 0]], [[300, 0]], [[300, 100]], [[0, 100]]])
+        mock_cv2.boundingRect.return_value = (10, 20, 300, 100)
+        mock_cv2.findContours.return_value = ([contour], None)
+        mock_cv2.cvtColor.return_value = MagicMock()
+        mock_cv2.Canny.return_value = MagicMock()
+        mock_cv2.getStructuringElement.return_value = MagicMock()
+        mock_cv2.dilate.return_value = MagicMock()
+        mock_cv2.COLOR_RGB2GRAY = 7
+        mock_cv2.MORPH_RECT = 0
+        mock_cv2.RETR_EXTERNAL = 0
+        mock_cv2.CHAIN_APPROX_SIMPLE = 2
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": np}):
+            elements = pipeline._cv_contour_detection(img)
+
+        assert len(elements) >= 1
+        assert elements[0].confidence == 0.3
+
+    def test_cv_contour_detection_filters_tiny_contours(self):
+        """_cv_contour_detection skips contours that are too small."""
+        from unittest.mock import MagicMock, patch
+        import numpy as np
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_cv2 = MagicMock()
+        # Area = 10*10 = 100 < 200 → filtered
+        mock_cv2.boundingRect.return_value = (0, 0, 10, 10)
+        mock_cv2.findContours.return_value = ([MagicMock()], None)
+        mock_cv2.cvtColor.return_value = MagicMock()
+        mock_cv2.Canny.return_value = MagicMock()
+        mock_cv2.getStructuringElement.return_value = MagicMock()
+        mock_cv2.dilate.return_value = MagicMock()
+        mock_cv2.COLOR_RGB2GRAY = 7
+        mock_cv2.MORPH_RECT = 0
+        mock_cv2.RETR_EXTERNAL = 0
+        mock_cv2.CHAIN_APPROX_SIMPLE = 2
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": np}):
+            elements = pipeline._cv_contour_detection(img)
+
+        assert elements == []
+
+    def test_cv_contour_detection_exception_returns_empty(self):
+        """_cv_contour_detection handles exceptions gracefully."""
+        from unittest.mock import MagicMock, patch
+        import numpy as np
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_cv2 = MagicMock()
+        mock_cv2.cvtColor.side_effect = RuntimeError("GPU error")
+        mock_cv2.COLOR_RGB2GRAY = 7
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        with patch.dict("sys.modules", {"cv2": mock_cv2, "numpy": np}):
+            elements = pipeline._cv_contour_detection(img)
+
+        assert elements == []
+
+    # ── _local_grounding_detection (lines 306-337) ────────────────────────
+
+    def test_local_grounding_model_available_returns_elements(self):
+        """_local_grounding_detection returns elements when model is available."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+        from core.perception.types import ElementSource
+
+        mock_result = MagicMock()
+        mock_result.is_valid = True
+        mock_result.confidence = 0.9
+        mock_result.bbox = (10, 20, 50, 30)
+
+        mock_model = MagicMock()
+        mock_model.is_available = True
+        mock_model.predict.return_value = mock_result
+
+        mock_model_class = MagicMock(return_value=mock_model)
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+            elements = pipeline._local_grounding_detection(img)
+
+        assert len(elements) >= 1
+        assert elements[0].source == ElementSource.VISION
+        assert elements[0].confidence == 0.9
+
+    def test_local_grounding_model_unavailable(self):
+        """_local_grounding_detection returns [] when model is not available."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_model = MagicMock()
+        mock_model.is_available = False
+        mock_model_class = MagicMock(return_value=mock_model)
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+            elements = pipeline._local_grounding_detection(img)
+
+        assert elements == []
+
+    def test_local_grounding_low_confidence_filtered(self):
+        """_local_grounding_detection filters results below 0.5 confidence."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_result = MagicMock()
+        mock_result.is_valid = True
+        mock_result.confidence = 0.3  # below threshold
+
+        mock_model = MagicMock()
+        mock_model.is_available = True
+        mock_model.predict.return_value = mock_result
+
+        mock_model_class = MagicMock(return_value=mock_model)
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+            elements = pipeline._local_grounding_detection(img)
+
+        assert elements == []
+
+    def test_local_grounding_exception_returns_empty(self):
+        """_local_grounding_detection handles exceptions gracefully."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_model = MagicMock()
+        mock_model.is_available = True
+        mock_model.predict.side_effect = RuntimeError("CUDA OOM")
+        mock_model_class = MagicMock(return_value=mock_model)
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+            elements = pipeline._local_grounding_detection(img)
+
+        assert elements == []
+
+    # ── cache_key error path (lines 476-477) ─────────────────────────────
+
+    def test_cache_key_getpixel_error_falls_back(self):
+        """_cache_key uses size-only fingerprint when getpixel raises."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        img = MagicMock()
+        img.size = (100, 100)
+        img.getpixel.side_effect = OSError("display error")
+
+        key = PerceptionPipeline._cache_key(img)
+        assert isinstance(key, str)
+        assert len(key) == 32  # md5 hex digest
+
+    # ── cache eviction paths (lines 499, 503-504) ─────────────────────────
+
+    def test_store_cached_evicts_expired_entries(self):
+        """_store_cached removes expired entries before storing new result."""
+        import time
+        from core.perception.pipeline import (
+            PerceptionPipeline,
+            _result_cache,
+            _result_cache_lock,
+        )
+        from core.perception.types import PerceptionResult
+
+        self._clear_cache()
+        pipeline = PerceptionPipeline()
+        old_result = PerceptionResult(elements=[])
+        new_result = PerceptionResult(elements=[])
+
+        # Plant an expired entry
+        with _result_cache_lock:
+            _result_cache["stale-key"] = (old_result, time.monotonic() - 100.0)
+
+        pipeline._store_cached("fresh-key", new_result)
+
+        with _result_cache_lock:
+            assert "stale-key" not in _result_cache
+            assert "fresh-key" in _result_cache
+
+    def test_query_ocr_exception_returns_empty(self):
+        """_query_ocr returns [] when find_text_boxes raises."""
+        from unittest.mock import patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch("core.ocr.find_text_boxes", side_effect=RuntimeError("OCR crash")):
+            elements = pipeline._query_ocr(img)
+
+        assert elements == []
+
+    def test_cv_contour_aspect_filter(self):
+        """_cv_contour_detection skips contours with aspect ratio > 10."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_cv2 = MagicMock()
+        # w=200, h=10 → area=2000 > 200, aspect=20 > 10 → filtered out
+        mock_cv2.boundingRect.return_value = (0, 0, 200, 10)
+        mock_cv2.findContours.return_value = ([MagicMock()], None)
+        mock_cv2.cvtColor.return_value = MagicMock()
+        mock_cv2.Canny.return_value = MagicMock()
+        mock_cv2.getStructuringElement.return_value = MagicMock()
+        mock_cv2.dilate.return_value = MagicMock()
+        mock_cv2.COLOR_RGB2GRAY = 7
+        mock_cv2.MORPH_RECT = 0
+        mock_cv2.RETR_EXTERNAL = 0
+        mock_cv2.CHAIN_APPROX_SIMPLE = 2
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch.dict("sys.modules", {"cv2": mock_cv2}):
+            elements = pipeline._cv_contour_detection(img)
+
+        assert elements == []
+
+    def test_cv_contour_small_dimension_filter(self):
+        """_cv_contour_detection skips contours with w or h < 15."""
+        from unittest.mock import MagicMock, patch
+        from core.perception.pipeline import PerceptionPipeline
+
+        mock_cv2 = MagicMock()
+        # w=10 < 15 → filtered; area=10*30=300 > 200, aspect=30/10=3 <= 10
+        mock_cv2.boundingRect.return_value = (0, 0, 10, 30)
+        mock_cv2.findContours.return_value = ([MagicMock()], None)
+        mock_cv2.cvtColor.return_value = MagicMock()
+        mock_cv2.Canny.return_value = MagicMock()
+        mock_cv2.getStructuringElement.return_value = MagicMock()
+        mock_cv2.dilate.return_value = MagicMock()
+        mock_cv2.COLOR_RGB2GRAY = 7
+        mock_cv2.MORPH_RECT = 0
+        mock_cv2.RETR_EXTERNAL = 0
+        mock_cv2.CHAIN_APPROX_SIMPLE = 2
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+        with patch.dict("sys.modules", {"cv2": mock_cv2}):
+            elements = pipeline._cv_contour_detection(img)
+
+        assert elements == []
+
+    def test_local_grounding_import_error_returns_empty(self):
+        """_local_grounding_detection returns [] when core.local_grounding is missing."""
+        from core.perception.pipeline import PerceptionPipeline
+        import sys
+
+        pipeline = PerceptionPipeline()
+        img = Image.new("RGB", (800, 600))
+
+        saved = sys.modules.get("core.local_grounding")
+        sys.modules["core.local_grounding"] = None  # type: ignore[assignment]
+        try:
+            elements = pipeline._local_grounding_detection(img)
+        finally:
+            if saved is None:
+                sys.modules.pop("core.local_grounding", None)
+            else:
+                sys.modules["core.local_grounding"] = saved
+
+        assert elements == []
+
+    def test_store_cached_evicts_oldest_when_at_capacity(self):
+        """_store_cached evicts the oldest entry when cache is at max capacity."""
+        import time
+        from core.perception.pipeline import (
+            PerceptionPipeline,
+            _RESULT_CACHE_MAX,
+            _result_cache,
+            _result_cache_lock,
+        )
+        from core.perception.types import PerceptionResult
+
+        self._clear_cache()
+        pipeline = PerceptionPipeline()
+        now = time.monotonic()
+        dummy = PerceptionResult(elements=[])
+
+        # Fill cache to max capacity — all entries fresh (age < TTL of 2s)
+        # key-0 gets the smallest (oldest) timestamp, key-9 gets the largest (newest)
+        with _result_cache_lock:
+            for i in range(_RESULT_CACHE_MAX):
+                _result_cache[f"key-{i}"] = (dummy, now - (_RESULT_CACHE_MAX - 1 - i) * 0.001)
+
+        # Oldest is key-0 (largest age). Storing one more should evict it.
+        pipeline._store_cached("new-key", dummy)
+
+        with _result_cache_lock:
+            assert "key-0" not in _result_cache
+            assert "new-key" in _result_cache

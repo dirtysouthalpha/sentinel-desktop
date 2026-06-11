@@ -387,3 +387,171 @@ def test_service_control_non_windows():
     result = process_manager.service_control("Spooler", "start")
     assert result["success"] is False
     assert "Windows" in result["error"]
+
+
+# ── _sanitize_command ────────────────────────────────────────────────────────
+
+def test_sanitize_command_dangerous_pattern():
+    """_sanitize_command raises ValueError for dangerous patterns."""
+    import pytest
+    with pytest.raises(ValueError, match="dangerous"):
+        process_manager._sanitize_command("rm -rf /tmp")
+
+
+def test_sanitize_command_shell_metachar_in_path():
+    """_sanitize_command raises ValueError for shell metacharacters in path."""
+    import pytest
+    with pytest.raises(ValueError, match="metacharacter"):
+        process_manager._sanitize_command("/usr/bin/app|evil")
+
+
+def test_start_process_dangerous_command_returns_none():
+    """start_process with a dangerous command returns None (ValueError caught)."""
+    result = process_manager.start_process("rm -rf /important")
+    assert result is None
+
+
+# ── get_env ──────────────────────────────────────────────────────────────────
+
+def test_get_env_existing():
+    """get_env returns value for a set environment variable."""
+    import os
+    os.environ["_SENTINEL_GETENV_TEST"] = "sentinel_value"
+    try:
+        assert process_manager.get_env("_SENTINEL_GETENV_TEST") == "sentinel_value"
+    finally:
+        del os.environ["_SENTINEL_GETENV_TEST"]
+
+
+def test_get_env_missing():
+    """get_env returns None for a missing environment variable."""
+    import os
+    os.environ.pop("_SENTINEL_MISSING_VAR", None)
+    assert process_manager.get_env("_SENTINEL_MISSING_VAR") is None
+
+
+# ── set_env Windows success path ──────────────────────────────────────────────
+
+def test_set_env_permanent_windows_success():
+    """set_env on Windows with permanent=True calls SetValueEx and CloseKey."""
+    mock_winreg = MagicMock()
+    mock_key = MagicMock()
+    mock_winreg.OpenKey.return_value = mock_key
+    mock_winreg.HKEY_CURRENT_USER = 0x80000001
+    mock_winreg.KEY_SET_VALUE = 0x0002
+    mock_winreg.REG_SZ = 1
+    with patch("sys.platform", "win32"):
+        with patch.dict("sys.modules", {"winreg": mock_winreg}):
+            result = process_manager.set_env("_SENTINEL_WIN_SUCC", "val", permanent=True)
+    assert result is True
+    mock_winreg.SetValueEx.assert_called_once()
+    mock_winreg.CloseKey.assert_called_once_with(mock_key)
+    import os
+    os.environ.pop("_SENTINEL_WIN_SUCC", None)
+
+
+# ── service_control Windows paths ─────────────────────────────────────────────
+
+def _make_mock_ctypes(sc_val=1, svc_val=1, status_val=4):
+    """Build a minimal ctypes mock for service_control tests."""
+    mock_ctypes = MagicMock()
+    mock_advapi = MagicMock()
+    mock_ctypes.windll.advapi32 = mock_advapi
+    mock_advapi.OpenSCManagerW.return_value = sc_val
+    mock_advapi.OpenServiceW.return_value = svc_val
+
+    def fake_query_status(svc, byref_obj):
+        byref_obj._obj.value = status_val
+
+    mock_status = MagicMock()
+    mock_status.value = status_val
+    mock_ctypes.c_void_p = MagicMock(return_value=MagicMock())
+    mock_ctypes.c_uint32.return_value = mock_status
+    mock_ctypes.c_int = MagicMock(return_value=MagicMock())
+    mock_ctypes.c_wchar_p = MagicMock(return_value=MagicMock())
+
+    def fake_byref(obj):
+        return obj
+
+    mock_ctypes.byref = fake_byref
+    mock_advapi.QueryServiceStatus = MagicMock(return_value=1)
+    return mock_ctypes, mock_advapi, mock_status
+
+
+def test_service_control_windows_query_success():
+    """service_control query returns running state on Windows."""
+    mock_ctypes, mock_advapi, mock_status = _make_mock_ctypes(status_val=4)
+    mock_status.value = 4
+    with patch("sys.platform", "win32"):
+        with patch("core.process_manager.ctypes", mock_ctypes, create=True):
+            with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
+                result = process_manager.service_control("Spooler", "query")
+    assert result["success"] is True
+    assert result["service"] == "Spooler"
+    assert result["state"] == "running"
+
+
+def test_service_control_windows_query_sc_fail():
+    """service_control query returns error when OpenSCManager fails."""
+    mock_ctypes, mock_advapi, _ = _make_mock_ctypes(sc_val=0)
+    with patch("sys.platform", "win32"):
+        with patch("core.process_manager.ctypes", mock_ctypes, create=True):
+            with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
+                result = process_manager.service_control("Spooler", "query")
+    assert result["success"] is False
+    assert "SCManager" in result["error"]
+
+
+def test_service_control_windows_query_svc_fail():
+    """service_control query returns error when OpenService fails."""
+    mock_ctypes, mock_advapi, _ = _make_mock_ctypes(sc_val=1, svc_val=0)
+    with patch("sys.platform", "win32"):
+        with patch("core.process_manager.ctypes", mock_ctypes, create=True):
+            with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
+                result = process_manager.service_control("Spooler", "query")
+    assert result["success"] is False
+    assert "not found" in result["error"]
+
+
+def test_service_control_windows_query_oserror():
+    """service_control query catches OSError from ctypes."""
+    mock_ctypes = MagicMock()
+    mock_ctypes.windll.advapi32.OpenSCManagerW.side_effect = OSError("access denied")
+    with patch("sys.platform", "win32"):
+        with patch("core.process_manager.ctypes", mock_ctypes, create=True):
+            with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
+                result = process_manager.service_control("Spooler", "query")
+    assert result["success"] is False
+
+
+def test_service_control_windows_start_action():
+    """service_control start action runs net start on Windows."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "Service started.\n"
+    mock_result.stderr = ""
+    mock_ctypes = MagicMock()
+    with patch("sys.platform", "win32"):
+        with patch("core.process_manager.ctypes", mock_ctypes, create=True):
+            with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
+                with patch("core.process_manager.subprocess.run", return_value=mock_result):
+                    result = process_manager.service_control("Spooler", "start")
+    assert result["success"] is True
+    assert result["service"] == "Spooler"
+    assert result["action"] == "start"
+
+
+def test_service_control_windows_action_subprocess_error():
+    """service_control handles subprocess errors for start/stop actions."""
+    import subprocess
+    mock_ctypes = MagicMock()
+    with patch("sys.platform", "win32"):
+        with patch("core.process_manager.ctypes", mock_ctypes, create=True):
+            with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
+                with patch(
+                    "core.process_manager.subprocess.run",
+                    side_effect=subprocess.SubprocessError("timed out"),
+                ):
+                    result = process_manager.service_control("Spooler", "stop")
+    assert result["success"] is False
+    assert "error" in result
