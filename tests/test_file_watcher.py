@@ -145,6 +145,100 @@ class TestWatchProcess:
 
 # ── Executor integration ──────────────────────────────────────────────────────
 
+class TestFileWatcherEdgeCases:
+    def test_watch_file_content_oserror_on_read(self, tmp_path):
+        """OSError during read_text inside watch loop should be silently swallowed."""
+        from core.file_watcher import watch_file_content
+        target = tmp_path / "err.txt"
+        target.write_text("initial content here")
+        # read_text raises OSError → hits except OSError: pass branch
+        with patch("pathlib.Path.read_text", side_effect=OSError("disk error")):
+            result = watch_file_content(str(target), contains="initial", timeout=0.3, poll_interval=0.05)
+        # Timed out (content never confirmed) — but no exception raised
+        assert result["success"] is False
+
+    def test_watch_process_find_proc_access_denied(self):
+        """NoSuchProcess/AccessDenied on individual iteration entries are silently skipped."""
+        import psutil
+        from core.file_watcher import watch_process
+
+        bad_proc = MagicMock()
+        bad_proc.info = MagicMock()
+        bad_proc.info.get = MagicMock(side_effect=psutil.AccessDenied(999))
+
+        with patch("core.file_watcher.psutil.process_iter", return_value=[bad_proc]):
+            result = watch_process("anything", event="start", timeout=0.1, poll_interval=0.05)
+        assert result["success"] is False  # nothing found → timeout
+
+    def test_watch_process_start_event_records_pid(self):
+        """start event: result_pid comes from the newly appeared process."""
+        import psutil
+        from core.file_watcher import watch_process
+
+        mock_proc = MagicMock(spec=psutil.Process)
+        mock_proc.pid = 42
+        mock_proc.is_running.return_value = True
+        mock_proc.info = {"name": "myapp", "pid": 42}
+
+        call_n = [0]
+
+        def iter_side(_fields):
+            call_n[0] += 1
+            if call_n[0] < 3:
+                return []  # not running yet → initial_proc = None
+            return [mock_proc]
+
+        with patch("core.file_watcher.psutil.process_iter", side_effect=iter_side):
+            result = watch_process("myapp", event="start", timeout=2, poll_interval=0.05)
+        assert result["success"] is True
+        assert result["pid"] == 42
+
+    def test_watch_process_cpu_spike_detected(self):
+        """cpu_spike event triggers when cpu_percent > 80."""
+        import psutil
+        from core.file_watcher import watch_process
+
+        mock_proc = MagicMock(spec=psutil.Process)
+        mock_proc.pid = 99
+        mock_proc.is_running.return_value = True
+        mock_proc.info = {"name": "heavyapp", "pid": 99}
+        mock_proc.cpu_percent.return_value = 95.0
+
+        with patch("core.file_watcher.psutil.process_iter", return_value=[mock_proc]):
+            result = watch_process("heavyapp", event="cpu_spike", timeout=2, poll_interval=0.05)
+        assert result["success"] is True
+        assert result["pid"] == 99
+        assert result["event"] == "cpu_spike"
+
+    def test_watch_process_cpu_spike_no_spike(self):
+        """cpu_spike event times out when cpu stays below threshold."""
+        import psutil
+        from core.file_watcher import watch_process
+
+        mock_proc = MagicMock(spec=psutil.Process)
+        mock_proc.pid = 10
+        mock_proc.info = {"name": "idle", "pid": 10}
+        mock_proc.cpu_percent.return_value = 5.0
+
+        with patch("core.file_watcher.psutil.process_iter", return_value=[mock_proc]):
+            result = watch_process("idle", event="cpu_spike", timeout=0.3, poll_interval=0.05)
+        assert result["success"] is False
+
+    def test_watch_process_cpu_spike_access_denied(self):
+        """cpu_percent raising AccessDenied during cpu_spike check is silently handled."""
+        import psutil
+        from core.file_watcher import watch_process
+
+        mock_proc = MagicMock(spec=psutil.Process)
+        mock_proc.pid = 10
+        mock_proc.info = {"name": "sysapp", "pid": 10}
+        mock_proc.cpu_percent.side_effect = psutil.AccessDenied(10)
+
+        with patch("core.file_watcher.psutil.process_iter", return_value=[mock_proc]):
+            result = watch_process("sysapp", event="cpu_spike", timeout=0.3, poll_interval=0.05)
+        assert result["success"] is False
+
+
 class TestFileWatcherActionsInExecutor:
     def test_watch_file_in_dispatch(self):
         from core.action_executor import ActionExecutor
