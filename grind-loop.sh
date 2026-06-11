@@ -22,6 +22,13 @@ while true; do
     git pull origin main 2>&1 | tee -a "$LOG"
     rm -rf .aider.chat.history.md .aider.input.history .aider.tags.cache.v4/ 2>/dev/null
 
+    # >>> GLM grind-loop routing (fleet hybrid policy) >>>
+    export ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
+    export ANTHROPIC_AUTH_TOKEN=bf6ef726dad74aa1aea51b8d349b0dbe.kHIqQR8LOwS82l8y
+    export ANTHROPIC_MODEL=glm-4.6
+    export ANTHROPIC_SMALL_FAST_MODEL=glm-4.5-air
+    unset ANTHROPIC_CUSTOM_HEADERS
+    # <<< GLM grind-loop routing <<<
     claude -p "Read CLAUDE.md and follow ALL instructions. You are improving Sentinel Desktop v3.0 — a Python desktop automation agent. Use .venv/bin/python for all python commands and .venv/bin/ruff for linting. After EVERY change, run the test suite (.venv/bin/python -m pytest tests/ -q --timeout=10) and verify tests pass BEFORE committing. If a test fails, fix it immediately. Push after every 3-5 commits. Work through every priority in CLAUDE.md systematically." \
         --allowedTools Read,Write,Edit,Bash \
         --dangerously-skip-permissions \
