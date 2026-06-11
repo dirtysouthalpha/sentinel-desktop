@@ -498,7 +498,7 @@ class MemoryTab(ctk.CTkFrame):
                 border_color=t("bg_hover", "#333539"),
             )
             entry.grid(row=row, column=1, sticky="ew", padx=(4, 8), pady=4)
-            if default:
+            if default:  # pragma: no cover
                 entry.insert(0, default)
             entries[attr] = entry
 

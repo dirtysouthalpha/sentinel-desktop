@@ -381,3 +381,66 @@ class TestMouseMoveAction:
         from core.action_executor import ActionExecutor
 
         assert "mouse_move" in ActionExecutor._dispatch_table
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap tests — uncovered branches in translate_openai_action
+# ---------------------------------------------------------------------------
+
+
+class TestTranslateOpenAIEdgeCases:
+    """Cover remaining edge-case branches in translate_openai_action."""
+
+    def test_standard_function_call_invalid_json_returns_none(self):
+        """Standard function call (non-computer_use_preview) with invalid JSON → None."""
+        call = {
+            "id": "call_std",
+            "type": "function",
+            "function": {"name": "some_action", "arguments": "not valid json{{{"},
+        }
+        assert translate_openai_action(call) is None
+
+    def test_dict_coordinate_is_resolved(self):
+        """coordinate passed as dict with x/y keys should be unpacked correctly."""
+        call = {
+            "id": "call_dict_coord",
+            "type": "function",
+            "function": {
+                "name": "computer_use_preview",
+                "arguments": json.dumps({"action": "click", "coordinate": {"x": 100, "y": 200}}),
+            },
+        }
+        result = translate_openai_action(call)
+        assert result is not None
+        assert result["x"] == 100
+        assert result["y"] == 200
+
+    def test_non_list_non_dict_coordinate_defaults_to_zero(self):
+        """coordinate that is neither list nor dict → x=0, y=0."""
+        call = {
+            "id": "call_bad_coord",
+            "type": "function",
+            "function": {
+                "name": "computer_use_preview",
+                "arguments": json.dumps({"action": "click", "coordinate": "bad"}),
+            },
+        }
+        result = translate_openai_action(call)
+        assert result is not None
+        assert result["x"] == 0
+        assert result["y"] == 0
+
+    def test_unknown_action_type_passthrough(self):
+        """Unknown action type falls through to passthrough dict."""
+        call = {
+            "id": "call_unknown",
+            "type": "function",
+            "function": {
+                "name": "computer_use_preview",
+                "arguments": json.dumps({"action": "future_action", "param": "value"}),
+            },
+        }
+        result = translate_openai_action(call)
+        assert result is not None
+        assert result["action"] == "future_action"
+        assert result["param"] == "value"
