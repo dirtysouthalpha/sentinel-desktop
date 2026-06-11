@@ -1191,9 +1191,13 @@ class TestShowToast:
 
     def test_show_toast_tclError_swallowed(self, app):
         import tkinter as tk
-        orig_frame = app.root.__class__
-        with patch.object(type(app.root), "after", side_effect=tk.TclError("no widget")):
-            app._show_toast("crash toast")  # should not raise
+        # Instance-level override guarantees the mock shadows the class method.
+        app.root.after = MagicMock(side_effect=tk.TclError("no widget"))
+        app._show_toast("crash toast")  # should not raise
+
+    def test_show_toast_runtime_error_swallowed(self, app):
+        with patch.object(app_mod.ctk, "CTkFrame", side_effect=RuntimeError("dead")):
+            app._show_toast("crash2")  # RuntimeError caught by except block
 
 
 class TestSettingsSaveNoOnSave:
