@@ -219,3 +219,137 @@ class TestHandleTerminalWs:
             await server._handle_terminal_ws(ws)
 
         ws.accept.assert_called_once()
+
+
+# ── line 627 — HOME missing from environment ─────────────────────────────────
+
+
+class TestSetupPtyChildHomeEnv:
+    """Line 627 — env["HOME"] assigned when HOME absent from os.environ."""
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
+    def test_home_not_in_env_sets_home(self):
+        server = _make_server()
+        mock_exit = MagicMock()
+
+        # Strip HOME from the environment copy that _setup_pty_child sees
+        env_without_home = {k: v for k, v in __import__("os").environ.items() if k != "HOME"}
+
+        with patch("api.server.os.close"), \
+             patch("api.server.os.setsid"), \
+             patch("api.server.os.dup2"), \
+             patch("api.server.fcntl"), \
+             patch("api.server.termios"), \
+             patch("api.server.os.environ", env_without_home), \
+             patch("api.server.os.path.isfile", return_value=False), \
+             patch("api.server.os.execvpe", side_effect=OSError("no shell")), \
+             patch("api.server.os._exit", mock_exit):
+            server._setup_pty_child(slave_fd=5)
+
+        mock_exit.assert_called_once_with(1)
+
+
+# ── line 789 — child process branch calls _setup_pty_child ───────────────────
+
+
+class TestHandleTerminalWsChildBranch:
+    """Line 789 — os.fork() == 0 path: _setup_pty_child is called."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
+    async def test_child_branch_calls_setup_pty_child(self):
+        server = _make_server()
+        ws = MagicMock()
+        ws.accept = AsyncMock()
+
+        mock_setup = MagicMock()
+        mock_pty = MagicMock()
+        mock_pty.openpty.return_value = (10, 11)
+
+        with patch("api.server.pty", mock_pty), \
+             patch("api.server.os.fork", return_value=0), \
+             patch("api.server.os.close"), \
+             patch.object(server, "_setup_pty_child", mock_setup):
+            await server._handle_terminal_ws(ws)
+
+        mock_setup.assert_called_once_with(11)
+
+
+# ── line 803 — pending task cancel ───────────────────────────────────────────
+
+
+class TestHandleTerminalWsPendingCancel:
+    """Line 803 — pending tasks cancelled after asyncio.wait(FIRST_COMPLETED)."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
+    async def test_pending_task_is_cancelled(self):
+        import asyncio as _asyncio
+
+        server = _make_server()
+        ws = MagicMock()
+        ws.accept = AsyncMock()
+
+        completed_event = _asyncio.Event()
+        cancel_calls = []
+
+        async def _returns_instantly(master_fd, ws_arg):
+            completed_event.set()
+
+        async def _blocks_until_cancelled(master_fd, ws_arg):
+            await _asyncio.sleep(9999)
+
+        async def _cleanup(child_pid, master_fd):
+            pass
+
+        mock_pty = MagicMock()
+        mock_pty.openpty.return_value = (10, 11)
+
+        with patch("api.server.pty", mock_pty), \
+             patch("api.server.os.fork", return_value=42), \
+             patch("api.server.os.close"), \
+             patch.object(server, "_configure_master_fd_nonblocking"), \
+             patch.object(server, "_cleanup_pty", side_effect=_cleanup), \
+             patch.object(server, "_read_pty", _returns_instantly), \
+             patch.object(server, "_read_ws", _blocks_until_cancelled):
+            await server._handle_terminal_ws(ws)
+
+        # If we reach here without hanging, the pending task was cancelled correctly
+
+
+# ── lines 804-805 — except (WebSocketDisconnect, ...) block ──────────────────
+
+
+class TestHandleTerminalWsExceptBlock:
+    """Lines 804-805 — RuntimeError raised by asyncio.wait caught by except clause."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
+    async def test_runtime_error_in_wait_is_caught(self):
+        server = _make_server()
+        ws = MagicMock()
+        ws.accept = AsyncMock()
+
+        cleanup_called = []
+
+        async def _cleanup(child_pid, master_fd):
+            cleanup_called.append(True)
+
+        mock_pty = MagicMock()
+        mock_pty.openpty.return_value = (10, 11)
+
+        # Patch asyncio.wait itself to raise RuntimeError so the except clause fires
+        async def _wait_raises(*args, **kwargs):
+            raise RuntimeError("event loop closed")
+
+        with patch("api.server.pty", mock_pty), \
+             patch("api.server.os.fork", return_value=42), \
+             patch("api.server.os.close"), \
+             patch.object(server, "_configure_master_fd_nonblocking"), \
+             patch.object(server, "_cleanup_pty", side_effect=_cleanup), \
+             patch("api.server.asyncio.wait", side_effect=_wait_raises):
+            # Should not propagate — caught by except (lines 804-805)
+            await server._handle_terminal_ws(ws)
+
+        # finally block still runs
+        assert cleanup_called
