@@ -15,7 +15,13 @@ logger = logging.getLogger(__name__)
 
 # Lazy import pyautogui to avoid DISPLAY requirement on headless systems
 pyautogui = None
-_FailSafeException = None
+
+
+class _FailSafeSentinel(Exception):
+    """Sentinel used when pyautogui has not been imported yet."""
+
+
+_FailSafeException: type[Exception] = _FailSafeSentinel
 
 def _ensure_pyautogui():
     """Import pyautogui on first use to avoid headless system failures."""
