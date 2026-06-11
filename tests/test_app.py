@@ -1034,6 +1034,168 @@ class TestProviderChangeNoAutofill:
             assert call[0][0] != "https://my-custom-proxy.internal/v1"
 
 
+class TestSidebarAndTabSwitching:
+    """Cover _toggle_sidebar (296-304) and _switch_tab (367-373)."""
+
+    def test_toggle_sidebar_collapsed(self, app):
+        app._sidebar_collapsed = False
+        app._sidebar_frame = MagicMock()
+        app._sidebar_buttons = {key: MagicMock() for key, *_ in app._sidebar_buttons.items()} if hasattr(app, '_sidebar_buttons') else {}
+        import gui.app as _am
+        app._sidebar_buttons = {key: MagicMock() for key, *_ in _am._TAB_DEFS}
+        app._toggle_sidebar()
+        assert app._sidebar_collapsed is True
+        app._sidebar_frame.configure.assert_called_with(width=48)
+
+    def test_toggle_sidebar_expanded(self, app):
+        app._sidebar_collapsed = True
+        app._sidebar_frame = MagicMock()
+        import gui.app as _am
+        app._sidebar_buttons = {key: MagicMock() for key, *_ in _am._TAB_DEFS}
+        app._toggle_sidebar()
+        assert app._sidebar_collapsed is False
+        app._sidebar_frame.configure.assert_called_with(width=200)
+
+    def test_switch_tab(self, app):
+        frames = {k: MagicMock() for k in ["dashboard", "scripts", "memory"]}
+        app._tab_frames = frames
+        app._switch_tab("scripts")
+        assert app._active_tab == "scripts"
+        frames["scripts"].grid.assert_called()
+        frames["dashboard"].grid_remove.assert_called()
+
+
+class TestUpdateMetricsExceptionBranch:
+    """Cover except (ImportError, OSError) in _update_metrics (line 541)."""
+
+    def test_import_error_swallowed(self, app):
+        import builtins
+        real_import = builtins.__import__
+
+        def fake_import(name, *a, **kw):
+            if name == "psutil":
+                raise ImportError("no psutil")
+            return real_import(name, *a, **kw)
+
+        with patch.object(builtins, "__import__", side_effect=fake_import):
+            app._update_metrics()  # should not raise
+
+
+class TestCompactMode:
+    """Cover _toggle_compact_mode (719-729)."""
+
+    def test_toggle_compact_on(self, app):
+        app._compact_mode = False
+        app._metrics_frame = MagicMock()
+        app._progress_frame = MagicMock()
+        # Remove screenshot_label so the hasattr branch is False
+        if hasattr(app, "screenshot_label"):
+            del app.screenshot_label
+        app._toggle_compact_mode()
+        assert app._compact_mode is True
+        app._metrics_frame.grid_remove.assert_called()
+        app._progress_frame.grid_remove.assert_called()
+
+    def test_toggle_compact_off(self, app):
+        app._compact_mode = True
+        app._metrics_frame = MagicMock()
+        app._progress_frame = MagicMock()
+        if hasattr(app, "screenshot_label"):
+            del app.screenshot_label
+        app._toggle_compact_mode()
+        assert app._compact_mode is False
+        app._metrics_frame.grid.assert_called()
+        app._progress_frame.grid.assert_called()
+
+    def test_toggle_compact_with_screenshot_label_collapse(self, app):
+        app._compact_mode = False
+        app._metrics_frame = MagicMock()
+        app._progress_frame = MagicMock()
+        app.screenshot_label = MagicMock()
+        app.screenshot_label.master = MagicMock()
+        app._toggle_compact_mode()
+        app.screenshot_label.master.grid_remove.assert_called()
+
+    def test_toggle_compact_with_screenshot_label_expand(self, app):
+        app._compact_mode = True
+        app._metrics_frame = MagicMock()
+        app._progress_frame = MagicMock()
+        app.screenshot_label = MagicMock()
+        app.screenshot_label.master = MagicMock()
+        app._toggle_compact_mode()
+        app.screenshot_label.master.grid.assert_called()
+
+
+class TestStatusPulse:
+    """Cover _start_status_pulse RecursionError (790-791) and _pulse_step early return (798)."""
+
+    def test_start_pulse_recursion_error_swallowed(self, app):
+        app.status_label = MagicMock()
+        # cget raises RecursionError inside _pulse_step → propagates to
+        # _start_status_pulse's except RecursionError handler (lines 790-791)
+        app.status_label.cget.side_effect = RecursionError("deep")
+        app._start_status_pulse()  # should not propagate RecursionError
+
+    def test_pulse_step_early_return_when_stopped(self, app):
+        app._status_pulse_on = False
+        app._pulse_step()  # Should hit the early return at line 798 — no exception
+
+
+class TestShowChatSearch:
+    """Cover _show_chat_search (1157-1180)."""
+
+    def test_show_chat_search_first_call(self, app):
+        if hasattr(app, "_search_frame"):
+            del app._search_frame
+        app._show_chat_search()
+        assert hasattr(app, "_search_frame")
+
+    def test_show_chat_search_second_call(self, app):
+        # Build frame on first call, then call again (should reuse, not rebuild)
+        app._show_chat_search()
+        frame_id = id(app._search_frame)
+        app._show_chat_search()
+        assert id(app._search_frame) == frame_id
+
+
+class TestExportChatMd:
+    """Cover _export_chat_md (1209-1226)."""
+
+    def test_export_chat_md_empty(self, app):
+        app.chat_display = _FakeText()
+        app._export_chat_md()
+        # chat says "Chat is empty." — no exception
+
+    def test_export_chat_md_writes_file(self, app, tmp_path, monkeypatch):
+        app.chat_display = _FakeText()
+        app.chat_display.insert("end", "Hello world chat")
+        monkeypatch.chdir(tmp_path)
+        app._export_chat_md()
+        md_files = list(tmp_path.glob("sentinel_chat_*.md"))
+        assert md_files, "Expected an exported markdown file"
+        assert "Hello world chat" in md_files[0].read_text()
+
+    def test_export_chat_md_oserror(self, app):
+        from pathlib import Path
+        app.chat_display = _FakeText()
+        app.chat_display.insert("end", "some content")
+        with patch.object(Path, "open", side_effect=OSError("disk full")):
+            app._export_chat_md()  # should not raise
+
+
+class TestShowToast:
+    """Cover _show_toast (1245-1267)."""
+
+    def test_show_toast_normal(self, app):
+        app._show_toast("Test toast message")
+
+    def test_show_toast_tclError_swallowed(self, app):
+        import tkinter as tk
+        orig_frame = app.root.__class__
+        with patch.object(type(app.root), "after", side_effect=tk.TclError("no widget")):
+            app._show_toast("crash toast")  # should not raise
+
+
 class TestSettingsSaveNoOnSave:
     """Branch 1137->1139: on_save is None → skip on_save()."""
 
