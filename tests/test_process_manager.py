@@ -298,3 +298,92 @@ def test_start_process_running_process_no_warning():
 
     assert pid == 42
     mock_log.warning.assert_not_called()
+
+
+# ── set_priority ──────────────────────────────────────────────────────────────
+
+def test_set_priority_success():
+    mock_proc = MagicMock()
+    with patch("core.process_manager.psutil.Process", return_value=mock_proc):
+        result = process_manager.set_priority(1234, "normal")
+    assert result is True
+    mock_proc.nice.assert_called_once()
+
+
+def test_set_priority_high():
+    mock_proc = MagicMock()
+    with patch("core.process_manager.psutil.Process", return_value=mock_proc):
+        result = process_manager.set_priority(1234, "high")
+    assert result is True
+
+
+def test_set_priority_unknown_returns_false():
+    mock_proc = MagicMock()
+    with patch("core.process_manager.psutil.Process", return_value=mock_proc):
+        result = process_manager.set_priority(1234, "turbo_boost")
+    assert result is False
+    mock_proc.nice.assert_not_called()
+
+
+def test_set_priority_no_such_process():
+    import psutil
+    with patch("core.process_manager.psutil.Process", side_effect=psutil.NoSuchProcess(1234)):
+        result = process_manager.set_priority(1234, "normal")
+    assert result is False
+
+
+def test_set_priority_access_denied():
+    import psutil
+    mock_proc = MagicMock()
+    mock_proc.nice.side_effect = psutil.AccessDenied(1234)
+    with patch("core.process_manager.psutil.Process", return_value=mock_proc):
+        result = process_manager.set_priority(1234, "high")
+    assert result is False
+
+
+def test_set_priority_oserror():
+    mock_proc = MagicMock()
+    mock_proc.nice.side_effect = OSError("permission denied")
+    with patch("core.process_manager.psutil.Process", return_value=mock_proc):
+        result = process_manager.set_priority(1234, "idle")
+    assert result is False
+
+
+# ── set_env ───────────────────────────────────────────────────────────────────
+
+def test_set_env_basic():
+    result = process_manager.set_env("_SENTINEL_TEST_VAR", "hello")
+    assert result is True
+    import os
+    assert os.environ.get("_SENTINEL_TEST_VAR") == "hello"
+    del os.environ["_SENTINEL_TEST_VAR"]
+
+
+def test_set_env_permanent_non_windows():
+    """On Linux, permanent=True just sets the env var (no winreg branch)."""
+    result = process_manager.set_env("_SENTINEL_TEST_PERM", "world", permanent=True)
+    assert result is True
+    import os
+    assert os.environ.get("_SENTINEL_TEST_PERM") == "world"
+    del os.environ["_SENTINEL_TEST_PERM"]
+
+
+def test_set_env_permanent_windows_oserror():
+    """Windows permanent path: winreg.OpenKey raises OSError → returns False."""
+    mock_winreg = MagicMock()
+    mock_winreg.OpenKey.side_effect = OSError("Access denied")
+    with patch("sys.platform", "win32"):
+        with patch.dict("sys.modules", {"winreg": mock_winreg}):
+            result = process_manager.set_env("_SENTINEL_WINTEST", "val", permanent=True)
+    assert result is False
+    # Clean up env var that was set before the OSError was raised
+    import os
+    os.environ.pop("_SENTINEL_WINTEST", None)
+
+
+# ── service_control ───────────────────────────────────────────────────────────
+
+def test_service_control_non_windows():
+    result = process_manager.service_control("Spooler", "start")
+    assert result["success"] is False
+    assert "Windows" in result["error"]

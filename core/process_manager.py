@@ -119,11 +119,11 @@ def set_priority(pid: int, priority: str) -> bool:
     try:
         p = psutil.Process(pid)
         priority_map = {
-            "idle": psutil.IDLE_PRIORITY_CLASS if hasattr(psutil, "IDLE_PRIORITY_CLASS") else psutil.IOPRIO_IDLE,
-            "low": psutil.BELOW_NORMAL_PRIORITY_CLASS if hasattr(psutil, "BELOW_NORMAL_PRIORITY_CLASS") else psutil.IOPRIO_LOW,
-            "normal": psutil.NORMAL_PRIORITY_CLASS if hasattr(psutil, "NORMAL_PRIORITY_CLASS") else psutil.IOPRIO_NORMAL,
-            "high": psutil.ABOVE_NORMAL_PRIORITY_CLASS if hasattr(psutil, "ABOVE_NORMAL_PRIORITY_CLASS") else psutil.IOPRIO_HIGH,
-            "realtime": psutil.REALTIME_PRIORITY_CLASS if hasattr(psutil, "REALTIME_PRIORITY_CLASS") else psutil.IOPRIO_HIGH,
+            "idle": psutil.IDLE_PRIORITY_CLASS if hasattr(psutil, "IDLE_PRIORITY_CLASS") else 19,
+            "low": psutil.BELOW_NORMAL_PRIORITY_CLASS if hasattr(psutil, "BELOW_NORMAL_PRIORITY_CLASS") else 10,
+            "normal": psutil.NORMAL_PRIORITY_CLASS if hasattr(psutil, "NORMAL_PRIORITY_CLASS") else 0,
+            "high": psutil.ABOVE_NORMAL_PRIORITY_CLASS if hasattr(psutil, "ABOVE_NORMAL_PRIORITY_CLASS") else -5,
+            "realtime": psutil.REALTIME_PRIORITY_CLASS if hasattr(psutil, "REALTIME_PRIORITY_CLASS") else -20,
         }
         pri = priority_map.get(priority.lower())
         if pri is None:

@@ -179,3 +179,139 @@ class TestNetActionsInExecutor:
         result = executor.execute_sync({"action": "port_scan", "host": "127.0.0.1", "ports": [65432]})
         assert result["success"] is True
         assert "results" in result
+
+
+# ── socket.herror branch ──────────────────────────────────────────────────────
+
+class TestDnsLookupSocketHerror:
+    def test_herror_returns_error_dict(self):
+        with patch("socket.gethostbyaddr", side_effect=socket.herror("name not found")):
+            result = dns_lookup("127.0.0.1", "PTR")
+        assert "error" in result
+        assert result["addresses"] == []
+        assert result["type"] == "PTR"
+
+
+# ── dnspython path ────────────────────────────────────────────────────────────
+
+class TestDnsLookupDnspython:
+    def _make_mocks(self, resolve_return=None, resolve_raises=None):
+        mock_resolver_inst = MagicMock()
+        if resolve_raises:
+            mock_resolver_inst.resolve.side_effect = resolve_raises
+        else:
+            mock_resolver_inst.resolve.return_value = resolve_return or [MagicMock()]
+        mock_dns_resolver = MagicMock()
+        mock_dns_resolver.Resolver.return_value = mock_resolver_inst
+        # Pre-wire dns.resolver attribute so import dns.resolver inside the
+        # function finds it via the parent package object, not sys.modules.
+        mock_dns = MagicMock()
+        mock_dns.resolver = mock_dns_resolver
+        return mock_dns, mock_dns_resolver, mock_resolver_inst
+
+    def test_dnspython_success(self):
+        from core.net_tools import _dns_lookup_dnspython
+        mock_dns, mock_dns_resolver, _ = self._make_mocks()
+        with patch.dict("sys.modules", {"dns": mock_dns, "dns.resolver": mock_dns_resolver}):
+            result = _dns_lookup_dnspython("example.com", "MX", None)
+        assert result is not None
+        assert result["type"] == "MX"
+        assert result["hostname"] == "example.com"
+        assert isinstance(result["addresses"], list)
+
+    def test_dnspython_with_server(self):
+        from core.net_tools import _dns_lookup_dnspython
+        mock_dns, mock_dns_resolver, mock_inst = self._make_mocks()
+        with patch.dict("sys.modules", {"dns": mock_dns, "dns.resolver": mock_dns_resolver}):
+            result = _dns_lookup_dnspython("example.com", "MX", "8.8.8.8")
+        assert result is not None
+        assert mock_inst.nameservers == ["8.8.8.8"]
+
+    def test_dnspython_exception_returns_error_dict(self):
+        from core.net_tools import _dns_lookup_dnspython
+        mock_dns, mock_dns_resolver, _ = self._make_mocks(resolve_raises=RuntimeError("NXDOMAIN"))
+        with patch.dict("sys.modules", {"dns": mock_dns, "dns.resolver": mock_dns_resolver}):
+            result = _dns_lookup_dnspython("noexist.example", "MX", None)
+        assert result is not None
+        assert "error" in result
+        assert result["addresses"] == []
+
+    def test_dns_lookup_returns_dnspython_result(self):
+        mock_dns, mock_dns_resolver, _ = self._make_mocks()
+        with patch.dict("sys.modules", {"dns": mock_dns, "dns.resolver": mock_dns_resolver}):
+            result = dns_lookup("gmail.com", "MX")
+        assert result["type"] == "MX"
+        assert "addresses" in result
+
+
+# ── ping_host edge cases ──────────────────────────────────────────────────────
+
+class TestPingHostEdgeCases:
+    def test_windows_command_uses_dash_n(self):
+        import subprocess as sp
+        mock_result = MagicMock()
+        mock_result.stdout = "Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),"
+        mock_result.stderr = ""
+        with patch("core.net_tools._IS_WINDOWS", True):
+            with patch("subprocess.run", return_value=mock_result) as mock_run:
+                ping_host("8.8.8.8", count=1, timeout=1)
+        cmd = mock_run.call_args[0][0]
+        assert "-n" in cmd
+        assert "-w" in cmd
+
+    def test_timeout_returns_error(self):
+        import subprocess as sp
+        with patch("subprocess.run", side_effect=sp.TimeoutExpired(cmd=["ping"], timeout=5)):
+            result = ping_host("8.8.8.8", count=1, timeout=1)
+        assert result["success"] is False
+        assert result["error"] == "timeout"
+        assert result["host"] == "8.8.8.8"
+
+    def test_oserror_returns_error(self):
+        with patch("subprocess.run", side_effect=OSError("No such file")):
+            result = ping_host("8.8.8.8", count=1, timeout=1)
+        assert result["success"] is False
+        assert "No such file" in result["error"]
+
+
+# ── traceroute function ───────────────────────────────────────────────────────
+
+class TestTracerouteFunction:
+    def test_success_returns_hops(self):
+        mock_result = MagicMock()
+        mock_result.stdout = (
+            "traceroute to 8.8.8.8, 30 hops max\n"
+            " 1  192.168.1.1  1.0 ms  1.0 ms  1.0 ms\n"
+            " 2  10.0.0.1  9.0 ms  9.0 ms  9.0 ms\n"
+        )
+        mock_result.stderr = ""
+        with patch("subprocess.run", return_value=mock_result):
+            result = traceroute("8.8.8.8")
+        assert result["host"] == "8.8.8.8"
+        assert "hops" in result
+        assert "output" in result
+
+    def test_windows_uses_tracert(self):
+        mock_result = MagicMock()
+        mock_result.stdout = "Tracing route to 8.8.8.8\n  1  1ms  192.168.1.1\n"
+        mock_result.stderr = ""
+        with patch("core.net_tools._IS_WINDOWS", True):
+            with patch("subprocess.run", return_value=mock_result) as mock_run:
+                traceroute("8.8.8.8")
+        cmd = mock_run.call_args[0][0]
+        assert "tracert" in cmd
+
+    def test_timeout_returns_error(self):
+        import subprocess as sp
+        with patch("subprocess.run", side_effect=sp.TimeoutExpired(cmd=["traceroute"], timeout=30)):
+            result = traceroute("8.8.8.8")
+        assert result["host"] == "8.8.8.8"
+        assert result["error"] == "timeout"
+        assert result["hops"] == []
+
+    def test_oserror_returns_error(self):
+        with patch("subprocess.run", side_effect=OSError("traceroute not found")):
+            result = traceroute("8.8.8.8")
+        assert result["host"] == "8.8.8.8"
+        assert "traceroute not found" in result["error"]
+        assert result["hops"] == []
