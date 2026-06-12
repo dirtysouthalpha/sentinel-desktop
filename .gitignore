@@ -36,6 +36,7 @@ desktop.ini
 .pytest_tmp/
 .coverage
 .coverage.*
+coverage.json
 htmlcov/
 .tox/
 .mypy_cache/
@@ -63,3 +64,11 @@ templates/
 # Local-only environment overrides
 .env
 .env.local
+
+# Generated/backup files
+sentinel_chat_*.md
+*.sh.bak
+
+# Agent runtime memory (grows unboundedly — per-deployment state)
+memory/episodes.jsonl
+memory/semantic.db
