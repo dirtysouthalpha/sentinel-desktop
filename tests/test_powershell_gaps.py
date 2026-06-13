@@ -120,7 +120,8 @@ class TestRunnerInternals:
         assert args[0] == "powershell.exe"
         assert "-NoProfile" in args
         assert "-NonInteractive" in args
-        assert "JSON" in args
+        # powershell.exe (5.x) uses Text; ConvertTo-Json pipe handles JSON.
+        assert "Text" in args
 
 
 # ---------------------------------------------------------------------------

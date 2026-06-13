@@ -202,8 +202,17 @@ class TestBaseArgs:
 
     def test_includes_json_output(self):
         runner = PowerShellRunner()
+        runner._ps_exe = PowerShellRunner.PS_CORE_EXE  # pwsh supports JSON
         args = runner._base_args()
         assert "JSON" in args
+
+    def test_windows_ps5_uses_text_output(self):
+        """powershell.exe (5.x) rejects -OutputFormat JSON; must use Text."""
+        runner = PowerShellRunner()
+        runner._ps_exe = PowerShellRunner.POWERSHELL_EXE  # powershell.exe
+        args = runner._base_args()
+        assert "Text" in args
+        assert "JSON" not in args
 
     def test_starts_with_exe(self):
         runner = PowerShellRunner()

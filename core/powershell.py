@@ -159,8 +159,19 @@ class PowerShellRunner:
         return env
 
     def _base_args(self) -> list[str]:
-        """Return the common PowerShell invocation flags (no profile, JSON output)."""
-        return [self._ps_exe, "-NoProfile", "-NonInteractive", "-OutputFormat", "JSON"]
+        """Return the common PowerShell invocation flags (no profile).
+
+        PowerShell 7 (``pwsh.exe``) accepts ``-OutputFormat JSON``;
+        Windows PowerShell 5.x (``powershell.exe``) only accepts
+        ``Text``/``XML``/``None`` and rejects ``JSON`` with exit code
+        ``4294770688``. JSON serialization is produced by the
+        ``ConvertTo-Json`` pipe appended in :meth:`_run` regardless of
+        this flag, so ``Text`` is safe for 5.x and the pipe still
+        delivers parseable JSON to :meth:`_parse_json_output`.
+        """
+        is_core = self._ps_exe == self.PS_CORE_EXE or self._ps_exe.lower().endswith("pwsh.exe")
+        fmt = "JSON" if is_core else "Text"
+        return [self._ps_exe, "-NoProfile", "-NonInteractive", "-OutputFormat", fmt]
 
     @staticmethod
     def _parse_json_output(stdout: str) -> list[dict[str, Any]]:
