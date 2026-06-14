@@ -628,6 +628,13 @@ if __name__ == "__main__":
     if _transport in ("http", "streamable-http", "sse"):
         _host = os.environ.get("SENTINEL_MCP_HOST", "100.86.200.42")  # NUKE tailnet IP
         _port = int(os.environ.get("SENTINEL_MCP_PORT", "9192"))
+        _token = os.environ.get("MCP_AUTH_TOKEN")
+        if _token:
+            from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
+
+            mcp.auth = StaticTokenVerifier(
+                tokens={_token: {"client_id": "fleet", "scopes": []}}
+            )
         mcp.run(transport="http", host=_host, port=_port)
     else:
         mcp.run(transport="stdio")
