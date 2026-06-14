@@ -58,8 +58,12 @@ def watch_file(
 
     while time.monotonic() < deadline:
         elapsed = time.monotonic() - start
-        now_exists = p.exists()
-        now_mtime = p.stat().st_mtime if now_exists else None
+        try:
+            now_mtime = p.stat().st_mtime
+            now_exists = True
+        except FileNotFoundError:
+            now_exists = False
+            now_mtime = None
 
         triggered = False
         if event == "modify" and initial_exists and now_exists:
