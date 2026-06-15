@@ -4,11 +4,19 @@
 Proxies MCP tool calls to the Sentinel Desktop FastAPI server over HTTP.
 Works with sentinel-desktop running locally or on a remote host (e.g. homeserver).
 
-Environment variables:
+Environment variables (API proxy):
   SENTINEL_API_URL   — Base URL of the Sentinel Desktop API (default: http://localhost:8091)
   SENTINEL_API_TOKEN — Optional bearer token for API auth (default: none)
 
-Transport: stdio (for MCP client integration)
+Environment variables (MCP transport):
+  SENTINEL_MCP_TRANSPORT — 'stdio' (default) or 'http'/'sse' for Tailscale fleet sharing
+  SENTINEL_MCP_HOST      — Bind host for HTTP transport (default: 100.86.200.42, NUKE tailnet IP)
+  SENTINEL_MCP_PORT      — Bind port for HTTP transport (default: 9192)
+  MCP_AUTH_TOKEN         — Static bearer token to protect the HTTP MCP endpoint (optional)
+
+Entry points (after pip install sentinel-desktop):
+  sentinel-mcp-server                              # stdio transport
+  SENTINEL_MCP_TRANSPORT=http sentinel-mcp-server  # HTTP transport
 """
 
 from __future__ import annotations
