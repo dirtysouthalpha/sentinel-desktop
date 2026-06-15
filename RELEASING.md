@@ -50,5 +50,7 @@ twine upload dist/*                  # prompts for PyPI token (use a token, user
 
 ```bash
 pip install sentinel-desktop
-sentinel-desktop --help              # entry point from [project.scripts]
+sentinel-desktop --help              # GUI/API entry point
+sentinel-mcp-server                  # MCP server (stdio transport, default)
+SENTINEL_MCP_TRANSPORT=http sentinel-mcp-server   # HTTP transport (Tailscale fleet)
 ```
