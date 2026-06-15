@@ -1,18 +1,18 @@
 <div align="center">
 
-# ⬡ Sentinel Desktop v6.0
+# ⬡ Sentinel Desktop v17.0
 
 **AI-powered desktop automation agent — cross-platform, cyberpunk HUD edition.**
 
 Give it a goal in plain English. It sees your screen, moves the mouse, types, and interacts with any application — autonomously.
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
-[![Version](https://img.shields.io/badge/version-6.0.0-orange)](https://github.com/dirtysouthalpha/sentinel-desktop/releases)
-[![Tests](https://img.shields.io/badge/tests-5244%20passing-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
+[![Version](https://img.shields.io/badge/version-17.0.0-orange)](https://github.com/dirtysouthalpha/sentinel-desktop/releases)
+[![Tests](https://img.shields.io/badge/tests-7823%20passing-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
 [![Lint](https://img.shields.io/badge/lint-0%20errors-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-45+ modules · 5,244 tests · 14 themes · 35 API endpoints · 30+ action types · 20+ LLM providers
+105+ action types · 7,823 tests · 35+ API endpoints · 20+ LLM providers · MCP server · Fleet/daemon mode
 
 </div>
 
