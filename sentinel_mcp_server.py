@@ -621,20 +621,29 @@ def agent_zero_health() -> str:
 # Entry point
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
-    # Transport: stdio (default, local clients) or http (shared over Tailscale so
-    # fleet machines without this script/deps can reach sentinel via one URL).
-    _transport = os.environ.get("SENTINEL_MCP_TRANSPORT", "stdio").lower()
-    if _transport in ("http", "streamable-http", "sse"):
-        _host = os.environ.get("SENTINEL_MCP_HOST", "100.86.200.42")  # NUKE tailnet IP
-        _port = int(os.environ.get("SENTINEL_MCP_PORT", "9192"))
-        _token = os.environ.get("MCP_AUTH_TOKEN")
-        if _token:
+def main() -> None:
+    """Start the MCP server.
+
+    Transport is selected via SENTINEL_MCP_TRANSPORT env var (default: stdio).
+    Set to 'http' (or 'streamable-http'/'sse') to listen over HTTP for Tailscale
+    fleet sharing; SENTINEL_MCP_HOST, SENTINEL_MCP_PORT, and MCP_AUTH_TOKEN
+    control the bind address and optional bearer-token auth.
+    """
+    transport = os.environ.get("SENTINEL_MCP_TRANSPORT", "stdio").lower()
+    if transport in ("http", "streamable-http", "sse"):
+        host = os.environ.get("SENTINEL_MCP_HOST", "100.86.200.42")  # NUKE tailnet IP
+        port = int(os.environ.get("SENTINEL_MCP_PORT", "9192"))
+        token = os.environ.get("MCP_AUTH_TOKEN")
+        if token:
             from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 
             mcp.auth = StaticTokenVerifier(
-                tokens={_token: {"client_id": "fleet", "scopes": []}}
+                tokens={token: {"client_id": "fleet", "scopes": []}}
             )
-        mcp.run(transport="http", host=_host, port=_port)
+        mcp.run(transport="http", host=host, port=port)
     else:
         mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()

@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sentinel-desktop"
 dynamic = ["version"]
-description = "AI-powered Windows desktop automation agent."
+description = "AI-powered cross-platform desktop automation agent."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Sentinel Labs" }]
 keywords = ["automation", "llm", "agent", "desktop", "windows"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Win32 (MS Windows)",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
@@ -77,9 +77,10 @@ Issues = "https://github.com/dirtysouthalpha/sentinel-desktop/issues"
 
 [project.scripts]
 sentinel-desktop = "main:main"
+sentinel-mcp-server = "sentinel_mcp_server:main"
 
 [tool.setuptools]
-py-modules = ["main", "config"]
+py-modules = ["main", "config", "sentinel_mcp_server"]
 
 [tool.setuptools.packages.find]
 include = ["core*", "api*", "gui*", "plugins*"]

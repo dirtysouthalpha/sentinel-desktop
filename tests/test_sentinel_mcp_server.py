@@ -1,4 +1,4 @@
-"""Tests for sentinel-mcp-server.py — HTTP helpers, _err, and all MCP tool functions."""
+"""Tests for sentinel_mcp_server.py — HTTP helpers, _err, and all MCP tool functions."""
 from __future__ import annotations
 
 import importlib.util
@@ -36,13 +36,13 @@ if "fastmcp" not in sys.modules:
 
 
 # ---------------------------------------------------------------------------
-# Module loading (file has a hyphen so can't be imported normally)
+# Module loading (load by path so tests can run without installing the package)
 # ---------------------------------------------------------------------------
 
 def _load_module():
     spec = importlib.util.spec_from_file_location(
         "sentinel_mcp_server",
-        os.path.join(os.path.dirname(__file__), "..", "sentinel-mcp-server.py"),
+        os.path.join(os.path.dirname(__file__), "..", "sentinel_mcp_server.py"),
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -719,3 +719,80 @@ class TestAgentZero:
         with patch("httpx.Client", return_value=cm):
             data = json.loads(_mod.agent_zero_health())
         assert data["reachable"] is False and "error" in data
+
+
+# ---------------------------------------------------------------------------
+# main() entry point
+# ---------------------------------------------------------------------------
+
+class TestMain:
+    def test_stdio_transport_is_default(self):
+        with patch.dict("os.environ", {}, clear=False):
+            os.environ.pop("SENTINEL_MCP_TRANSPORT", None)
+            with patch.object(_mod.mcp, "run") as mock_run:
+                _mod.main()
+        mock_run.assert_called_once_with(transport="stdio")
+
+    def test_explicit_stdio_transport(self):
+        with patch.dict("os.environ", {"SENTINEL_MCP_TRANSPORT": "stdio"}):
+            with patch.object(_mod.mcp, "run") as mock_run:
+                _mod.main()
+        mock_run.assert_called_once_with(transport="stdio")
+
+    def test_http_transport_uses_host_and_port(self):
+        env = {
+            "SENTINEL_MCP_TRANSPORT": "http",
+            "SENTINEL_MCP_HOST": "10.0.0.1",
+            "SENTINEL_MCP_PORT": "9999",
+        }
+        with patch.dict("os.environ", env):
+            with patch.object(_mod.mcp, "run") as mock_run:
+                _mod.main()
+        mock_run.assert_called_once_with(transport="http", host="10.0.0.1", port=9999)
+
+    def test_sse_transport_accepted(self):
+        with patch.dict("os.environ", {"SENTINEL_MCP_TRANSPORT": "sse"}):
+            with patch.object(_mod.mcp, "run") as mock_run:
+                _mod.main()
+        mock_run.assert_called_once()
+        assert mock_run.call_args.kwargs.get("transport") == "http"
+
+    def test_http_transport_with_auth_token(self):
+        env = {
+            "SENTINEL_MCP_TRANSPORT": "http",
+            "SENTINEL_MCP_HOST": "127.0.0.1",
+            "SENTINEL_MCP_PORT": "9192",
+            "MCP_AUTH_TOKEN": "secret-tok",
+        }
+        fake_verifier_cls = MagicMock()
+        fake_verifier = MagicMock()
+        fake_verifier_cls.return_value = fake_verifier
+
+        with patch.dict("os.environ", env):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "fastmcp.server.auth.providers.jwt": MagicMock(
+                        StaticTokenVerifier=fake_verifier_cls
+                    )
+                },
+            ):
+                with patch.object(_mod.mcp, "run"):
+                    _mod.main()
+
+        fake_verifier_cls.assert_called_once()
+        call_kwargs = fake_verifier_cls.call_args
+        tokens_arg = call_kwargs.kwargs.get("tokens") or call_kwargs.args[0]
+        assert "secret-tok" in tokens_arg
+
+    def test_http_transport_no_auth_token_skips_verifier(self):
+        env = {
+            "SENTINEL_MCP_TRANSPORT": "http",
+            "SENTINEL_MCP_HOST": "127.0.0.1",
+            "SENTINEL_MCP_PORT": "9192",
+        }
+        with patch.dict("os.environ", env):
+            os.environ.pop("MCP_AUTH_TOKEN", None)
+            with patch.object(_mod.mcp, "run") as mock_run:
+                _mod.main()
+        mock_run.assert_called_once_with(transport="http", host="127.0.0.1", port=9192)
