@@ -27,6 +27,12 @@ from __future__ import annotations
 import logging
 import time
 
+from core import humanize
+from core.humanize import profile as _humanize_profile
+from core.humanize import rng as _humanize_rng
+from core.humanize import timing as _humanize_timing
+from core.humanize import typing as _humanize_typing
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -74,9 +80,21 @@ def post_click(x: int, y: int, button: str = "left", clicks: int = 1, delay: flo
             wparam = win32con.MK_LBUTTON
         for _ in range(max(1, clicks)):
             win32api.PostMessage(hwnd, down, wparam, lparam)
-            time.sleep(delay)
+            # Down→up hold: humanized when enabled (variable, from profile's
+            # click_hold range); otherwise the original fixed `delay`.
+            if humanize.is_enabled():
+                try:
+                    hold = _humanize_timing.click_hold_duration(
+                        rng=_humanize_rng.get_rng(),
+                        profile=_humanize_profile.get_default_profile(),
+                    )
+                except Exception:  # noqa: BLE001 — never block input
+                    hold = delay
+            else:
+                hold = delay
+            time.sleep(hold)
             win32api.PostMessage(hwnd, up, 0, lparam)
-            time.sleep(delay)
+            time.sleep(hold)
         return True
     except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("post_click failed at (%s,%s): %s", x, y, exc)
@@ -103,11 +121,28 @@ def post_text(text: str, hwnd: int | None = None, delay: float = 0.005) -> bool:
         # Some apps prefer the focused control under the foreground window —
         # GetGUIThreadInfo gives that if available.
         focus_hwnd = _get_focus_hwnd(hwnd) or hwnd
-        for ch in text:
-            # WM_CHAR delivers a single character as if the user typed it.
-            win32api.PostMessage(focus_hwnd, win32con.WM_CHAR, ord(ch), 0)
-            if delay:
-                time.sleep(delay)
+        if humanize.is_enabled():
+            # Humanized: variable inter-key delays from a real distribution.
+            # keystroke_delays returns N-1 gaps (between consecutive chars);
+            # we sleep AFTER each char except the last.
+            try:
+                char_delays = _humanize_typing.keystroke_delays(
+                    text, rng=_humanize_rng.get_rng(),
+                    profile=_humanize_profile.get_default_profile(),
+                )
+            except Exception:  # noqa: BLE001 — never block typing
+                char_delays = [delay] * len(text)
+            for i, ch in enumerate(text):
+                win32api.PostMessage(focus_hwnd, win32con.WM_CHAR, ord(ch), 0)
+                if i < len(char_delays) and char_delays[i]:
+                    time.sleep(char_delays[i])
+        else:
+            # Original fixed-delay path: sleep after EVERY char (including
+            # the last) when delay > 0. Byte-identical to pre-humanize.
+            for ch in text:
+                win32api.PostMessage(focus_hwnd, win32con.WM_CHAR, ord(ch), 0)
+                if delay:
+                    time.sleep(delay)
         return True
     except (OSError, AttributeError, RuntimeError) as exc:
         logger.debug("post_text failed: %s", exc)
