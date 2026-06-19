@@ -224,6 +224,17 @@ Supports: outlook, chrome, edge, excel, word, teams, slack, notepad, vscode, etc
 {"action": "conductor_run", "goal": "Check all firewalls and generate report"} \
 — auto-decomposes and runs in parallel
 
+### Neuralis Brain (shared fleet memory — every agent reads/writes this)
+Use brain_recall BEFORE tackling a technical issue — another agent may have already solved it.
+Use brain_think AFTER landing a useful fix so the whole fleet benefits.
+{"action": "brain_think", "content": "FortiGate HA split-brain: reboot standby to resync"} \
+— store a learning (region defaults to "knowledge")
+{"action": "brain_recall", "context": "fortigate ha failover"} \
+— retrieve ranked thoughts relevant to this context
+{"action": "brain_search", "q": "sonicwall vpn"} — free-text search across all neurons
+{"action": "brain_stats"} — see neuron/synapse counts and active regions
+{"action": "brain_fire", "neuron_id": 1234} — reinforce a specific neuron
+
 ## Self-Healing — ALWAYS try alternatives before reporting failure
 
 PREFER click_element over raw coordinates when element IDs are available.

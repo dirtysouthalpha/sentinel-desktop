@@ -1845,6 +1845,86 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
+    # -----------------------------------------------------------------------
+    # Neuralis Brain (v18.0 — fleet-wide shared memory)
+    # -----------------------------------------------------------------------
+    {
+        "type": "function",
+        "function": {
+            "name": "brain_think",
+            "description": (
+                "Persist a thought or learning to the Neuralis Brain — shared fleet memory "
+                "read by every agent (Sentinel, Claude Code, opencode). Use after solving "
+                "a non-trivial problem or learning a useful fact. Auto-writes; no gate."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {"type": "string", "description": "The knowledge to store"},
+                    "region": {
+                        "type": "string",
+                        "enum": ["knowledge", "context", "preference", "decision"],
+                        "default": "knowledge",
+                        "description": "Brain region to store in",
+                    },
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "brain_recall",
+            "description": (
+                "Retrieve the most relevant thoughts from the fleet brain for a context string. "
+                "Use BEFORE tackling a technical issue — another agent may have already solved it."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "context": {"type": "string", "description": "Context string to recall against"},
+                },
+                "required": ["context"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "brain_search",
+            "description": "Free-text search across all neurons in the fleet brain.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string", "description": "Search query"},
+                },
+                "required": ["q"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "brain_stats",
+            "description": "Return fleet brain health stats — neuron/synapse counts, active regions.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "brain_fire",
+            "description": "Reinforce a specific neuron by ID — strengthens its synaptic connections.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "neuron_id": {"type": "integer", "description": "ID of the neuron to fire"},
+                },
+                "required": ["neuron_id"],
+            },
+        },
+    },
 ]
 
 

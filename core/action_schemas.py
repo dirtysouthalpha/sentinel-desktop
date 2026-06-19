@@ -336,6 +336,46 @@ class ConductorRunAction(_ActionBase):
 
 
 # ---------------------------------------------------------------------------
+# Neuralis Brain actions (v18.0 — fleet-wide shared memory)
+# ---------------------------------------------------------------------------
+
+
+class BrainThinkAction(_ActionBase):
+    """Persist a thought to the Neuralis Brain (shared fleet memory)."""
+
+    action: Literal["brain_think"]
+    content: _NonEmptyStr
+    region: Literal["knowledge", "context", "preference", "decision"] = "knowledge"
+
+
+class BrainRecallAction(_ActionBase):
+    """Retrieve the most relevant thoughts from the fleet brain for a context string."""
+
+    action: Literal["brain_recall"]
+    context: _NonEmptyStr
+
+
+class BrainSearchAction(_ActionBase):
+    """Free-text search across all neurons in the fleet brain."""
+
+    action: Literal["brain_search"]
+    q: _NonEmptyStr
+
+
+class BrainStatsAction(_ActionBase):
+    """Return fleet brain health stats — neuron/synapse counts, active regions."""
+
+    action: Literal["brain_stats"]
+
+
+class BrainFireAction(_ActionBase):
+    """Fire (reinforce) a specific neuron by ID — strengthens its connections."""
+
+    action: Literal["brain_fire"]
+    neuron_id: Annotated[int, Field(ge=1)]
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -556,6 +596,12 @@ ACTION_MODELS: dict[str, type[_ActionBase]] = {
     "registry_read": RegistryReadAction,
     "registry_write": RegistryWriteAction,
     "registry_delete": RegistryDeleteAction,
+    # Neuralis Brain (v18.0)
+    "brain_think": BrainThinkAction,
+    "brain_recall": BrainRecallAction,
+    "brain_search": BrainSearchAction,
+    "brain_stats": BrainStatsAction,
+    "brain_fire": BrainFireAction,
 }
 
 

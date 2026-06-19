@@ -2306,6 +2306,102 @@ class ActionExecutor:
         voices = list_voices()
         return {"success": True, "voices": voices, "count": len(voices), "output": voices}
 
+    # -------------------------------------------------------------------
+    # Neuralis Brain actions (v18.0 — fleet-wide shared memory)
+    # -------------------------------------------------------------------
+
+    def _brain_think(self, *, content: str, region: str = "knowledge", **_) -> dict:
+        """Persist a thought to the Neuralis Brain (auto-write, no gate)."""
+        from core import brain
+        try:
+            result = brain.think(content=content, region=region, source="sentinel-desktop")
+            neuron_id = result.get("neuron", {}).get("id")
+            return {
+                "success": True,
+                "output": f"Stored in brain (neuron {neuron_id})",
+                "neuron_id": neuron_id,
+                "op": "brain_think",
+            }
+        except brain.BrainUnavailableError:
+            return {"success": False, "error": "brain_unavailable",
+                    "output": "Brain API unreachable (homeserver:8000)."}
+        except brain.BrainError as exc:
+            return {"success": False, "error": "brain_error", "output": str(exc)}
+
+    def _brain_recall(self, *, context: str, **_) -> dict:
+        """Retrieve the most relevant thoughts from the fleet brain."""
+        from core import brain
+        try:
+            result = brain.recall(context=context)
+            direct = result.get("direct", [])
+            associated = result.get("associated", [])
+            total = len(direct) + len(associated)
+            return {
+                "success": True,
+                "output": result,
+                "count": total,
+                "op": "brain_recall",
+            }
+        except brain.BrainUnavailableError:
+            return {"success": False, "error": "brain_unavailable",
+                    "output": "Brain API unreachable (homeserver:8000)."}
+        except brain.BrainError as exc:
+            return {"success": False, "error": "brain_error", "output": str(exc)}
+
+    def _brain_search(self, *, q: str, **_) -> dict:
+        """Free-text search across all neurons in the fleet brain."""
+        from core import brain
+        try:
+            result = brain.search(q=q)
+            count = result.get("count", len(result.get("results", [])))
+            return {
+                "success": True,
+                "output": result,
+                "count": count,
+                "op": "brain_search",
+            }
+        except brain.BrainUnavailableError:
+            return {"success": False, "error": "brain_unavailable",
+                    "output": "Brain API unreachable (homeserver:8000)."}
+        except brain.BrainError as exc:
+            return {"success": False, "error": "brain_error", "output": str(exc)}
+
+    def _brain_stats(self, **_) -> dict:
+        """Return fleet brain health stats."""
+        from core import brain
+        try:
+            result = brain.stats()
+            totals = result.get("totals", {})
+            return {
+                "success": True,
+                "output": result,
+                "neurons": totals.get("neurons", 0),
+                "synapses": totals.get("synapses", 0),
+                "op": "brain_stats",
+            }
+        except brain.BrainUnavailableError:
+            return {"success": False, "error": "brain_unavailable",
+                    "output": "Brain API unreachable (homeserver:8000)."}
+        except brain.BrainError as exc:
+            return {"success": False, "error": "brain_error", "output": str(exc)}
+
+    def _brain_fire(self, *, neuron_id: int, **_) -> dict:
+        """Fire (reinforce) a neuron by ID."""
+        from core import brain
+        try:
+            result = brain.fire(neuron_id=neuron_id)
+            return {
+                "success": True,
+                "output": result,
+                "neuron_id": neuron_id,
+                "op": "brain_fire",
+            }
+        except brain.BrainUnavailableError:
+            return {"success": False, "error": "brain_unavailable",
+                    "output": "Brain API unreachable (homeserver:8000)."}
+        except brain.BrainError as exc:
+            return {"success": False, "error": "brain_error", "output": str(exc)}
+
     # Dispatch table
     _dispatch_table: dict[str, Callable] = {
         "click": _click,
@@ -2432,6 +2528,12 @@ class ActionExecutor:
         "volume_set": _volume_set,
         "mute_toggle": _mute_toggle,
         "list_voices": _list_voices,
+        # Neuralis Brain (v18.0)
+        "brain_think": _brain_think,
+        "brain_recall": _brain_recall,
+        "brain_search": _brain_search,
+        "brain_stats": _brain_stats,
+        "brain_fire": _brain_fire,
     }
 
 
