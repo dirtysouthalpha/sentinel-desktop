@@ -10,12 +10,30 @@ import pytest
 
 @pytest.fixture
 def mock_paramiko():
-    with patch("core.netops.ssh_client._HAS_PARAMIKO", True):
-        with patch("core.netops.ssh_client.paramiko") as mock_pw:
-            mock_client = MagicMock()
-            mock_pw.SSHClient.return_value = mock_client
-            mock_pw.AutoAddPolicy.return_value = "auto_add_policy"
-            yield mock_pw, mock_client
+    """Patch paramiko at both the module-global and sys.modules level.
+
+    The module-global patch (core.netops.ssh_client.paramiko) is sufficient on
+    Python 3.11+, but on 3.10 the mock can leak and reach the real paramiko
+    SSHClient.connect(), which then hangs for 30s on a real network connection
+    to 10.0.0.1. Patching sys.modules['paramiko'] too ensures the real client
+    is never reachable, making the fixture version-independent.
+    """
+    fake_paramiko = MagicMock()
+    mock_client = MagicMock()
+    fake_paramiko.SSHClient.return_value = mock_client
+    fake_paramiko.AutoAddPolicy.return_value = "auto_add_policy"
+
+    original_paramiko = sys.modules.get("paramiko")
+    sys.modules["paramiko"] = fake_paramiko
+    try:
+        with patch("core.netops.ssh_client._HAS_PARAMIKO", True):
+            with patch("core.netops.ssh_client.paramiko", fake_paramiko):
+                yield fake_paramiko, mock_client
+    finally:
+        if original_paramiko is None:
+            sys.modules.pop("paramiko", None)
+        else:
+            sys.modules["paramiko"] = original_paramiko
 
 
 class TestParamikoImportLines:
