@@ -5,8 +5,6 @@ from __future__ import annotations
 import socket
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.net_tools import (
     _parse_ping_output,
     _parse_traceroute,
@@ -17,8 +15,8 @@ from core.net_tools import (
     traceroute,
 )
 
-
 # ── DNS lookup ────────────────────────────────────────────────────────────────
+
 
 class TestDnsLookup:
     def test_a_record_localhost(self):
@@ -55,6 +53,7 @@ class TestDnsLookup:
 
 
 # ── Ping output parsing ───────────────────────────────────────────────────────
+
 
 class TestParsePingOutput:
     def test_windows_style_output(self):
@@ -95,6 +94,7 @@ class TestParsePingOutput:
 
 # ── Port scan ─────────────────────────────────────────────────────────────────
 
+
 class TestPortScan:
     def test_scan_loopback_ports(self):
         results = scan_ports("127.0.0.1", [9999, 19999], timeout=0.5)
@@ -113,6 +113,7 @@ class TestPortScan:
 
 
 # ── Traceroute parsing ────────────────────────────────────────────────────────
+
 
 class TestParseTraceroute:
     def test_windows_style(self):
@@ -133,6 +134,7 @@ class TestParseTraceroute:
 
 # ── Ping host integration (subprocess) ───────────────────────────────────────
 
+
 class TestPingHost:
     def test_ping_localhost(self):
         result = ping_host("127.0.0.1", count=1, timeout=2)
@@ -148,40 +150,50 @@ class TestPingHost:
 
 # ── Action executor integration ───────────────────────────────────────────────
 
+
 class TestNetActionsInExecutor:
     def test_dns_lookup_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "dns_lookup" in ActionExecutor._dispatch_table
 
     def test_ping_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "ping" in ActionExecutor._dispatch_table
 
     def test_port_scan_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "port_scan" in ActionExecutor._dispatch_table
 
     def test_dns_lookup_executor(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor()
         result = executor.execute_sync({"action": "dns_lookup", "hostname": "localhost"})
         assert "addresses" in result
 
     def test_ping_executor(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor()
         result = executor.execute_sync({"action": "ping", "host": "127.0.0.1", "count": 1})
         assert "success" in result
 
     def test_port_scan_executor(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor()
-        result = executor.execute_sync({"action": "port_scan", "host": "127.0.0.1", "ports": [65432]})
+        result = executor.execute_sync(
+            {"action": "port_scan", "host": "127.0.0.1", "ports": [65432]}
+        )
         assert result["success"] is True
         assert "results" in result
 
 
 # ── socket.herror branch ──────────────────────────────────────────────────────
+
 
 class TestDnsLookupSocketHerror:
     def test_herror_returns_error_dict(self):
@@ -193,6 +205,7 @@ class TestDnsLookupSocketHerror:
 
 
 # ── dnspython path ────────────────────────────────────────────────────────────
+
 
 class TestDnsLookupDnspython:
     def _make_mocks(self, resolve_return=None, resolve_raises=None):
@@ -211,6 +224,7 @@ class TestDnsLookupDnspython:
 
     def test_dnspython_success(self):
         from core.net_tools import _dns_lookup_dnspython
+
         mock_dns, mock_dns_resolver, _ = self._make_mocks()
         with patch.dict("sys.modules", {"dns": mock_dns, "dns.resolver": mock_dns_resolver}):
             result = _dns_lookup_dnspython("example.com", "MX", None)
@@ -221,6 +235,7 @@ class TestDnsLookupDnspython:
 
     def test_dnspython_with_server(self):
         from core.net_tools import _dns_lookup_dnspython
+
         mock_dns, mock_dns_resolver, mock_inst = self._make_mocks()
         with patch.dict("sys.modules", {"dns": mock_dns, "dns.resolver": mock_dns_resolver}):
             result = _dns_lookup_dnspython("example.com", "MX", "8.8.8.8")
@@ -229,6 +244,7 @@ class TestDnsLookupDnspython:
 
     def test_dnspython_exception_returns_error_dict(self):
         from core.net_tools import _dns_lookup_dnspython
+
         mock_dns, mock_dns_resolver, _ = self._make_mocks(resolve_raises=RuntimeError("NXDOMAIN"))
         with patch.dict("sys.modules", {"dns": mock_dns, "dns.resolver": mock_dns_resolver}):
             result = _dns_lookup_dnspython("noexist.example", "MX", None)
@@ -246,9 +262,9 @@ class TestDnsLookupDnspython:
 
 # ── ping_host edge cases ──────────────────────────────────────────────────────
 
+
 class TestPingHostEdgeCases:
     def test_windows_command_uses_dash_n(self):
-        import subprocess as sp
         mock_result = MagicMock()
         mock_result.stdout = "Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),"
         mock_result.stderr = ""
@@ -261,6 +277,7 @@ class TestPingHostEdgeCases:
 
     def test_timeout_returns_error(self):
         import subprocess as sp
+
         with patch("subprocess.run", side_effect=sp.TimeoutExpired(cmd=["ping"], timeout=5)):
             result = ping_host("8.8.8.8", count=1, timeout=1)
         assert result["success"] is False
@@ -275,6 +292,7 @@ class TestPingHostEdgeCases:
 
 
 # ── traceroute function ───────────────────────────────────────────────────────
+
 
 class TestTracerouteFunction:
     def test_success_returns_hops(self):
@@ -303,6 +321,7 @@ class TestTracerouteFunction:
 
     def test_timeout_returns_error(self):
         import subprocess as sp
+
         with patch("subprocess.run", side_effect=sp.TimeoutExpired(cmd=["traceroute"], timeout=30)):
             result = traceroute("8.8.8.8")
         assert result["host"] == "8.8.8.8"

@@ -29,9 +29,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 MOD = "core.platform.linux_backend"
 
@@ -241,8 +239,8 @@ class TestLinuxAccessibilityInvokeElementRawNone:
         UIElement.__init__ converts raw=None to {}, so we bypass __init__
         using __new__ + direct slot assignment to get a true None raw.
         """
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
 
@@ -658,8 +656,6 @@ class TestLinuxWindowBackendWnck:
 
     def test_list_wnck_appends_visible_windows(self):
         """Lines 772-774: non-pager-skip windows get appended to result."""
-        from core.platform.linux_backend import LinuxWindowBackend
-        from core.platform.base import WindowInfo
 
         backend = self._make_backend(has_wnck=True)
 
@@ -800,11 +796,11 @@ class TestLinuxWindowBackendXdotoolErrors:
 
         list_result = self._make_list_result("12345\n67890")
 
-        name_results = [
+        [
             MagicMock(returncode=0, stdout="GoodWindow"),
             MagicMock(returncode=0, stdout="AnotherWindow"),
         ]
-        geo_results = [
+        [
             MagicMock(returncode=0, stdout="X=0\nY=0\nWIDTH=800\nHEIGHT=600"),
         ]
 
@@ -814,7 +810,9 @@ class TestLinuxWindowBackendXdotoolErrors:
             if "search" in cmd:
                 return list_result
             if "getwindowname" in cmd:
-                r = MagicMock(returncode=0, stdout="BadWindow" if cmd[-1] == "12345" else "GoodWindow")
+                r = MagicMock(
+                    returncode=0, stdout="BadWindow" if cmd[-1] == "12345" else "GoodWindow"
+                )
                 return r
             if "getwindowgeometry" in cmd:
                 count = call_count[0]

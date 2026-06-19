@@ -9,7 +9,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -80,19 +80,20 @@ class TestProbeAtspi:
         _reset_probes()
 
     def test_probe_atspi_returns_true_when_gi_and_atspi_available(self):
-        from core.platform.linux_backend import _probe_atspi
 
         fake_gi = MagicMock()
         fake_atspi = MagicMock()
-        with patch.dict(sys.modules, {"gi": fake_gi, "gi.repository": MagicMock(), "gi.repository.Atspi": fake_atspi}):
+        with patch.dict(
+            sys.modules,
+            {"gi": fake_gi, "gi.repository": MagicMock(), "gi.repository.Atspi": fake_atspi},
+        ):
             with patch("gi.require_version"):
                 with patch.dict(sys.modules, {"gi": fake_gi}):
                     # Direct mock of the import inside the function
-                    import importlib
                     import core.platform.linux_backend as lb
+
                     lb._has_atspi = None
 
-                    orig = __builtins__
                     try:
                         fake_gi.require_version = MagicMock()
                         with patch.dict(sys.modules, {"gi": fake_gi}):
@@ -105,8 +106,9 @@ class TestProbeAtspi:
         assert result is True
 
     def test_probe_atspi_returns_false_on_import_error(self):
-        from core.platform.linux_backend import _probe_atspi
         import core.platform.linux_backend as lb
+        from core.platform.linux_backend import _probe_atspi
+
         lb._has_atspi = None
 
         with patch.dict(sys.modules, {"gi": None}):
@@ -115,11 +117,13 @@ class TestProbeAtspi:
 
     def test_probe_atspi_cached_true(self):
         import core.platform.linux_backend as lb
+
         lb._has_atspi = True
         assert lb._probe_atspi() is True
 
     def test_probe_atspi_cached_false(self):
         import core.platform.linux_backend as lb
+
         lb._has_atspi = False
         assert lb._probe_atspi() is False
 
@@ -133,6 +137,7 @@ class TestProbeSecretStorage:
 
     def test_probe_secretstorage_returns_true_when_importable(self):
         import core.platform.linux_backend as lb
+
         lb._has_secretstorage = None
 
         fake_ss = MagicMock()
@@ -142,6 +147,7 @@ class TestProbeSecretStorage:
 
     def test_probe_secretstorage_returns_false_on_import_error(self):
         import core.platform.linux_backend as lb
+
         lb._has_secretstorage = None
 
         with patch.dict(sys.modules, {"secretstorage": None}):
@@ -150,6 +156,7 @@ class TestProbeSecretStorage:
 
     def test_probe_secretstorage_cached(self):
         import core.platform.linux_backend as lb
+
         lb._has_secretstorage = True
         assert lb._probe_secretstorage() is True
 
@@ -163,16 +170,19 @@ class TestProbeWnck:
 
     def test_probe_wnck_cached_true(self):
         import core.platform.linux_backend as lb
+
         lb._has_wnck = True
         assert lb._probe_wnck() is True
 
     def test_probe_wnck_cached_false(self):
         import core.platform.linux_backend as lb
+
         lb._has_wnck = False
         assert lb._probe_wnck() is False
 
     def test_probe_wnck_returns_false_on_import_error(self):
         import core.platform.linux_backend as lb
+
         lb._has_wnck = None
 
         with patch.dict(sys.modules, {"gi": None}):
@@ -224,19 +234,27 @@ class TestLinuxAccessibilityGetTree:
         fake_gi = MagicMock()
         fake_gi.require_version = MagicMock()
 
-        with patch.dict(sys.modules, {
-            "gi": fake_gi,
-            "gi.repository": MagicMock(),
-            "gi.repository.Atspi": mock_atspi,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "gi": fake_gi,
+                "gi.repository": MagicMock(),
+                "gi.repository.Atspi": mock_atspi,
+            },
+        ):
             with patch("gi.require_version"):
                 # Patch the function body import
-                with patch(f"{MOD}.LinuxAccessibility._walk_atspi") as mock_walk:
+                with patch(f"{MOD}.LinuxAccessibility._walk_atspi"):
                     with patch(f"{MOD}._probe_atspi", return_value=True):
                         # Just verify the method runs without error when available
-                        with patch("builtins.__import__", side_effect=lambda name, *a, **kw: (
-                            mock_atspi if name == "gi.repository.Atspi" else __import__(name, *a, **kw)
-                        )):
+                        with patch(
+                            "builtins.__import__",
+                            side_effect=lambda name, *a, **kw: (
+                                mock_atspi
+                                if name == "gi.repository.Atspi"
+                                else __import__(name, *a, **kw)
+                            ),
+                        ):
                             pass
 
     def test_get_tree_exception_returns_empty(self):
@@ -264,8 +282,8 @@ class TestLinuxAccessibilityFindElement:
         assert result is None
 
     def test_find_element_matches_name(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         acc._available = True
@@ -276,8 +294,8 @@ class TestLinuxAccessibilityFindElement:
         assert result is elem
 
     def test_find_element_filters_by_automation_id(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         acc._available = True
@@ -288,8 +306,8 @@ class TestLinuxAccessibilityFindElement:
         assert result is None
 
     def test_find_element_filters_by_control_type(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         acc._available = True
@@ -302,8 +320,8 @@ class TestLinuxAccessibilityFindElement:
 
 class TestLinuxAccessibilityInvokeElement:
     def test_invoke_element_returns_false_when_raw_none(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         acc._available = True
@@ -311,8 +329,8 @@ class TestLinuxAccessibilityInvokeElement:
         assert acc.invoke_element(elem) is False
 
     def test_invoke_element_with_atspi_ref(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         acc._available = True
@@ -328,8 +346,8 @@ class TestLinuxAccessibilityInvokeElement:
         assert result is False
 
     def test_invoke_element_returns_false_when_no_atspi_ref(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         acc._available = True
@@ -340,16 +358,16 @@ class TestLinuxAccessibilityInvokeElement:
 
 class TestLinuxAccessibilitySetValue:
     def test_set_element_value_returns_false_when_raw_none(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         elem = UIElement(name="X", raw=None)
         assert acc.set_element_value(elem, "test") is False
 
     def test_set_element_value_returns_false_when_no_atspi_ref(self):
-        from core.platform.linux_backend import LinuxAccessibility
         from core.platform.base import UIElement
+        from core.platform.linux_backend import LinuxAccessibility
 
         acc = LinuxAccessibility.__new__(LinuxAccessibility)
         elem = UIElement(name="X", raw={})
@@ -565,7 +583,7 @@ class TestLinuxStealthInput:
 
     def test_scroll_down(self):
         inp = self._make_available()
-        with patch("subprocess.run", return_value=MagicMock()) as mock_run:
+        with patch("subprocess.run", return_value=MagicMock()):
             result = inp.scroll(-1)
         assert result is True
 
@@ -644,8 +662,9 @@ class TestLinuxCredentialBackendFile:
         assert keys == ["a", "b"]
 
     def test_load_file_returns_empty_when_not_exists(self, tmp_path):
-        from core.platform.linux_backend import LinuxCredentialBackend
         import threading
+
+        from core.platform.linux_backend import LinuxCredentialBackend
 
         backend = LinuxCredentialBackend.__new__(LinuxCredentialBackend)
         backend._use_secretstorage = False
@@ -655,8 +674,9 @@ class TestLinuxCredentialBackendFile:
         assert data == {"version": 1, "keys": {}}
 
     def test_load_file_returns_empty_on_invalid_json(self, tmp_path):
-        from core.platform.linux_backend import LinuxCredentialBackend
         import threading
+
+        from core.platform.linux_backend import LinuxCredentialBackend
 
         vault = tmp_path / "vault.json"
         vault.write_text("not valid json", encoding="utf-8")
@@ -669,8 +689,9 @@ class TestLinuxCredentialBackendFile:
         assert data == {"version": 1, "keys": {}}
 
     def test_load_file_with_valid_data(self, tmp_path):
-        from core.platform.linux_backend import LinuxCredentialBackend
         import threading
+
+        from core.platform.linux_backend import LinuxCredentialBackend
 
         vault = tmp_path / "vault.json"
         vault.write_text(json.dumps({"version": 1, "keys": {"a": "b"}}), encoding="utf-8")
@@ -683,8 +704,9 @@ class TestLinuxCredentialBackendFile:
         assert data["keys"] == {"a": "b"}
 
     def test_save_file_fails_on_oserror(self, tmp_path):
-        from core.platform.linux_backend import LinuxCredentialBackend
         import threading
+
+        from core.platform.linux_backend import LinuxCredentialBackend
 
         backend = LinuxCredentialBackend.__new__(LinuxCredentialBackend)
         backend._use_secretstorage = False
@@ -697,8 +719,9 @@ class TestLinuxCredentialBackendFile:
         assert result is False
 
     def test_retrieve_file_bad_entry_returns_none(self, tmp_path):
-        from core.platform.linux_backend import LinuxCredentialBackend
         import threading
+
+        from core.platform.linux_backend import LinuxCredentialBackend
 
         backend = LinuxCredentialBackend.__new__(LinuxCredentialBackend)
         backend._use_secretstorage = False
@@ -713,8 +736,9 @@ class TestLinuxCredentialBackendSecretStorage:
     """Tests for secretstorage-backed credential paths."""
 
     def _make_ss_backend(self):
-        from core.platform.linux_backend import LinuxCredentialBackend
         import threading
+
+        from core.platform.linux_backend import LinuxCredentialBackend
 
         backend = LinuxCredentialBackend.__new__(LinuxCredentialBackend)
         backend._use_secretstorage = True
@@ -757,7 +781,7 @@ class TestLinuxCredentialBackendSecretStorage:
 
         with patch.dict(sys.modules, {"secretstorage": mock_ss}):
             with patch.object(backend, "_store_file", return_value=True) as mock_sf:
-                result = backend._store_secretstorage("k", "v")
+                backend._store_secretstorage("k", "v")
         mock_sf.assert_called_once_with("k", "v")
 
     def test_retrieve_secretstorage_success(self):
@@ -1052,9 +1076,10 @@ class TestLinuxWindowBackend:
         geo_result2.returncode = 0
         geo_result2.stdout = "X=50\nY=50\nWIDTH=800\nHEIGHT=600\n"
 
-        with patch("subprocess.run", side_effect=[
-            search_result, name_result1, geo_result1, name_result2, geo_result2
-        ]):
+        with patch(
+            "subprocess.run",
+            side_effect=[search_result, name_result1, geo_result1, name_result2, geo_result2],
+        ):
             windows = backend._list_xdotool()
 
         assert len(windows) == 2
@@ -1114,11 +1139,14 @@ class TestLinuxWindowBackend:
         mock_wnck.Screen.get_default.return_value = None
         fake_gi = MagicMock()
 
-        with patch.dict(sys.modules, {
-            "gi": fake_gi,
-            "gi.repository": MagicMock(),
-            "gi.repository.Wnck": mock_wnck,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "gi": fake_gi,
+                "gi.repository": MagicMock(),
+                "gi.repository.Wnck": mock_wnck,
+            },
+        ):
             with patch("gi.require_version"):
                 result = backend._list_wnck()
         # gi not available in test context, exception path returns []
@@ -1224,8 +1252,8 @@ class TestLinuxOverlayBackend:
 class TestLinuxBackend:
     def test_linux_backend_properties(self):
         from core.platform.linux_backend import (
-            LinuxBackend,
             LinuxAccessibility,
+            LinuxBackend,
             LinuxCredentialBackend,
             LinuxOverlayBackend,
             LinuxShellBackend,

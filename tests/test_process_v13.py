@@ -51,11 +51,13 @@ class TestProcessSchemas:
 class TestProcessExecutor:
     def test_dispatch_entries(self):
         from core.action_executor import ActionExecutor
+
         for action in ["set_priority", "get_env", "set_env", "service_control"]:
             assert action in ActionExecutor._dispatch_table
 
     def test_get_env_executor(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._get_env(name="PATH")
         assert result["success"] is True
@@ -63,12 +65,14 @@ class TestProcessExecutor:
 
     def test_get_env_missing(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._get_env(name="SENTINEL_TEST_NONEXISTENT_12345")
         assert result["success"] is False
 
     def test_set_and_get_env(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._set_env(name="SENTINEL_TEST_VAR", value="test123")
         assert result["success"] is True
@@ -82,13 +86,16 @@ class TestProcessExecutor:
     def test_service_control_query(self):
         """Query a known service that should exist on Windows."""
         import sys
+
         if sys.platform != "win32":
             pytest.skip("Windows-only test")
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         # EventLog should exist on all Windows
         result = executor._service_control(
-            name="EventLog", control_action="query",
+            name="EventLog",
+            control_action="query",
         )
         # Should succeed or fail gracefully
         assert isinstance(result, dict)
@@ -105,20 +112,14 @@ class TestProcessToolSchemas:
             assert tool in names
 
     def test_service_control_params(self):
-        tool = next(
-            t for t in TOOLS
-            if t["function"]["name"] == "service_control"
-        )
+        tool = next(t for t in TOOLS if t["function"]["name"] == "service_control")
         props = tool["function"]["parameters"]["properties"]
         assert "name" in props
         assert "control_action" in props
         assert props["control_action"]["type"] == "string"
 
     def test_set_env_params(self):
-        tool = next(
-            t for t in TOOLS
-            if t["function"]["name"] == "set_env"
-        )
+        tool = next(t for t in TOOLS if t["function"]["name"] == "set_env")
         props = tool["function"]["parameters"]["properties"]
         assert "name" in props
         assert "value" in props

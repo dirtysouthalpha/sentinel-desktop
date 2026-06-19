@@ -62,6 +62,7 @@ class TestInteractionModeLazyProp:
 
     def test_interaction_mode_default_native(self):
         from core.web.dual_mode import InteractionMode
+
         eng = _make_engine()
         mode = eng.interaction_mode
         assert mode == InteractionMode.NATIVE
@@ -136,8 +137,10 @@ class TestFinalizeRunMemoryException:
         fake_em = MagicMock()
         fake_em.store.side_effect = OSError("disk full")
 
-        with patch("core.memory.episodic.EpisodicMemory", return_value=fake_em), \
-             patch("core.sound.play_sound"):
+        with (
+            patch("core.memory.episodic.EpisodicMemory", return_value=fake_em),
+            patch("core.sound.play_sound"),
+        ):
             result = eng._finalize_run(goal="click ok", start_time=time.time() - 1)
 
         assert "steps" in result
@@ -158,12 +161,14 @@ class TestBuildInitialMessagesPerceptionNoAnnotated:
         fake_result.annotated_image = None
         fake_result.to_llm_context.return_value = "elements: []"
 
-        with patch("core.screenshot.capture_screen", return_value=fake_img), \
-             patch("core.screenshot.image_to_base64", return_value="raw_b64"), \
-             patch.object(eng, "_run_perception", return_value=fake_result), \
-             patch.object(eng, "_build_env_context", return_value=""), \
-             patch.object(eng, "_build_app_context", return_value=""), \
-             patch.object(eng, "_build_memory_context", return_value=""):
+        with (
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+            patch("core.screenshot.image_to_base64", return_value="raw_b64"),
+            patch.object(eng, "_run_perception", return_value=fake_result),
+            patch.object(eng, "_build_env_context", return_value=""),
+            patch.object(eng, "_build_app_context", return_value=""),
+            patch.object(eng, "_build_memory_context", return_value=""),
+        ):
             msgs = eng._build_initial_messages("open browser")
 
         assert isinstance(msgs, list)
@@ -196,10 +201,12 @@ class TestCaptureNextScreenshot:
         fake_result.annotated_image = None
         fake_result.to_llm_context.return_value = ""
 
-        with patch("core.screenshot.capture_screen", return_value=fake_img), \
-             patch("core.screenshot.image_to_base64", return_value="raw_b64"), \
-             patch.object(eng, "_run_perception", return_value=fake_result), \
-             patch.object(eng, "_prune_old_screenshots"):
+        with (
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+            patch("core.screenshot.image_to_base64", return_value="raw_b64"),
+            patch.object(eng, "_run_perception", return_value=fake_result),
+            patch.object(eng, "_prune_old_screenshots"),
+        ):
             result = eng._capture_next_screenshot([], "step done", "prev_b64")
 
         assert result == "raw_b64"
@@ -211,10 +218,12 @@ class TestCaptureNextScreenshot:
 
         fake_img = MagicMock()
 
-        with patch("core.screenshot.capture_screen", return_value=fake_img), \
-             patch("core.screenshot.image_to_base64", return_value="raw_b64"), \
-             patch.object(eng, "_run_perception", return_value=None), \
-             patch.object(eng, "_prune_old_screenshots"):
+        with (
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+            patch("core.screenshot.image_to_base64", return_value="raw_b64"),
+            patch.object(eng, "_run_perception", return_value=None),
+            patch.object(eng, "_prune_old_screenshots"),
+        ):
             result = eng._capture_next_screenshot([], "step done", "prev_b64")
 
         assert result == "raw_b64"
@@ -226,10 +235,12 @@ class TestCaptureNextScreenshot:
 
         fake_img = MagicMock()
 
-        with patch("core.screenshot.capture_screen", return_value=fake_img), \
-             patch("core.screenshot.image_to_base64", return_value="raw_b64"), \
-             patch.object(eng, "_run_perception", side_effect=RuntimeError("pipeline crash")), \
-             patch.object(eng, "_prune_old_screenshots"):
+        with (
+            patch("core.screenshot.capture_screen", return_value=fake_img),
+            patch("core.screenshot.image_to_base64", return_value="raw_b64"),
+            patch.object(eng, "_run_perception", side_effect=RuntimeError("pipeline crash")),
+            patch.object(eng, "_prune_old_screenshots"),
+        ):
             result = eng._capture_next_screenshot([], "step done", "prev_b64")
 
         assert result == "raw_b64"
@@ -251,9 +262,11 @@ class TestExecuteActionWebRecorderCapture:
 
         action = {"action": "web_click", "selector": "#submit"}
 
-        with patch.object(eng, "_handle_action_failure"), \
-             patch.object(eng, "_handle_post_action_success", return_value="ok"), \
-             patch.object(eng, "_capture_next_screenshot", return_value=None):
+        with (
+            patch.object(eng, "_handle_action_failure"),
+            patch.object(eng, "_handle_post_action_success", return_value="ok"),
+            patch.object(eng, "_capture_next_screenshot", return_value=None),
+        ):
             eng._execute_action(action, "web_click", "goal", [], None)
 
         fake_recorder.capture.assert_called_once_with(action)
@@ -279,8 +292,10 @@ class TestRunOneStepFinishWebRecorderSaveException:
 
         action = {"action": "finish", "summary": "All done"}
 
-        with patch.object(eng, "_prepare_step_action", return_value=(action, None)), \
-             patch.object(eng, "_log_step"):
+        with (
+            patch.object(eng, "_prepare_step_action", return_value=(action, None)),
+            patch.object(eng, "_log_step"),
+        ):
             outcome, _ = eng._run_one_step(
                 provider="openai",
                 api_key="k",

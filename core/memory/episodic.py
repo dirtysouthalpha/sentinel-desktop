@@ -97,8 +97,11 @@ class EpisodicMemory:
     ) -> str:
         """Store a new episode. Returns the episode ID."""
         episode = Episode(
-            goal=goal, actions=actions, outcome=outcome,
-            success=success, tags=tags,
+            goal=goal,
+            actions=actions,
+            outcome=outcome,
+            success=success,
+            tags=tags,
         )
         self._append(episode)
         logger.info("Stored episode %s: %s", episode.episode_id, goal[:60])
@@ -109,16 +112,18 @@ class EpisodicMemory:
         episodes = self._read_all()
         # Return most recent first
         episodes.reverse()
-        return [ep.to_dict() for ep in episodes[offset:offset + limit]]
+        return [ep.to_dict() for ep in episodes[offset : offset + limit]]
 
     def search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
         """Search episodes by keyword matching in goal/outcome/tags."""
         query_lower = query.lower()
         results = []
         for ep in reversed(self._read_all()):
-            if (query_lower in ep.goal.lower()
-                    or query_lower in ep.outcome.lower()
-                    or any(query_lower in tag.lower() for tag in ep.tags)):
+            if (
+                query_lower in ep.goal.lower()
+                or query_lower in ep.outcome.lower()
+                or any(query_lower in tag.lower() for tag in ep.tags)
+            ):
                 results.append(ep.to_dict())
                 if len(results) >= limit:
                     break
@@ -177,12 +182,14 @@ class EpisodicMemory:
             success=successes > len(old_eps) / 2,
             tags=["compressed", "summary"],
         )
-        summary.actions = [{
-            "type": "compression_summary",
-            "episodes_count": len(old_eps),
-            "success_rate": successes / max(len(old_eps), 1),
-            "goals_sample": [ep.goal[:60] for ep in old_eps[:5]],
-        }]
+        summary.actions = [
+            {
+                "type": "compression_summary",
+                "episodes_count": len(old_eps),
+                "success_rate": successes / max(len(old_eps), 1),
+                "goals_sample": [ep.goal[:60] for ep in old_eps[:5]],
+            }
+        ]
 
         self._write_all(recent_eps + [summary])
         logger.info("Compressed %d old episodes into summary", len(old_eps))

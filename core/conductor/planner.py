@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Subtask:
     """A single subtask within a decomposed goal."""
+
     subtask_id: str
     description: str
     task_type: str  # desktop, terminal, browser, monitor, network
@@ -53,9 +54,16 @@ class TaskPlanner:
     _TYPE_RULES: list[tuple[list[str], str]] = [
         (
             [
-                "ssh", "ssh_connect", "ssh_run", "ssh_show",
-                "ssh_ping", "router", "switch", "firewall config",
-                "show version", "show interface",
+                "ssh",
+                "ssh_connect",
+                "ssh_run",
+                "ssh_show",
+                "ssh_ping",
+                "router",
+                "switch",
+                "firewall config",
+                "show version",
+                "show interface",
             ],
             "network",
         ),
@@ -101,12 +109,14 @@ class TaskPlanner:
 
         if not fragments:
             # Single task
-            return [Subtask(
-                subtask_id="t-1",
-                description=goal.strip(),
-                task_type=self._detect_type(goal),
-                priority=0,
-            )]
+            return [
+                Subtask(
+                    subtask_id="t-1",
+                    description=goal.strip(),
+                    task_type=self._detect_type(goal),
+                    priority=0,
+                )
+            ]
 
         subtasks = []
         for i, fragment in enumerate(fragments):

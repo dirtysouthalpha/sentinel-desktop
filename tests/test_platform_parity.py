@@ -10,20 +10,16 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core import stealth_input, window_manager
 from core.platform.linux_backend import WindowInfo
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_wi(title="App", x=0, y=0, w=800, h=600, focused=False, handle=1):
-    return WindowInfo(
-        title=title, x=x, y=y, width=w, height=h, is_focused=focused, handle=handle
-    )
+    return WindowInfo(title=title, x=x, y=y, width=w, height=h, is_focused=focused, handle=handle)
 
 
 def _make_backend(window_backend=None, input_backend=None):

@@ -40,6 +40,7 @@ HTTP_TIMEOUT = 30.0  # seconds
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
+
 def _headers() -> dict[str, str]:
     """Build request headers, conditionally including auth."""
     h: dict[str, str] = {"Content-Type": "application/json"}
@@ -109,6 +110,7 @@ mcp = FastMCP(
 
 # ── Agent Control ─────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def goal(text: str, max_steps: int | None = None, approval_mode: bool | None = None) -> str:
     """Start an autonomous agent run with a natural language goal.
@@ -160,6 +162,7 @@ def status() -> str:
 
 # ── Screen & System Info ──────────────────────────────────────────────────
 
+
 @mcp.tool()
 def screenshot() -> str:
     """Capture a screenshot of the desktop. Returns base64-encoded PNG.
@@ -202,6 +205,7 @@ def system_info() -> str:
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def get_config() -> str:
     """Read the current Sentinel Desktop configuration."""
@@ -242,6 +246,7 @@ def set_config(
 
 # ── Logging ───────────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def log() -> str:
     """Get the forensic run log — every action the agent has taken."""
@@ -252,6 +257,7 @@ def log() -> str:
 
 
 # ── Scripts ───────────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 def list_scripts() -> str:
@@ -278,6 +284,7 @@ def run_script(path: str, params: dict[str, Any] | None = None) -> str:
 
 # ── PowerShell ────────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def powershell(command: str) -> str:
     """Run a PowerShell command on the Sentinel Desktop host.
@@ -292,6 +299,7 @@ def powershell(command: str) -> str:
 
 
 # ── Workflows ─────────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 def list_workflows() -> str:
@@ -322,6 +330,7 @@ def list_workflow_templates() -> str:
 
 # ── Scheduler ─────────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def list_scheduled_tasks() -> str:
     """List all scheduled tasks."""
@@ -332,7 +341,9 @@ def list_scheduled_tasks() -> str:
 
 
 @mcp.tool()
-def add_scheduled_task(name: str, goal: str, cron: str | None = None, delay_seconds: float | None = None) -> str:
+def add_scheduled_task(
+    name: str, goal: str, cron: str | None = None, delay_seconds: float | None = None
+) -> str:
     """Create a new scheduled task for the agent to run.
 
     Provide either a cron expression or a delay in seconds for one-shot execution.
@@ -367,6 +378,7 @@ def run_scheduled_task(task_id: str) -> str:
 
 
 # ── Agent Pool ────────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 def list_agents() -> str:
@@ -411,6 +423,7 @@ def agent_status(session_id: str) -> str:
 
 
 # ── Fleet Management (v10) ────────────────────────────────────────────────
+
 
 @mcp.tool()
 def daemon_status() -> str:
@@ -482,6 +495,7 @@ def fleet_unregister(node_id: str) -> str:
 
 # ── Job Queue (v10) ───────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def list_jobs(status: str | None = None) -> str:
     """List jobs in the queue. Optionally filter by status."""
@@ -526,6 +540,7 @@ def cancel_job(job_id: str) -> str:
 
 # ── Recorder ──────────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def recorder_start() -> str:
     """Start recording desktop actions."""
@@ -546,16 +561,20 @@ def recorder_stop(name: str = "Untitled", description: str = "") -> str:
 
 # ── Notifications ─────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def notify(title: str = "Sentinel", message: str = "", level: str = "info") -> str:
     """Send a desktop notification on the Sentinel host."""
     try:
-        return json.dumps(_api_post("/notify", {"title": title, "message": message, "level": level}))
+        return json.dumps(
+            _api_post("/notify", {"title": title, "message": message, "level": level})
+        )
     except Exception as e:
         return f"Error: {_err(e)}"
 
 
 # ── Plugins ───────────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 def list_plugins() -> str:
@@ -577,12 +596,15 @@ def reload_plugin(name: str) -> str:
 
 # ── Health Check ──────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 def health() -> str:
     """Check if the Sentinel Desktop API is reachable and healthy."""
     try:
         r = _api_get("/status")
-        return json.dumps({"healthy": True, "api_url": API_BASE, "agent_running": r.get("running", False)})
+        return json.dumps(
+            {"healthy": True, "api_url": API_BASE, "agent_running": r.get("running", False)}
+        )
     except Exception as e:
         return json.dumps({"healthy": False, "api_url": API_BASE, "error": _err(e)})
 
@@ -620,7 +642,9 @@ def agent_zero_health() -> str:
     try:
         with httpx.Client(timeout=10.0) as client:
             r = client.get(f"{AGENT_ZERO_URL}/", headers=_headers())
-            return json.dumps({"reachable": r.status_code < 500, "status": r.status_code, "url": AGENT_ZERO_URL})
+            return json.dumps(
+                {"reachable": r.status_code < 500, "status": r.status_code, "url": AGENT_ZERO_URL}
+            )
     except Exception as e:
         return json.dumps({"reachable": False, "url": AGENT_ZERO_URL, "error": _err(e)})
 
@@ -628,6 +652,7 @@ def agent_zero_health() -> str:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     """Start the MCP server.
@@ -645,9 +670,7 @@ def main() -> None:
         if token:
             from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 
-            mcp.auth = StaticTokenVerifier(
-                tokens={token: {"client_id": "fleet", "scopes": []}}
-            )
+            mcp.auth = StaticTokenVerifier(tokens={token: {"client_id": "fleet", "scopes": []}})
         mcp.run(transport="http", host=host, port=port)
     else:
         mcp.run(transport="stdio")

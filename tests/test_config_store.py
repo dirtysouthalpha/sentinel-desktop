@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from core.config_store import ConfigStore
 
-
 # ── Core CRUD ─────────────────────────────────────────────────────────────────
+
 
 class TestConfigStore:
     def setup_method(self):
@@ -114,34 +111,43 @@ class TestConfigStore:
 
 # ── Executor integration ──────────────────────────────────────────────────────
 
+
 class TestConfigActionsInExecutor:
     def test_config_get_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "config_get" in ActionExecutor._dispatch_table
 
     def test_config_set_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "config_set" in ActionExecutor._dispatch_table
 
     def test_config_set_get_round_trip(self, tmp_path, monkeypatch):
         # Patch the default store to use a temp path
         from core import config_store
+
         store = ConfigStore(path=tmp_path / "test_config.json")
         monkeypatch.setattr(config_store, "_SINGLETON", store)
 
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor()
 
-        set_result = executor.execute_sync({
-            "action": "config_set",
-            "key": "test.key",
-            "value": "test_value",
-        })
+        set_result = executor.execute_sync(
+            {
+                "action": "config_set",
+                "key": "test.key",
+                "value": "test_value",
+            }
+        )
         assert set_result["success"] is True
 
-        get_result = executor.execute_sync({
-            "action": "config_get",
-            "key": "test.key",
-        })
+        get_result = executor.execute_sync(
+            {
+                "action": "config_get",
+                "key": "test.key",
+            }
+        )
         assert get_result["success"] is True
         assert get_result["value"] == "test_value"

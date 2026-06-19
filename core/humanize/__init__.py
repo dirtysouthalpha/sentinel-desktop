@@ -41,4 +41,3 @@ def is_enabled() -> bool:
     if raw is None:
         return True  # default ON in production
     return raw.strip().lower() in {"1", "on", "true", "yes"}
-

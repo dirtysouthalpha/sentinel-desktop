@@ -53,7 +53,8 @@ class TestRegistrySchemas:
 
     def test_registry_delete_optional_value(self):
         a = RegistryDeleteAction(
-            action="registry_delete", path="HKCU\\Software\\Test",
+            action="registry_delete",
+            path="HKCU\\Software\\Test",
         )
         assert a.value_name is None
 
@@ -64,14 +65,17 @@ class TestRegistrySchemas:
 class TestCredExecutor:
     def test_dispatch_entries(self):
         from core.action_executor import ActionExecutor
+
         assert "cred_store" in ActionExecutor._dispatch_table
         assert "cred_read" in ActionExecutor._dispatch_table
 
     def test_store_and_read(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         store = executor._cred_store(
-            key="test_v13_key", value="test_v13_val",
+            key="test_v13_key",
+            value="test_v13_val",
         )
         assert store["success"] is True
         read = executor._cred_read(key="test_v13_key")
@@ -79,11 +83,13 @@ class TestCredExecutor:
         assert read["output"] == "test_v13_val"
         # Cleanup
         from core.encryption import CredentialVault
+
         vault = CredentialVault()
         vault.delete("test_v13_key")
 
     def test_read_missing(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._cred_read(key="nonexistent_key_xyz")
         assert result["success"] is False
@@ -93,14 +99,17 @@ class TestCredExecutor:
 class TestRegistryExecutor:
     def test_dispatch_entries(self):
         from core.action_executor import ActionExecutor
+
         for name in ["registry_read", "registry_write", "registry_delete"]:
             assert name in ActionExecutor._dispatch_table
 
     @pytest.mark.skipif(
-        sys.platform != "win32", reason="Windows-only",
+        sys.platform != "win32",
+        reason="Windows-only",
     )
     def test_read_known_value(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         # Read a value that always exists on Windows
         result = executor._registry_read(
@@ -111,15 +120,19 @@ class TestRegistryExecutor:
         assert "Windows" in str(result["output"])
 
     @pytest.mark.skipif(
-        sys.platform != "win32", reason="Windows-only",
+        sys.platform != "win32",
+        reason="Windows-only",
     )
     def test_write_read_delete_cycle(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         path = "HKCU\\SOFTWARE\\SentinelTest_v13"
         # Write
         w = executor._registry_write(
-            path=path, value_name="TestVal", data="hello",
+            path=path,
+            value_name="TestVal",
+            data="hello",
         )
         assert w["success"] is True
         # Read back
@@ -134,9 +147,11 @@ class TestRegistryExecutor:
 
     def test_read_invalid_path(self):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._registry_read(
-            path="INVALID_HIVE\\NoSuch\\Path", value_name="x",
+            path="INVALID_HIVE\\NoSuch\\Path",
+            value_name="x",
         )
         assert result["success"] is False
 
@@ -151,10 +166,7 @@ class TestCredToolSchemas:
             assert tool in names
 
     def test_cred_store_params(self):
-        tool = next(
-            t for t in TOOLS
-            if t["function"]["name"] == "cred_store"
-        )
+        tool = next(t for t in TOOLS if t["function"]["name"] == "cred_store")
         props = tool["function"]["parameters"]["properties"]
         assert "key" in props
         assert "value" in props
@@ -167,10 +179,7 @@ class TestRegistryToolSchemas:
             assert tool in names
 
     def test_registry_write_params(self):
-        tool = next(
-            t for t in TOOLS
-            if t["function"]["name"] == "registry_write"
-        )
+        tool = next(t for t in TOOLS if t["function"]["name"] == "registry_write")
         props = tool["function"]["parameters"]["properties"]
         assert "path" in props
         assert "value_name" in props

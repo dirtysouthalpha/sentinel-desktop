@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from typing import Any
 
 import pytest
 
@@ -16,12 +15,10 @@ from core.jwt_auth import (
     JWTMalformed,
     _b64url_decode,
     _b64url_encode,
-    _sign,
     decode,
     encode,
     extract_role,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -255,7 +252,9 @@ class TestDecodeErrors:
 
     def test_wrong_audience_list(self):
         cfg = JWTConfig(secret_key="s", audience="api", require_exp=False)
-        token = encode({"sub": "u", "aud": ["other1", "other2"]}, JWTConfig(secret_key="s", require_exp=False))
+        token = encode(
+            {"sub": "u", "aud": ["other1", "other2"]}, JWTConfig(secret_key="s", require_exp=False)
+        )
         with pytest.raises(JWTClaimError, match="audience"):
             decode(token, cfg)
 
@@ -263,9 +262,12 @@ class TestDecodeErrors:
         """A token with alg=none in the header should be rejected."""
         import base64
         import json
-        header = base64.urlsafe_b64encode(
-            json.dumps({"alg": "none", "typ": "JWT"}).encode()
-        ).rstrip(b"=").decode()
+
+        header = (
+            base64.urlsafe_b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode())
+            .rstrip(b"=")
+            .decode()
+        )
         payload = _b64url_encode(json.dumps({"sub": "u"}).encode())
         fake_token = f"{header}.{payload}.fakesig"
         with pytest.raises(JWTMalformed, match="algorithm"):

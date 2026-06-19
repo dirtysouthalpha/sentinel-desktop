@@ -59,10 +59,9 @@ def _ease_velocity(t: float) -> float:
     return 6.0 * t * (1.0 - t)
 
 
-def _quadratic_point(p0: tuple[float, float],
-                     p1: tuple[float, float],
-                     p2: tuple[float, float],
-                     t: float) -> tuple[float, float]:
+def _quadratic_point(
+    p0: tuple[float, float], p1: tuple[float, float], p2: tuple[float, float], t: float
+) -> tuple[float, float]:
     """Quadratic bezier point at parameter t ∈ [0, 1]."""
     u = 1.0 - t
     x = u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0]
@@ -70,23 +69,27 @@ def _quadratic_point(p0: tuple[float, float],
     return (x, y)
 
 
-def _cubic_point(p0: tuple[float, float],
-                 p1: tuple[float, float],
-                 p2: tuple[float, float],
-                 p3: tuple[float, float],
-                 t: float) -> tuple[float, float]:
+def _cubic_point(
+    p0: tuple[float, float],
+    p1: tuple[float, float],
+    p2: tuple[float, float],
+    p3: tuple[float, float],
+    t: float,
+) -> tuple[float, float]:
     """Cubic bezier point at parameter t ∈ [0, 1]."""
     u = 1.0 - t
-    x = (u ** 3) * p0[0] + 3 * (u ** 2) * t * p1[0] + 3 * u * (t ** 2) * p2[0] + (t ** 3) * p3[0]
-    y = (u ** 3) * p0[1] + 3 * (u ** 2) * t * p1[1] + 3 * u * (t ** 2) * p2[1] + (t ** 3) * p3[1]
+    x = (u**3) * p0[0] + 3 * (u**2) * t * p1[0] + 3 * u * (t**2) * p2[0] + (t**3) * p3[0]
+    y = (u**3) * p0[1] + 3 * (u**2) * t * p1[1] + 3 * u * (t**2) * p2[1] + (t**3) * p3[1]
     return (x, y)
 
 
-def _control_point(start: tuple[float, float],
-                   target: tuple[float, float],
-                   rng: random.Random,
-                   deviation: float,
-                   t_at: float) -> tuple[float, float]:
+def _control_point(
+    start: tuple[float, float],
+    target: tuple[float, float],
+    rng: random.Random,
+    deviation: float,
+    t_at: float,
+) -> tuple[float, float]:
     """Build a control point on the perpendicular at parameter position t_at.
 
     The control point sits on the line through the start→target point at
@@ -111,11 +114,9 @@ def _control_point(start: tuple[float, float],
     return (base_x + nx * magnitude * sign, base_y + ny * magnitude * sign)
 
 
-def _build_curve(start: tuple[float, float],
-                 target: tuple[float, float],
-                 rng: random.Random,
-                 deviation: float
-                 ) -> tuple[Sequence[tuple[float, float]], int]:
+def _build_curve(
+    start: tuple[float, float], target: tuple[float, float], rng: random.Random, deviation: float
+) -> tuple[Sequence[tuple[float, float]], int]:
     """Pick quadratic or cubic based on distance; return control points + degree."""
     length = math.hypot(target[0] - start[0], target[1] - start[1])
     if length >= _CUBIC_THRESHOLD_PX:
@@ -126,7 +127,9 @@ def _build_curve(start: tuple[float, float],
     return (start, c1, target), 2
 
 
-def _curve_point(points: Sequence[tuple[float, float]], degree: int, t: float) -> tuple[float, float]:
+def _curve_point(
+    points: Sequence[tuple[float, float]], degree: int, t: float
+) -> tuple[float, float]:
     if degree == 3:
         return _cubic_point(points[0], points[1], points[2], points[3], t)
     return _quadratic_point(points[0], points[1], points[2], t)

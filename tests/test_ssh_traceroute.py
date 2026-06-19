@@ -147,20 +147,14 @@ class TestSSHTracerouteToolSchema:
         assert "ssh_traceroute" in names
 
     def test_tool_has_required_params(self):
-        tool = next(
-            t for t in TOOLS
-            if t["function"]["name"] == "ssh_traceroute"
-        )
+        tool = next(t for t in TOOLS if t["function"]["name"] == "ssh_traceroute")
         params = tool["function"]["parameters"]
         assert "hostname" in params["properties"]
         assert "target" in params["properties"]
         assert params["required"] == ["hostname", "target"]
 
     def test_tool_has_device_type_default(self):
-        tool = next(
-            t for t in TOOLS
-            if t["function"]["name"] == "ssh_traceroute"
-        )
+        tool = next(t for t in TOOLS if t["function"]["name"] == "ssh_traceroute")
         props = tool["function"]["parameters"]["properties"]
         assert "device_type" in props
         assert props["device_type"]["default"] == "generic"

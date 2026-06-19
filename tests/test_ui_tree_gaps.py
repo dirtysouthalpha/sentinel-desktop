@@ -1,6 +1,7 @@
 """Gap tests for ui_tree.py — _have_uia probe, _walk errors, _find_control scoring,
 _find_window errors.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

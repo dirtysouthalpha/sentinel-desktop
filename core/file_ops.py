@@ -128,6 +128,7 @@ def delete_file(path: str, force: bool = False) -> bool:
     try:
         if safe.is_dir():
             import shutil
+
             shutil.rmtree(safe) if force else safe.rmdir()
         else:
             safe.unlink(missing_ok=True)
@@ -157,6 +158,7 @@ def move_file(src: str, dst: str) -> bool:
 def copy_file(src: str, dst: str) -> bool:
     """Copy a file. Returns True on success."""
     import shutil
+
     try:
         safe_src = _resolve_safe(src)
         safe_dst = _resolve_safe(dst)
@@ -218,6 +220,7 @@ def find_files(
 ) -> list[str] | None:
     """Search for files matching a glob pattern. Returns list of paths."""
     from glob import glob as _glob
+
     try:
         safe_root = _resolve_safe(root)
     except PermissionError:
@@ -239,6 +242,7 @@ def archive_create(
 ) -> bool:
     """Create a zip archive from a list of files. Returns True on success."""
     import zipfile
+
     try:
         safe_archive = _resolve_safe(archive_path)
         safe_base = _resolve_safe(base_dir)
@@ -264,6 +268,7 @@ def archive_extract(
 ) -> bool:
     """Extract a zip archive to a directory. Returns True on success."""
     import zipfile
+
     try:
         safe_archive = _resolve_safe(archive_path)
         safe_dest = _resolve_safe(dest_dir)

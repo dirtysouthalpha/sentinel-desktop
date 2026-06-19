@@ -80,10 +80,12 @@ def build_anthropic_tools(
         for tool in standard_tools:
             if tool.get("type") == "function":
                 func = tool.get("function", {})
-                tools.append({
-                    "type": "text_editor_20250124",
-                    "name": func.get("name", "text_editor"),
-                })
+                tools.append(
+                    {
+                        "type": "text_editor_20250124",
+                        "name": func.get("name", "text_editor"),
+                    }
+                )
                 break  # One text editor is enough
 
     return tools

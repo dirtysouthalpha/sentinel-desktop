@@ -53,9 +53,12 @@ class CommandRunner:
     def show_version(self) -> SSHResult:
         """Run 'show version' (or equivalent)."""
         cmd = self._cmd(
-            "show version", "show version",
-            "show system", "system/resource",
-            "/system/resource/print", "uname -a",
+            "show version",
+            "show version",
+            "show system",
+            "system/resource",
+            "/system/resource/print",
+            "uname -a",
         )
         return self.client.run_command(cmd)
 
@@ -167,9 +170,15 @@ class CommandRunner:
         """Run a raw command string on the device."""
         return self.client.run_command(command)
 
-    def _cmd(self, cisco_ios: str = "", cisco_nxos: str = "",
-             juniper: str = "", fortigate: str = "", mikrotik: str = "",
-             linux: str = "") -> str:
+    def _cmd(
+        self,
+        cisco_ios: str = "",
+        cisco_nxos: str = "",
+        juniper: str = "",
+        fortigate: str = "",
+        mikrotik: str = "",
+        linux: str = "",
+    ) -> str:
         """Select the right command for the device type."""
         mapping = {
             "cisco_ios": cisco_ios,

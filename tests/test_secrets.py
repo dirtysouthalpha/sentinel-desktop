@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import threading
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,13 +17,14 @@ from core.secrets import (
     get_default_vault,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_vault(tmp_path: Path, *, with_policy: bool = False, deny_pattern: str = "") -> tuple[SecretsVault, AuditChain]:
+def _make_vault(
+    tmp_path: Path, *, with_policy: bool = False, deny_pattern: str = ""
+) -> tuple[SecretsVault, AuditChain]:
     """Create a SecretsVault backed by tmp_path files."""
     vault_file = tmp_path / "vault.json"
     audit_file = tmp_path / "audit.jsonl"
@@ -33,18 +33,20 @@ def _make_vault(tmp_path: Path, *, with_policy: bool = False, deny_pattern: str 
     if with_policy and deny_pattern:
         policy_file = tmp_path / "policy.json"
         policy_file.write_text(
-            json.dumps({
-                "version": 1,
-                "default_effect": "allow",
-                "rules": [
-                    {
-                        "type": "file_path",
-                        "pattern": deny_pattern,
-                        "effect": "deny",
-                        "reason": "test policy deny",
-                    }
-                ],
-            }),
+            json.dumps(
+                {
+                    "version": 1,
+                    "default_effect": "allow",
+                    "rules": [
+                        {
+                            "type": "file_path",
+                            "pattern": deny_pattern,
+                            "effect": "deny",
+                            "reason": "test policy deny",
+                        }
+                    ],
+                }
+            ),
             encoding="utf-8",
         )
         policy = PolicyEngine(str(policy_file))
@@ -238,16 +240,19 @@ class TestSecretsVaultPolicy:
 
         # First, store without policy
         from core.secrets import SecretsVault as SV
+
         bare = SV(str(vault_file))
         bare.put("secret_key", "value")
 
         # Now enforce policy
         policy_file.write_text(
-            json.dumps({
-                "version": 1,
-                "default_effect": "allow",
-                "rules": [{"type": "file_path", "pattern": "/secret/**", "effect": "deny"}],
-            }),
+            json.dumps(
+                {
+                    "version": 1,
+                    "default_effect": "allow",
+                    "rules": [{"type": "file_path", "pattern": "/secret/**", "effect": "deny"}],
+                }
+            ),
             encoding="utf-8",
         )
         policy = PolicyEngine(str(policy_file))
@@ -261,19 +266,21 @@ class TestSecretsVaultPolicy:
         vault_file = tmp_path / "vault.json"
         policy_file = tmp_path / "policy.json"
         policy_file.write_text(
-            json.dumps({
-                "version": 1,
-                "default_effect": "allow",
-                "rules": [
-                    {
-                        "type": "file_path",
-                        "pattern": "/secret/**",
-                        "roles": ["viewer"],
-                        "effect": "deny",
-                        "reason": "viewers cannot access secrets",
-                    }
-                ],
-            }),
+            json.dumps(
+                {
+                    "version": 1,
+                    "default_effect": "allow",
+                    "rules": [
+                        {
+                            "type": "file_path",
+                            "pattern": "/secret/**",
+                            "roles": ["viewer"],
+                            "effect": "deny",
+                            "reason": "viewers cannot access secrets",
+                        }
+                    ],
+                }
+            ),
             encoding="utf-8",
         )
         policy = PolicyEngine(str(policy_file))

@@ -57,6 +57,7 @@ def is_available() -> bool:
         # xdotool-based stealth input is available when the backend supports it.
         try:
             import shutil
+
             return shutil.which("xdotool") is not None
         except Exception:
             return False
@@ -152,7 +153,8 @@ def post_text(text: str, hwnd: int | None = None, delay: float = 0.005) -> bool:
             # we sleep AFTER each char except the last.
             try:
                 char_delays = _humanize_typing.keystroke_delays(
-                    text, rng=_humanize_rng.get_rng(),
+                    text,
+                    rng=_humanize_rng.get_rng(),
                     profile=_humanize_profile.get_default_profile(),
                 )
             except Exception:  # noqa: BLE001 — never block typing

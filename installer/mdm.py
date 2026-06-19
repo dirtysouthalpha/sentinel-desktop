@@ -301,9 +301,7 @@ def _build_adml_xml() -> str:
         },
     )
     SubElement(root, "displayName").text = f"{APP_DISPLAY} Policy Templates"
-    SubElement(root, "description").text = (
-        f"Group Policy settings for {APP_DISPLAY} {APP_VERSION}."
-    )
+    SubElement(root, "description").text = f"Group Policy settings for {APP_DISPLAY} {APP_VERSION}."
 
     resources = SubElement(root, "resources")
     strings = SubElement(resources, "stringTable")
@@ -343,9 +341,7 @@ def _admx_value_type(dtype: str) -> str:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=f"{APP_DISPLAY} MDM deployment artefact generator"
-    )
+    parser = argparse.ArgumentParser(description=f"{APP_DISPLAY} MDM deployment artefact generator")
     parser.add_argument("--intune", action="store_true", help="Generate Intune profile JSON")
     parser.add_argument("--admx", action="store_true", help="Generate ADMX/ADML templates")
     parser.add_argument("--all", action="store_true", dest="all_", help="Generate all artefacts")

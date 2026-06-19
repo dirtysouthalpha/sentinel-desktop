@@ -156,8 +156,13 @@ class TestArchive:
 class TestFileOpSchemas:
     def test_all_registered(self):
         for action in [
-            "delete_file", "move_file", "copy_file", "mkdir",
-            "stat_file", "find_files", "archive_create",
+            "delete_file",
+            "move_file",
+            "copy_file",
+            "mkdir",
+            "stat_file",
+            "find_files",
+            "archive_create",
             "archive_extract",
         ]:
             assert action in ACTION_MODELS
@@ -181,21 +186,29 @@ class TestFileOpSchemas:
 class TestFileOpExecutor:
     def test_dispatch_table_entries(self):
         from core.action_executor import ActionExecutor
+
         for action in [
-            "delete_file", "move_file", "copy_file", "mkdir",
-            "stat_file", "find_files", "archive_create",
+            "delete_file",
+            "move_file",
+            "copy_file",
+            "mkdir",
+            "stat_file",
+            "find_files",
+            "archive_create",
             "archive_extract",
         ]:
             assert action in ActionExecutor._dispatch_table
 
     def test_mkdir_executor(self, tmp):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._mkdir(path=str(tmp / "new_dir"))
         assert result["success"] is True
 
     def test_stat_file_executor(self, tmp):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._stat_file(path=str(tmp / "hello.txt"))
         assert result["success"] is True
@@ -203,6 +216,7 @@ class TestFileOpExecutor:
 
     def test_find_files_executor(self, tmp):
         from core.action_executor import ActionExecutor
+
         executor = ActionExecutor.__new__(ActionExecutor)
         result = executor._find_files(pattern="*.txt", root=str(tmp))
         assert result["success"] is True
@@ -216,8 +230,13 @@ class TestFileOpToolSchemas:
     def test_all_tools_exist(self):
         names = [t["function"]["name"] for t in TOOLS]
         for tool in [
-            "delete_file", "move_file", "copy_file", "mkdir",
-            "stat_file", "find_files", "archive_create",
+            "delete_file",
+            "move_file",
+            "copy_file",
+            "mkdir",
+            "stat_file",
+            "find_files",
+            "archive_create",
             "archive_extract",
         ]:
             assert tool in names

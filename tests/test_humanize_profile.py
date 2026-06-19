@@ -13,7 +13,6 @@ from dataclasses import FrozenInstanceError, fields
 
 import pytest
 
-from core.humanize import profile as profile_mod
 from core.humanize.profile import (
     FAST,
     NATURALISTIC,

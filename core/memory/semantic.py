@@ -75,9 +75,7 @@ class SemanticMemory:
 
         with self._connect() as conn:
             # Check if key already exists
-            existing = conn.execute(
-                "SELECT id FROM facts WHERE key = ?", (key,)
-            ).fetchone()
+            existing = conn.execute("SELECT id FROM facts WHERE key = ?", (key,)).fetchone()
             if existing:
                 conn.execute(
                     "UPDATE facts "
@@ -140,8 +138,7 @@ class SemanticMemory:
         with self._connect() as conn:
             if category:
                 rows = conn.execute(
-                    "SELECT key FROM facts WHERE category = ? "
-                    "ORDER BY key",
+                    "SELECT key FROM facts WHERE category = ? ORDER BY key",
                     (category,),
                 ).fetchall()
             else:

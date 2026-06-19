@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-
-from core.control.planner import ExecutionPlan, PlanStep, StepStatus, StepType
+from core.control.planner import ExecutionPlan, PlanStep, StepType
 
 
 def _make_loop(max_retries=1):
@@ -51,9 +49,7 @@ class TestGroundingFailureExhausted:
         plan = _make_plan(StepType.CLICK)
 
         loop.planner.plan = MagicMock(return_value=plan)
-        loop.grounder.ground = MagicMock(
-            side_effect=lambda step, pr: _ungrounded_action(step)
-        )
+        loop.grounder.ground = MagicMock(side_effect=lambda step, pr: _ungrounded_action(step))
 
         fake_perception = _make_fake_perception()
         loop._get_perception = MagicMock(return_value=fake_perception)
@@ -78,9 +74,7 @@ class TestStepCompletedSuccessfully:
         plan = _make_plan(StepType.CLICK)
 
         loop.planner.plan = MagicMock(return_value=plan)
-        loop.grounder.ground = MagicMock(
-            side_effect=lambda step, pr: _grounded_action(step)
-        )
+        loop.grounder.ground = MagicMock(side_effect=lambda step, pr: _grounded_action(step))
 
         fake_perception = _make_fake_perception()
         loop._get_perception = MagicMock(return_value=fake_perception)
@@ -111,9 +105,7 @@ class TestExecutionFailureExhausted:
         plan = _make_plan(StepType.CLICK)
 
         loop.planner.plan = MagicMock(return_value=plan)
-        loop.grounder.ground = MagicMock(
-            side_effect=lambda step, pr: _grounded_action(step)
-        )
+        loop.grounder.ground = MagicMock(side_effect=lambda step, pr: _grounded_action(step))
 
         fake_perception = _make_fake_perception()
         loop._get_perception = MagicMock(return_value=fake_perception)

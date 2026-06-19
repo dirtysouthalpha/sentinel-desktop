@@ -4,8 +4,9 @@ Tests for Browser MFA Integration
 Comprehensive test suite for MFA detection and handling in browser manager.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
 
 from core.browser import BrowserManager
 
@@ -26,7 +27,7 @@ class TestBrowserMFAIntegration:
     def mock_browser_manager(self, mock_page):
         """Create a BrowserManager with mocked browser."""
         # Patch Playwright availability check
-        with patch('core.browser._HAS_PLAYWRIGHT', True):
+        with patch("core.browser._HAS_PLAYWRIGHT", True):
             manager = BrowserManager(headless=True)
             manager._browser = Mock()
             manager._context = Mock()
@@ -61,10 +62,11 @@ class TestBrowserMFAIntegration:
     def test_detect_mfa_no_playwright(self):
         """Test MFA detection when Playwright is not available."""
         # Test that BrowserError is raised when Playwright is not available
-        with patch('core.browser._HAS_PLAYWRIGHT', False):
+        with patch("core.browser._HAS_PLAYWRIGHT", False):
             from core.browser import BrowserError
+
             with pytest.raises(BrowserError) as exc_info:
-                manager = BrowserManager(headless=True)
+                BrowserManager(headless=True)
 
             # Should raise an error about Playwright not being installed
             assert "Playwright" in str(exc_info.value) or "not installed" in str(exc_info.value)
@@ -72,19 +74,23 @@ class TestBrowserMFAIntegration:
     def test_handle_mfa_with_code(self, mock_browser_manager, mock_page):
         """Test handling MFA with provided code."""
         # Mock MFA detection
-        mock_browser_manager.detect_mfa = Mock(return_value={
-            "success": True,
-            "has_mfa": True,
-            "mfa_fields": [{
-                "element_id": "#otp-input",
-                "input_type": "totp",
-                "label": "Authentication Code",
+        mock_browser_manager.detect_mfa = Mock(
+            return_value={
+                "success": True,
+                "has_mfa": True,
+                "mfa_fields": [
+                    {
+                        "element_id": "#otp-input",
+                        "input_type": "totp",
+                        "label": "Authentication Code",
+                        "confidence": 0.9,
+                    }
+                ],
+                "detection_methods": ["keywords"],
                 "confidence": 0.9,
-            }],
-            "detection_methods": ["keywords"],
-            "confidence": 0.9,
-            "page_type": "mfa",
-        })
+                "page_type": "mfa",
+            }
+        )
 
         # Mock locator
         mock_locator = Mock()
@@ -100,19 +106,23 @@ class TestBrowserMFAIntegration:
     def test_handle_mfa_no_code_no_callback(self, mock_browser_manager, mock_page):
         """Test handling MFA without code or callback."""
         # Mock MFA detection
-        mock_browser_manager.detect_mfa = Mock(return_value={
-            "success": True,
-            "has_mfa": True,
-            "mfa_fields": [{
-                "element_id": "#otp-input",
-                "input_type": "totp",
-                "label": "Authentication Code",
+        mock_browser_manager.detect_mfa = Mock(
+            return_value={
+                "success": True,
+                "has_mfa": True,
+                "mfa_fields": [
+                    {
+                        "element_id": "#otp-input",
+                        "input_type": "totp",
+                        "label": "Authentication Code",
+                        "confidence": 0.9,
+                    }
+                ],
+                "detection_methods": ["keywords"],
                 "confidence": 0.9,
-            }],
-            "detection_methods": ["keywords"],
-            "confidence": 0.9,
-            "page_type": "mfa",
-        })
+                "page_type": "mfa",
+            }
+        )
 
         result = mock_browser_manager.handle_mfa()
 
@@ -122,14 +132,16 @@ class TestBrowserMFAIntegration:
     def test_handle_mfa_no_mfa_detected(self, mock_browser_manager):
         """Test handling MFA when no MFA is detected."""
         # Mock MFA detection
-        mock_browser_manager.detect_mfa = Mock(return_value={
-            "success": True,
-            "has_mfa": False,
-            "mfa_fields": [],
-            "detection_methods": [],
-            "confidence": 0.0,
-            "page_type": None,
-        })
+        mock_browser_manager.detect_mfa = Mock(
+            return_value={
+                "success": True,
+                "has_mfa": False,
+                "mfa_fields": [],
+                "detection_methods": [],
+                "confidence": 0.0,
+                "page_type": None,
+            }
+        )
 
         result = mock_browser_manager.handle_mfa()
 
@@ -139,11 +151,13 @@ class TestBrowserMFAIntegration:
     def test_handle_mfa_detection_failure(self, mock_browser_manager):
         """Test handling MFA when detection fails."""
         # Mock MFA detection failure
-        mock_browser_manager.detect_mfa = Mock(return_value={
-            "success": False,
-            "error": "Detection failed",
-            "has_mfa": False,
-        })
+        mock_browser_manager.detect_mfa = Mock(
+            return_value={
+                "success": False,
+                "error": "Detection failed",
+                "has_mfa": False,
+            }
+        )
 
         result = mock_browser_manager.handle_mfa()
 
@@ -230,7 +244,7 @@ class TestBrowserMFAIntegrationErrors:
 
     def test_detect_mfa_page_exception(self):
         """Test MFA detection when page raises exception."""
-        with patch('core.browser._HAS_PLAYWRIGHT', True):
+        with patch("core.browser._HAS_PLAYWRIGHT", True):
             manager = BrowserManager(headless=True)
             manager._browser = Mock()
             manager._context = Mock()
@@ -248,7 +262,7 @@ class TestBrowserMFAIntegrationErrors:
 
     def test_fill_mfa_code_exception(self):
         """Test filling MFA code when exception occurs."""
-        with patch('core.browser._HAS_PLAYWRIGHT', True):
+        with patch("core.browser._HAS_PLAYWRIGHT", True):
             manager = BrowserManager(headless=True)
             manager._browser = Mock()
             manager._context = Mock()
@@ -268,7 +282,7 @@ class TestBrowserMFAWithServiceName:
 
     def test_handle_mfa_with_service_name(self):
         """Test handling MFA with service name for TOTP lookup."""
-        with patch('core.browser._HAS_PLAYWRIGHT', True):
+        with patch("core.browser._HAS_PLAYWRIGHT", True):
             manager = BrowserManager(headless=True)
             manager._browser = Mock()
             manager._context = Mock()
@@ -279,19 +293,23 @@ class TestBrowserMFAWithServiceName:
             manager._active_page_index = 0
 
             # Mock MFA detection
-            manager.detect_mfa = Mock(return_value={
-                "success": True,
-                "has_mfa": True,
-                "mfa_fields": [{
-                    "element_id": "#otp-input",
-                    "input_type": "totp",
-                    "label": "Authentication Code",
+            manager.detect_mfa = Mock(
+                return_value={
+                    "success": True,
+                    "has_mfa": True,
+                    "mfa_fields": [
+                        {
+                            "element_id": "#otp-input",
+                            "input_type": "totp",
+                            "label": "Authentication Code",
+                            "confidence": 0.9,
+                        }
+                    ],
+                    "detection_methods": ["keywords"],
                     "confidence": 0.9,
-                }],
-                "detection_methods": ["keywords"],
-                "confidence": 0.9,
-                "page_type": "mfa",
-            })
+                    "page_type": "mfa",
+                }
+            )
 
             # Mock locator
             mock_locator = Mock()
@@ -309,7 +327,7 @@ class TestBrowserMFAWithSelector:
 
     def test_handle_mfa_with_custom_selector(self):
         """Test handling MFA with custom selector."""
-        with patch('core.browser._HAS_PLAYWRIGHT', True):
+        with patch("core.browser._HAS_PLAYWRIGHT", True):
             manager = BrowserManager(headless=True)
             manager._browser = Mock()
             manager._context = Mock()
@@ -319,19 +337,23 @@ class TestBrowserMFAWithSelector:
             manager._active_page_index = 0
 
             # Mock MFA detection
-            manager.detect_mfa = Mock(return_value={
-                "success": True,
-                "has_mfa": True,
-                "mfa_fields": [{
-                    "element_id": "#custom-field",
-                    "input_type": "totp",
-                    "label": "Code",
+            manager.detect_mfa = Mock(
+                return_value={
+                    "success": True,
+                    "has_mfa": True,
+                    "mfa_fields": [
+                        {
+                            "element_id": "#custom-field",
+                            "input_type": "totp",
+                            "label": "Code",
+                            "confidence": 0.8,
+                        }
+                    ],
+                    "detection_methods": ["keywords"],
                     "confidence": 0.8,
-                }],
-                "detection_methods": ["keywords"],
-                "confidence": 0.8,
-                "page_type": "mfa",
-            })
+                    "page_type": "mfa",
+                }
+            )
 
             # Mock locator
             mock_locator = Mock()

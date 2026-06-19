@@ -101,7 +101,7 @@ def _get_machine_key() -> bytes:
     import os
     import platform
 
-    uid = os.getuid() if hasattr(os, 'getuid') else os.getenv('USERNAME', 'user')
+    uid = os.getuid() if hasattr(os, "getuid") else os.getenv("USERNAME", "user")
     identity = f"{platform.node()}-{uid}"
     return hashlib.sha256(identity.encode()).digest()
 

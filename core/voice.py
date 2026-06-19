@@ -86,9 +86,7 @@ class VoiceEngine:
             return False
         self._stop.clear()
         self._set_mode(VoiceMode.AMBIENT)
-        self._thread = threading.Thread(
-            target=self._ambient_loop, daemon=True, name="VoiceAmbient"
-        )
+        self._thread = threading.Thread(target=self._ambient_loop, daemon=True, name="VoiceAmbient")
         self._thread.start()
         logger.info("VoiceEngine ambient mode started (wake_word=%r)", self.wake_word)
         return True

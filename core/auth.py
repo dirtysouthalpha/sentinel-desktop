@@ -622,7 +622,7 @@ class AuthManager:
         if not bearer_header.startswith("Bearer "):
             return None
 
-        raw_token = bearer_header[len("Bearer "):]
+        raw_token = bearer_header[len("Bearer ") :]
         try:
             from core.jwt_auth import JWTConfig, decode
 

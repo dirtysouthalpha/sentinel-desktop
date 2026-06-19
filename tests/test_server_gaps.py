@@ -15,12 +15,9 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from core.server.daemon import SentinelDaemon
 from core.server.fleet import FleetManager
-from core.server.job_queue import JobQueue, JobStatus
-
+from core.server.job_queue import JobQueue
 
 # ── SentinelDaemon ────────────────────────────────────────────────────────
 
@@ -141,7 +138,7 @@ class TestFleetSaveOSError:
 
         with patch.object(Path, "write_text", side_effect=OSError("disk full")):
             # unregister_node() calls _save() internally
-            result = fleet.unregister_node("n1")
+            fleet.unregister_node("n1")
 
         # The operation should complete (node is gone from memory)
         # even though persisting to disk failed

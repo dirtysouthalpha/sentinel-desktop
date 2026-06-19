@@ -140,7 +140,10 @@ def verify_click_landed(
 
     logger.debug(
         "Click verification at (%d,%d): diff=%.1f → %s",
-        x, y, diff_score, "LANDED" if landed else "MISSED",
+        x,
+        y,
+        diff_score,
+        "LANDED" if landed else "MISSED",
     )
 
     return landed, diff_score, after_screenshot
@@ -183,8 +186,11 @@ class ClickVerifier:
 
         # Only verify click-like actions
         _click_actions = (
-            "click", "click_element",
-            "click_mark", "double_click", "right_click",
+            "click",
+            "click_element",
+            "click_mark",
+            "double_click",
+            "right_click",
         )
         if action_name not in _click_actions:
             return self.executor.execute_sync(action)
@@ -193,6 +199,7 @@ class ClickVerifier:
         if before_screenshot is None:
             try:
                 from core.screenshot import capture_screen
+
                 before_screenshot = capture_screen()
             except OSError:
                 # Can't capture — skip verification
@@ -215,7 +222,11 @@ class ClickVerifier:
 
         # Verify the click landed
         landed, diff_score, after_screenshot = verify_click_landed(
-            before_screenshot, x, y, w, h,
+            before_screenshot,
+            x,
+            y,
+            w,
+            h,
         )
 
         if landed:
@@ -226,14 +237,19 @@ class ClickVerifier:
         # Click missed — retry through tiers
         logger.info(
             "Click miss detected at (%d,%d), diff=%.1f — retrying through tiers",
-            x, y, diff_score,
+            x,
+            y,
+            diff_score,
         )
         result["verified"] = False
         result["diff_score"] = round(diff_score, 2)
         result["retries"] = []
 
         retry_result = self._tiered_retry(
-            action, before_screenshot, x, y,
+            action,
+            before_screenshot,
+            x,
+            y,
         )
         if retry_result is not None:
             retry_result["initial_miss"] = result
@@ -331,7 +347,11 @@ class ClickVerifier:
             result["offset"] = (dx, dy)
             return result
 
-        return {"success": False, "output": "Offset retry exhausted", "retry_tier": "offset"}  # pragma: no cover
+        return {
+            "success": False,
+            "output": "Offset retry exhausted",
+            "retry_tier": "offset",
+        }  # pragma: no cover
 
     def _retry_via_keyboard(
         self,

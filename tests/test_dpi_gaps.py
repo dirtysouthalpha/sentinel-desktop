@@ -1,17 +1,17 @@
 """Gap tests for core.dpi — covers uncovered lines:
 
-  104-169 (_get_windows_dpi_scaling Windows code via sys.platform mock)
-  181     (_get_mss_monitors success path)
-  182-184 (_get_mss_monitors exception path)
-  222-223 (detect_monitors pyautogui.size OSError fallback)
-  283     (physical_to_logical monitors=None)
-  328,332 (logical_to_physical monitors=None, index==0 skip)
-  358     (logical_to_physical fallback return)
-  408-409 (save_calibration OSError)
-  431     (is_calibration_current hash match return)
-  458     (run_calibration_probe monitors=None)
-  473     (run_calibration_probe skip index==0 monitor)
-  547     (get_monitors cache TTL refresh, config unchanged)
+104-169 (_get_windows_dpi_scaling Windows code via sys.platform mock)
+181     (_get_mss_monitors success path)
+182-184 (_get_mss_monitors exception path)
+222-223 (detect_monitors pyautogui.size OSError fallback)
+283     (physical_to_logical monitors=None)
+328,332 (logical_to_physical monitors=None, index==0 skip)
+358     (logical_to_physical fallback return)
+408-409 (save_calibration OSError)
+431     (is_calibration_current hash match return)
+458     (run_calibration_probe monitors=None)
+473     (run_calibration_probe skip index==0 monitor)
+547     (get_monitors cache TTL refresh, config unchanged)
 """
 
 from __future__ import annotations
@@ -49,8 +49,10 @@ class TestGetWindowsDPIScalingExceptionPath:
             def user32(self):
                 raise OSError("no user32 on this platform")
 
-        with patch("sys.platform", "win32"), \
-             patch.object(ctypes, "windll", _FailWindll(), create=True):
+        with (
+            patch("sys.platform", "win32"),
+            patch.object(ctypes, "windll", _FailWindll(), create=True),
+        ):
             result = _get_windows_dpi_scaling()
 
         assert result == {}
@@ -58,6 +60,7 @@ class TestGetWindowsDPIScalingExceptionPath:
     def test_import_error_in_wintypes_returns_empty(self):
         """ImportError during ctypes.wintypes import → except branch."""
         import builtins
+
         real_import = builtins.__import__
 
         def _fake_import(name, *args, **kwargs):
@@ -65,8 +68,7 @@ class TestGetWindowsDPIScalingExceptionPath:
                 raise ImportError("no wintypes on Linux")
             return real_import(name, *args, **kwargs)
 
-        with patch("sys.platform", "win32"), \
-             patch("builtins.__import__", side_effect=_fake_import):
+        with patch("sys.platform", "win32"), patch("builtins.__import__", side_effect=_fake_import):
             result = _get_windows_dpi_scaling()
 
         assert result == {}
@@ -100,11 +102,14 @@ class TestGetWindowsDPIScalingHappyPath:
         def fake_winfunctype(*args):
             def decorator(fn):
                 return fn
+
             return decorator
 
-        with patch("sys.platform", "win32"), \
-             patch.object(ctypes, "windll", mock_windll, create=True), \
-             patch("ctypes.WINFUNCTYPE", fake_winfunctype, create=True):
+        with (
+            patch("sys.platform", "win32"),
+            patch.object(ctypes, "windll", mock_windll, create=True),
+            patch("ctypes.WINFUNCTYPE", fake_winfunctype, create=True),
+        ):
             result = _get_windows_dpi_scaling()
 
         # The scale calculation requires dpi_x to be a ctypes.c_uint() — the fake
@@ -127,11 +132,14 @@ class TestGetWindowsDPIScalingHappyPath:
         def fake_winfunctype(*args):
             def decorator(fn):
                 return fn
+
             return decorator
 
-        with patch("sys.platform", "win32"), \
-             patch.object(ctypes, "windll", mock_windll, create=True), \
-             patch("ctypes.WINFUNCTYPE", fake_winfunctype, create=True):
+        with (
+            patch("sys.platform", "win32"),
+            patch.object(ctypes, "windll", mock_windll, create=True),
+            patch("ctypes.WINFUNCTYPE", fake_winfunctype, create=True),
+        ):
             result = _get_windows_dpi_scaling()
 
         assert result == {}
@@ -153,11 +161,14 @@ class TestGetWindowsDPIScalingHappyPath:
         def fake_winfunctype(*args):
             def decorator(fn):
                 return fn
+
             return decorator
 
-        with patch("sys.platform", "win32"), \
-             patch.object(ctypes, "windll", mock_windll, create=True), \
-             patch("ctypes.WINFUNCTYPE", fake_winfunctype, create=True):
+        with (
+            patch("sys.platform", "win32"),
+            patch.object(ctypes, "windll", mock_windll, create=True),
+            patch("ctypes.WINFUNCTYPE", fake_winfunctype, create=True),
+        ):
             result = _get_windows_dpi_scaling()
 
         # Fall-back sets scale=1.0 for each handle that failed
@@ -209,9 +220,11 @@ class TestDetectMonitorsPyautoguiFallback:
     """Lines 222-223 — OSError from pyautogui.size() uses default resolution."""
 
     def test_pyautogui_oserror_uses_default_resolution(self):
-        with patch("core.dpi._get_mss_monitors", return_value=[]), \
-             patch("core.dpi._get_windows_dpi_scaling", return_value={}), \
-             patch("pyautogui.size", side_effect=OSError("no display")):
+        with (
+            patch("core.dpi._get_mss_monitors", return_value=[]),
+            patch("core.dpi._get_windows_dpi_scaling", return_value={}),
+            patch("pyautogui.size", side_effect=OSError("no display")),
+        ):
             monitors = detect_monitors()
 
         assert len(monitors) == 1
@@ -227,9 +240,7 @@ class TestPhysicalToLogicalNoneMonitors:
     """Line 283 — monitors=None triggers fresh detect_monitors() call."""
 
     def test_none_monitors_triggers_detect(self):
-        fake_monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0)
-        ]
+        fake_monitors = [MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0)]
         with patch("core.dpi.detect_monitors", return_value=fake_monitors) as mock_detect:
             result = physical_to_logical(100, 100, monitors=None)
 
@@ -244,9 +255,7 @@ class TestLogicalToPhysicalNoneMonitors:
     """Line 328 — monitors=None triggers fresh detect_monitors() call."""
 
     def test_none_monitors_triggers_detect(self):
-        fake_monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0)
-        ]
+        fake_monitors = [MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0)]
         with patch("core.dpi.detect_monitors", return_value=fake_monitors) as mock_detect:
             result = logical_to_physical(100, 100, monitors=None)
 
@@ -264,9 +273,7 @@ class TestLogicalToPhysicalNoneMonitors:
 
     def test_no_monitor_match_returns_unchanged(self):
         """Line 358 — fallback return (x, y) when no monitor matches."""
-        monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.5)
-        ]
+        monitors = [MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.5)]
         # Point way outside any logical monitor bounds
         result = logical_to_physical(9999, 9999, monitors)
         assert result == (9999, 9999)
@@ -281,8 +288,10 @@ class TestSaveCalibrationOSError:
     def test_oserror_does_not_raise(self, tmp_path):
         calib = CalibrationData(config_hash="abc", monitors=[], calibrated_at=1.0)
 
-        with patch("core.dpi._CALIBRATION_DIR", tmp_path), \
-             patch("core.dpi._CALIBRATION_FILE", tmp_path / "displays.json"):
+        with (
+            patch("core.dpi._CALIBRATION_DIR", tmp_path),
+            patch("core.dpi._CALIBRATION_FILE", tmp_path / "displays.json"),
+        ):
             # Make the tmp file's .replace() fail
             with patch.object(Path, "replace", side_effect=OSError("disk full")):
                 save_calibration(calib)  # should not raise
@@ -292,8 +301,10 @@ class TestSaveCalibrationOSError:
 
         calib = CalibrationData(config_hash="abc", monitors=[], calibrated_at=1.0)
 
-        with patch("core.dpi._CALIBRATION_DIR", tmp_path), \
-             patch("core.dpi._CALIBRATION_FILE", tmp_path / "displays.json"):
+        with (
+            patch("core.dpi._CALIBRATION_DIR", tmp_path),
+            patch("core.dpi._CALIBRATION_FILE", tmp_path / "displays.json"),
+        ):
             with patch.object(Path, "replace", side_effect=OSError("no space")):
                 with caplog.at_level(logging.WARNING, logger="core.dpi"):
                     save_calibration(calib)
@@ -312,14 +323,17 @@ class TestIsCalibrationCurrentMatch:
 
         # Pre-build the expected hash using the same function
         from core.dpi import _compute_config_hash
+
         expected_hash = _compute_config_hash(mss_mons)
 
         calib = CalibrationData(config_hash=expected_hash, monitors=[], calibrated_at=1.0)
 
         calib_file = tmp_path / "displays.json"
-        with patch("core.dpi._CALIBRATION_FILE", calib_file), \
-             patch("core.dpi._CALIBRATION_DIR", tmp_path), \
-             patch("core.dpi._get_mss_monitors", return_value=mss_mons):
+        with (
+            patch("core.dpi._CALIBRATION_FILE", calib_file),
+            patch("core.dpi._CALIBRATION_DIR", tmp_path),
+            patch("core.dpi._get_mss_monitors", return_value=mss_mons),
+        ):
             save_calibration(calib)
             result = is_calibration_current()
 
@@ -329,10 +343,14 @@ class TestIsCalibrationCurrentMatch:
         calib = CalibrationData(config_hash="old_hash", monitors=[], calibrated_at=1.0)
         calib_file = tmp_path / "displays.json"
 
-        with patch("core.dpi._CALIBRATION_FILE", calib_file), \
-             patch("core.dpi._CALIBRATION_DIR", tmp_path), \
-             patch("core.dpi._get_mss_monitors",
-                   return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}]):
+        with (
+            patch("core.dpi._CALIBRATION_FILE", calib_file),
+            patch("core.dpi._CALIBRATION_DIR", tmp_path),
+            patch(
+                "core.dpi._get_mss_monitors",
+                return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}],
+            ),
+        ):
             save_calibration(calib)
             result = is_calibration_current()
 
@@ -347,16 +365,28 @@ class TestRunCalibrationProbeNoneMonitors:
 
     def test_none_monitors_calls_detect(self, tmp_path):
         fake_monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080,
-                        scale_factor=1.0, is_primary=True, device_id="mon1")
+            MonitorInfo(
+                index=1,
+                x=0,
+                y=0,
+                width=1920,
+                height=1080,
+                scale_factor=1.0,
+                is_primary=True,
+                device_id="mon1",
+            )
         ]
         calib_file = tmp_path / "displays.json"
 
-        with patch("core.dpi._CALIBRATION_FILE", calib_file), \
-             patch("core.dpi._CALIBRATION_DIR", tmp_path), \
-             patch("core.dpi._get_mss_monitors",
-                   return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}]), \
-             patch("core.dpi.detect_monitors", return_value=fake_monitors) as mock_detect:
+        with (
+            patch("core.dpi._CALIBRATION_FILE", calib_file),
+            patch("core.dpi._CALIBRATION_DIR", tmp_path),
+            patch(
+                "core.dpi._get_mss_monitors",
+                return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}],
+            ),
+            patch("core.dpi.detect_monitors", return_value=fake_monitors) as mock_detect,
+        ):
             calib = run_calibration_probe(monitors=None)
 
         mock_detect.assert_called_once()
@@ -366,15 +396,27 @@ class TestRunCalibrationProbeNoneMonitors:
         """Line 473 — index==0 monitor is skipped during calibration build."""
         monitors = [
             MonitorInfo(index=0, x=0, y=0, width=3840, height=1080, scale_factor=1.0),
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080,
-                        scale_factor=1.0, is_primary=True, device_id="mon1"),
+            MonitorInfo(
+                index=1,
+                x=0,
+                y=0,
+                width=1920,
+                height=1080,
+                scale_factor=1.0,
+                is_primary=True,
+                device_id="mon1",
+            ),
         ]
         calib_file = tmp_path / "displays.json"
 
-        with patch("core.dpi._CALIBRATION_FILE", calib_file), \
-             patch("core.dpi._CALIBRATION_DIR", tmp_path), \
-             patch("core.dpi._get_mss_monitors",
-                   return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}]):
+        with (
+            patch("core.dpi._CALIBRATION_FILE", calib_file),
+            patch("core.dpi._CALIBRATION_DIR", tmp_path),
+            patch(
+                "core.dpi._get_mss_monitors",
+                return_value=[{"left": 0, "top": 0, "width": 1920, "height": 1080}],
+            ),
+        ):
             calib = run_calibration_probe(monitors=monitors)
 
         # Only the index=1 monitor should be in the result (index=0 was skipped)
@@ -394,15 +436,15 @@ class TestGetMonitorsCacheHashUnchanged:
         import core.dpi as dpi_mod
 
         mss_mons = [{"left": 0, "top": 0, "width": 1920, "height": 1080}]
-        fake_monitors = [
-            MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0)
-        ]
+        fake_monitors = [MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, scale_factor=1.0)]
 
         clear_monitor_cache()
 
         # First call: populates cache
-        with patch("core.dpi._get_mss_monitors", return_value=mss_mons), \
-             patch("core.dpi.detect_monitors", return_value=fake_monitors):
+        with (
+            patch("core.dpi._get_mss_monitors", return_value=mss_mons),
+            patch("core.dpi.detect_monitors", return_value=fake_monitors),
+        ):
             get_monitors()
 
         # Force TTL expiry without clearing the cached monitors/hash
@@ -410,9 +452,11 @@ class TestGetMonitorsCacheHashUnchanged:
             dpi_mod._cache_timestamp = 0.0
 
         # Second call: TTL expired, but hash is the same → else branch (line 547)
-        with patch("core.dpi._get_mss_monitors", return_value=mss_mons), \
-             patch("core.dpi.detect_monitors", return_value=fake_monitors) as mock_detect, \
-             caplog.at_level(logging.DEBUG, logger="core.dpi"):
+        with (
+            patch("core.dpi._get_mss_monitors", return_value=mss_mons),
+            patch("core.dpi.detect_monitors", return_value=fake_monitors) as mock_detect,
+            caplog.at_level(logging.DEBUG, logger="core.dpi"),
+        ):
             get_monitors()
 
         mock_detect.assert_not_called()

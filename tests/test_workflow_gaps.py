@@ -1,6 +1,7 @@
 """Gap tests for workflow.py — numeric comparison errors, loop failure,
 _exec_script/_exec_notify paths.
 """
+
 import json
 import tempfile
 from pathlib import Path

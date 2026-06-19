@@ -282,9 +282,7 @@ class SecretsVault:
         secrets = self.list_secrets()
         policy_status = "policy=none" if self._policy is None else "policy=active"
         audit_status = "audit=none" if self._audit is None else "audit=active"
-        return (
-            f"SecretsVault({len(secrets)} secret(s), {policy_status}, {audit_status})"
-        )
+        return f"SecretsVault({len(secrets)} secret(s), {policy_status}, {audit_status})"
 
 
 # ---------------------------------------------------------------------------

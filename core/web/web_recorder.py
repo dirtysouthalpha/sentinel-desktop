@@ -18,11 +18,21 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Web actions that the recorder captures.
-_WEB_RECORDABLE_ACTIONS: frozenset[str] = frozenset({
-    "web_open", "web_click", "web_type", "web_read", "web_extract",
-    "web_wait_for", "web_screenshot", "web_eval_js", "web_download",
-    "web_upload", "web_tabs",
-})
+_WEB_RECORDABLE_ACTIONS: frozenset[str] = frozenset(
+    {
+        "web_open",
+        "web_click",
+        "web_type",
+        "web_read",
+        "web_extract",
+        "web_wait_for",
+        "web_screenshot",
+        "web_eval_js",
+        "web_download",
+        "web_upload",
+        "web_tabs",
+    }
+)
 
 
 class WebRecording:
@@ -202,7 +212,10 @@ class WebRecorder:
             return False
 
         self._recording.add_action(
-            action, result, page_url=page_url, page_title=page_title,
+            action,
+            result,
+            page_url=page_url,
+            page_title=page_title,
         )
         return True
 

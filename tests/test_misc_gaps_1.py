@@ -102,8 +102,10 @@ class TestEngineWebModeRecording:
         fake_recorder = MagicMock()
         eng._web_recorder = fake_recorder
 
-        with patch("core.web.dual_mode.detect_mode_from_goal", return_value=InteractionMode.WEB), \
-             patch.object(eng, "_run_inner", return_value={"steps": 0}):
+        with (
+            patch("core.web.dual_mode.detect_mode_from_goal", return_value=InteractionMode.WEB),
+            patch.object(eng, "_run_inner", return_value={"steps": 0}),
+        ):
             eng.run("open the dashboard website")
 
         fake_recorder.start.assert_called_once()
@@ -117,8 +119,10 @@ class TestEngineWebModeRecording:
         fake_recorder = MagicMock()
         eng._web_recorder = fake_recorder
 
-        with patch("core.web.dual_mode.detect_mode_from_goal", return_value=InteractionMode.WEB), \
-             patch.object(eng, "_run_inner", return_value={"steps": 0}):
+        with (
+            patch("core.web.dual_mode.detect_mode_from_goal", return_value=InteractionMode.WEB),
+            patch.object(eng, "_run_inner", return_value={"steps": 0}),
+        ):
             eng.run("open the dashboard website")
 
         fake_recorder.start.assert_not_called()
@@ -135,8 +139,10 @@ class TestLauncherCmdNotFound:
 
         from core.launcher import _launch_new_app
 
-        with patch("platform.system", return_value="Windows"), \
-             patch.object(shutil, "which", return_value=None):
+        with (
+            patch("platform.system", return_value="Windows"),
+            patch.object(shutil, "which", return_value=None),
+        ):
             result = _launch_new_app("MyApp", "myapp.exe")
 
         assert result["success"] is False
@@ -223,12 +229,14 @@ class TestMessageBusHistoryPruning:
         bus.register("agent1")
 
         for i in range(3):
-            await bus.send(AgentMessage(
-                sender="agent1",
-                recipient="agent1",
-                msg_type="task",
-                payload={"i": i},
-            ))
+            await bus.send(
+                AgentMessage(
+                    sender="agent1",
+                    recipient="agent1",
+                    msg_type="task",
+                    payload={"i": i},
+                )
+            )
 
         assert len(bus._history) == 2
 
@@ -261,8 +269,10 @@ class TestOrchestratorResultReceived:
             payload=result_payload,
         )
 
-        with patch.object(bus, "receive", new=AsyncMock(return_value=fake_msg)), \
-             patch.object(bus, "send", new=AsyncMock(return_value=1)):
+        with (
+            patch.object(bus, "receive", new=AsyncMock(return_value=fake_msg)),
+            patch.object(bus, "send", new=AsyncMock(return_value=1)),
+        ):
             result = await swarm.execute("click on the icon", timeout=10.0)
 
         # At least one result was appended via line 100
@@ -283,8 +293,7 @@ class TestRegistryWinregImport:
         import core.registry as registry_mod
 
         fake_winreg = MagicMock()
-        with patch.dict(sys.modules, {"winreg": fake_winreg}), \
-             patch("sys.platform", "win32"):
+        with patch.dict(sys.modules, {"winreg": fake_winreg}), patch("sys.platform", "win32"):
             importlib.reload(registry_mod)
             # winreg should now be bound in the module
             assert hasattr(registry_mod, "winreg") or "winreg" in dir(registry_mod)

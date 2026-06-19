@@ -444,11 +444,21 @@ def main() -> None:
     parser.add_argument("--all", action="store_true", help="Build everything")
     parser.add_argument("--clean", action="store_true", help="Remove build artifacts")
     parser.add_argument("--portable", action="store_true", help="Build portable --onedir bundle")
-    parser.add_argument("--profile", default="field-it-tech", help="Profile to embed in portable build")
-    parser.add_argument("--no-playwright", action="store_true", help="Skip bundling Playwright browsers")
-    parser.add_argument("--out-dir", default=None, help="Override output directory for portable build")
-    parser.add_argument("--tesseract-bin", default=None, dest="tesseract_bin",
-                        help="Path to Tesseract binary (auto-detected if unset)")
+    parser.add_argument(
+        "--profile", default="field-it-tech", help="Profile to embed in portable build"
+    )
+    parser.add_argument(
+        "--no-playwright", action="store_true", help="Skip bundling Playwright browsers"
+    )
+    parser.add_argument(
+        "--out-dir", default=None, help="Override output directory for portable build"
+    )
+    parser.add_argument(
+        "--tesseract-bin",
+        default=None,
+        dest="tesseract_bin",
+        help="Path to Tesseract binary (auto-detected if unset)",
+    )
     args = parser.parse_args()
 
     action_flags = (args.exe, args.installer, args.all, args.clean, args.portable)

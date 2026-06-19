@@ -1,6 +1,7 @@
 """Gap tests for screenshot.py — capture_screen, capture_region, get_capture_offset,
 find_template.
 """
+
 import sys
 
 import pytest

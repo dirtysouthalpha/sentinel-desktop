@@ -14,18 +14,15 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Sequence
-
-import pytest
+from collections.abc import Sequence
 
 from core.humanize.motion import humanized_path
-from core.humanize.profile import NATURALISTIC, Profile
-from core.humanize import rng as rng_mod
+from core.humanize.profile import NATURALISTIC
 
 
-def _colinearity_deviation(points: Sequence[tuple[float, float]],
-                            start: tuple[int, int],
-                            target: tuple[int, int]) -> float:
+def _colinearity_deviation(
+    points: Sequence[tuple[float, float]], start: tuple[int, int], target: tuple[int, int]
+) -> float:
     """Max perpendicular distance of `points` from the start→target line."""
     sx, sy = start
     tx, ty = target
@@ -36,7 +33,7 @@ def _colinearity_deviation(points: Sequence[tuple[float, float]],
     # Normal to the line direction.
     nx, ny = -dy / length, dx / length
     worst = 0.0
-    for (px, py) in points:
+    for px, py in points:
         # signed distance from the infinite line through start with direction (dx,dy)
         d = (px - sx) * nx + (py - sy) * ny
         worst = max(worst, abs(d))
@@ -76,7 +73,11 @@ class TestEasedVelocity:
         assert n >= 8, "too few samples to assert easing"
         quarter = n // 4
         ends = dwells[:quarter] + dwells[-quarter:]
-        middle = dwells[quarter:n - quarter] if (n - 2 * quarter) > 0 else dwells[quarter:3 * quarter]
+        middle = (
+            dwells[quarter : n - quarter]
+            if (n - 2 * quarter) > 0
+            else dwells[quarter : 3 * quarter]
+        )
         mean_ends = sum(ends) / len(ends)
         mean_middle = sum(middle) / len(middle)
         # Eased ⇒ ends slower (bigger dwell) than the middle.
@@ -166,6 +167,7 @@ class TestDegenerateInput:
 
     def test_zero_distance_runs_quickly(self):
         import time as _t
+
         rng = random.Random(13)
         t0 = _t.perf_counter()
         for _ in range(200):
@@ -180,7 +182,7 @@ class TestContract:
         pts = humanized_path((0, 0), (200, 200), rng=rng, profile=NATURALISTIC)
         assert isinstance(pts, list)
         assert all(len(item) == 2 for item in pts)
-        for (p, d) in pts:
+        for p, d in pts:
             assert len(p) == 2
             assert isinstance(d, float)
             assert d >= 0.0

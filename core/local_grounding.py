@@ -182,9 +182,11 @@ _BACKEND_LOADERS: dict[str, Any] = {}
 
 def _register_backend(name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register a backend loader."""
+
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         _BACKEND_LOADERS[name] = fn
         return fn
+
     return decorator
 
 
@@ -193,6 +195,7 @@ def _load_omniparser() -> Any:
     """Load OmniParser model (optional dependency)."""
     try:
         from omniparser import OmniParser  # type: ignore
+
         return OmniParser()
     except ImportError:
         raise ImportError("omniparser not installed — pip install omniparser") from None
@@ -206,6 +209,7 @@ def _load_florence2() -> Any:
 
         class _Florence2Wrapper:
             """Wraps Florence-2 for grounding predictions."""
+
             def __init__(self) -> None:
                 self.model = AutoModelForCausalLM.from_pretrained(
                     "microsoft/Florence-2-large",
@@ -231,6 +235,7 @@ def _load_uground() -> Any:
     """Load UGround model (optional dependency)."""
     try:
         import uground  # type: ignore
+
         return uground.Model()
     except ImportError:
         raise ImportError("uground not installed") from None
@@ -244,6 +249,7 @@ def _load_yolo() -> Any:
 
         class _YOLOWrapper:
             """Wraps YOLO for UI element detection."""
+
             def __init__(self) -> None:
                 # Use a general-purpose YOLO model — could be replaced with
                 # a UI-specific trained model
@@ -253,6 +259,7 @@ def _load_yolo() -> Any:
                 # YOLO doesn't do text-to-bbox natively, but detects objects
                 # We return the first detection as a rough grounding
                 import numpy as np
+
                 results = self.model(np.array(screenshot))
                 if results and len(results[0].boxes) > 0:
                     box = results[0].boxes[0].xyxy[0].cpu().numpy()

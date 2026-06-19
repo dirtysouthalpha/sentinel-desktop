@@ -29,9 +29,7 @@ def test_get_theme_falls_back_to_sentinel():
 def test_get_theme_names_returns_all_themes():
     names = get_theme_names()
     assert len(names) == len(THEMES)
-    assert all(
-        isinstance(pair, tuple) and len(pair) == 2 for pair in names
-    )
+    assert all(isinstance(pair, tuple) and len(pair) == 2 for pair in names)
 
 
 def test_get_theme_names_includes_sentinel():
@@ -53,9 +51,7 @@ def test_every_theme_has_required_keys():
 def test_every_theme_has_valid_appearance():
     for name in THEMES:
         theme = get_theme(name)
-        assert theme["appearance"] in ("dark", "light"), (
-            f"{name}: bad appearance"
-        )
+        assert theme["appearance"] in ("dark", "light"), f"{name}: bad appearance"
 
 
 def test_theme_colors_are_hex():
@@ -71,12 +67,8 @@ def test_theme_colors_are_hex():
         theme = get_theme(name)
         for key in color_keys:
             val = theme.get(key, "")
-            assert val.startswith("#"), (
-                f"{name}.{key} = {val!r} not a hex color"
-            )
-            assert len(val) == 7, (
-                f"{name}.{key} = {val!r} not 7 chars"
-            )
+            assert val.startswith("#"), f"{name}.{key} = {val!r} not a hex color"
+            assert len(val) == 7, f"{name}.{key} = {val!r} not 7 chars"
 
 
 def test_sentinel_theme_matches_override_spec():

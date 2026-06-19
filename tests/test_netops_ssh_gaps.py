@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -36,6 +35,7 @@ class TestParamikoImportLines:
             if "core.netops.ssh_client" in sys.modules:
                 del sys.modules["core.netops.ssh_client"]
             import core.netops.ssh_client as ssh_mod
+
             assert ssh_mod._HAS_PARAMIKO is True
             assert ssh_mod.paramiko is fake_paramiko
         finally:

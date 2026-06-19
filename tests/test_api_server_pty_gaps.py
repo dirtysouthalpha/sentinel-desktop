@@ -1,8 +1,8 @@
 """Gap tests for api/server.py — covers lines 60-63, 610-652, 772-807.
 
-  60-63:   ImportError except block (PTY modules unavailable → set to None)
-  610-652: _setup_pty_child() — os.setsid, fcntl.ioctl, dup2, execvpe, _exit
-  772-807: _handle_terminal_ws() — no-PTY error path + parent process path
+60-63:   ImportError except block (PTY modules unavailable → set to None)
+610-652: _setup_pty_child() — os.setsid, fcntl.ioctl, dup2, execvpe, _exit
+772-807: _handle_terminal_ws() — no-PTY error path + parent process path
 """
 
 from __future__ import annotations
@@ -66,14 +66,16 @@ class TestSetupPtyChild:
         server = _make_server()
         mock_exit = MagicMock()
 
-        with patch("api.server.os.close"), \
-             patch("api.server.os.setsid"), \
-             patch("api.server.os.dup2"), \
-             patch("api.server.fcntl"), \
-             patch("api.server.termios"), \
-             patch("api.server.os.path.isfile", return_value=True), \
-             patch("api.server.os.execvpe", side_effect=OSError("exec failed")), \
-             patch("api.server.os._exit", mock_exit):
+        with (
+            patch("api.server.os.close"),
+            patch("api.server.os.setsid"),
+            patch("api.server.os.dup2"),
+            patch("api.server.fcntl"),
+            patch("api.server.termios"),
+            patch("api.server.os.path.isfile", return_value=True),
+            patch("api.server.os.execvpe", side_effect=OSError("exec failed")),
+            patch("api.server.os._exit", mock_exit),
+        ):
             server._setup_pty_child(slave_fd=5)
 
         mock_exit.assert_called_once_with(1)
@@ -84,14 +86,16 @@ class TestSetupPtyChild:
         server = _make_server()
         mock_exit = MagicMock()
 
-        with patch("api.server.os.close"), \
-             patch("api.server.os.setsid"), \
-             patch("api.server.os.dup2"), \
-             patch("api.server.fcntl"), \
-             patch("api.server.termios"), \
-             patch("api.server.os.path.isfile", return_value=False), \
-             patch("api.server.os.execvpe", side_effect=OSError("no shell")), \
-             patch("api.server.os._exit", mock_exit):
+        with (
+            patch("api.server.os.close"),
+            patch("api.server.os.setsid"),
+            patch("api.server.os.dup2"),
+            patch("api.server.fcntl"),
+            patch("api.server.termios"),
+            patch("api.server.os.path.isfile", return_value=False),
+            patch("api.server.os.execvpe", side_effect=OSError("no shell")),
+            patch("api.server.os._exit", mock_exit),
+        ):
             server._setup_pty_child(slave_fd=3)
 
         mock_exit.assert_called_once_with(1)
@@ -107,14 +111,16 @@ class TestSetupPtyChild:
 
         mock_exit = MagicMock()
 
-        with patch("api.server.os.close", side_effect=track_close), \
-             patch("api.server.os.setsid"), \
-             patch("api.server.os.dup2"), \
-             patch("api.server.fcntl"), \
-             patch("api.server.termios"), \
-             patch("api.server.os.path.isfile", return_value=False), \
-             patch("api.server.os.execvpe", side_effect=OSError("no shell")), \
-             patch("api.server.os._exit", mock_exit):
+        with (
+            patch("api.server.os.close", side_effect=track_close),
+            patch("api.server.os.setsid"),
+            patch("api.server.os.dup2"),
+            patch("api.server.fcntl"),
+            patch("api.server.termios"),
+            patch("api.server.os.path.isfile", return_value=False),
+            patch("api.server.os.execvpe", side_effect=OSError("no shell")),
+            patch("api.server.os._exit", mock_exit),
+        ):
             server._setup_pty_child(slave_fd=1)
 
         # Only one os.close() call (the first one, not the conditional second)
@@ -173,13 +179,15 @@ class TestHandleTerminalWs:
         mock_pty = MagicMock()
         mock_pty.openpty.return_value = (10, 11)
 
-        with patch("api.server.pty", mock_pty), \
-             patch("os.fork", return_value=42), \
-             patch("os.close"), \
-             patch.object(server, "_configure_master_fd_nonblocking"), \
-             patch.object(server, "_cleanup_pty", side_effect=_fake_cleanup), \
-             patch.object(server, "_read_pty", _fake_read_pty), \
-             patch.object(server, "_read_ws", _fake_read_ws):
+        with (
+            patch("api.server.pty", mock_pty),
+            patch("os.fork", return_value=42),
+            patch("os.close"),
+            patch.object(server, "_configure_master_fd_nonblocking"),
+            patch.object(server, "_cleanup_pty", side_effect=_fake_cleanup),
+            patch.object(server, "_read_pty", _fake_read_pty),
+            patch.object(server, "_read_ws", _fake_read_ws),
+        ):
             await server._handle_terminal_ws(ws)
 
         ws.accept.assert_called_once()
@@ -208,13 +216,15 @@ class TestHandleTerminalWs:
         mock_pty = MagicMock()
         mock_pty.openpty.return_value = (10, 11)
 
-        with patch("api.server.pty", mock_pty), \
-             patch("os.fork", return_value=42), \
-             patch("os.close"), \
-             patch.object(server, "_configure_master_fd_nonblocking"), \
-             patch.object(server, "_cleanup_pty", side_effect=_fake_cleanup), \
-             patch.object(server, "_read_pty", _raises_disconnect), \
-             patch.object(server, "_read_ws", _fake_read_ws):
+        with (
+            patch("api.server.pty", mock_pty),
+            patch("os.fork", return_value=42),
+            patch("os.close"),
+            patch.object(server, "_configure_master_fd_nonblocking"),
+            patch.object(server, "_cleanup_pty", side_effect=_fake_cleanup),
+            patch.object(server, "_read_pty", _raises_disconnect),
+            patch.object(server, "_read_ws", _fake_read_ws),
+        ):
             # Should not raise — exception is caught
             await server._handle_terminal_ws(ws)
 
@@ -235,15 +245,17 @@ class TestSetupPtyChildHomeEnv:
         # Strip HOME from the environment copy that _setup_pty_child sees
         env_without_home = {k: v for k, v in __import__("os").environ.items() if k != "HOME"}
 
-        with patch("api.server.os.close"), \
-             patch("api.server.os.setsid"), \
-             patch("api.server.os.dup2"), \
-             patch("api.server.fcntl"), \
-             patch("api.server.termios"), \
-             patch("api.server.os.environ", env_without_home), \
-             patch("api.server.os.path.isfile", return_value=False), \
-             patch("api.server.os.execvpe", side_effect=OSError("no shell")), \
-             patch("api.server.os._exit", mock_exit):
+        with (
+            patch("api.server.os.close"),
+            patch("api.server.os.setsid"),
+            patch("api.server.os.dup2"),
+            patch("api.server.fcntl"),
+            patch("api.server.termios"),
+            patch("api.server.os.environ", env_without_home),
+            patch("api.server.os.path.isfile", return_value=False),
+            patch("api.server.os.execvpe", side_effect=OSError("no shell")),
+            patch("api.server.os._exit", mock_exit),
+        ):
             server._setup_pty_child(slave_fd=5)
 
         mock_exit.assert_called_once_with(1)
@@ -266,10 +278,12 @@ class TestHandleTerminalWsChildBranch:
         mock_pty = MagicMock()
         mock_pty.openpty.return_value = (10, 11)
 
-        with patch("api.server.pty", mock_pty), \
-             patch("api.server.os.fork", return_value=0), \
-             patch("api.server.os.close"), \
-             patch.object(server, "_setup_pty_child", mock_setup):
+        with (
+            patch("api.server.pty", mock_pty),
+            patch("api.server.os.fork", return_value=0),
+            patch("api.server.os.close"),
+            patch.object(server, "_setup_pty_child", mock_setup),
+        ):
             await server._handle_terminal_ws(ws)
 
         mock_setup.assert_called_once_with(11)
@@ -291,7 +305,6 @@ class TestHandleTerminalWsPendingCancel:
         ws.accept = AsyncMock()
 
         completed_event = _asyncio.Event()
-        cancel_calls = []
 
         async def _returns_instantly(master_fd, ws_arg):
             completed_event.set()
@@ -305,13 +318,15 @@ class TestHandleTerminalWsPendingCancel:
         mock_pty = MagicMock()
         mock_pty.openpty.return_value = (10, 11)
 
-        with patch("api.server.pty", mock_pty), \
-             patch("api.server.os.fork", return_value=42), \
-             patch("api.server.os.close"), \
-             patch.object(server, "_configure_master_fd_nonblocking"), \
-             patch.object(server, "_cleanup_pty", side_effect=_cleanup), \
-             patch.object(server, "_read_pty", _returns_instantly), \
-             patch.object(server, "_read_ws", _blocks_until_cancelled):
+        with (
+            patch("api.server.pty", mock_pty),
+            patch("api.server.os.fork", return_value=42),
+            patch("api.server.os.close"),
+            patch.object(server, "_configure_master_fd_nonblocking"),
+            patch.object(server, "_cleanup_pty", side_effect=_cleanup),
+            patch.object(server, "_read_pty", _returns_instantly),
+            patch.object(server, "_read_ws", _blocks_until_cancelled),
+        ):
             await server._handle_terminal_ws(ws)
 
         # If we reach here without hanging, the pending task was cancelled correctly
@@ -342,12 +357,14 @@ class TestHandleTerminalWsExceptBlock:
         async def _wait_raises(*args, **kwargs):
             raise RuntimeError("event loop closed")
 
-        with patch("api.server.pty", mock_pty), \
-             patch("api.server.os.fork", return_value=42), \
-             patch("api.server.os.close"), \
-             patch.object(server, "_configure_master_fd_nonblocking"), \
-             patch.object(server, "_cleanup_pty", side_effect=_cleanup), \
-             patch("api.server.asyncio.wait", side_effect=_wait_raises):
+        with (
+            patch("api.server.pty", mock_pty),
+            patch("api.server.os.fork", return_value=42),
+            patch("api.server.os.close"),
+            patch.object(server, "_configure_master_fd_nonblocking"),
+            patch.object(server, "_cleanup_pty", side_effect=_cleanup),
+            patch("api.server.asyncio.wait", side_effect=_wait_raises),
+        ):
             # Should not propagate — caught by except (lines 804-805)
             await server._handle_terminal_ws(ws)
 

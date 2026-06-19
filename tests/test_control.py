@@ -280,9 +280,9 @@ class TestControlLoop:
         assert loop.max_replans == 2
 
     def test_custom_initialization(self):
+        from core.control.grounder import ActionGrounder
         from core.control.loop import ControlLoop
         from core.control.planner import TaskPlanner
-        from core.control.grounder import ActionGrounder
 
         planner = TaskPlanner()
         grounder = ActionGrounder()
@@ -298,8 +298,9 @@ class TestControlLoop:
         assert loop.max_replans == 3
 
     def test_execute_with_mock_executor(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         # Mock the executor
         executor = MagicMock()
@@ -318,8 +319,9 @@ class TestControlLoop:
         assert result["elapsed_ms"] >= 0
 
     def test_execute_with_step_callback(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True}
@@ -338,8 +340,9 @@ class TestControlLoop:
         # Callback should be called for each step (0 in this case since plan is complete)
 
     def test_execute_without_executor(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         loop = ControlLoop(executor=None)
         loop.planner.plan = MagicMock(return_value=ExecutionPlan())
@@ -349,8 +352,9 @@ class TestControlLoop:
         assert result["status"] == "completed"
 
     def test_execute_with_grounding_failure_retry(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True}
@@ -387,8 +391,9 @@ class TestControlLoop:
         assert result["status"] in ("completed", "partial")
 
     def test_get_perception(self):
+        from unittest.mock import MagicMock, patch
+
         from core.control.loop import ControlLoop
-        from unittest.mock import patch, MagicMock
 
         loop = ControlLoop()
 
@@ -398,9 +403,7 @@ class TestControlLoop:
             mock_capture.return_value = mock_img
 
             # Mock perception analysis
-            loop.perception.analyze = MagicMock(
-                return_value=PerceptionResult(elements=[])
-            )
+            loop.perception.analyze = MagicMock(return_value=PerceptionResult(elements=[]))
 
             result = loop._get_perception()
 
@@ -408,8 +411,9 @@ class TestControlLoop:
             loop.perception.analyze.assert_called_once()
 
     def test_execute_action_success(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True, "output": "Action completed"}
@@ -423,8 +427,9 @@ class TestControlLoop:
         executor.execute_sync.assert_called_once_with(action_dict)
 
     def test_execute_action_failure(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.side_effect = Exception("Test error")
@@ -438,8 +443,9 @@ class TestControlLoop:
         assert "Test error" in result["output"]
 
     def test_verify_action_with_images(self):
-        from core.control.loop import ControlLoop
         from PIL import Image
+
+        from core.control.loop import ControlLoop
 
         before = Image.new("RGB", (200, 200), color="white")
         after = Image.new("RGB", (200, 200), color="black")
@@ -469,8 +475,9 @@ class TestControlLoop:
         assert report.should_retry is False
 
     def test_execute_max_steps_limit(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True}
@@ -487,7 +494,9 @@ class TestControlLoop:
         step.status = StepStatus.PENDING
 
         # Create many steps
-        steps = [PlanStep(id=i, description=f"Step {i}", step_type=StepType.WAIT) for i in range(1, 100)]
+        steps = [
+            PlanStep(id=i, description=f"Step {i}", step_type=StepType.WAIT) for i in range(1, 100)
+        ]
         plan = ExecutionPlan(steps=steps)
         loop.planner.plan = MagicMock(return_value=plan)
 
@@ -497,8 +506,9 @@ class TestControlLoop:
         assert result["steps_executed"] <= 5
 
     def test_execute_with_completed_steps(self):
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True}
@@ -533,8 +543,9 @@ class TestControlLoop:
 
     def test_execute_max_retries_during_grounding(self):
         """Test max retries exceeded during grounding (lines 92-102)."""
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True}
@@ -573,8 +584,9 @@ class TestControlLoop:
 
     def test_execute_successful_step_completion(self):
         """Test successful step completion path (lines 121-122)."""
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True, "output": "Clicked"}
@@ -611,8 +623,9 @@ class TestControlLoop:
 
     def test_execute_max_retries_during_execution(self):
         """Test max retries exceeded during execution (lines 126-127)."""
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         # Make executor fail but should retry
@@ -650,8 +663,9 @@ class TestControlLoop:
 
     def test_execute_with_callback_exception(self):
         """Test callback execution with exception handling (lines 140-143)."""
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         executor = MagicMock()
         executor.execute_sync.return_value = {"success": True}
@@ -691,8 +705,9 @@ class TestControlLoop:
 
     def test_execute_with_no_executor(self):
         """Test execution with no executor configured (line 173)."""
-        from core.control.loop import ControlLoop
         from unittest.mock import MagicMock
+
+        from core.control.loop import ControlLoop
 
         # Create loop without executor
         loop = ControlLoop(executor=None)
@@ -759,9 +774,11 @@ class TestTaskPlannerCoverage:
         """plan() returns ExecutionPlan when LLM succeeds."""
         from unittest.mock import MagicMock
 
-        steps_json = json.dumps([
-            {"description": "Click Save", "type": "click", "target": "Save button"},
-        ])
+        steps_json = json.dumps(
+            [
+                {"description": "Click Save", "type": "click", "target": "Save button"},
+            ]
+        )
         mock_llm = MagicMock()
         mock_llm.chat.return_value = steps_json
 
@@ -777,9 +794,11 @@ class TestTaskPlannerCoverage:
         """plan() includes context in the prompt when provided."""
         from unittest.mock import MagicMock
 
-        steps_json = json.dumps([
-            {"description": "Click OK", "type": "click", "target": "OK button"},
-        ])
+        steps_json = json.dumps(
+            [
+                {"description": "Click OK", "type": "click", "target": "OK button"},
+            ]
+        )
         mock_llm = MagicMock()
         mock_llm.chat.return_value = steps_json
 
@@ -812,9 +831,11 @@ class TestTaskPlannerCoverage:
         """_query_llm creates LLMClient on first call when none injected."""
         from unittest.mock import MagicMock, patch
 
-        steps_json = json.dumps([
-            {"description": "Type text", "type": "type", "target": "input"},
-        ])
+        steps_json = json.dumps(
+            [
+                {"description": "Type text", "type": "type", "target": "input"},
+            ]
+        )
         mock_llm = MagicMock()
         mock_llm.chat.return_value = steps_json
         mock_client_class = MagicMock(return_value=mock_llm)
@@ -833,9 +854,11 @@ class TestTaskPlannerCoverage:
         """_query_llm uses the existing client without re-creating it."""
         from unittest.mock import MagicMock
 
-        steps_json = json.dumps([
-            {"description": "Press Enter", "type": "key", "target": "screen", "value": "enter"},
-        ])
+        steps_json = json.dumps(
+            [
+                {"description": "Press Enter", "type": "key", "target": "screen", "value": "enter"},
+            ]
+        )
         mock_llm = MagicMock()
         mock_llm.chat.return_value = steps_json
 

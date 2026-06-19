@@ -1,13 +1,13 @@
 """Tests for brain action schemas and executor dispatch (v18.0 — Neuralis Brain Bridge)."""
+
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from core.action_schemas import ACTION_MODELS, validate_action
 from core.action_executor import ActionExecutor
-
+from core.action_schemas import ACTION_MODELS, validate_action
 
 # ---------------------------------------------------------------------------
 # Schema tests
@@ -37,16 +37,12 @@ class TestBrainThinkSchema:
         assert errs
 
     def test_invalid_region_rejected(self):
-        _, errs = validate_action(
-            {"action": "brain_think", "content": "x", "region": "garbage"}
-        )
+        _, errs = validate_action({"action": "brain_think", "content": "x", "region": "garbage"})
         assert errs
 
     def test_all_valid_regions(self):
         for region in ("knowledge", "context", "preference", "decision"):
-            out, errs = validate_action(
-                {"action": "brain_think", "content": "x", "region": region}
-            )
+            out, errs = validate_action({"action": "brain_think", "content": "x", "region": region})
             assert errs == [], f"region={region!r} should be valid"
 
 
@@ -152,6 +148,7 @@ class TestBrainThinkDispatch:
 
     def test_unavailable_graceful(self, executor):
         from core.brain.client import BrainUnavailableError
+
         with patch("core.brain.think", side_effect=BrainUnavailableError("down")):
             result = executor.execute_sync({"action": "brain_think", "content": "test"})
         assert result["success"] is False
@@ -159,6 +156,7 @@ class TestBrainThinkDispatch:
 
     def test_brain_error_graceful(self, executor):
         from core.brain.client import BrainError
+
         with patch("core.brain.think", side_effect=BrainError("bad response")):
             result = executor.execute_sync({"action": "brain_think", "content": "test"})
         assert result["success"] is False
@@ -186,6 +184,7 @@ class TestBrainRecallDispatch:
 
     def test_unavailable_graceful(self, executor):
         from core.brain.client import BrainUnavailableError
+
         with patch("core.brain.recall", side_effect=BrainUnavailableError("down")):
             result = executor.execute_sync({"action": "brain_recall", "context": "x"})
         assert result["success"] is False
@@ -204,6 +203,7 @@ class TestBrainSearchDispatch:
 
     def test_unavailable_graceful(self, executor):
         from core.brain.client import BrainUnavailableError
+
         with patch("core.brain.search", side_effect=BrainUnavailableError("down")):
             result = executor.execute_sync({"action": "brain_search", "q": "x"})
         assert result["success"] is False
@@ -223,6 +223,7 @@ class TestBrainStatsDispatch:
 
     def test_unavailable_graceful(self, executor):
         from core.brain.client import BrainUnavailableError
+
         with patch("core.brain.stats", side_effect=BrainUnavailableError("down")):
             result = executor.execute_sync({"action": "brain_stats"})
         assert result["success"] is False
@@ -240,6 +241,7 @@ class TestBrainFireDispatch:
 
     def test_unavailable_graceful(self, executor):
         from core.brain.client import BrainUnavailableError
+
         with patch("core.brain.fire", side_effect=BrainUnavailableError("down")):
             result = executor.execute_sync({"action": "brain_fire", "neuron_id": 7})
         assert result["success"] is False

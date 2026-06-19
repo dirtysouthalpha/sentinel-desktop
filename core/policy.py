@@ -349,6 +349,7 @@ class PolicyEngine:
         Returns:
             (allowed: bool, reason: str)
         """
+
         def match(rule: dict[str, Any]) -> bool:
             pattern = rule.get("pattern", "**")
             return _fnmatch_path(pattern, path)
@@ -430,10 +431,7 @@ class PolicyEngine:
 
         if not loaded:
             return f"PolicyEngine: no policy loaded (file: {path})"
-        return (
-            f"PolicyEngine: {count} rule(s) from {path}, "
-            f"default={default}"
-        )
+        return f"PolicyEngine: {count} rule(s) from {path}, default={default}"
 
 
 # ---------------------------------------------------------------------------

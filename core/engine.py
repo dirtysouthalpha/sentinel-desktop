@@ -570,6 +570,7 @@ class AgentEngine:
 
         # v11.0: Initialize working memory for this session
         from core.memory.working import WorkingMemory
+
         self._working_memory = WorkingMemory()
         self._working_memory.set("goal", goal)
 
@@ -1316,6 +1317,7 @@ class AgentEngine:
         # v11.0: Store episode in episodic memory
         try:
             from core.memory.episodic import EpisodicMemory
+
             em = EpisodicMemory()
             em.store(
                 goal=goal,
@@ -1604,6 +1606,7 @@ class AgentEngine:
         """Build context from relevant semantic memory facts."""
         try:
             from core.memory.semantic import SemanticMemory
+
             mem = SemanticMemory()
             if mem.count() == 0:
                 return ""

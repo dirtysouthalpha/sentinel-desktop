@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from core import stealth_input
 
 
@@ -133,8 +131,10 @@ class TestPostTextTiming:
         fake_win32api = type("fake_api", (), {})
         fake_win32api.PostMessage = lambda *a, **kw: None
         monkeypatch.setattr(stealth_input, "win32api", fake_win32api, raising=False)
+
         class _FakeCon:
             WM_CHAR = 0x102
+
         monkeypatch.setattr(stealth_input, "win32con", _FakeCon, raising=False)
 
         with patch("core.stealth_input.time.sleep", lambda s: sleeps.append(s)):

@@ -47,8 +47,9 @@ def http_get(
     Returns:
         Dict with ``success``, ``status_code``, ``body``, ``headers``.
     """
-    return _request("GET", url, headers=headers, params=params,
-                    timeout=timeout, verify_ssl=verify_ssl)
+    return _request(
+        "GET", url, headers=headers, params=params, timeout=timeout, verify_ssl=verify_ssl
+    )
 
 
 def http_post(
@@ -70,8 +71,16 @@ def http_post(
         params:  Optional query parameters.
         timeout: Request timeout in seconds.
     """
-    return _request("POST", url, body=body, json=json, headers=headers,
-                    params=params, timeout=timeout, verify_ssl=verify_ssl)
+    return _request(
+        "POST",
+        url,
+        body=body,
+        json=json,
+        headers=headers,
+        params=params,
+        timeout=timeout,
+        verify_ssl=verify_ssl,
+    )
 
 
 def http_put(
@@ -83,8 +92,9 @@ def http_put(
     verify_ssl: bool = True,
 ) -> dict[str, Any]:
     """Perform an HTTP PUT request."""
-    return _request("PUT", url, body=body, json=json, headers=headers,
-                    timeout=timeout, verify_ssl=verify_ssl)
+    return _request(
+        "PUT", url, body=body, json=json, headers=headers, timeout=timeout, verify_ssl=verify_ssl
+    )
 
 
 def http_delete(
@@ -94,8 +104,7 @@ def http_delete(
     verify_ssl: bool = True,
 ) -> dict[str, Any]:
     """Perform an HTTP DELETE request."""
-    return _request("DELETE", url, headers=headers, timeout=timeout,
-                    verify_ssl=verify_ssl)
+    return _request("DELETE", url, headers=headers, timeout=timeout, verify_ssl=verify_ssl)
 
 
 def http_download(

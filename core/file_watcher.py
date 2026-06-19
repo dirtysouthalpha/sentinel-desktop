@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 # ── File watcher ─────────────────────────────────────────────────────────────
 
+
 def watch_file(
     path: str,
     timeout: float = 60.0,
@@ -142,6 +143,7 @@ def watch_file_content(
 
 
 # ── Process watcher ──────────────────────────────────────────────────────────
+
 
 def watch_process(
     name: str,

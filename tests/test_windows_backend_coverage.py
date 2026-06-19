@@ -9,18 +9,16 @@ from __future__ import annotations
 import ctypes
 import subprocess
 import sys
-from types import ModuleType
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import core.platform.windows_backend as wb
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_proc(returncode: int = 0, stdout: str = "", stderr: str = "") -> MagicMock:
     m = MagicMock()
@@ -55,6 +53,7 @@ def _mock_win32() -> tuple[MagicMock, MagicMock, MagicMock]:
 # ---------------------------------------------------------------------------
 # Probe functions
 # ---------------------------------------------------------------------------
+
 
 class TestProbes:
     def setup_method(self):
@@ -106,27 +105,33 @@ class TestProbes:
         fake_gui = MagicMock()
         fake_api = MagicMock()
         fake_con = MagicMock()
-        with patch.dict(sys.modules, {
-            "win32gui": fake_gui,
-            "win32api": fake_api,
-            "win32con": fake_con,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "win32gui": fake_gui,
+                "win32api": fake_api,
+                "win32con": fake_con,
+            },
+        ):
             result = wb._probe_win32()
         assert result is True
         assert wb._HAS_WIN32 is True
 
     def test_probe_win32_import_failure(self):
-        with patch.dict(sys.modules, {
-            "win32gui": None,
-            "win32api": None,
-            "win32con": None,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "win32gui": None,
+                "win32api": None,
+                "win32con": None,
+            },
+        ):
             result = wb._probe_win32()
         assert result is False
         assert wb._HAS_WIN32 is False
 
     def test_probe_powershell_success(self):
-        with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
+        with patch("subprocess.run", return_value=_make_proc(0)):
             result = wb._probe_powershell()
         assert result is True
 
@@ -182,6 +187,7 @@ class TestProbes:
 # ---------------------------------------------------------------------------
 # WindowsAccessibility
 # ---------------------------------------------------------------------------
+
 
 class TestWindowsAccessibility:
     def _make(self, available: bool = True) -> wb.WindowsAccessibility:
@@ -308,24 +314,28 @@ class TestWindowsAccessibility:
 
     def test_invoke_element_not_available(self):
         from core.platform.base import UIElement
+
         a = self._make(False)
         elem = UIElement(name="x", control_type="button", raw={"_uia_ref": MagicMock()})
         assert a.invoke_element(elem) is False
 
     def test_invoke_element_no_raw(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         elem = UIElement(name="x", control_type="button", raw=None)
         assert a.invoke_element(elem) is False
 
     def test_invoke_element_no_uia_ref(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         elem = UIElement(name="x", control_type="button", raw={})
         assert a.invoke_element(elem) is False
 
     def test_invoke_element_pattern_none(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         mock_ref = MagicMock()
         mock_ref.GetInvokePattern.return_value = None
@@ -334,6 +344,7 @@ class TestWindowsAccessibility:
 
     def test_invoke_element_success(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         mock_ref = MagicMock()
         mock_pattern = MagicMock()
@@ -344,6 +355,7 @@ class TestWindowsAccessibility:
 
     def test_invoke_element_exception(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         mock_ref = MagicMock()
         mock_ref.GetInvokePattern.side_effect = OSError("fail")
@@ -352,24 +364,28 @@ class TestWindowsAccessibility:
 
     def test_set_element_value_not_available(self):
         from core.platform.base import UIElement
+
         a = self._make(False)
         elem = UIElement(name="x", control_type="edit", raw={"_uia_ref": MagicMock()})
         assert a.set_element_value(elem, "hello") is False
 
     def test_set_element_value_no_raw(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         elem = UIElement(name="x", control_type="edit", raw=None)
         assert a.set_element_value(elem, "hello") is False
 
     def test_set_element_value_no_uia_ref(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         elem = UIElement(name="x", control_type="edit", raw={})
         assert a.set_element_value(elem, "hello") is False
 
     def test_set_element_value_no_pattern(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         mock_ref = MagicMock()
         mock_ref.GetValuePattern.return_value = None
@@ -378,6 +394,7 @@ class TestWindowsAccessibility:
 
     def test_set_element_value_success(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         mock_ref = MagicMock()
         mock_pattern = MagicMock()
@@ -388,6 +405,7 @@ class TestWindowsAccessibility:
 
     def test_set_element_value_exception(self):
         from core.platform.base import UIElement
+
         a = self._make(True)
         mock_ref = MagicMock()
         mock_ref.GetValuePattern.side_effect = AttributeError("fail")
@@ -448,6 +466,7 @@ class TestWindowsAccessibility:
 
     def test_uia_to_element_bbox_error(self):
         from unittest.mock import PropertyMock
+
         a = self._make(True)
         ctrl = MagicMock()
         # Make BoundingRectangle access raise OSError
@@ -561,6 +580,7 @@ class TestWindowsAccessibility:
 # WindowsStealthInput
 # ---------------------------------------------------------------------------
 
+
 class TestWindowsStealthInput:
     def _make(self, available: bool = True) -> wb.WindowsStealthInput:
         gui, api, con = _mock_win32()
@@ -659,7 +679,7 @@ class TestWindowsStealthInput:
 
     def test_press_key_known(self):
         obj = self._make(True)
-        with patch("core.stealth_input.post_key", return_value=True) as mock_pk:
+        with patch("core.stealth_input.post_key", return_value=True):
             with patch("core.stealth_input.VK_NAMES", {"enter": 0x0D}):
                 result = obj.press_key("enter")
         assert result is True
@@ -734,6 +754,7 @@ class TestWindowsStealthInput:
 # WindowsCredentialBackend
 # ---------------------------------------------------------------------------
 
+
 class TestWindowsCredentialBackend:
     def _make(self) -> wb.WindowsCredentialBackend:
         return wb.WindowsCredentialBackend()
@@ -776,6 +797,7 @@ class TestWindowsCredentialBackend:
 # WindowsShellBackend
 # ---------------------------------------------------------------------------
 
+
 class TestWindowsShellBackend:
     def _make(self, has_ps: bool = True) -> wb.WindowsShellBackend:
         obj = wb.WindowsShellBackend.__new__(wb.WindowsShellBackend)
@@ -784,7 +806,7 @@ class TestWindowsShellBackend:
 
     def test_execute_success(self):
         obj = self._make()
-        with patch("subprocess.run", return_value=_make_proc(0, "hello", "")) as mr:
+        with patch("subprocess.run", return_value=_make_proc(0, "hello", "")):
             result = obj.execute("Get-Date")
         assert result["exit_code"] == 0
         assert result["stdout"] == "hello"
@@ -838,6 +860,7 @@ class TestWindowsShellBackend:
 # ---------------------------------------------------------------------------
 # WindowsWindowBackend
 # ---------------------------------------------------------------------------
+
 
 class TestWindowsWindowBackend:
     def _make(self, has_win32: bool = True, has_pgw: bool = False) -> wb.WindowsWindowBackend:
@@ -1153,6 +1176,7 @@ class TestWindowsWindowBackend:
 # WindowsOverlayBackend
 # ---------------------------------------------------------------------------
 
+
 class TestWindowsOverlayBackend:
     def _make(self) -> wb.WindowsOverlayBackend:
         return wb.WindowsOverlayBackend()
@@ -1232,6 +1256,7 @@ class TestWindowsOverlayBackend:
 # WindowsBackend (aggregator)
 # ---------------------------------------------------------------------------
 
+
 class TestWindowsBackend:
     def _make(self) -> wb.WindowsBackend:
         obj = wb.WindowsBackend.__new__(wb.WindowsBackend)
@@ -1269,6 +1294,7 @@ class TestWindowsBackend:
 # ---------------------------------------------------------------------------
 # Gap-fill: cover __init__ methods and remaining branches
 # ---------------------------------------------------------------------------
+
 
 class TestInitMethods:
     """Call real __init__ to cover lines 147, 326, 527, 576-584, 777-782."""

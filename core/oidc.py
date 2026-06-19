@@ -128,9 +128,7 @@ def _get_oidc_config() -> tuple[str, str, str]:
         if not val
     ]
     if missing:
-        raise OIDCNotConfigured(
-            f"OIDC not configured — missing env vars: {', '.join(missing)}"
-        )
+        raise OIDCNotConfigured(f"OIDC not configured — missing env vars: {', '.join(missing)}")
     return issuer, audience, secret
 
 
@@ -334,7 +332,5 @@ def provision_user(
         role_enum = Role.VIEWER
 
     user = auth_manager.create_user(username, random_pw, role=role_enum)
-    logger.info(
-        "OIDC provisioning: created new user '%s' with role %s", username, role_enum.value
-    )
+    logger.info("OIDC provisioning: created new user '%s' with role %s", username, role_enum.value)
     return user

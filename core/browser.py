@@ -492,7 +492,8 @@ class BrowserManager:
         try:
             if selector == "table" or selector.startswith("table"):
                 # Extract table data as list of dicts
-                data = page.evaluate("""(sel) => {
+                data = page.evaluate(
+                    """(sel) => {
                     const tables = document.querySelectorAll(sel);
                     const results = [];
                     tables.forEach(table => {
@@ -514,7 +515,9 @@ class BrowserManager:
                         });
                     });
                     return results;
-                }""", selector)
+                }""",
+                    selector,
+                )
             else:
                 # Generic element text extraction
                 data = page.inner_text(selector)
@@ -597,12 +600,14 @@ class BrowserManager:
         if action == "list":
             tabs_info = []
             for i, page in enumerate(self._pages):
-                tabs_info.append({
-                    "index": i,
-                    "url": page.url,
-                    "title": page.title(),
-                    "active": i == self._active_page_index,
-                })
+                tabs_info.append(
+                    {
+                        "index": i,
+                        "url": page.url,
+                        "title": page.title(),
+                        "active": i == self._active_page_index,
+                    }
+                )
             return {"success": True, "tabs": tabs_info, "count": len(tabs_info)}
 
         elif action == "switch":

@@ -12,8 +12,6 @@ All input is mocked — no real mouse/keyboard movement in CI.
 
 from __future__ import annotations
 
-from unittest.mock import call
-
 import pytest
 
 from core import desktop as desktop_mod
@@ -28,6 +26,7 @@ def ctrl(monkeypatch):
     MagicMock so we can assert on call patterns (single moveTo vs many).
     """
     from unittest.mock import MagicMock
+
     fake = MagicMock()
     fake.size.return_value = (1920, 1080)
     fake.position.return_value = (0, 0)
@@ -44,9 +43,7 @@ class TestMoveToHumanized:
         monkeypatch.setenv("SENTINEL_HUMANIZE", "1")
         controller.move_to(500, 400)
         # Humanized ⇒ many moveTo calls along the curve, not one.
-        assert fake.moveTo.call_count > 1, (
-            "humanize ON but move_to made a single linear call"
-        )
+        assert fake.moveTo.call_count > 1, "humanize ON but move_to made a single linear call"
 
     def test_move_to_single_linear_call_when_disabled(self, ctrl, monkeypatch):
         controller, fake = ctrl

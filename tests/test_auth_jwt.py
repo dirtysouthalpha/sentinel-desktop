@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import time
 
 import pytest
 
 from core.auth import DEFAULT_ADMIN_PASSWORD, AuthManager
 from core.jwt_auth import JWTConfig, decode
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

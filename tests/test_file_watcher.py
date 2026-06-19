@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import time
 import threading
-from pathlib import Path
+import time
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-
 # ── watch_file ────────────────────────────────────────────────────────────────
+
 
 class TestWatchFile:
     def test_detect_modify(self, tmp_path):
         from core.file_watcher import watch_file
+
         target = tmp_path / "watched.txt"
         target.write_text("initial")
 
@@ -30,6 +28,7 @@ class TestWatchFile:
 
     def test_detect_delete(self, tmp_path):
         from core.file_watcher import watch_file
+
         target = tmp_path / "to_delete.txt"
         target.write_text("will be deleted")
 
@@ -44,6 +43,7 @@ class TestWatchFile:
 
     def test_detect_create(self, tmp_path):
         from core.file_watcher import watch_file
+
         target = tmp_path / "new_file.txt"
         # File does not exist yet
 
@@ -58,6 +58,7 @@ class TestWatchFile:
 
     def test_timeout_returns_failure(self, tmp_path):
         from core.file_watcher import watch_file
+
         target = tmp_path / "no_change.txt"
         target.write_text("stays the same")
         result = watch_file(str(target), timeout=0.3, poll_interval=0.05, event="modify")
@@ -66,6 +67,7 @@ class TestWatchFile:
 
     def test_invalid_event_returns_failure(self, tmp_path):
         from core.file_watcher import watch_file
+
         target = tmp_path / "file.txt"
         target.write_text("x")
         result = watch_file(str(target), timeout=0.1, poll_interval=0.05, event="invalid_event")
@@ -74,9 +76,11 @@ class TestWatchFile:
 
 # ── watch_file_content ────────────────────────────────────────────────────────
 
+
 class TestWatchFileContent:
     def test_detects_content_written(self, tmp_path):
         from core.file_watcher import watch_file_content
+
         target = tmp_path / "log.txt"
         target.write_text("")
 
@@ -92,13 +96,17 @@ class TestWatchFileContent:
 
     def test_timeout_when_content_never_appears(self, tmp_path):
         from core.file_watcher import watch_file_content
+
         target = tmp_path / "empty_log.txt"
         target.write_text("")
-        result = watch_file_content(str(target), contains="NEVER_APPEARS", timeout=0.3, poll_interval=0.05)
+        result = watch_file_content(
+            str(target), contains="NEVER_APPEARS", timeout=0.3, poll_interval=0.05
+        )
         assert result["success"] is False
 
     def test_detects_content_already_in_file(self, tmp_path):
         from core.file_watcher import watch_file_content
+
         target = tmp_path / "existing.txt"
         target.write_text("INFO: startup complete\n")
         result = watch_file_content(str(target), contains="startup", timeout=1, poll_interval=0.05)
@@ -107,18 +115,23 @@ class TestWatchFileContent:
 
 # ── watch_process ─────────────────────────────────────────────────────────────
 
+
 class TestWatchProcess:
     def test_detects_already_running_process(self):
-        from core.file_watcher import watch_process
         import psutil
+
+        from core.file_watcher import watch_process
 
         # Use 'python' or 'python.exe' — the current interpreter is running
         proc_name = "python.exe" if psutil.WINDOWS else "python"
         result = watch_process(proc_name, event="start", timeout=1, poll_interval=0.1)
-        assert result["success"] is True or result["success"] is False  # either is valid — just no exception
+        assert (
+            result["success"] is True or result["success"] is False
+        )  # either is valid — just no exception
 
     def test_timeout_for_absent_process(self):
         from core.file_watcher import watch_process
+
         result = watch_process(
             "definitely_nonexistent_process_xyz_123.exe",
             event="start",
@@ -128,8 +141,10 @@ class TestWatchProcess:
         assert result["success"] is False
 
     def test_stop_event_detects_process_exit(self):
+        import subprocess
+        import sys
+
         from core.file_watcher import watch_process
-        import subprocess, sys
 
         proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(0.5)"])
         pid = proc.pid
@@ -140,26 +155,33 @@ class TestWatchProcess:
 
         threading.Thread(target=wait_then_let_exit, daemon=True).start()
         result = watch_process("python.exe", event="stop", pid=pid, timeout=3, poll_interval=0.1)
-        assert result["success"] is True or result["success"] is False  # graceful no matter the outcome
+        assert (
+            result["success"] is True or result["success"] is False
+        )  # graceful no matter the outcome
 
 
 # ── Executor integration ──────────────────────────────────────────────────────
+
 
 class TestFileWatcherEdgeCases:
     def test_watch_file_content_oserror_on_read(self, tmp_path):
         """OSError during read_text inside watch loop should be silently swallowed."""
         from core.file_watcher import watch_file_content
+
         target = tmp_path / "err.txt"
         target.write_text("initial content here")
         # read_text raises OSError → hits except OSError: pass branch
         with patch("pathlib.Path.read_text", side_effect=OSError("disk error")):
-            result = watch_file_content(str(target), contains="initial", timeout=0.3, poll_interval=0.05)
+            result = watch_file_content(
+                str(target), contains="initial", timeout=0.3, poll_interval=0.05
+            )
         # Timed out (content never confirmed) — but no exception raised
         assert result["success"] is False
 
     def test_watch_process_find_proc_access_denied(self):
         """NoSuchProcess/AccessDenied on individual iteration entries are silently skipped."""
         import psutil
+
         from core.file_watcher import watch_process
 
         bad_proc = MagicMock()
@@ -173,6 +195,7 @@ class TestFileWatcherEdgeCases:
     def test_watch_process_start_event_records_pid(self):
         """start event: result_pid comes from the newly appeared process."""
         import psutil
+
         from core.file_watcher import watch_process
 
         mock_proc = MagicMock(spec=psutil.Process)
@@ -196,6 +219,7 @@ class TestFileWatcherEdgeCases:
     def test_watch_process_cpu_spike_detected(self):
         """cpu_spike event triggers when cpu_percent > 80."""
         import psutil
+
         from core.file_watcher import watch_process
 
         mock_proc = MagicMock(spec=psutil.Process)
@@ -213,6 +237,7 @@ class TestFileWatcherEdgeCases:
     def test_watch_process_cpu_spike_no_spike(self):
         """cpu_spike event times out when cpu stays below threshold."""
         import psutil
+
         from core.file_watcher import watch_process
 
         mock_proc = MagicMock(spec=psutil.Process)
@@ -227,6 +252,7 @@ class TestFileWatcherEdgeCases:
     def test_watch_process_cpu_spike_access_denied(self):
         """cpu_percent raising AccessDenied during cpu_spike check is silently handled."""
         import psutil
+
         from core.file_watcher import watch_process
 
         mock_proc = MagicMock(spec=psutil.Process)
@@ -242,26 +268,32 @@ class TestFileWatcherEdgeCases:
 class TestFileWatcherActionsInExecutor:
     def test_watch_file_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "watch_file" in ActionExecutor._dispatch_table
 
     def test_watch_file_content_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "watch_file_content" in ActionExecutor._dispatch_table
 
     def test_watch_process_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "watch_process" in ActionExecutor._dispatch_table
 
     def test_watch_file_executor_timeout(self, tmp_path):
         from core.action_executor import ActionExecutor
+
         target = tmp_path / "stable.txt"
         target.write_text("unchanged")
         executor = ActionExecutor()
-        result = executor.execute_sync({
-            "action": "watch_file",
-            "path": str(target),
-            "timeout": 0.3,
-            "event": "modify",
-        })
+        result = executor.execute_sync(
+            {
+                "action": "watch_file",
+                "path": str(target),
+                "timeout": 0.3,
+                "event": "modify",
+            }
+        )
         # Should time out without crashing
         assert result["success"] is False

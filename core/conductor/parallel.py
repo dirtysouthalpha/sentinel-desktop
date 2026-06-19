@@ -59,10 +59,7 @@ class ParallelExecutor:
 
         while remaining and (time.monotonic() - start) < timeout:
             # Find tasks ready to execute (all deps satisfied)
-            ready = [
-                t for t in remaining
-                if all(dep in completed_ids for dep in t.dependencies)
-            ]
+            ready = [t for t in remaining if all(dep in completed_ids for dep in t.dependencies)]
 
             if not ready:
                 # Deadlock or waiting — check if we're stuck
@@ -71,7 +68,7 @@ class ParallelExecutor:
                     break
 
             # Execute ready tasks (up to max concurrency)
-            batch = ready[:self._max_concurrency]
+            batch = ready[: self._max_concurrency]
             coroutines = [self._execute_one(task) for task in batch]
 
             batch_results = await asyncio.gather(*coroutines, return_exceptions=True)

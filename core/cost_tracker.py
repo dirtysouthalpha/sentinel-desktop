@@ -151,9 +151,7 @@ class CostTracker:
         # OpenAI uses prompt_tokens/completion_tokens; Anthropic uses
         # input_tokens/output_tokens.  Accept both.
         prompt = int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0)
-        completion = int(
-            usage.get("completion_tokens") or usage.get("output_tokens") or 0
-        )
+        completion = int(usage.get("completion_tokens") or usage.get("output_tokens") or 0)
         total = int(usage.get("total_tokens") or (prompt + completion))
         cost = estimate_cost(provider, model, prompt, completion)
         rec = UsageRecord(

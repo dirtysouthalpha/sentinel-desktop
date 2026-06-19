@@ -292,6 +292,7 @@ class TestClickVerifierEdgeCases:
 
     def setup_method(self):
         from core.action_executor import ActionExecutor
+
         self.executor = ActionExecutor(dry_run=True)
         self.verifier = ClickVerifier(self.executor)
 
@@ -329,12 +330,20 @@ class TestClickVerifierEdgeCases:
         before = Image.new("RGB", (800, 600), "white")
 
         # Mock the retry to hit the exhausted case
-        with patch.object(self.verifier, "_retry_with_offset", return_value={
-            "success": False, "output": "Offset retry exhausted", "retry_tier": "offset"
-        }):
+        with patch.object(
+            self.verifier,
+            "_retry_with_offset",
+            return_value={
+                "success": False,
+                "output": "Offset retry exhausted",
+                "retry_tier": "offset",
+            },
+        ):
             result = self.verifier._retry_with_offset(
                 {"action": "click", "x": 400, "y": 300},
-                before, 400, 300,
+                before,
+                400,
+                300,
             )
             assert result["retry_tier"] == "offset"
             assert result["success"] is False
@@ -351,18 +360,23 @@ class TestClickVerifierEdgeCases:
         before = Image.new("RGB", (800, 600), "white")
 
         # Mock all tiers to fail
-        with patch.object(self.verifier, "_retry_via_accessibility", return_value={
-            "success": False, "retry_tier": "accessibility"
-        }):
-            with patch.object(self.verifier, "_retry_with_offset", return_value={
-                "success": False, "retry_tier": "offset"
-            }):
-                with patch.object(self.verifier, "_retry_via_keyboard", return_value={
-                    "success": False, "retry_tier": "keyboard"
-                }):
+        with patch.object(
+            self.verifier,
+            "_retry_via_accessibility",
+            return_value={"success": False, "retry_tier": "accessibility"},
+        ):
+            with patch.object(
+                self.verifier,
+                "_retry_with_offset",
+                return_value={"success": False, "retry_tier": "offset"},
+            ):
+                with patch.object(
+                    self.verifier,
+                    "_retry_via_keyboard",
+                    return_value={"success": False, "retry_tier": "keyboard"},
+                ):
                     result = self.verifier._tiered_retry(
-                        {"action": "click", "x": 400, "y": 300},
-                        before, 400, 300
+                        {"action": "click", "x": 400, "y": 300}, before, 400, 300
                     )
                     # Should return None when all tiers fail
                     assert result is None
@@ -430,8 +444,10 @@ class TestClickVerifierRetryExhausted:
         before = Image.new("RGB", (200, 200), "white")
         action = {"action": "click", "x": 100, "y": 100}
 
-        with patch("core.click_verify.verify_click_landed", return_value=(False, 5.0, MagicMock())), \
-             patch.object(verifier, "_tiered_retry", return_value=None):
+        with (
+            patch("core.click_verify.verify_click_landed", return_value=(False, 5.0, MagicMock())),
+            patch.object(verifier, "_tiered_retry", return_value=None),
+        ):
             result = verifier.execute_with_verification(action, before)
 
         assert result.get("retry_exhausted") is True
@@ -454,7 +470,12 @@ class TestClickVerifierTier1Success:
         before = Image.new("RGB", (200, 200), "white")
         original_action = {"action": "click", "x": 50, "y": 50}
 
-        tier1_return = {"success": True, "verified": True, "output": "control clicked", "retry_tier": "accessibility"}
+        tier1_return = {
+            "success": True,
+            "verified": True,
+            "output": "control clicked",
+            "retry_tier": "accessibility",
+        }
 
         with patch.object(verifier, "_retry_via_accessibility", return_value=tier1_return):
             result = verifier._tiered_retry(original_action, before, 50, 50)

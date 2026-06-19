@@ -432,21 +432,28 @@ class TestPipelineIntegration:
         pipeline = PerceptionPipeline()
 
         # Mock backend to return sample tree
-        mock_node = type("Node", (), {
-            "name": "Button",
-            "control_type": "Button",
-            "bounding_box": (10, 10, 100, 30),
-            "actions": ["click"],
-            "raw": {"role": "button"}
-        })()
+        mock_node = type(
+            "Node",
+            (),
+            {
+                "name": "Button",
+                "control_type": "Button",
+                "bounding_box": (10, 10, 100, 30),
+                "actions": ["click"],
+                "raw": {"role": "button"},
+            },
+        )()
 
         with patch("core.platform.get_backend") as mock_get_backend:
-            mock_backend = type("Backend", (), {
-                "accessibility": type("Acc", (), {
-                    "is_available": lambda: True,
-                    "get_tree": lambda x: [mock_node]
-                })()
-            })()
+            mock_backend = type(
+                "Backend",
+                (),
+                {
+                    "accessibility": type(
+                        "Acc", (), {"is_available": lambda: True, "get_tree": lambda x: [mock_node]}
+                    )()
+                },
+            )()
             mock_get_backend.return_value = mock_backend
 
             result = pipeline._query_accessibility()
@@ -460,11 +467,9 @@ class TestPipelineIntegration:
         pipeline = PerceptionPipeline()
 
         with patch("core.platform.get_backend") as mock_get_backend:
-            mock_backend = type("Backend", (), {
-                "accessibility": type("Acc", (), {
-                    "is_available": lambda: False
-                })()
-            })()
+            mock_backend = type(
+                "Backend", (), {"accessibility": type("Acc", (), {"is_available": lambda: False})()}
+            )()
             mock_get_backend.return_value = mock_backend
 
             result = pipeline._query_accessibility()
@@ -519,7 +524,9 @@ class TestPipelineIntegration:
 
         # Test text control types
         assert pipeline._classify_element_type("Text") == ElementType.TEXT
-        assert pipeline._classify_element_type("Edit") == ElementType.INPUT  # Edit maps to INPUT, not TEXT
+        assert (
+            pipeline._classify_element_type("Edit") == ElementType.INPUT
+        )  # Edit maps to INPUT, not TEXT
 
     def test_classify_element_type_unknown(self):
         """Test element type classification for unknown types."""
@@ -547,7 +554,7 @@ class TestPipelineIntegration:
 
     def test_cache_operations(self):
         """Test cache store and get operations."""
-        from core.perception.pipeline import _result_cache, _result_cache_lock, PerceptionPipeline
+        from core.perception.pipeline import PerceptionPipeline, _result_cache, _result_cache_lock
         from core.perception.types import PerceptionResult
 
         with _result_cache_lock:
@@ -565,7 +572,7 @@ class TestPipelineIntegration:
             ocr_count=0,
             vision_count=0,
             processing_time_ms=10.0,
-            screenshot_hash="test123"
+            screenshot_hash="test123",
         )
 
         # Test store
@@ -579,9 +586,10 @@ class TestPipelineIntegration:
 
     def test_cache_ttl_expires_old_entries(self):
         """Test cache entries expire after TTL."""
-        from core.perception.pipeline import _result_cache, _result_cache_lock, PerceptionPipeline
-        from core.perception.types import PerceptionResult
         import time
+
+        from core.perception.pipeline import PerceptionPipeline, _result_cache, _result_cache_lock
+        from core.perception.types import PerceptionResult
 
         with _result_cache_lock:
             _result_cache.clear()
@@ -598,7 +606,7 @@ class TestPipelineIntegration:
             ocr_count=0,
             vision_count=0,
             processing_time_ms=10.0,
-            screenshot_hash="expire-test"
+            screenshot_hash="expire-test",
         )
 
         # Store with timestamp in the past (beyond TTL)
@@ -613,7 +621,7 @@ class TestPipelineIntegration:
     def test_build_text_description(self):
         """Test _build_text_description generates element descriptions."""
         from core.perception.pipeline import PerceptionPipeline
-        from core.perception.types import PerceptionElement, ElementType
+        from core.perception.types import ElementType, PerceptionElement
 
         pipeline = PerceptionPipeline()
 
@@ -639,7 +647,7 @@ class TestPipelineIntegration:
 
     def test_analyze_includes_vision(self):
         """Test analyze with vision enabled."""
-        from core.perception.pipeline import _result_cache, _result_cache_lock, PerceptionPipeline
+        from core.perception.pipeline import PerceptionPipeline, _result_cache, _result_cache_lock
 
         with _result_cache_lock:
             _result_cache.clear()
@@ -670,6 +678,7 @@ class TestPipelineCoverage:
 
     def _clear_cache(self):
         from core.perception.pipeline import _result_cache, _result_cache_lock
+
         with _result_cache_lock:
             _result_cache.clear()
 
@@ -678,6 +687,7 @@ class TestPipelineCoverage:
     def test_query_accessibility_returns_elements(self):
         """_query_accessibility converts tree nodes to PerceptionElements."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
         from core.perception.types import ElementSource
 
@@ -704,6 +714,7 @@ class TestPipelineCoverage:
     def test_query_accessibility_unavailable_backend(self):
         """_query_accessibility returns [] when backend is unavailable."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_backend = MagicMock()
@@ -718,6 +729,7 @@ class TestPipelineCoverage:
     def test_query_accessibility_empty_tree(self):
         """_query_accessibility with an empty tree returns []."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_backend = MagicMock()
@@ -733,6 +745,7 @@ class TestPipelineCoverage:
     def test_query_accessibility_node_no_bbox(self):
         """_query_accessibility uses (0,0,0,0) when node.bounding_box is None."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         node = MagicMock()
@@ -757,6 +770,7 @@ class TestPipelineCoverage:
     def test_query_ocr_with_boxes(self):
         """_query_ocr produces PerceptionElements from OCR boxes."""
         from unittest.mock import patch
+
         from core.perception.pipeline import PerceptionPipeline
         from core.perception.types import ElementSource
 
@@ -776,6 +790,7 @@ class TestPipelineCoverage:
     def test_query_ocr_skips_empty_text(self):
         """_query_ocr skips boxes with empty text."""
         from unittest.mock import patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         boxes = [
@@ -793,6 +808,7 @@ class TestPipelineCoverage:
     def test_query_ocr_skips_missing_bbox(self):
         """_query_ocr skips boxes missing bbox."""
         from unittest.mock import patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         boxes = [
@@ -810,6 +826,7 @@ class TestPipelineCoverage:
     def test_query_ocr_confidence_normalization(self):
         """_query_ocr normalizes confidence > 1 to 0-1 range."""
         from unittest.mock import patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         boxes = [
@@ -826,6 +843,7 @@ class TestPipelineCoverage:
     def test_query_ocr_zero_dimension_box_skipped(self):
         """_query_ocr skips boxes with zero width or height."""
         from unittest.mock import patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         boxes = [
@@ -845,9 +863,9 @@ class TestPipelineCoverage:
 
     def test_cv_contour_detection_no_cv2(self):
         """_cv_contour_detection returns [] when cv2 is not available."""
-        from unittest.mock import patch
-        from core.perception.pipeline import PerceptionPipeline
         import sys
+
+        from core.perception.pipeline import PerceptionPipeline
 
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (200, 200))
@@ -867,7 +885,9 @@ class TestPipelineCoverage:
     def test_cv_contour_detection_with_mock_cv2(self):
         """_cv_contour_detection processes contours when cv2 is available."""
         from unittest.mock import MagicMock, patch
+
         import numpy as np
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_cv2 = MagicMock()
@@ -896,7 +916,9 @@ class TestPipelineCoverage:
     def test_cv_contour_detection_filters_tiny_contours(self):
         """_cv_contour_detection skips contours that are too small."""
         from unittest.mock import MagicMock, patch
+
         import numpy as np
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_cv2 = MagicMock()
@@ -923,7 +945,9 @@ class TestPipelineCoverage:
     def test_cv_contour_detection_exception_returns_empty(self):
         """_cv_contour_detection handles exceptions gracefully."""
         from unittest.mock import MagicMock, patch
+
         import numpy as np
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_cv2 = MagicMock()
@@ -943,6 +967,7 @@ class TestPipelineCoverage:
     def test_local_grounding_model_available_returns_elements(self):
         """_local_grounding_detection returns elements when model is available."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
         from core.perception.types import ElementSource
 
@@ -960,7 +985,9 @@ class TestPipelineCoverage:
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (800, 600))
 
-        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+        with patch.dict(
+            "sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}
+        ):
             elements = pipeline._local_grounding_detection(img)
 
         assert len(elements) >= 1
@@ -970,6 +997,7 @@ class TestPipelineCoverage:
     def test_local_grounding_model_unavailable(self):
         """_local_grounding_detection returns [] when model is not available."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_model = MagicMock()
@@ -979,7 +1007,9 @@ class TestPipelineCoverage:
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (800, 600))
 
-        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+        with patch.dict(
+            "sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}
+        ):
             elements = pipeline._local_grounding_detection(img)
 
         assert elements == []
@@ -987,6 +1017,7 @@ class TestPipelineCoverage:
     def test_local_grounding_low_confidence_filtered(self):
         """_local_grounding_detection filters results below 0.5 confidence."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_result = MagicMock()
@@ -1002,7 +1033,9 @@ class TestPipelineCoverage:
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (800, 600))
 
-        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+        with patch.dict(
+            "sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}
+        ):
             elements = pipeline._local_grounding_detection(img)
 
         assert elements == []
@@ -1010,6 +1043,7 @@ class TestPipelineCoverage:
     def test_local_grounding_exception_returns_empty(self):
         """_local_grounding_detection handles exceptions gracefully."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_model = MagicMock()
@@ -1020,7 +1054,9 @@ class TestPipelineCoverage:
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (800, 600))
 
-        with patch.dict("sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}):
+        with patch.dict(
+            "sys.modules", {"core.local_grounding": MagicMock(LocalGroundingModel=mock_model_class)}
+        ):
             elements = pipeline._local_grounding_detection(img)
 
         assert elements == []
@@ -1029,7 +1065,8 @@ class TestPipelineCoverage:
 
     def test_cache_key_getpixel_error_falls_back(self):
         """_cache_key uses size-only fingerprint when getpixel raises."""
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock
+
         from core.perception.pipeline import PerceptionPipeline
 
         img = MagicMock()
@@ -1045,6 +1082,7 @@ class TestPipelineCoverage:
     def test_store_cached_evicts_expired_entries(self):
         """_store_cached removes expired entries before storing new result."""
         import time
+
         from core.perception.pipeline import (
             PerceptionPipeline,
             _result_cache,
@@ -1070,6 +1108,7 @@ class TestPipelineCoverage:
     def test_query_ocr_exception_returns_empty(self):
         """_query_ocr returns [] when find_text_boxes raises."""
         from unittest.mock import patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         pipeline = PerceptionPipeline()
@@ -1082,6 +1121,7 @@ class TestPipelineCoverage:
     def test_cv_contour_aspect_filter(self):
         """_cv_contour_detection skips contours with aspect ratio > 10."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_cv2 = MagicMock()
@@ -1107,6 +1147,7 @@ class TestPipelineCoverage:
     def test_cv_contour_small_dimension_filter(self):
         """_cv_contour_detection skips contours with w or h < 15."""
         from unittest.mock import MagicMock, patch
+
         from core.perception.pipeline import PerceptionPipeline
 
         mock_cv2 = MagicMock()
@@ -1131,8 +1172,9 @@ class TestPipelineCoverage:
 
     def test_local_grounding_import_error_returns_empty(self):
         """_local_grounding_detection returns [] when core.local_grounding is missing."""
-        from core.perception.pipeline import PerceptionPipeline
         import sys
+
+        from core.perception.pipeline import PerceptionPipeline
 
         pipeline = PerceptionPipeline()
         img = Image.new("RGB", (800, 600))
@@ -1152,9 +1194,10 @@ class TestPipelineCoverage:
     def test_store_cached_evicts_oldest_when_at_capacity(self):
         """_store_cached evicts the oldest entry when cache is at max capacity."""
         import time
+
         from core.perception.pipeline import (
-            PerceptionPipeline,
             _RESULT_CACHE_MAX,
+            PerceptionPipeline,
             _result_cache,
             _result_cache_lock,
         )

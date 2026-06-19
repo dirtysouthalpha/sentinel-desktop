@@ -22,6 +22,7 @@ ENV/
 .DS_Store
 Thumbs.db
 desktop.ini
+@AutomationLog.txt
 
 # IDE / editor
 .idea/

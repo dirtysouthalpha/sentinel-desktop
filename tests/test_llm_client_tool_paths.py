@@ -30,9 +30,7 @@ class TestOpenAICompatibleElseTools:
 
     @patch("core.llm_client.requests.post")
     def test_groq_provider_with_tools_hits_elif_branch(self, mock_post: MagicMock) -> None:
-        mock_post.return_value = _ok_response(
-            {"choices": [{"message": {"content": "ok"}}]}
-        )
+        mock_post.return_value = _ok_response({"choices": [{"message": {"content": "ok"}}]})
         client = LLMClient()
         tools = [{"type": "function", "function": {"name": "click", "description": ""}}]
         result = client.chat(
@@ -58,9 +56,7 @@ class TestChatAnthropicElseTools:
 
     @patch("core.llm_client.requests.post")
     def test_anthropic_direct_with_tools_no_computer_use(self, mock_post: MagicMock) -> None:
-        mock_post.return_value = _ok_response(
-            {"content": [{"type": "text", "text": "hello"}]}
-        )
+        mock_post.return_value = _ok_response({"content": [{"type": "text", "text": "hello"}]})
         client = LLMClient()
         tools = [
             {
@@ -96,9 +92,7 @@ class TestChatAnthropicElseTools:
         self, mock_post: MagicMock
     ) -> None:
         """Line 487: _parse_anthropic_response called when computer_use_type is None."""
-        mock_post.return_value = _ok_response(
-            {"content": [{"type": "text", "text": "world"}]}
-        )
+        mock_post.return_value = _ok_response({"content": [{"type": "text", "text": "world"}]})
         client = LLMClient()
         result = client._chat_anthropic(
             api_key="sk-ant-test",

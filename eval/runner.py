@@ -68,9 +68,7 @@ class ScenarioRunner:
             else:
                 failed += 1
                 if self._stop_on_failure:
-                    logger.warning(
-                        "eval: step %d failed — aborting '%s'", idx, scenario.name
-                    )
+                    logger.warning("eval: step %d failed — aborting '%s'", idx, scenario.name)
                     break
 
         total = len(step_results)

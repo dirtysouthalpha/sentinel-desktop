@@ -812,7 +812,15 @@ class SentinelServer:
                 break
 
     async def _cleanup_pty(self, child_pid: int, master_fd: int) -> None:
-        """Clean up PTY resources."""
+        """Clean up PTY resources.
+
+        Unix-only: os.WNOHANG/os.waitpid semantics do not exist on Windows.
+        The PTY feature itself is gated to Unix in _handle_terminal_ws; on
+        Windows this method is a defensive no-op (all calls are guarded).
+        """
+        if not hasattr(os, "WNOHANG"):
+            # Windows has no PTY/waitpid support; nothing to clean up.
+            return
         try:
             os.kill(child_pid, signal.SIGTERM)
         except (ProcessLookupError, OSError):

@@ -66,7 +66,7 @@ class TestFindTextBoxesSuccess:
             "conf": [90.0, 90.0],
             "left": [5, 5],
             "top": [5, 5],
-            "width": [20, 0],   # second box has zero width → should be skipped
+            "width": [20, 0],  # second box has zero width → should be skipped
             "height": [10, 10],
             "block_num": [1, 1],
             "par_num": [1, 1],

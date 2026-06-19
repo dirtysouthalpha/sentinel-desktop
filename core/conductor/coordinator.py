@@ -82,7 +82,9 @@ class Conductor:
 
         logger.info(
             "Conductor: %s — %d/%d tasks succeeded",
-            final["status"], final["tasks_succeeded"], final["tasks_total"],
+            final["status"],
+            final["tasks_succeeded"],
+            final["tasks_total"],
         )
 
         return final

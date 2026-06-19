@@ -192,8 +192,7 @@ def _compute_config_hash(monitors: list[dict[str, Any]]) -> str:
     parts = []
     for m in monitors:
         parts.append(
-            f"{m.get('left', 0)}x{m.get('top', 0)}"
-            f"+{m.get('width', 0)}x{m.get('height', 0)}"
+            f"{m.get('left', 0)}x{m.get('top', 0)}+{m.get('width', 0)}x{m.get('height', 0)}"
         )
     config_str = "|".join(parts)
     import hashlib
@@ -239,8 +238,7 @@ def detect_monitors() -> list[MonitorInfo]:
 
         # Build device_id for persistence: use position+size as fingerprint
         device_id = (
-            f"mon{i}_{m.get('width', 0)}x{m.get('height', 0)}"
-            f"@{m.get('left', 0)},{m.get('top', 0)}"
+            f"mon{i}_{m.get('width', 0)}x{m.get('height', 0)}@{m.get('left', 0)},{m.get('top', 0)}"
         )
 
         info = MonitorInfo(
@@ -287,10 +285,7 @@ def physical_to_logical(
             continue  # Skip virtual desktop aggregate
 
         # Check if point is within this monitor's physical bounds
-        if (
-            mon.x <= x < mon.x + mon.width
-            and mon.y <= y < mon.y + mon.height
-        ):
+        if mon.x <= x < mon.x + mon.width and mon.y <= y < mon.y + mon.height:
             # Transform: subtract monitor origin, divide by scale, add back
             local_x = x - mon.x
             local_y = y - mon.y
@@ -300,7 +295,12 @@ def physical_to_logical(
 
             logger.debug(
                 "Physical (%d,%d) → Logical (%d,%d) [M%d scale=%.2f]",
-                x, y, logical_x, logical_y, mon.index, mon.scale_factor,
+                x,
+                y,
+                logical_x,
+                logical_y,
+                mon.index,
+                mon.scale_factor,
             )
             return (logical_x, logical_y)
 
@@ -350,7 +350,12 @@ def logical_to_physical(
 
             logger.debug(
                 "Logical (%d,%d) → Physical (%d,%d) [M%d scale=%.2f]",
-                x, y, physical_x, physical_y, mon.index, mon.scale_factor,
+                x,
+                y,
+                physical_x,
+                physical_y,
+                mon.index,
+                mon.scale_factor,
             )
             return (physical_x, physical_y)
 

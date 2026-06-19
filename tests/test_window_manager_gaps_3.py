@@ -1,6 +1,7 @@
 """Gap tests for window_manager.py — list_windows EnumWindows error, focus Alt-tap error,
 restore_window enum error, close_window found guard.
 """
+
 import platform
 from unittest.mock import MagicMock, patch
 

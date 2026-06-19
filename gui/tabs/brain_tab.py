@@ -463,7 +463,11 @@ class BrainTab(ctk.CTkFrame):
             command=self._do_think,
         )
         self._remember_btn.grid(
-            row=3, column=1, sticky="e", padx=(0, 8), pady=(4, 8),
+            row=3,
+            column=1,
+            sticky="e",
+            padx=(0, 8),
+            pady=(4, 8),
         )
 
         self._think_status = ctk.CTkLabel(
@@ -474,7 +478,12 @@ class BrainTab(ctk.CTkFrame):
             anchor="w",
         )
         self._think_status.grid(
-            row=3, column=0, columnspan=1, sticky="w", padx=(8, 4), pady=(4, 8),
+            row=3,
+            column=0,
+            columnspan=1,
+            sticky="w",
+            padx=(8, 4),
+            pady=(4, 8),
         )
 
         # Think output / extra results space
@@ -558,9 +567,7 @@ class BrainTab(ctk.CTkFrame):
 
         region_counts: list[dict[str, Any]] = brain_stats.get("neurons_per_region", [])
         top_regions = sorted(region_counts, key=lambda r: r.get("count", 0), reverse=True)[:5]
-        region_text = "  ·  ".join(
-            f"{r['region']} {r['count']:,}" for r in top_regions
-        )
+        region_text = "  ·  ".join(f"{r['region']} {r['count']:,}" for r in top_regions)
 
         recent = brain_stats.get("recent_neurons_24h", [])
         last_write_s = ""
@@ -720,11 +727,14 @@ class BrainTab(ctk.CTkFrame):
         self._busy_recall = True
         self._set_results("Recalling…")
         threading.Thread(
-            target=self._bg_recall, args=(query,), daemon=True,
+            target=self._bg_recall,
+            args=(query,),
+            daemon=True,
         ).start()
 
     def _bg_recall(self, query: str) -> None:
         from core import brain
+
         try:
             data = brain.recall(query)
         except Exception as exc:
@@ -763,11 +773,14 @@ class BrainTab(ctk.CTkFrame):
         label = f'Searching "{query}"…' if query else "Loading feed…"
         self._set_results(label)
         threading.Thread(
-            target=self._bg_search, args=(query,), daemon=True,
+            target=self._bg_search,
+            args=(query,),
+            daemon=True,
         ).start()
 
     def _bg_search(self, query: str) -> None:
         from core import brain
+
         try:
             data = brain.search(query)
         except Exception as exc:
@@ -816,11 +829,14 @@ class BrainTab(ctk.CTkFrame):
         self._remember_btn.configure(text="Storing…", state="disabled")
         self._think_status.configure(text="")
         threading.Thread(
-            target=self._bg_think, args=(topic, content, region), daemon=True,
+            target=self._bg_think,
+            args=(topic, content, region),
+            daemon=True,
         ).start()
 
     def _bg_think(self, topic: str, content: str, region: str) -> None:
         from core import brain
+
         full_content = f"[{topic}] {content}"
         try:
             data = brain.think(content=full_content, region=region)
@@ -860,12 +876,15 @@ class BrainTab(ctk.CTkFrame):
         self._opinions_output.insert("end", "Loading…")
         self._opinions_output.configure(state="disabled")
         threading.Thread(
-            target=self._bg_opinions, args=(topic,), daemon=True,
+            target=self._bg_opinions,
+            args=(topic,),
+            daemon=True,
         ).start()
 
     def _bg_opinions(self, topic: str) -> None:
         try:
             from core.brain.client import get_default_client
+
             client = get_default_client()
             # opinions endpoint: GET /brain/opinions?topic=...
             data = client._request("GET", "/brain/opinions", params={"topic": topic})
@@ -902,11 +921,14 @@ class BrainTab(ctk.CTkFrame):
             return
         self._fire_status.configure(text="Firing…")
         threading.Thread(
-            target=self._bg_fire, args=(neuron_id,), daemon=True,
+            target=self._bg_fire,
+            args=(neuron_id,),
+            daemon=True,
         ).start()
 
     def _bg_fire(self, neuron_id: int) -> None:
         from core import brain
+
         try:
             data = brain.fire(neuron_id)
             ok = not data.get("error")
@@ -915,8 +937,7 @@ class BrainTab(ctk.CTkFrame):
         if self.winfo_exists():
             msg = "✓ Fired" if ok else "✗ failed"
             color = (
-                self._t("status_running", "#95E400") if ok
-                else self._t("status_error", "#ff3b3b")
+                self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
             )
             self.after(
                 0,

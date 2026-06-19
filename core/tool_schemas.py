@@ -825,7 +825,11 @@ TOOLS: list[dict[str, Any]] = [
                     "priority": {
                         "type": "string",
                         "enum": [
-                            "idle", "low", "normal", "high", "realtime",
+                            "idle",
+                            "low",
+                            "normal",
+                            "high",
+                            "realtime",
                         ],
                     },
                 },
@@ -891,7 +895,10 @@ TOOLS: list[dict[str, Any]] = [
                     "control_action": {
                         "type": "string",
                         "enum": [
-                            "start", "stop", "restart", "query",
+                            "start",
+                            "stop",
+                            "restart",
+                            "query",
                         ],
                     },
                 },
@@ -1304,8 +1311,13 @@ TOOLS: list[dict[str, Any]] = [
                     "what": {
                         "type": "string",
                         "enum": [
-                            "version", "interfaces", "routing",
-                            "arp", "cpu", "logging", "config",
+                            "version",
+                            "interfaces",
+                            "routing",
+                            "arp",
+                            "cpu",
+                            "logging",
+                            "config",
                         ],
                     },
                     "device_type": {
@@ -1342,9 +1354,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "ssh_traceroute",
-            "description": (
-                "Traceroute to a target from a connected network device."
-            ),
+            "description": ("Traceroute to a target from a connected network device."),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1498,8 +1508,14 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "key": {"type": "string", "description": "Dot-notation key, e.g. 'llm.provider'"},
-                    "default": {"type": "string", "description": "Value to return if key not found"},
+                    "key": {
+                        "type": "string",
+                        "description": "Dot-notation key, e.g. 'llm.provider'",
+                    },
+                    "default": {
+                        "type": "string",
+                        "description": "Value to return if key not found",
+                    },
                 },
                 "required": ["key"],
             },
@@ -1690,7 +1706,10 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "url": {"type": "string"},
                     "json": {"type": "object", "description": "JSON payload"},
-                    "body": {"type": "string", "description": "Raw string body (alternative to json)"},
+                    "body": {
+                        "type": "string",
+                        "description": "Raw string body (alternative to json)",
+                    },
                     "headers": {"type": "object"},
                     "timeout": {"type": "number", "default": 30.0},
                     "verify_ssl": {"type": "boolean", "default": True},
@@ -1784,9 +1803,21 @@ TOOLS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "text": {"type": "string", "description": "Text to speak"},
-                    "blocking": {"type": "boolean", "default": True, "description": "Wait for speech to finish"},
-                    "rate": {"type": "integer", "default": 0, "description": "Speaking rate -10 to +10"},
-                    "volume": {"type": "integer", "default": 100, "description": "Voice volume 0-100"},
+                    "blocking": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Wait for speech to finish",
+                    },
+                    "rate": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Speaking rate -10 to +10",
+                    },
+                    "volume": {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "Voice volume 0-100",
+                    },
                 },
                 "required": ["text"],
             },
@@ -1800,8 +1831,16 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "timeout": {"type": "number", "default": 5.0, "description": "Seconds to wait for speech"},
-                    "phrase_limit": {"type": "number", "default": 10.0, "description": "Max seconds of speech"},
+                    "timeout": {
+                        "type": "number",
+                        "default": 5.0,
+                        "description": "Seconds to wait for speech",
+                    },
+                    "phrase_limit": {
+                        "type": "number",
+                        "default": 10.0,
+                        "description": "Max seconds of speech",
+                    },
                 },
                 "required": [],
             },
@@ -1883,7 +1922,10 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "context": {"type": "string", "description": "Context string to recall against"},
+                    "context": {
+                        "type": "string",
+                        "description": "Context string to recall against",
+                    },
                 },
                 "required": ["context"],
             },
@@ -2060,11 +2102,23 @@ TOOLS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "name": {"type": "string", "description": "Unique skill identifier."},
-                    "description": {"type": "string", "description": "Short human-readable purpose."},
-                    "script": {"type": "object", "description": "Automation script dict (ScriptEngine format)."},
-                    "version": {"type": "string", "description": "Semantic version (default '1.0.0')."},
+                    "description": {
+                        "type": "string",
+                        "description": "Short human-readable purpose.",
+                    },
+                    "script": {
+                        "type": "object",
+                        "description": "Automation script dict (ScriptEngine format).",
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "Semantic version (default '1.0.0').",
+                    },
                     "author": {"type": "string", "description": "Author name or handle."},
-                    "category": {"type": "string", "description": "Skill category (default 'general')."},
+                    "category": {
+                        "type": "string",
+                        "description": "Skill category (default 'general').",
+                    },
                     "tags": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -2161,11 +2215,11 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "condition": {
                         "type": "object",
-                        "description": "Event-specific match criteria (e.g. {\"keyword\": \"sentinel\"} or {\"event_name\": \"deploy_done\"}).",
+                        "description": 'Event-specific match criteria (e.g. {"keyword": "sentinel"} or {"event_name": "deploy_done"}).',
                     },
                     "action": {
                         "type": "object",
-                        "description": "Executor action payload to fire (e.g. {\"action\": \"speak\", \"text\": \"Yes?\"}).",
+                        "description": 'Executor action payload to fire (e.g. {"action": "speak", "text": "Yes?"}).',
                     },
                     "description": {
                         "type": "string",
@@ -2256,7 +2310,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "wake_word": {
                         "type": "string",
-                        "description": "Keyword or phrase to listen for (default: \"sentinel\").",
+                        "description": 'Keyword or phrase to listen for (default: "sentinel").',
                     },
                 },
                 "required": [],

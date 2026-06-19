@@ -49,22 +49,25 @@ def _win32_patches(mock_winreg=None):
         mock_winreg = _make_winreg()
     return (
         patch("core.registry.winreg", mock_winreg, create=True),
-        patch("core.registry.sys") ,
+        patch("core.registry.sys"),
         mock_winreg,
     )
 
 
 # ── _parse_key_path ────────────────────────────────────────────────────────────
 
+
 class TestParseKeyPath:
     def test_raises_on_non_windows(self):
         from core.registry import _parse_key_path
+
         # On Linux, sys.platform != "win32" → raises OSError
         with pytest.raises(OSError, match="only available on Windows"):
             _parse_key_path("HKLM\\Software\\Test")
 
     def test_raises_for_unknown_hive_on_windows(self):
         from core.registry import _parse_key_path
+
         mwr = _make_winreg()
         with patch("core.registry.winreg", mwr, create=True):
             with patch("core.registry.sys") as ms:
@@ -75,6 +78,7 @@ class TestParseKeyPath:
 
     def test_returns_hive_and_subpath(self):
         from core.registry import _parse_key_path
+
         mwr = _make_winreg()
         with patch("core.registry.winreg", mwr, create=True):
             with patch("core.registry.sys") as ms:
@@ -86,6 +90,7 @@ class TestParseKeyPath:
 
     def test_handles_forward_slashes(self):
         from core.registry import _parse_key_path
+
         mwr = _make_winreg()
         with patch("core.registry.winreg", mwr, create=True):
             with patch("core.registry.sys") as ms:
@@ -96,6 +101,7 @@ class TestParseKeyPath:
 
     def test_no_subpath(self):
         from core.registry import _parse_key_path
+
         mwr = _make_winreg()
         with patch("core.registry.winreg", mwr, create=True):
             with patch("core.registry.sys") as ms:
@@ -106,6 +112,7 @@ class TestParseKeyPath:
 
 
 # ── registry_read ──────────────────────────────────────────────────────────────
+
 
 class TestRegistryRead:
     def test_returns_none_on_linux(self):
@@ -188,6 +195,7 @@ class TestRegistryRead:
 
 # ── registry_write ─────────────────────────────────────────────────────────────
 
+
 class TestRegistryWrite:
     def test_returns_false_on_linux(self):
         # On Linux, type_map uses winreg.REG_SZ etc which aren't available,
@@ -239,9 +247,7 @@ class TestRegistryWrite:
             with patch("core.registry.sys") as ms:
                 ms.platform = "win32"
                 with patch.object(core.registry, "_HIVE_MAP", _FAKE_HIVE_MAP):
-                    result = core.registry.registry_write(
-                        "INVALID\\Software\\Test", "val", "data"
-                    )
+                    result = core.registry.registry_write("INVALID\\Software\\Test", "val", "data")
         assert result is False
 
     def test_returns_false_on_oserror(self):
@@ -252,9 +258,7 @@ class TestRegistryWrite:
             with patch("core.registry.sys") as ms:
                 ms.platform = "win32"
                 with patch.object(core.registry, "_HIVE_MAP", _FAKE_HIVE_MAP):
-                    result = core.registry.registry_write(
-                        "HKLM\\Software\\Test", "val", "data"
-                    )
+                    result = core.registry.registry_write("HKLM\\Software\\Test", "val", "data")
         assert result is False
 
     def test_defaults_to_reg_sz_for_unknown_type(self):
@@ -274,6 +278,7 @@ class TestRegistryWrite:
 
 
 # ── registry_delete ────────────────────────────────────────────────────────────
+
 
 class TestRegistryDelete:
     def test_returns_false_on_linux(self):
@@ -299,9 +304,7 @@ class TestRegistryDelete:
             with patch("core.registry.sys") as ms:
                 ms.platform = "win32"
                 with patch.object(core.registry, "_HIVE_MAP", _FAKE_HIVE_MAP):
-                    result = core.registry.registry_delete(
-                        "HKLM\\Software\\Test", "TestValue"
-                    )
+                    result = core.registry.registry_delete("HKLM\\Software\\Test", "TestValue")
 
         assert result is True
         mwr.DeleteValue.assert_called_once_with(mock_key, "TestValue")
@@ -316,9 +319,7 @@ class TestRegistryDelete:
             with patch("core.registry.sys") as ms:
                 ms.platform = "win32"
                 with patch.object(core.registry, "_HIVE_MAP", _FAKE_HIVE_MAP):
-                    result = core.registry.registry_delete(
-                        "HKLM\\Software\\Test\\SubKey"
-                    )
+                    result = core.registry.registry_delete("HKLM\\Software\\Test\\SubKey")
 
         assert result is True
         mwr.DeleteKey.assert_called_once_with(mock_key, "SubKey")
@@ -331,7 +332,5 @@ class TestRegistryDelete:
             with patch("core.registry.sys") as ms:
                 ms.platform = "win32"
                 with patch.object(core.registry, "_HIVE_MAP", _FAKE_HIVE_MAP):
-                    result = core.registry.registry_delete(
-                        "HKLM\\Software\\Test", "val"
-                    )
+                    result = core.registry.registry_delete("HKLM\\Software\\Test", "val")
         assert result is False

@@ -128,7 +128,7 @@ class TestEpisodicMemory:
         mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
 
         # Store an episode and manually make it appear old
-        ep_id = mem.store("Old task", success=True)
+        mem.store("Old task", success=True)
 
         # Read the file and modify the timestamp
         lines = tmp_path.joinpath("episodes.jsonl").read_text(encoding="utf-8").splitlines()
@@ -139,7 +139,9 @@ class TestEpisodicMemory:
             data["created_at"] = old_time.isoformat()
             lines[0] = json.dumps(data, ensure_ascii=False)
             # Write with proper trailing newline
-            tmp_path.joinpath("episodes.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            tmp_path.joinpath("episodes.jsonl").write_text(
+                "\n".join(lines) + "\n", encoding="utf-8"
+            )
 
         # Create a new memory instance to pick up the modified file
         mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
@@ -175,6 +177,7 @@ class TestEpisodicMemory:
     def test_compress_with_invalid_timestamp(self, tmp_path: Path):
         """Test compression handles episodes with invalid timestamps."""
         import json
+
         mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
 
         # Store an episode
@@ -187,7 +190,9 @@ class TestEpisodicMemory:
             data["created_at"] = "invalid-date"
             lines[0] = json.dumps(data, ensure_ascii=False)
             # Write with proper trailing newline
-            tmp_path.joinpath("episodes.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            tmp_path.joinpath("episodes.jsonl").write_text(
+                "\n".join(lines) + "\n", encoding="utf-8"
+            )
 
         # Create a new memory instance to pick up the modified file
         mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
@@ -211,7 +216,6 @@ class TestEpisodicMemory:
 
     def test_read_all_with_missing_fields(self, tmp_path: Path):
         """Test _read_all handles episodes with missing fields."""
-        import json
         path = tmp_path / "episodes.jsonl"
 
         # Write JSON with missing required fields
@@ -262,7 +266,9 @@ class TestEpisodicMemory:
             data["created_at"] = old_time.isoformat()
             aged_lines.append(json.dumps(data, ensure_ascii=False))
         # Write with proper trailing newline
-        tmp_path.joinpath("episodes.jsonl").write_text("\n".join(aged_lines) + "\n", encoding="utf-8")
+        tmp_path.joinpath("episodes.jsonl").write_text(
+            "\n".join(aged_lines) + "\n", encoding="utf-8"
+        )
 
         # Create a new memory instance to pick up the modified file
         mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")

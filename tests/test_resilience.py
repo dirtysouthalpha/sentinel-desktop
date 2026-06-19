@@ -14,8 +14,8 @@ from core.resilience import (
     retryable,
 )
 
-
 # ── Retry decorator tests ─────────────────────────────────────────────────────
+
 
 class TestRetryable:
     def test_succeeds_on_first_try(self):
@@ -100,6 +100,7 @@ class TestRetryable:
 
 # ── Circuit breaker tests ─────────────────────────────────────────────────────
 
+
 class TestCircuitBreaker:
     def setup_method(self):
         # Use fresh breakers for each test
@@ -123,6 +124,7 @@ class TestCircuitBreaker:
 
     def test_open_transitions_to_half_open_after_timeout(self):
         import time
+
         for _ in range(3):
             self.cb.record_failure()
         time.sleep(0.15)  # recovery_timeout=0.1
@@ -131,6 +133,7 @@ class TestCircuitBreaker:
 
     def test_half_open_success_closes_breaker(self):
         import time
+
         cb = CircuitBreaker("t2", failure_threshold=2, recovery_timeout=0.05, success_threshold=2)
         for _ in range(2):
             cb.record_failure()
@@ -142,6 +145,7 @@ class TestCircuitBreaker:
 
     def test_half_open_failure_reopens(self):
         import time
+
         for _ in range(3):
             self.cb.record_failure()
         time.sleep(0.15)
@@ -194,6 +198,7 @@ class TestCircuitBreaker:
 
 
 # ── Registry tests ────────────────────────────────────────────────────────────
+
 
 def test_circuit_breaker_registry_returns_same_instance():
     cb1 = circuit_breaker("ssh")

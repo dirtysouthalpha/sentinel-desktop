@@ -33,19 +33,23 @@ def parse_interfaces(output: str) -> list[dict[str, str]]:
         # Cisco IOS format: Interface  IP-Address  OK?  Method  Status  Protocol
         parts = line.split()
         if len(parts) >= 6:
-            interfaces.append({
-                "interface": parts[0],
-                "ip_address": parts[1],
-                "status": parts[-2] if len(parts) >= 6 else "unknown",
-                "protocol": parts[-1],
-            })
+            interfaces.append(
+                {
+                    "interface": parts[0],
+                    "ip_address": parts[1],
+                    "status": parts[-2] if len(parts) >= 6 else "unknown",
+                    "protocol": parts[-1],
+                }
+            )
         elif len(parts) >= 2:
-            interfaces.append({
-                "interface": parts[0],
-                "ip_address": parts[1] if len(parts) > 1 else "",
-                "status": "unknown",
-                "protocol": "unknown",
-            })
+            interfaces.append(
+                {
+                    "interface": parts[0],
+                    "ip_address": parts[1] if len(parts) > 1 else "",
+                    "status": "unknown",
+                    "protocol": "unknown",
+                }
+            )
 
     return interfaces
 
@@ -64,13 +68,15 @@ def parse_arp_table(output: str) -> list[dict[str, str]]:
 
         parts = line.split()
         if len(parts) >= 4:
-            entries.append({
-                "protocol": parts[0] if len(parts) > 3 else "",
-                "address": parts[1],
-                "age": parts[2] if len(parts) > 3 else "",
-                "mac": parts[3] if len(parts) > 3 else parts[2],
-                "interface": parts[-1],
-            })
+            entries.append(
+                {
+                    "protocol": parts[0] if len(parts) > 3 else "",
+                    "address": parts[1],
+                    "age": parts[2] if len(parts) > 3 else "",
+                    "mac": parts[3] if len(parts) > 3 else parts[2],
+                    "interface": parts[-1],
+                }
+            )
 
     return entries
 
@@ -144,7 +150,9 @@ def parse_traceroute(output: str) -> dict[str, Any]:
 
     # Extract target from first line
     target_match = re.search(
-        r"traceroute\s+(?:to\s+)?(\S+)", output, re.IGNORECASE,
+        r"traceroute\s+(?:to\s+)?(\S+)",
+        output,
+        re.IGNORECASE,
     )
     if target_match:
         result["target"] = target_match.group(1)
@@ -175,12 +183,14 @@ def parse_traceroute(output: str) -> dict[str, Any]:
 
             # Extract timing values (handles ms, msec, and * hops)
             times = re.findall(
-                r"([\d.]+)\s*m?s(?:ec)?", timings_raw,
+                r"([\d.]+)\s*m?s(?:ec)?",
+                timings_raw,
             )
             avg_rtt = None
             if times:
                 avg_rtt = round(
-                    sum(float(t) for t in times) / len(times), 2,
+                    sum(float(t) for t in times) / len(times),
+                    2,
                 )
 
             hop = {
@@ -198,10 +208,7 @@ def parse_traceroute(output: str) -> dict[str, Any]:
     if result["hops"]:
         last = result["hops"][-1]
         target_ip = result["target"].strip("()\"'")
-        if (
-            last["host"] == target_ip
-            or last["host"] == result["target"]
-        ):
+        if last["host"] == target_ip or last["host"] == result["target"]:
             result["reached_target"] = True
 
     result["success"] = result["total_hops"] > 0
@@ -223,12 +230,14 @@ def parse_routing_table(output: str) -> list[dict[str, str]]:
 
         parts = line.split()
         if len(parts) >= 3:
-            routes.append({
-                "destination": parts[0],
-                "gateway": parts[1] if len(parts) > 1 else "",
-                "interface": parts[-1],
-                "raw": line,
-            })
+            routes.append(
+                {
+                    "destination": parts[0],
+                    "gateway": parts[1] if len(parts) > 1 else "",
+                    "interface": parts[-1],
+                    "raw": line,
+                }
+            )
 
     return routes
 

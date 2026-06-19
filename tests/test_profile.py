@@ -18,6 +18,7 @@ from core.profile import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_manifest(tmp_path: Path, **overrides) -> Path:
     """Write a minimal valid profile.json and return the profile directory."""
     manifest = {
@@ -35,6 +36,7 @@ def _make_manifest(tmp_path: Path, **overrides) -> Path:
 # ---------------------------------------------------------------------------
 # load_profile
 # ---------------------------------------------------------------------------
+
 
 class TestLoadProfile:
     def test_load_valid_profile_from_dir(self, tmp_path):
@@ -138,6 +140,7 @@ class TestLoadProfile:
 # adopt_profile
 # ---------------------------------------------------------------------------
 
+
 class TestAdoptProfile:
     def _make_profile(self, tmp_path: Path) -> tuple[Profile, Path]:
         """Create a full profile with config, scripts, and workflows."""
@@ -216,6 +219,7 @@ class TestAdoptProfile:
 # detect_profile
 # ---------------------------------------------------------------------------
 
+
 class TestDetectProfile:
     def test_detect_none_when_absent(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "executable", str(tmp_path / "sentinel"))
@@ -276,6 +280,7 @@ class TestDetectProfile:
 # ---------------------------------------------------------------------------
 # Bundled field-it-tech profile
 # ---------------------------------------------------------------------------
+
 
 class TestBundledProfile:
     """Verify the profiles/field-it-tech/ directory in the repo is valid."""

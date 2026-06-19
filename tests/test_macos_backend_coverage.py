@@ -619,8 +619,9 @@ class TestMacOSCredentialBackend:
         assert data == {"version": 1, "keys": {}}
 
     def test_load_file_valid(self, tmp_path):
-        from core.platform.macos_backend import MacOSCredentialBackend
         import json
+
+        from core.platform.macos_backend import MacOSCredentialBackend
 
         vault = tmp_path / "vault.json"
         vault.write_text(json.dumps({"version": 1, "keys": {"k": {"encrypted": "dg=="}}}))
@@ -640,8 +641,9 @@ class TestMacOSCredentialBackend:
         assert data == {"version": 1, "keys": {}}
 
     def test_load_file_missing_keys(self, tmp_path):
-        from core.platform.macos_backend import MacOSCredentialBackend
         import json
+
+        from core.platform.macos_backend import MacOSCredentialBackend
 
         vault = tmp_path / "vault.json"
         vault.write_text(json.dumps({"version": 1}))

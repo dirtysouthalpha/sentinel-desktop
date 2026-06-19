@@ -148,11 +148,7 @@ class TriggerRegistry:
 
     def find_by_event(self, event_type: EventType) -> list[Trigger]:
         """Return enabled triggers matching a given event type."""
-        return [
-            t
-            for t in self._triggers.values()
-            if t.event_type == event_type and t.enabled
-        ]
+        return [t for t in self._triggers.values() if t.event_type == event_type and t.enabled]
 
 
 class TriggerEngine:
@@ -181,9 +177,7 @@ class TriggerEngine:
         if self._thread and self._thread.is_alive():
             return
         self._stop.clear()
-        self._thread = threading.Thread(
-            target=self._run, daemon=True, name="TriggerEngine"
-        )
+        self._thread = threading.Thread(target=self._run, daemon=True, name="TriggerEngine")
         self._thread.start()
         logger.info("TriggerEngine started")
 

@@ -30,6 +30,7 @@ _IS_WINDOWS = sys.platform == "win32"
 
 # ── DNS ──────────────────────────────────────────────────────────────────────
 
+
 def dns_lookup(
     hostname: str,
     record_type: str = "A",
@@ -108,6 +109,7 @@ def _dns_lookup_dnspython(
 
 # ── Ping ─────────────────────────────────────────────────────────────────────
 
+
 def ping_host(host: str, count: int = 4, timeout: int = 3) -> dict[str, Any]:
     """Ping *host* and return latency stats.
 
@@ -128,7 +130,10 @@ def ping_host(host: str, count: int = 4, timeout: int = 3) -> dict[str, Any]:
 
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout * count + 5,
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout * count + 5,
             check=False,
         )
         output = result.stdout + result.stderr
@@ -176,6 +181,7 @@ def _parse_ping_output(host: str, output: str, count: int) -> dict[str, Any]:
 
 # ── Port scan ────────────────────────────────────────────────────────────────
 
+
 def port_open(host: str, port: int, timeout: float = 3.0) -> bool:
     """Return True if *host*:*port* accepts a TCP connection."""
     try:
@@ -199,6 +205,7 @@ def scan_ports(
 
 # ── Traceroute ───────────────────────────────────────────────────────────────
 
+
 def traceroute(host: str, max_hops: int = 30) -> dict[str, Any]:
     """Run a traceroute to *host* and return structured hops.
 
@@ -212,8 +219,11 @@ def traceroute(host: str, max_hops: int = 30) -> dict[str, Any]:
 
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True,
-            timeout=max_hops * 5 + 10, check=False,
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=max_hops * 5 + 10,
+            check=False,
         )
         output = result.stdout + result.stderr
         hops = _parse_traceroute(output)

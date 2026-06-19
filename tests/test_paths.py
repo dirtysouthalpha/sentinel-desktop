@@ -1,6 +1,5 @@
 """Tests for core/paths.py — shared storage resolver."""
 
-import importlib
 import os
 import sys
 from pathlib import Path
@@ -130,13 +129,13 @@ class TestDedup:
         assert cfg_mod._CONFIG_DIR == ckpt_mod._BASE_DIR
 
     def test_checkpoint_uses_paths_checkpoint_dir(self, monkeypatch):
-        from core import paths
         import core.checkpoint as ckpt_mod
+        from core import paths
 
         assert ckpt_mod._CHECKPOINT_DIR == paths.checkpoint_dir()
 
     def test_config_uses_paths_config_path(self, monkeypatch):
-        from core import paths
         import config as cfg_mod
+        from core import paths
 
         assert cfg_mod._CONFIG_PATH == paths.config_path()

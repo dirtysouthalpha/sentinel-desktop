@@ -9,9 +9,7 @@ from __future__ import annotations
 import random
 from statistics import mean
 
-import pytest
-
-from core.humanize.profile import FAST, NATURALISTIC, Profile
+from core.humanize.profile import FAST, NATURALISTIC
 from core.humanize.typing import keystroke_delays
 
 
@@ -88,10 +86,13 @@ class TestProfileEffect:
         """FAST profile should produce shorter mean inter-key delays on average."""
         text = "abcdefghij" * 10
         # Average over several seeds to smooth RNG noise.
-        nat_means = [mean(keystroke_delays(text, rng=random.Random(s), profile=NATURALISTIC))
-                     for s in range(8)]
-        fast_means = [mean(keystroke_delays(text, rng=random.Random(s), profile=FAST))
-                      for s in range(8)]
+        nat_means = [
+            mean(keystroke_delays(text, rng=random.Random(s), profile=NATURALISTIC))
+            for s in range(8)
+        ]
+        fast_means = [
+            mean(keystroke_delays(text, rng=random.Random(s), profile=FAST)) for s in range(8)
+        ]
         assert mean(fast_means) < mean(nat_means)
 
 

@@ -6,9 +6,7 @@ import json
 import sys
 from argparse import Namespace
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # needs_api_key
@@ -17,7 +15,7 @@ import pytest
 
 class TestNeedsApiKey:
     def _profile(self, *, secrets_redacted: bool) -> object:
-        from core.profile import Profile, ProfileFlags, ProfileIncludes
+        from core.profile import Profile, ProfileFlags
 
         return Profile(
             name="test",
@@ -98,7 +96,7 @@ def _make_args(**kwargs) -> Namespace:
 
 def _make_fake_profile(tmp_path: Path, *, secrets_redacted: bool = True, auto_adopt: bool = True):
     """Create a minimal fake Profile instance."""
-    from core.profile import Profile, ProfileFlags, ProfileIncludes
+    from core.profile import Profile, ProfileFlags
 
     return Profile(
         name="field-it-tech",
@@ -114,8 +112,10 @@ def _make_fake_profile(tmp_path: Path, *, secrets_redacted: bool = True, auto_ad
 class TestPortableStartup:
     def test_skips_when_not_portable(self, tmp_path):
         """_portable_startup is a no-op when is_portable() returns False."""
-        with patch("core.paths.is_portable", return_value=False), \
-             patch("core.profile.detect_profile") as mock_detect:
+        with (
+            patch("core.paths.is_portable", return_value=False),
+            patch("core.profile.detect_profile") as mock_detect,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args())
@@ -123,15 +123,16 @@ class TestPortableStartup:
 
     def test_adopts_profile_when_portable(self, tmp_path):
         """adopt_profile() is called when portable + profile found + auto_adopt=True."""
-        import main as main_mod
 
         profile = _make_fake_profile(tmp_path, secrets_redacted=False)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=tmp_path / "data"), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile") as mock_adopt, \
-             patch("core.profile.needs_api_key", return_value=False):
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=tmp_path / "data"),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile") as mock_adopt,
+            patch("core.profile.needs_api_key", return_value=False),
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args())
@@ -140,14 +141,15 @@ class TestPortableStartup:
 
     def test_skips_adopt_when_auto_adopt_false(self, tmp_path):
         """When profile has auto_adopt=False, adopt_profile() is NOT called."""
-        import main as main_mod
 
         profile = _make_fake_profile(tmp_path, auto_adopt=False)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=tmp_path / "data"), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile") as mock_adopt:
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=tmp_path / "data"),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile") as mock_adopt,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args())
@@ -156,12 +158,13 @@ class TestPortableStartup:
 
     def test_skips_adopt_when_no_profile(self, tmp_path):
         """When no profile is detected, adopt_profile() is NOT called."""
-        import main as main_mod
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=tmp_path / "data"), \
-             patch("core.profile.detect_profile", return_value=None), \
-             patch("core.profile.adopt_profile") as mock_adopt:
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=tmp_path / "data"),
+            patch("core.profile.detect_profile", return_value=None),
+            patch("core.profile.adopt_profile") as mock_adopt,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args())
@@ -176,13 +179,15 @@ class TestPortableStartup:
         data_dir.mkdir()
         profile = _make_fake_profile(tmp_path, secrets_redacted=True)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=data_dir), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile"), \
-             patch("core.profile.needs_api_key", return_value=True), \
-             patch.object(main_mod, "_prompt_api_key", return_value="sk-entered") as mock_prompt, \
-             patch.object(main_mod, "_save_api_key") as mock_save:
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=data_dir),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile"),
+            patch("core.profile.needs_api_key", return_value=True),
+            patch.object(main_mod, "_prompt_api_key", return_value="sk-entered") as mock_prompt,
+            patch.object(main_mod, "_save_api_key") as mock_save,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args(command=None, api=False))
@@ -199,13 +204,15 @@ class TestPortableStartup:
         data_dir.mkdir()
         profile = _make_fake_profile(tmp_path, secrets_redacted=True)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=data_dir), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile"), \
-             patch("core.profile.needs_api_key", return_value=True), \
-             patch.object(main_mod, "_prompt_api_key", return_value="sk-cli") as mock_prompt, \
-             patch.object(main_mod, "_save_api_key"):
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=data_dir),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile"),
+            patch("core.profile.needs_api_key", return_value=True),
+            patch.object(main_mod, "_prompt_api_key", return_value="sk-cli") as mock_prompt,
+            patch.object(main_mod, "_save_api_key"),
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args(command="open notepad"))
@@ -214,21 +221,24 @@ class TestPortableStartup:
 
     def test_api_mode_uses_env_var(self, tmp_path):
         """In API mode, SENTINEL_API_KEY env var is used instead of a prompt."""
-        import main as main_mod
         import os
+
+        import main as main_mod
 
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         profile = _make_fake_profile(tmp_path, secrets_redacted=True)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=data_dir), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile"), \
-             patch("core.profile.needs_api_key", return_value=True), \
-             patch.dict(os.environ, {"SENTINEL_API_KEY": "sk-from-env"}), \
-             patch.object(main_mod, "_prompt_api_key") as mock_prompt, \
-             patch.object(main_mod, "_save_api_key") as mock_save:
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=data_dir),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile"),
+            patch("core.profile.needs_api_key", return_value=True),
+            patch.dict(os.environ, {"SENTINEL_API_KEY": "sk-from-env"}),
+            patch.object(main_mod, "_prompt_api_key") as mock_prompt,
+            patch.object(main_mod, "_save_api_key") as mock_save,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args(api=True))
@@ -238,20 +248,23 @@ class TestPortableStartup:
 
     def test_api_mode_no_env_var_logs_warning(self, tmp_path):
         """In API mode with no SENTINEL_API_KEY, a warning is logged and no save."""
-        import main as main_mod
         import os
+
+        import main as main_mod
 
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         profile = _make_fake_profile(tmp_path, secrets_redacted=True)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=data_dir), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile"), \
-             patch("core.profile.needs_api_key", return_value=True), \
-             patch.dict(os.environ, {}, clear=True), \
-             patch.object(main_mod, "_save_api_key") as mock_save:
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=data_dir),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile"),
+            patch("core.profile.needs_api_key", return_value=True),
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(main_mod, "_save_api_key") as mock_save,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args(api=True))
@@ -268,12 +281,14 @@ class TestPortableStartup:
         cfg.write_text(json.dumps({"api_key": "sk-existing"}))
         profile = _make_fake_profile(tmp_path, secrets_redacted=True)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=data_dir), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile"), \
-             patch("core.profile.needs_api_key", return_value=False), \
-             patch.object(main_mod, "_prompt_api_key") as mock_prompt:
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=data_dir),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile"),
+            patch("core.profile.needs_api_key", return_value=False),
+            patch.object(main_mod, "_prompt_api_key") as mock_prompt,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args())
@@ -288,13 +303,15 @@ class TestPortableStartup:
         data_dir.mkdir()
         profile = _make_fake_profile(tmp_path, secrets_redacted=True)
 
-        with patch("core.paths.is_portable", return_value=True), \
-             patch("core.paths.data_dir", return_value=data_dir), \
-             patch("core.profile.detect_profile", return_value=profile), \
-             patch("core.profile.adopt_profile"), \
-             patch("core.profile.needs_api_key", return_value=True), \
-             patch.object(main_mod, "_prompt_api_key", return_value=None), \
-             patch.object(main_mod, "_save_api_key") as mock_save:
+        with (
+            patch("core.paths.is_portable", return_value=True),
+            patch("core.paths.data_dir", return_value=data_dir),
+            patch("core.profile.detect_profile", return_value=profile),
+            patch("core.profile.adopt_profile"),
+            patch("core.profile.needs_api_key", return_value=True),
+            patch.object(main_mod, "_prompt_api_key", return_value=None),
+            patch.object(main_mod, "_save_api_key") as mock_save,
+        ):
             from main import _portable_startup
 
             _portable_startup(_make_args())

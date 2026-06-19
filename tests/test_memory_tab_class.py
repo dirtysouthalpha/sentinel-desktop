@@ -8,7 +8,6 @@ to avoid touching disk.
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
 
@@ -230,7 +229,12 @@ class TestRenderSubtaskCards:
         tab, _, _ = _make_tab()
         results = [
             {"status": "success", "description": "SSH connect", "task_type": "ssh"},
-            {"status": "error", "description": "Ping failed", "task_type": "net", "error": "timeout"},
+            {
+                "status": "error",
+                "description": "Ping failed",
+                "task_type": "net",
+                "error": "timeout",
+            },
             {"status": "timeout", "description": "OCR read", "task_type": "ocr"},
             {"status": "pending", "subtask_id": "t-4", "task_type": "click"},
         ]
@@ -293,7 +297,6 @@ class TestRunConductor:
         import threading
 
         done_event = threading.Event()
-        original_after = tab.after
 
         def _capture_after(delay, fn=None, *args):
             if fn is not None:
@@ -317,7 +320,9 @@ class TestRunConductor:
             "success": False,
             "total_subtasks": 1,
             "elapsed_ms": 500,
-            "results": [{"status": "error", "description": "ssh", "task_type": "ssh", "error": "refused"}],
+            "results": [
+                {"status": "error", "description": "ssh", "task_type": "ssh", "error": "refused"}
+            ],
             "error": "Plan failed",
         }
 

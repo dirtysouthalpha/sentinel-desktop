@@ -1,6 +1,7 @@
 """Gap tests for screenshot.py — resolve_monitor auto fallback, capture_focused_window target
 path, image_to_base64 encoding failure.
 """
+
 import sys
 from unittest.mock import MagicMock, patch
 

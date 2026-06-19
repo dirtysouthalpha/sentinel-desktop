@@ -214,10 +214,10 @@ def adopt_profile(profile: Profile, *, target_dir: str | Path, force: bool = Fal
 
 
 _DETECT_ORDER = (
-    "cli",          # --profile arg (caller responsibility to pass)
-    "embedded",     # profiles/ next to exe
-    "dropped",      # ./sentinel-profile/ next to exe
-    "env",          # SENTINEL_PROFILE env var
+    "cli",  # --profile arg (caller responsibility to pass)
+    "embedded",  # profiles/ next to exe
+    "dropped",  # ./sentinel-profile/ next to exe
+    "env",  # SENTINEL_PROFILE env var
 )
 
 

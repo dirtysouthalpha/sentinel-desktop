@@ -16,21 +16,52 @@ from typing import Any
 
 class InteractionMode(Enum):
     """Agent interaction mode."""
+
     NATIVE = "native"
     WEB = "web"
 
 
 # Keywords that strongly suggest web automation intent.
-_WEB_KEYWORDS: frozenset[str] = frozenset({
-    "website", "webpage", "web page", "web app", "web ui", "portal",
-    "browser", "firefox", "chrome", "url", "http://", "https://",
-    "firewall ui", "router config", "switch management",
-    "sonicwall", "fortigate", "fortinet", "unifi", "meraki",
-    "mikrotik", "pfsense", "opnsense", "juniper", "palo alto",
-    "ninjaone", "connectwise", "screenconnect", "it glue",
-    "admin panel", "dashboard", "web interface", "web console",
-    "login page", "web portal", "intranet",
-})
+_WEB_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "website",
+        "webpage",
+        "web page",
+        "web app",
+        "web ui",
+        "portal",
+        "browser",
+        "firefox",
+        "chrome",
+        "url",
+        "http://",
+        "https://",
+        "firewall ui",
+        "router config",
+        "switch management",
+        "sonicwall",
+        "fortigate",
+        "fortinet",
+        "unifi",
+        "meraki",
+        "mikrotik",
+        "pfsense",
+        "opnsense",
+        "juniper",
+        "palo alto",
+        "ninjaone",
+        "connectwise",
+        "screenconnect",
+        "it glue",
+        "admin panel",
+        "dashboard",
+        "web interface",
+        "web console",
+        "login page",
+        "web portal",
+        "intranet",
+    }
+)
 
 # URL patterns — if a goal contains something that looks like a URL, it's web.
 _URL_PATTERN = re.compile(
@@ -40,11 +71,21 @@ _URL_PATTERN = re.compile(
 )
 
 # Actions that are exclusively web actions.
-_WEB_ONLY_ACTIONS: frozenset[str] = frozenset({
-    "web_open", "web_click", "web_type", "web_read", "web_extract",
-    "web_wait_for", "web_screenshot", "web_eval_js", "web_download",
-    "web_upload", "web_tabs",
-})
+_WEB_ONLY_ACTIONS: frozenset[str] = frozenset(
+    {
+        "web_open",
+        "web_click",
+        "web_type",
+        "web_read",
+        "web_extract",
+        "web_wait_for",
+        "web_screenshot",
+        "web_eval_js",
+        "web_download",
+        "web_upload",
+        "web_tabs",
+    }
+)
 
 
 def detect_mode_from_goal(goal: str) -> InteractionMode:

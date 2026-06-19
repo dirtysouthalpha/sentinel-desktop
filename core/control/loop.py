@@ -176,7 +176,9 @@ class ControlLoop:
         except Exception as exc:
             return {"success": False, "output": str(exc)}
 
-    def _verify_action(self, before_perception: PerceptionResult, after_perception: PerceptionResult):
+    def _verify_action(
+        self, before_perception: PerceptionResult, after_perception: PerceptionResult
+    ):
         """Verify action success using before/after perception."""
         from core.control.verifier import VerificationReport, VerifyResult
 

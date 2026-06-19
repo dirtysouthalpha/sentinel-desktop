@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class LoginProfile:
     """Pattern profile for a known IT appliance login page."""
+
     name: str
     url_patterns: tuple[str, ...]
     title_patterns: tuple[str, ...]

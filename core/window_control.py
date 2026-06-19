@@ -24,6 +24,7 @@ _IS_WINDOWS = sys.platform == "win32"
 
 # ── Monitor info ─────────────────────────────────────────────────────────────
 
+
 def get_monitors() -> list[dict[str, Any]]:
     """Return info about all connected monitors.
 
@@ -47,13 +48,19 @@ def _get_monitors_win32() -> list[dict[str, Any]]:
         rects: list[tuple[int, int, int, int]] = []
 
         class RECT(ctypes.Structure):
-            _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
-                        ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+            _fields_ = [
+                ("left", ctypes.c_long),
+                ("top", ctypes.c_long),
+                ("right", ctypes.c_long),
+                ("bottom", ctypes.c_long),
+            ]
 
         MONITORENUMPROC = ctypes.WINFUNCTYPE(
             ctypes.c_bool,
-            ctypes.c_ulong, ctypes.c_ulong,
-            ctypes.POINTER(RECT), ctypes.c_double,
+            ctypes.c_ulong,
+            ctypes.c_ulong,
+            ctypes.POINTER(RECT),
+            ctypes.c_double,
         )
 
         def _callback(hMonitor, hdcMonitor, lprcMonitor, dwData):  # noqa: N802
@@ -65,13 +72,16 @@ def _get_monitors_win32() -> list[dict[str, Any]]:
         user32.EnumDisplayMonitors(None, None, proc, 0)
 
         for i, (x, y, x2, y2) in enumerate(rects):
-            monitors.append({
-                "index": i,
-                "x": x, "y": y,
-                "width": x2 - x,
-                "height": y2 - y,
-                "is_primary": (x == 0 and y == 0),
-            })
+            monitors.append(
+                {
+                    "index": i,
+                    "x": x,
+                    "y": y,
+                    "width": x2 - x,
+                    "height": y2 - y,
+                    "is_primary": (x == 0 and y == 0),
+                }
+            )
     except Exception:
         # Fallback: use mss
         try:
@@ -79,12 +89,16 @@ def _get_monitors_win32() -> list[dict[str, Any]]:
 
             with mss.mss() as sct:
                 for i, mon in enumerate(sct.monitors[1:], 0):  # [0] is virtual
-                    monitors.append({
-                        "index": i,
-                        "x": mon["left"], "y": mon["top"],
-                        "width": mon["width"], "height": mon["height"],
-                        "is_primary": (mon["left"] == 0 and mon["top"] == 0),
-                    })
+                    monitors.append(
+                        {
+                            "index": i,
+                            "x": mon["left"],
+                            "y": mon["top"],
+                            "width": mon["width"],
+                            "height": mon["height"],
+                            "is_primary": (mon["left"] == 0 and mon["top"] == 0),
+                        }
+                    )
         except Exception as exc:
             logger.warning("get_monitors failed: %s", exc)
     return monitors
@@ -98,8 +112,10 @@ def _get_monitors_screeninfo() -> list[dict[str, Any]]:
         return [
             {
                 "index": i,
-                "x": m.x, "y": m.y,
-                "width": m.width, "height": m.height,
+                "x": m.x,
+                "y": m.y,
+                "width": m.width,
+                "height": m.height,
                 "is_primary": getattr(m, "is_primary", i == 0),
             }
             for i, m in enumerate(_gm())
@@ -112,6 +128,7 @@ def _get_monitors_screeninfo() -> list[dict[str, Any]]:
 
 
 # ── Window operations ────────────────────────────────────────────────────────
+
 
 def _find_window(title: str) -> Any | None:
     """Find a window by title substring. Returns pygetwindow Window or None."""

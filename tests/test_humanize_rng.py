@@ -9,9 +9,6 @@ from __future__ import annotations
 
 import random
 
-import pytest
-
-from core.humanize import rng as rng_mod
 from core.humanize.rng import get_rng, reset
 
 
@@ -92,6 +89,7 @@ class TestReset:
 class TestReplayability:
     def test_two_full_sessions_same_seed_identical(self):
         """Simulate two replayed sessions: same seed → identical draw stream."""
+
         def session(seed: int) -> list[float]:
             reset(seed=seed)
             r = get_rng()

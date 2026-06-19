@@ -52,8 +52,7 @@ class BrainClient:
         timeout: float = _DEFAULT_TIMEOUT,
     ) -> None:
         self.base_url = (
-            base_url
-            or os.environ.get("NEURALIS_BRAIN_URL", _DEFAULT_BRAIN_URL)
+            base_url or os.environ.get("NEURALIS_BRAIN_URL", _DEFAULT_BRAIN_URL)
         ).rstrip("/")
         self.timeout = timeout
         self._client: Any = None  # lazy httpx.Client
@@ -61,6 +60,7 @@ class BrainClient:
     def _get_client(self) -> Any:
         if self._client is None:
             import httpx
+
             self._client = httpx.Client(base_url=self.base_url, timeout=self.timeout)
         return self._client
 
@@ -68,6 +68,7 @@ class BrainClient:
         """Central HTTP wrapper. Raises BrainUnavailableError on network failures,
         BrainError on non-2xx responses."""
         import httpx
+
         try:
             resp = self._get_client().request(method, path, **kwargs)
         except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError) as exc:

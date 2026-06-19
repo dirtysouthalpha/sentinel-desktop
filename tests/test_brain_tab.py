@@ -14,8 +14,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ── Fake CTk widgets ─────────────────────────────────────────────────────────
+
 
 class FakeWidget:
     """A thin tkinter/CTk widget stand-in that records configure calls."""
@@ -159,6 +159,7 @@ class FakeCTk(types.ModuleType):
 
 # ── Fake tkinter (for TclError) ───────────────────────────────────────────────
 
+
 class FakeTkinter(types.ModuleType):
     class TclError(Exception):
         pass
@@ -168,6 +169,7 @@ class FakeTkinter(types.ModuleType):
 
 
 # ── Install stubs before any import of the module under test ─────────────────
+
 
 def _install_stubs() -> None:
     # customtkinter — must be a superset of what conftest installs so that
@@ -247,6 +249,7 @@ def _restore_ctk_after_test():
 
 # ── Load the module under test ────────────────────────────────────────────────
 
+
 def _make_app() -> MagicMock:
     """Return a fake app with the minimal interface BrainTab needs."""
     app = MagicMock()
@@ -280,6 +283,7 @@ def _make_tab():
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestBrainTabInit:
     def test_import_succeeds(self) -> None:
@@ -350,7 +354,6 @@ class TestFeedRendering:
         tab = _make_tab()
         # Patch winfo_children so we can detect the label creation
         created: list[str] = []
-        orig_label = FakeLabel
 
         class CapturingLabel(FakeLabel):
             def __init__(self, *args, **kwargs):
@@ -548,6 +551,7 @@ class TestTabRegistration:
         """Verify BrainTab is registered in gui/app.py _TAB_DEFS."""
         # Parse the file — no need to import/delete the module
         from pathlib import Path
+
         content = Path("gui/app.py").read_text()
         assert '"brain"' in content
         assert "BrainTab" in content

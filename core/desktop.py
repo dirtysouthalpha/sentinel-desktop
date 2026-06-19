@@ -30,11 +30,13 @@ class _FailSafeSentinel(Exception):
 
 _FailSafeException: type[Exception] = _FailSafeSentinel
 
+
 def _ensure_pyautogui():
     """Import pyautogui on first use to avoid headless system failures."""
     global pyautogui, _FailSafeException
     if pyautogui is None:
         import pyautogui as _pyautogui
+
         pyautogui = _pyautogui
         _FailSafeException = pyautogui.FailSafeException
         pyautogui.PAUSE = 0.1
@@ -170,9 +172,7 @@ class DesktopController:
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("right_click failed: %s", exc)
 
-    def _humanized_move_and_click(
-        self, x: int, y: int, *, button: str, clicks: int
-    ) -> None:
+    def _humanized_move_and_click(self, x: int, y: int, *, button: str, clicks: int) -> None:
         """Move to (x, y) along a humanized curve, then click.
 
         Falls back to a plain moveTo+click if the humanized path raises.
@@ -202,7 +202,8 @@ class DesktopController:
         """Replay a humanized trajectory as a sequence of micro moveTo calls."""
         start = self.get_mouse_position()
         trajectory = _humanize_motion.humanized_path(
-            start, (int(x), int(y)),
+            start,
+            (int(x), int(y)),
             rng=_humanize_rng.get_rng(),
             profile=_humanize_profile.get_default_profile(),
         )

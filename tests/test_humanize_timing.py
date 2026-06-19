@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import random
 
-import pytest
-
-from core.humanize.profile import FAST, NATURALISTIC, Profile
+from core.humanize.profile import NATURALISTIC, Profile
 from core.humanize.timing import click_hold_duration, maybe_pause, think_bump
 
 
@@ -26,8 +24,7 @@ class TestClickHoldDuration:
 
     def test_varies_across_draws(self):
         rng = random.Random(2)
-        draws = {round(click_hold_duration(rng=rng, profile=NATURALISTIC), 6)
-                 for _ in range(20)}
+        draws = {round(click_hold_duration(rng=rng, profile=NATURALISTIC), 6) for _ in range(20)}
         assert len(draws) > 5
 
     def test_positive(self):

@@ -5,17 +5,17 @@ Comprehensive test suite for multi-factor authentication resolution.
 """
 
 import asyncio
-import pytest
-from unittest.mock import Mock, patch
 
+import pytest
+
+from core.web.mfa_detector import MFAField, MFAInputType
 from core.web.mfa_handler import (
     MFAHandler,
-    MFAResolutionResult,
     MFAResolutionMethod,
+    MFAResolutionResult,
     TOTPProvider,
     create_mfa_handler,
 )
-from core.web.mfa_detector import MFAField, MFAInputType
 
 
 class TestTOTPProvider:

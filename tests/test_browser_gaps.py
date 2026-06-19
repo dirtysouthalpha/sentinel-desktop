@@ -12,8 +12,6 @@ import importlib
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 PLAYWRIGHT_PATH = "core.browser"
 
 
@@ -67,7 +65,6 @@ class TestPlaywrightImportSuccessBlock:
         import core.browser as browser_mod
 
         orig_has_pw = browser_mod._HAS_PLAYWRIGHT
-        orig_sync_pw = browser_mod.sync_playwright
 
         # Build a minimal fake playwright.sync_api module
         fake_sync_api = MagicMock()
@@ -79,10 +76,13 @@ class TestPlaywrightImportSuccessBlock:
         fake_sync_api.sync_playwright = fake_sync_playwright
 
         try:
-            with patch.dict(sys.modules, {
-                "playwright": MagicMock(),
-                "playwright.sync_api": fake_sync_api,
-            }):
+            with patch.dict(
+                sys.modules,
+                {
+                    "playwright": MagicMock(),
+                    "playwright.sync_api": fake_sync_api,
+                },
+            ):
                 importlib.reload(browser_mod)
                 assert browser_mod._HAS_PLAYWRIGHT is True
                 assert browser_mod.sync_playwright is fake_sync_playwright
@@ -112,9 +112,12 @@ class TestChromiumLaunch:
         mock_sync_pw = MagicMock()
         mock_sync_pw.return_value.start.return_value = mock_pw
 
-        with patch(f"{PLAYWRIGHT_PATH}._HAS_PLAYWRIGHT", True), \
-             patch(f"{PLAYWRIGHT_PATH}.sync_playwright", mock_sync_pw):
+        with (
+            patch(f"{PLAYWRIGHT_PATH}._HAS_PLAYWRIGHT", True),
+            patch(f"{PLAYWRIGHT_PATH}.sync_playwright", mock_sync_pw),
+        ):
             from core.browser import BrowserManager
+
             mgr = BrowserManager(headless=True, browser_type="chromium")
             mgr.launch()
 
@@ -129,6 +132,7 @@ class TestCloseExceptionHandlers:
 
     def _make_mgr(self):
         from core.browser import BrowserManager
+
         with patch(f"{PLAYWRIGHT_PATH}._HAS_PLAYWRIGHT", True):
             mgr = BrowserManager(headless=True)
         return mgr
@@ -279,9 +283,15 @@ class TestDetectMfaExceptionHandlers:
 
         good_inp = MagicMock()
         good_inp.get_attribute.side_effect = lambda attr: {
-            "type": "text", "name": "user", "id": "u", "placeholder": "",
-            "maxlength": None, "inputmode": "", "autocomplete": "",
-            "aria-label": "", "title": "",
+            "type": "text",
+            "name": "user",
+            "id": "u",
+            "placeholder": "",
+            "maxlength": None,
+            "inputmode": "",
+            "autocomplete": "",
+            "aria-label": "",
+            "title": "",
         }.get(attr, "")
 
         def _query_selector_all(selector):
@@ -329,11 +339,15 @@ class TestHandleMfaEarlyReturns:
         """Line 824 — empty mfa_fields list → early return."""
         mgr = _launched_manager()
 
-        with patch.object(mgr, "detect_mfa", return_value={
-            "success": True,
-            "has_mfa": True,
-            "mfa_fields": [],
-        }):
+        with patch.object(
+            mgr,
+            "detect_mfa",
+            return_value={
+                "success": True,
+                "has_mfa": True,
+                "mfa_fields": [],
+            },
+        ):
             result = mgr.handle_mfa()
 
         assert result["success"] is False
@@ -344,11 +358,17 @@ class TestHandleMfaEarlyReturns:
         """Line 833 — field element_id is empty/None → early return."""
         mgr = _launched_manager()
 
-        with patch.object(mgr, "detect_mfa", return_value={
-            "success": True,
-            "has_mfa": True,
-            "mfa_fields": [{"element_id": "", "input_type": "totp", "label": None, "confidence": 0.9}],
-        }):
+        with patch.object(
+            mgr,
+            "detect_mfa",
+            return_value={
+                "success": True,
+                "has_mfa": True,
+                "mfa_fields": [
+                    {"element_id": "", "input_type": "totp", "label": None, "confidence": 0.9}
+                ],
+            },
+        ):
             result = mgr.handle_mfa(selector=None)
 
         assert result["success"] is False
@@ -365,18 +385,24 @@ class TestHandleMfaResolutionFillPath:
     def test_resolution_success_fills_and_returns(self):
         mgr = _launched_manager()
 
-        fields_data = [{
-            "element_id": "#otp",
-            "input_type": "TOTP",
-            "label": "Code",
-            "confidence": 0.95,
-        }]
+        fields_data = [
+            {
+                "element_id": "#otp",
+                "input_type": "TOTP",
+                "label": "Code",
+                "confidence": 0.95,
+            }
+        ]
 
-        with patch.object(mgr, "detect_mfa", return_value={
-            "success": True,
-            "has_mfa": True,
-            "mfa_fields": fields_data,
-        }):
+        with patch.object(
+            mgr,
+            "detect_mfa",
+            return_value={
+                "success": True,
+                "has_mfa": True,
+                "mfa_fields": fields_data,
+            },
+        ):
             mock_fill_result = {"success": True, "output": "filled"}
 
             with patch.object(mgr, "_fill_mfa_code", return_value=mock_fill_result) as mock_fill:

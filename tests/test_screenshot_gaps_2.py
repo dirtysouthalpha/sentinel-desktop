@@ -1,6 +1,7 @@
 """Gap tests for screenshot.py — resolve_monitor, get_capture_offset, capture_to_base64,
 image encoding.
 """
+
 import base64
 import sys
 from unittest.mock import MagicMock, patch

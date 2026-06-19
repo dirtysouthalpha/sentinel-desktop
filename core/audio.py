@@ -138,7 +138,6 @@ def set_voice(name_or_id: str) -> bool:
     if not _IS_WINDOWS:
         return False
     try:
-
         voice = _get_tts_voice()
         if voice is None:
             return False
@@ -154,6 +153,7 @@ def set_voice(name_or_id: str) -> bool:
 
 
 # ── STT ─────────────────────────────────────────────────────────────────────
+
 
 def listen(timeout: float = 5.0, phrase_limit: float = 10.0) -> str:
     """Capture microphone input and return transcribed text.
@@ -251,6 +251,7 @@ def _listen_speech_recognition(timeout: float, phrase_limit: float) -> str:
 
 # ── Volume control ───────────────────────────────────────────────────────────
 
+
 def volume_get() -> int:
     """Return the master volume level (0–100). Returns -1 on failure."""
     if not _IS_WINDOWS:
@@ -280,12 +281,13 @@ def _volume_get_powershell() -> int:
     try:
         import subprocess
 
-        cmd = (
-            "(Get-AudioDevice -Playback).Volume"
-        )
+        cmd = "(Get-AudioDevice -Playback).Volume"
         r = subprocess.run(
             ["powershell", "-NoProfile", "-Command", cmd],
-            capture_output=True, text=True, timeout=10, check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         val = r.stdout.strip()
         if val.isdigit():
@@ -332,7 +334,7 @@ def _volume_set_powershell(level: int) -> bool:
             f"$vol = {level}; "
             "Add-Type -TypeDefinition '"
             "using System; using System.Runtime.InteropServices; "
-            "[Guid(\"5CDF2C82-841E-4546-9722-0CF74078229A\"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)] "
+            '[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)] '
             "public interface IAudioEndpointVolume { void dummy(); void dummy2(); void dummy3(); [return:MarshalAs(UnmanagedType.Bool)] bool GetMute(); int GetMasterVolumeLevelScalar([Out] out float fLevel); int SetMasterVolumeLevelScalar(float fLevel, IntPtr pguidEventContext); } "
             "'; "
             # simpler approach: use a known working method
@@ -340,7 +342,9 @@ def _volume_set_powershell(level: int) -> bool:
         )
         subprocess.run(
             ["powershell", "-NoProfile", "-Command", cmd],
-            capture_output=True, timeout=10, check=False,
+            capture_output=True,
+            timeout=10,
+            check=False,
         )
         # Alternative: use WScript SendKeys multimedia key simulation
         # This is imperfect but works as last resort
@@ -383,7 +387,9 @@ def _mute_toggle_powershell() -> bool:
         cmd = "(New-Object -ComObject WScript.Shell).SendKeys([char]173)"
         subprocess.run(
             ["powershell", "-NoProfile", "-Command", cmd],
-            capture_output=True, timeout=5, check=False,
+            capture_output=True,
+            timeout=5,
+            check=False,
         )
         return True
     except Exception as exc:

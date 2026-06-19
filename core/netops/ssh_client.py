@@ -40,6 +40,7 @@ class SSHError(Exception):
 @dataclass
 class SSHResult:
     """Result of an SSH command execution."""
+
     success: bool
     stdout: str
     stderr: str
@@ -161,7 +162,8 @@ class SSHClient:
         try:
             assert self._client is not None
             stdin, stdout, stderr = self._client.exec_command(
-                command, timeout=timeout or self.timeout,
+                command,
+                timeout=timeout or self.timeout,
             )
             stdout_str = stdout.read().decode("utf-8", errors="replace")
             stderr_str = stderr.read().decode("utf-8", errors="replace")
@@ -170,7 +172,10 @@ class SSHClient:
 
             logger.info(
                 "SSH command on %s: %s (exit=%d, %.0fms)",
-                self.hostname, command[:60], exit_code, elapsed,
+                self.hostname,
+                command[:60],
+                exit_code,
+                elapsed,
             )
 
             return SSHResult(

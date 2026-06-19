@@ -83,7 +83,7 @@ class TestLocalGroundingModel:
             assert result.is_valid is True
             assert result.bbox == (100, 200, 80, 30)
             assert result.confidence == 0.85
-            assert result.latency_ms > 0
+            assert result.latency_ms >= 0  # mocked backend may complete in 0.0ms
 
     def test_predict_with_raw_bbox_tuple(self):
         """Backend returning raw tuple gets wrapped in LocalGroundingResult."""
@@ -295,6 +295,7 @@ class TestLocalGroundingCoverage:
     def test_load_florence2_success_and_predict_not_implemented(self):
         """Lines 207-224: _load_florence2 creates wrapper; predict raises NotImplementedError."""
         import pytest
+
         from core.local_grounding import _load_florence2
 
         mock_transformers = MagicMock()
@@ -327,8 +328,7 @@ class TestLocalGroundingCoverage:
 
     def test_load_yolo_success_no_detections(self):
         """Lines 245-252, 265, 267: _load_yolo creates wrapper; predict with empty boxes."""
-        import numpy as np
-        from core.local_grounding import _load_yolo, LocalGroundingResult
+        from core.local_grounding import LocalGroundingResult, _load_yolo
 
         mock_yolo_instance = MagicMock()
         mock_ultralytics = MagicMock()
@@ -352,7 +352,8 @@ class TestLocalGroundingCoverage:
     def test_load_yolo_predict_with_detections(self):
         """Lines 255-264: _YOLOWrapper.predict returns bbox when detections are present."""
         import numpy as np
-        from core.local_grounding import _load_yolo, LocalGroundingResult
+
+        from core.local_grounding import LocalGroundingResult, _load_yolo
 
         mock_yolo_instance = MagicMock()
         mock_ultralytics = MagicMock()
@@ -368,7 +369,7 @@ class TestLocalGroundingCoverage:
 
         mock_box = MagicMock()
         mock_box.xyxy = [mock_xyxy_entry]  # plain list so [0] works normally
-        mock_box.conf = [0.9]              # plain list so float(conf[0]) works
+        mock_box.conf = [0.9]  # plain list so float(conf[0]) works
 
         mock_boxes = MagicMock()
         mock_boxes.__len__.return_value = 1

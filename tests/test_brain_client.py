@@ -1,7 +1,7 @@
 """Unit tests for core/brain/client.py — mocked httpx, no live API calls."""
+
 from __future__ import annotations
 
-import os
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -12,18 +12,18 @@ from core.brain.client import (
     BrainClient,
     BrainError,
     BrainUnavailableError,
-    get_default_client,
     fire,
+    get_default_client,
     recall,
     search,
     stats,
     think,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_client(json_data: object = None, status_code: int = 200) -> MagicMock:
     """Build a fake httpx response and wire it into a fake httpx.Client."""
@@ -166,7 +166,7 @@ class TestThink:
         bc._client = fake_client
         bc.think(content="hello")
         _, kwargs = fake_client.request.call_args
-        body = kwargs.get("json") or fake_client.request.call_args[1].get("json")
+        kwargs.get("json") or fake_client.request.call_args[1].get("json")
         # access positional args too
         call = fake_client.request.call_args
         sent_json = call.kwargs.get("json") or call.args[2] if len(call.args) > 2 else None

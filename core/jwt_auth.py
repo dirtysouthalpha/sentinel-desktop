@@ -265,13 +265,9 @@ def decode(token: str, config: JWTConfig) -> dict[str, Any]:
         aud = claims.get("aud")
         if isinstance(aud, list):
             if config.audience not in aud:
-                raise JWTClaimError(
-                    f"JWT audience mismatch: expected {config.audience!r} in {aud}"
-                )
+                raise JWTClaimError(f"JWT audience mismatch: expected {config.audience!r} in {aud}")
         elif aud != config.audience:
-            raise JWTClaimError(
-                f"JWT audience mismatch: expected {config.audience!r}, got {aud!r}"
-            )
+            raise JWTClaimError(f"JWT audience mismatch: expected {config.audience!r}, got {aud!r}")
 
     return claims
 

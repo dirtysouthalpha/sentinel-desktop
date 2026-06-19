@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import ctypes
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 class TestGetMonitorsWindowsBranch:
@@ -66,14 +63,16 @@ class TestWin32CallbackBody:
         mock_windll = MagicMock()
         mock_windll.user32 = mock_user32
 
-        with patch("ctypes.windll", mock_windll, create=True), \
-             patch("ctypes.WINFUNCTYPE", fake_WINFUNCTYPE, create=True):
+        with (
+            patch("ctypes.windll", mock_windll, create=True),
+            patch("ctypes.WINFUNCTYPE", fake_WINFUNCTYPE, create=True),
+        ):
             monitors = _get_monitors_win32()
 
         assert len(monitors) == 1
         assert monitors[0]["x"] == 10
         assert monitors[0]["y"] == 20
-        assert monitors[0]["width"] == 1920   # 1930 - 10
+        assert monitors[0]["width"] == 1920  # 1930 - 10
         assert monitors[0]["height"] == 1080  # 1100 - 20
 
     def test_win32_callback_multiple_monitors(self):
@@ -93,15 +92,16 @@ class TestWin32CallbackBody:
             (1920, 0, 3840, 1080),
         ]
 
-        call_count = [0]
-
         def fake_enum(none1, none2, proc, data):
             if "fn" in stored:
                 for rect in rects_data:
+
                     class FakeRect:
                         left, top, right, bottom = rect
+
                     class FakeLprc:
                         contents = FakeRect()
+
                     stored["fn"](None, None, FakeLprc(), 0)
 
         mock_user32 = MagicMock()
@@ -110,8 +110,10 @@ class TestWin32CallbackBody:
         mock_windll = MagicMock()
         mock_windll.user32 = mock_user32
 
-        with patch("ctypes.windll", mock_windll, create=True), \
-             patch("ctypes.WINFUNCTYPE", fake_WINFUNCTYPE, create=True):
+        with (
+            patch("ctypes.windll", mock_windll, create=True),
+            patch("ctypes.WINFUNCTYPE", fake_WINFUNCTYPE, create=True),
+        ):
             monitors = _get_monitors_win32()
 
         assert len(monitors) == 2
@@ -125,18 +127,23 @@ class TestWin32BothFallbacksFail:
     def test_all_fallbacks_fail_returns_empty_list(self):
         from core.window_control import _get_monitors_win32
 
-        with patch("ctypes.windll", side_effect=AttributeError("no windll"), create=True), \
-             patch("mss.mss", side_effect=Exception("mss broken"), create=True):
+        with (
+            patch("ctypes.windll", side_effect=AttributeError("no windll"), create=True),
+            patch("mss.mss", side_effect=Exception("mss broken"), create=True),
+        ):
             monitors = _get_monitors_win32()
 
         assert monitors == []
 
     def test_all_fallbacks_fail_logs_warning(self, caplog):
         import logging
+
         from core.window_control import _get_monitors_win32
 
-        with patch("ctypes.windll", side_effect=AttributeError("no windll"), create=True), \
-             patch("mss.mss", side_effect=Exception("mss totally broken"), create=True):
+        with (
+            patch("ctypes.windll", side_effect=AttributeError("no windll"), create=True),
+            patch("mss.mss", side_effect=Exception("mss totally broken"), create=True),
+        ):
             with caplog.at_level(logging.WARNING, logger="core.window_control"):
                 _get_monitors_win32()
 

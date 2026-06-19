@@ -56,7 +56,9 @@ def _make_executor() -> ActionExecutor:
         desktop_mod.DesktopEngine = original
 
 
-def _make_perception_result(element_id: int = 1, bbox: tuple = (100, 100, 50, 50)) -> PerceptionResult:
+def _make_perception_result(
+    element_id: int = 1, bbox: tuple = (100, 100, 50, 50)
+) -> PerceptionResult:
     elem = PerceptionElement(id=element_id, label="btn", bounding_box=bbox)
     pr = PerceptionResult()
     pr.elements = [elem]
@@ -221,7 +223,9 @@ class TestRegistryActions:
         ex = _make_executor()
         with patch("core.registry.registry_write", return_value=True):
             result = ex._registry_write(
-                path=r"HKLM\Software\Test", value_name="Key", data="val",
+                path=r"HKLM\Software\Test",
+                value_name="Key",
+                data="val",
             )
         assert result["success"] is True
         assert "Wrote" in result["output"]
@@ -334,8 +338,10 @@ class TestSshShow:
         mock_runner = MagicMock()
         mock_runner.show_version.return_value = fake_run_result
 
-        with patch("core.netops.command_runner.CommandRunner", return_value=mock_runner), \
-             patch("core.netops.output_parser.parse_version", return_value={"version": "15.2"}):
+        with (
+            patch("core.netops.command_runner.CommandRunner", return_value=mock_runner),
+            patch("core.netops.output_parser.parse_version", return_value={"version": "15.2"}),
+        ):
             result = ex._ssh_show(hostname="router", what="version")
 
         assert result["success"] is True
@@ -372,8 +378,10 @@ class TestSshShow:
         mock_runner = MagicMock()
         mock_runner.show_version.return_value = fake_run_result
 
-        with patch("core.netops.command_runner.CommandRunner", return_value=mock_runner), \
-             patch("core.netops.output_parser.parse_version", return_value={}):
+        with (
+            patch("core.netops.command_runner.CommandRunner", return_value=mock_runner),
+            patch("core.netops.output_parser.parse_version", return_value={}),
+        ):
             result = ex._ssh_show(hostname="router", what="version")
 
         assert result["success"] is False
@@ -395,8 +403,10 @@ class TestSshPing:
 
         parsed = {"success": True, "packets_sent": 5, "packets_received": 5}
 
-        with patch("core.netops.command_runner.CommandRunner", return_value=mock_runner), \
-             patch("core.netops.output_parser.parse_ping", return_value=parsed):
+        with (
+            patch("core.netops.command_runner.CommandRunner", return_value=mock_runner),
+            patch("core.netops.output_parser.parse_ping", return_value=parsed),
+        ):
             result = ex._ssh_ping(hostname="router", target="8.8.8.8")
 
         assert result["success"] is True
@@ -419,8 +429,10 @@ class TestSshTraceroute:
 
         parsed = {"success": True, "hops": [{"hop": 1, "ip": "192.168.1.1"}]}
 
-        with patch("core.netops.command_runner.CommandRunner", return_value=mock_runner), \
-             patch("core.netops.output_parser.parse_traceroute", return_value=parsed):
+        with (
+            patch("core.netops.command_runner.CommandRunner", return_value=mock_runner),
+            patch("core.netops.output_parser.parse_traceroute", return_value=parsed),
+        ):
             result = ex._ssh_traceroute(hostname="router", target="1.1.1.1")
 
         assert result["success"] is True
@@ -478,7 +490,9 @@ class TestRetryLast:
             {"action": "wait", "params": {"seconds": 1}, "success": False},
         ]
 
-        with patch.object(ex, "execute_sync", return_value={"success": True, "output": "ok"}) as mock_exec:
+        with patch.object(
+            ex, "execute_sync", return_value={"success": True, "output": "ok"}
+        ) as mock_exec:
             result = ex._retry_last()
 
         mock_exec.assert_called_once_with({"action": "wait", "seconds": 1})

@@ -154,7 +154,9 @@ def test_delete_file_permission_error(tmp_path, monkeypatch):
 def test_delete_file_oserror(tmp_path, monkeypatch):
     target = tmp_path / "target.txt"
     target.write_text("x")
-    monkeypatch.setattr("pathlib.Path.unlink", lambda *a, **kw: (_ for _ in ()).throw(OSError("busy")))
+    monkeypatch.setattr(
+        "pathlib.Path.unlink", lambda *a, **kw: (_ for _ in ()).throw(OSError("busy"))
+    )
     assert file_ops.delete_file(str(target)) is False
 
 
@@ -172,7 +174,9 @@ def test_move_file_oserror(tmp_path, monkeypatch):
     src = tmp_path / "src.txt"
     src.write_text("x")
     dst = tmp_path / "dst.txt"
-    monkeypatch.setattr("pathlib.Path.rename", lambda *a, **kw: (_ for _ in ()).throw(OSError("rename failed")))
+    monkeypatch.setattr(
+        "pathlib.Path.rename", lambda *a, **kw: (_ for _ in ()).throw(OSError("rename failed"))
+    )
     assert file_ops.move_file(str(src), str(dst)) is False
 
 
@@ -188,10 +192,13 @@ def test_copy_file_permission_error(tmp_path, monkeypatch):
 
 def test_copy_file_oserror(tmp_path, monkeypatch):
     import shutil
+
     src = tmp_path / "src.txt"
     src.write_text("x")
     dst = tmp_path / "dst.txt"
-    monkeypatch.setattr(shutil, "copy2", lambda *a, **kw: (_ for _ in ()).throw(OSError("copy failed")))
+    monkeypatch.setattr(
+        shutil, "copy2", lambda *a, **kw: (_ for _ in ()).throw(OSError("copy failed"))
+    )
     assert file_ops.copy_file(str(src), str(dst)) is False
 
 
@@ -205,7 +212,9 @@ def test_mkdir_permission_error(tmp_path, monkeypatch):
 
 def test_mkdir_oserror(tmp_path, monkeypatch):
     target = tmp_path / "blocked_dir"
-    monkeypatch.setattr("pathlib.Path.mkdir", lambda *a, **kw: (_ for _ in ()).throw(OSError("read-only")))
+    monkeypatch.setattr(
+        "pathlib.Path.mkdir", lambda *a, **kw: (_ for _ in ()).throw(OSError("read-only"))
+    )
     assert file_ops.mkdir(str(target)) is False
 
 
@@ -228,7 +237,6 @@ def test_find_files_permission_error(tmp_path, monkeypatch):
 
 
 def test_find_files_oserror(tmp_path, monkeypatch):
-    from glob import glob as real_glob
     monkeypatch.setattr("glob.glob", lambda *a, **kw: (_ for _ in ()).throw(OSError("glob error")))
     assert file_ops.find_files("*.txt", root=str(tmp_path)) is None
 
@@ -243,8 +251,11 @@ def test_archive_create_permission_error(tmp_path, monkeypatch):
 
 def test_archive_create_oserror(tmp_path, monkeypatch):
     import zipfile
+
     archive = tmp_path / "fail.zip"
-    monkeypatch.setattr(zipfile, "ZipFile", lambda *a, **kw: (_ for _ in ()).throw(OSError("disk full")))
+    monkeypatch.setattr(
+        zipfile, "ZipFile", lambda *a, **kw: (_ for _ in ()).throw(OSError("disk full"))
+    )
     assert file_ops.archive_create(str(archive), []) is False
 
 

@@ -21,8 +21,8 @@ from core.humanize.profile import Profile
 
 # Believable human typing band (seconds). Delays are clamped into this range
 # so no pathological RNG draw produces something unphysical.
-_MIN_DELAY_S = 0.018   # ~55 WPM peak burst speed per key
-_MAX_DELAY_S = 0.60    # a noticeable (but not absurd) hesitation
+_MIN_DELAY_S = 0.018  # ~55 WPM peak burst speed per key
+_MAX_DELAY_S = 0.60  # a noticeable (but not absurd) hesitation
 
 # Word-boundary characters that trigger a longer pause AFTER being typed.
 _BOUNDARY_CHARS = set(" ,.;:!?")

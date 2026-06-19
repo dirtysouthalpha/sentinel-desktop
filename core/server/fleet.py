@@ -103,8 +103,11 @@ class FleetManager:
             return {"success": False, "error": f"Node {node_id} already registered"}
 
         node = FleetNode(
-            node_id=node_id, hostname=hostname,
-            ip_address=ip_address, role=role, tags=tags,
+            node_id=node_id,
+            hostname=hostname,
+            ip_address=ip_address,
+            role=role,
+            tags=tags,
         )
         node.status = "online"
         node.last_seen = datetime.utcnow().isoformat()

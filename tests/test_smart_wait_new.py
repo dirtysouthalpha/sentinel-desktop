@@ -1,6 +1,7 @@
 """Tests for core/smart_wait.py -- additional edge cases for visual diff, stability, and
 wait_for_change.
 """
+
 from unittest.mock import patch
 
 from PIL import Image

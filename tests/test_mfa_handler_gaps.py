@@ -4,11 +4,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import AsyncMock, patch
 
 from core.web.mfa_detector import MFAField, MFAInputType
 from core.web.mfa_handler import (
@@ -106,7 +103,9 @@ class TestResolveMfaSmsEmailPath:
         field = make_field(MFAInputType.SMS)
 
         # _try_code_retrieval is called automatically for SMS fields
-        with patch.object(handler, "_try_code_retrieval", wraps=handler._try_code_retrieval) as mock_retrieval:
+        with patch.object(
+            handler, "_try_code_retrieval", wraps=handler._try_code_retrieval
+        ) as mock_retrieval:
             handler.resolve_mfa(field, "https://bank.example.com")
 
         mock_retrieval.assert_called_once_with(field)
@@ -115,7 +114,9 @@ class TestResolveMfaSmsEmailPath:
         handler = MFAHandler()
         field = make_field(MFAInputType.EMAIL)
 
-        with patch.object(handler, "_try_code_retrieval", wraps=handler._try_code_retrieval) as mock_retrieval:
+        with patch.object(
+            handler, "_try_code_retrieval", wraps=handler._try_code_retrieval
+        ) as mock_retrieval:
             handler.resolve_mfa(field, "https://mail.example.com")
 
         mock_retrieval.assert_called_once_with(field)

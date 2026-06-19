@@ -99,7 +99,6 @@ class TestConductorAPIEndpoint:
 
     def test_conductor_run(self, client):
         with patch("core.conductor.coordinator.Conductor") as MockConductor:
-
             mock = MagicMock()
 
             async def fake_run(goal, timeout=120.0):

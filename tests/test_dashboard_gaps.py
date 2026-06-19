@@ -1,7 +1,7 @@
 """Gap tests for core.dashboard — covers lines 133-134, 267-287.
 
-  133-134: _get_gpu_info() exception path (SubprocessError)
-  267-287: sentinel_chat() all paths (success, timeout, http error, exception)
+133-134: _get_gpu_info() exception path (SubprocessError)
+267-287: sentinel_chat() all paths (success, timeout, http error, exception)
 """
 
 from __future__ import annotations
@@ -27,14 +27,18 @@ class TestGetGpuInfoException:
     """Lines 133-134 — subprocess errors are caught and return empty list."""
 
     def test_subprocess_error_returns_empty(self):
-        with patch("shutil.which", return_value="/usr/bin/nvidia-smi"), \
-             patch("subprocess.run", side_effect=subprocess.SubprocessError("gpu busy")):
+        with (
+            patch("shutil.which", return_value="/usr/bin/nvidia-smi"),
+            patch("subprocess.run", side_effect=subprocess.SubprocessError("gpu busy")),
+        ):
             result = _get_gpu_info()
         assert result == []
 
     def test_oserror_returns_empty(self):
-        with patch("shutil.which", return_value="/usr/bin/nvidia-smi"), \
-             patch("subprocess.run", side_effect=OSError("no device")):
+        with (
+            patch("shutil.which", return_value="/usr/bin/nvidia-smi"),
+            patch("subprocess.run", side_effect=OSError("no device")),
+        ):
             result = _get_gpu_info()
         assert result == []
 
@@ -42,8 +46,10 @@ class TestGetGpuInfoException:
         bad_proc = MagicMock()
         bad_proc.returncode = 0
         bad_proc.stdout = "GeForce RTX, NOT_A_FLOAT, 8192, 70, 80, 120\n"
-        with patch("shutil.which", return_value="/usr/bin/nvidia-smi"), \
-             patch("subprocess.run", return_value=bad_proc):
+        with (
+            patch("shutil.which", return_value="/usr/bin/nvidia-smi"),
+            patch("subprocess.run", return_value=bad_proc),
+        ):
             result = _get_gpu_info()
         assert result == []
 
@@ -101,9 +107,7 @@ class TestSentinelChat:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.post = AsyncMock(
-            side_effect=httpx.HTTPError("500 server error")
-        )
+        mock_client.post = AsyncMock(side_effect=httpx.HTTPError("500 server error"))
 
         with patch("httpx.AsyncClient", return_value=mock_client):
             resp = client.post("/dashboard/chat/sentinel-ai", json={"message": "ping"})

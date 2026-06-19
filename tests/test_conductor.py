@@ -205,6 +205,7 @@ class TestParallelExecutor:
     @pytest.mark.asyncio
     async def test_async_executor_fn_is_awaited(self):
         """Async executor_fn (returning a coroutine) is properly awaited (line 127)."""
+
         async def async_fn(subtask: Subtask) -> str:
             return f"async-{subtask.subtask_id}"
 

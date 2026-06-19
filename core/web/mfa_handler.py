@@ -17,6 +17,7 @@ from core.web.mfa_detector import MFAField, MFAInputType
 
 class MFAResolutionMethod(Enum):
     """Methods for resolving MFA challenges"""
+
     USER_PROMPT = "user_prompt"  # Ask user to provide code
     TOTP_AUTO = "totp_auto"  # Auto-generate TOTP from seed
     SMS_RETRIEVAL = "sms_retrieval"  # Auto-retrieve SMS code
@@ -27,6 +28,7 @@ class MFAResolutionMethod(Enum):
 @dataclass
 class MFAResolutionResult:
     """Result of MFA resolution attempt"""
+
     success: bool
     code_used: str | None
     method_used: MFAResolutionMethod
@@ -43,14 +45,14 @@ class TOTPProvider:
 
     # Supported providers
     PROVIDERS = {
-        'google': 'Google Authenticator',
-        'authy': 'Authy',
-        'microsoft': 'Microsoft Authenticator',
-        'duo': 'Duo Mobile',
-        'lastpass': 'LastPass Authenticator',
-        'yubikey': 'Yubico Authenticator',
-        '1password': '1Password',
-        'bitwarden': 'Bitwarden'
+        "google": "Google Authenticator",
+        "authy": "Authy",
+        "microsoft": "Microsoft Authenticator",
+        "duo": "Duo Mobile",
+        "lastpass": "LastPass Authenticator",
+        "yubikey": "Yubico Authenticator",
+        "1password": "1Password",
+        "bitwarden": "Bitwarden",
     }
 
     def __init__(self):
@@ -96,8 +98,7 @@ class TOTPProvider:
             print(f"Error generating TOTP: {e}")
             return None
 
-    def verify_totp(self, service: str, code: str,
-                    valid_window: int = 1) -> bool:
+    def verify_totp(self, service: str, code: str, valid_window: int = 1) -> bool:
         """
         Verify a TOTP code for a service.
 
@@ -159,9 +160,13 @@ class MFAHandler:
         """Add a TOTP secret for auto-generation"""
         self.totp_provider.add_secret(service, secret)
 
-    def resolve_mfa(self, mfa_field: MFAField, page_url: str,
-                   user_callback: Callable[[str], Awaitable[str]] | None = None,
-                   service_name: str | None = None) -> MFAResolutionResult:
+    def resolve_mfa(
+        self,
+        mfa_field: MFAField,
+        page_url: str,
+        user_callback: Callable[[str], Awaitable[str]] | None = None,
+        service_name: str | None = None,
+    ) -> MFAResolutionResult:
         """
         Resolve an MFA challenge using available methods.
 
@@ -186,9 +191,7 @@ class MFAHandler:
 
         # Strategy 2: Prompt user for code
         if user_callback:
-            user_result = asyncio.run(self._try_user_prompt(
-                mfa_field, user_callback
-            ))
+            user_result = asyncio.run(self._try_user_prompt(mfa_field, user_callback))
             resolution_attempts.append(user_result)
             if user_result.success:
                 return user_result
@@ -211,16 +214,14 @@ class MFAHandler:
                 code_used=None,
                 method_used=MFAResolutionMethod.TOTP_AUTO,
                 error_message="No service name provided for TOTP lookup",
-                retry_allowed=True
+                retry_allowed=True,
             )
 
         # Check cache first
         cached_code = self._check_cache(service)
         if cached_code:
             return MFAResolutionResult(
-                success=True,
-                code_used=cached_code,
-                method_used=MFAResolutionMethod.TOTP_AUTO
+                success=True, code_used=cached_code, method_used=MFAResolutionMethod.TOTP_AUTO
             )
 
         # Generate new TOTP
@@ -228,9 +229,7 @@ class MFAHandler:
         if code:
             self._cache_code(service, code)
             return MFAResolutionResult(
-                success=True,
-                code_used=code,
-                method_used=MFAResolutionMethod.TOTP_AUTO
+                success=True, code_used=code, method_used=MFAResolutionMethod.TOTP_AUTO
             )
 
         return MFAResolutionResult(
@@ -238,11 +237,12 @@ class MFAHandler:
             code_used=None,
             method_used=MFAResolutionMethod.TOTP_AUTO,
             error_message=f"No TOTP secret found for service: {service}",
-            retry_allowed=False
+            retry_allowed=False,
         )
 
-    async def _try_user_prompt(self, mfa_field: MFAField,
-                              user_callback: Callable[[str], Awaitable[str]]) -> MFAResolutionResult:
+    async def _try_user_prompt(
+        self, mfa_field: MFAField, user_callback: Callable[[str], Awaitable[str]]
+    ) -> MFAResolutionResult:
         """Prompt user to provide MFA code"""
         try:
             # Generate prompt based on MFA type
@@ -253,7 +253,7 @@ class MFAHandler:
                 return MFAResolutionResult(
                     success=True,
                     code_used=code.strip(),
-                    method_used=MFAResolutionMethod.USER_PROMPT
+                    method_used=MFAResolutionMethod.USER_PROMPT,
                 )
 
             return MFAResolutionResult(
@@ -261,7 +261,7 @@ class MFAHandler:
                 code_used=None,
                 method_used=MFAResolutionMethod.USER_PROMPT,
                 error_message="User did not provide a code",
-                retry_allowed=True
+                retry_allowed=True,
             )
         except Exception as e:
             return MFAResolutionResult(
@@ -269,7 +269,7 @@ class MFAHandler:
                 code_used=None,
                 method_used=MFAResolutionMethod.USER_PROMPT,
                 error_message=f"Error prompting user: {str(e)}",
-                retry_allowed=True
+                retry_allowed=True,
             )
 
     def _try_code_retrieval(self, mfa_field: MFAField) -> MFAResolutionResult:
@@ -292,7 +292,7 @@ class MFAHandler:
             code_used=None,
             method_used=method,
             error_message="Automatic code retrieval not implemented yet",
-            retry_allowed=False
+            retry_allowed=False,
         )
 
     def _generate_user_prompt(self, mfa_field: MFAField) -> str:
@@ -324,23 +324,23 @@ class MFAHandler:
 
         # Common service patterns
         service_patterns = {
-            'github.com': 'github',
-            'aws.amazon.com': 'aws',
-            'amazon.com': 'amazon',
-            'accounts.google.com': 'google',
-            'mail.google.com': 'google',
-            'facebook.com': 'facebook',
-            'twitter.com': 'twitter',
-            'x.com': 'twitter',
-            'linkedin.com': 'linkedin',
-            'microsoft.com': 'microsoft',
-            'live.com': 'microsoft',
-            'outlook.com': 'microsoft',
-            'dropbox.com': 'dropbox',
-            'stripe.com': 'stripe',
-            'paypal.com': 'paypal',
-            'ebay.com': 'ebay',
-            'reddit.com': 'reddit'
+            "github.com": "github",
+            "aws.amazon.com": "aws",
+            "amazon.com": "amazon",
+            "accounts.google.com": "google",
+            "mail.google.com": "google",
+            "facebook.com": "facebook",
+            "twitter.com": "twitter",
+            "x.com": "twitter",
+            "linkedin.com": "linkedin",
+            "microsoft.com": "microsoft",
+            "live.com": "microsoft",
+            "outlook.com": "microsoft",
+            "dropbox.com": "dropbox",
+            "stripe.com": "stripe",
+            "paypal.com": "paypal",
+            "ebay.com": "ebay",
+            "reddit.com": "reddit",
         }
 
         for pattern, service in service_patterns.items():
@@ -350,9 +350,11 @@ class MFAHandler:
                 # Remove protocol for matching
                 url_without_protocol = url.split("://", 1)[1]
                 # Check if pattern matches at the start or after a dot
-                if (url_without_protocol.startswith(pattern) or
-                    f".{pattern}" in url_without_protocol or
-                    f"/{pattern}" in url_without_protocol):
+                if (
+                    url_without_protocol.startswith(pattern)
+                    or f".{pattern}" in url_without_protocol
+                    or f"/{pattern}" in url_without_protocol
+                ):
                     return service
             else:
                 # Fallback to simple match for non-URL strings
@@ -394,11 +396,15 @@ class MFAHandler:
                 return result
 
         # Return first failure if all failed
-        return results[0] if results else MFAResolutionResult(
-            success=False,
-            code_used=None,
-            method_used=MFAResolutionMethod.USER_PROMPT,
-            error_message="No resolution methods available"
+        return (
+            results[0]
+            if results
+            else MFAResolutionResult(
+                success=False,
+                code_used=None,
+                method_used=MFAResolutionMethod.USER_PROMPT,
+                error_message="No resolution methods available",
+            )
         )
 
 

@@ -36,12 +36,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_BASE_DELAY = 1.0  # seconds
 DEFAULT_MAX_DELAY = 30.0  # seconds
-DEFAULT_JITTER = 0.3       # fraction of delay added as jitter
+DEFAULT_JITTER = 0.3  # fraction of delay added as jitter
 
 # Circuit breaker defaults
-DEFAULT_FAILURE_THRESHOLD = 3   # consecutive failures before open
+DEFAULT_FAILURE_THRESHOLD = 3  # consecutive failures before open
 DEFAULT_RECOVERY_TIMEOUT = 60.0  # seconds in open state before half-open
-DEFAULT_SUCCESS_THRESHOLD = 2    # successes in half-open before closed
+DEFAULT_SUCCESS_THRESHOLD = 2  # successes in half-open before closed
 
 # Transient error types that warrant retry
 TRANSIENT_EXCEPTIONS = (
@@ -55,6 +55,7 @@ TRANSIENT_EXCEPTIONS = (
 
 
 # ── Retry decorator ──────────────────────────────────────────────────────────
+
 
 class RetryExhausted(Exception):
     """Raised when all retry attempts have been consumed."""
@@ -89,6 +90,7 @@ def retryable(
     Raises:
         RetryExhausted: When all attempts fail.
     """
+
     def decorator(fn: Callable) -> Callable:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -117,11 +119,14 @@ def retryable(
                     # Non-transient: let it propagate immediately
                     raise
             raise RetryExhausted(max_attempts, last_exc)  # type: ignore[arg-type]
+
         return wrapper
+
     return decorator
 
 
 # ── Circuit Breaker ──────────────────────────────────────────────────────────
+
 
 class CircuitBreakerOpen(Exception):
     """Raised when a circuit is open and calls are rejected."""
@@ -180,9 +185,7 @@ class CircuitBreaker:
     def _transition(self, new_state: str) -> None:
         """Transition to *new_state* and log."""
         if self._state != new_state:
-            logger.warning(
-                "CircuitBreaker '%s': %s → %s", self.name, self._state, new_state
-            )
+            logger.warning("CircuitBreaker '%s': %s → %s", self.name, self._state, new_state)
             self._state = new_state
 
     def record_success(self) -> None:

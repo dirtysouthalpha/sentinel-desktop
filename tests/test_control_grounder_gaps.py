@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.control.grounder import ActionGrounder, GroundedAction
+from core.control.grounder import ActionGrounder
 from core.control.planner import PlanStep, StepType
 from core.perception.types import ElementSource, ElementType, PerceptionElement, PerceptionResult
 

@@ -4,20 +4,15 @@ from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
-from pathlib import Path
-
-import pytest
 
 from installer.mdm import (
-    APP_NAME,
+    _INTUNE_SETTINGS,
     OMA_URI_BASE,
     REGISTRY_BASE,
-    _INTUNE_SETTINGS,
     _admx_value_type,
     build_admx,
     build_intune_profile,
 )
-
 
 # ---------------------------------------------------------------------------
 # _admx_value_type helper

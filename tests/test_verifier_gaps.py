@@ -19,7 +19,7 @@ class TestComputePixelDiffMismatchedSize:
     def test_mismatched_pixel_counts_returns_100(self):
         # Force different pixel counts by patching getdata to return different lengths
         before = Image.new("RGB", (200, 200), "white")
-        after = Image.new("RGB", (200, 200), "black")
+        Image.new("RGB", (200, 200), "black")
 
         with patch.object(
             type(before.resize((200, 200), Image.Resampling.BILINEAR).convert("RGB")),

@@ -1,4 +1,5 @@
 """Tests for sentinel_mcp_server.py — HTTP helpers, _err, and all MCP tool functions."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -11,10 +12,10 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Stub fastmcp before loading the module (not installed in test venv)
 # ---------------------------------------------------------------------------
+
 
 def _make_fastmcp_stub() -> MagicMock:
     """Create a minimal fastmcp stub that makes @mcp.tool() a passthrough."""
@@ -25,6 +26,7 @@ def _make_fastmcp_stub() -> MagicMock:
     def _passthrough(*args, **kwargs):
         def decorator(fn):
             return fn
+
         return decorator
 
     instance.tool = _passthrough
@@ -38,6 +40,7 @@ if "fastmcp" not in sys.modules:
 # ---------------------------------------------------------------------------
 # Module loading (load by path so tests can run without installing the package)
 # ---------------------------------------------------------------------------
+
 
 def _load_module():
     spec = importlib.util.spec_from_file_location(
@@ -55,6 +58,7 @@ _mod = _load_module()
 # ---------------------------------------------------------------------------
 # Helpers shared across tests
 # ---------------------------------------------------------------------------
+
 
 def _ok(data: Any = None) -> MagicMock:
     resp = MagicMock()
@@ -93,6 +97,7 @@ def _client_ctx(resp: MagicMock):
 # _headers
 # ---------------------------------------------------------------------------
 
+
 class TestHeaders:
     def test_no_token_excludes_authorization(self):
         with patch.object(_mod, "API_TOKEN", ""):
@@ -109,6 +114,7 @@ class TestHeaders:
 # ---------------------------------------------------------------------------
 # _err
 # ---------------------------------------------------------------------------
+
 
 class TestErr:
     def test_generic_exception(self):
@@ -144,6 +150,7 @@ class TestErr:
 # ---------------------------------------------------------------------------
 # _api_get / _api_post / _api_put / _api_delete
 # ---------------------------------------------------------------------------
+
 
 class TestApiHelpers:
     def test_get_success_returns_json(self):
@@ -193,6 +200,7 @@ class TestApiHelpers:
 # ---------------------------------------------------------------------------
 # Tool functions
 # ---------------------------------------------------------------------------
+
 
 class TestGoal:
     def test_happy(self):
@@ -300,11 +308,21 @@ class TestConfig:
     def test_set_all_fields(self):
         with patch.object(_mod, "_api_put") as m:
             m.return_value = {"ok": True}
-            _mod.set_config(provider="anthropic", model="claude-3", max_steps=10,
-                            approval_mode=True, theme="dark")
+            _mod.set_config(
+                provider="anthropic",
+                model="claude-3",
+                max_steps=10,
+                approval_mode=True,
+                theme="dark",
+            )
         body = m.call_args[0][1]
-        assert body == {"provider": "anthropic", "model": "claude-3",
-                        "max_steps": 10, "approval_mode": True, "theme": "dark"}
+        assert body == {
+            "provider": "anthropic",
+            "model": "claude-3",
+            "max_steps": 10,
+            "approval_mode": True,
+            "theme": "dark",
+        }
 
     def test_set_no_fields_sends_empty_body(self):
         with patch.object(_mod, "_api_put") as m:
@@ -724,6 +742,7 @@ class TestAgentZero:
 # ---------------------------------------------------------------------------
 # main() entry point
 # ---------------------------------------------------------------------------
+
 
 class TestMain:
     def test_stdio_transport_is_default(self):

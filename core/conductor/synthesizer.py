@@ -76,7 +76,10 @@ class ResultSynthesizer:
 
         logger.info(
             "Synthesized %d tasks: %s (%d succeeded, %d failed)",
-            total, overall_status, len(successes), len(failures),
+            total,
+            overall_status,
+            len(successes),
+            len(failures),
         )
 
         return final

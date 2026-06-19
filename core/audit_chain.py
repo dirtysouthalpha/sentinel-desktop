@@ -293,7 +293,4 @@ class AuditChain:
     def summary(self) -> str:
         """Return a brief human-readable summary."""
         entries = self.entries()
-        return (
-            f"AuditChain({self._path}): {len(entries)} entries, "
-            f"tip={self._last_hash[:16]}..."
-        )
+        return f"AuditChain({self._path}): {len(entries)} entries, tip={self._last_hash[:16]}..."

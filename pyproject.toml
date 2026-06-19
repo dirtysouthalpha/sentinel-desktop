@@ -150,7 +150,21 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106", "S108", "S603", "S607", "E701", "E741", "E402"]
+"tests/*" = [
+    "S101",  # assert (fine in tests)
+    "S105",  # hardcoded password strings in test fixtures
+    "S106",  # hardcoded password function args in test fixtures
+    "S108",  # /tmp usage in test fixtures
+    "S306",  # mktemp in test fixtures (trusted, ephemeral)
+    "S311",  # stdlib random in humanize tests (non-cryptographic, intentional)
+    "S314",  # xml.etree on trusted test fixtures (e.g. generated ADMX)
+    "S603",  # subprocess in tests
+    "S607",  # partial executable path in tests
+    "E701",  # one-liner class stubs
+    "E741",  # ambiguous variable name in tests
+    "E402",  # late imports in test stubs
+    "F811",  # redefinition in mock stub modules (intentional shadowing)
+]
 "installer/*" = ["S603", "S607"]
 
 [tool.ruff.format]

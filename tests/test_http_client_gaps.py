@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from core.http_client import http_delete, http_download, http_put, http_get
+from core.http_client import http_delete, http_download, http_get, http_put
 
 
 class TestHttpPutAndDelete:
@@ -13,7 +13,7 @@ class TestHttpPutAndDelete:
     def _mock_response(self, status=200, text="ok"):
         resp = MagicMock()
         resp.status_code = status
-        resp.is_success = (200 <= status < 300)
+        resp.is_success = 200 <= status < 300
         resp.text = text
         resp.headers = {"content-type": "text/plain"}
         return resp
@@ -57,7 +57,6 @@ class TestHttpDownloadImportError:
     """ImportError path in http_download (line 141)."""
 
     def test_download_no_httpx(self, tmp_path):
-        import sys
         dest = str(tmp_path / "out.bin")
         with patch.dict("sys.modules", {"httpx": None}):
             result = http_download("https://example.com/file", dest)

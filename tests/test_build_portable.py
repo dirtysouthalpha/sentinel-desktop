@@ -15,6 +15,7 @@ from installer.build import build_portable
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_fake_pyinstaller(monkeypatch):
     """Patch PyInstaller import to succeed and subprocess.run to return 0."""
     fake_pyi = MagicMock()
@@ -36,6 +37,7 @@ def _fake_run_ok(app_dir: Path):
 # ---------------------------------------------------------------------------
 # build_portable
 # ---------------------------------------------------------------------------
+
 
 class TestBuildPortable:
     def test_build_portable_invokes_onedir(self, tmp_path, monkeypatch):
@@ -94,7 +96,9 @@ class TestBuildPortable:
             return r
 
         with patch("installer.build.subprocess.run", side_effect=_run):
-            build_portable(profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable")
+            build_portable(
+                profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable"
+            )
 
         assert "--onefile" not in captured
 
@@ -117,9 +121,13 @@ class TestBuildPortable:
             r.returncode = 0
             return r
 
-        with patch("installer.build.subprocess.run", side_effect=_run), \
-             patch.object(build_mod, "generate_inno_setup") as mock_inno:
-            build_portable(profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable")
+        with (
+            patch("installer.build.subprocess.run", side_effect=_run),
+            patch.object(build_mod, "generate_inno_setup") as mock_inno,
+        ):
+            build_portable(
+                profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable"
+            )
 
         mock_inno.assert_not_called()
 
@@ -146,14 +154,14 @@ class TestBuildPortable:
             return r
 
         with patch("installer.build.subprocess.run", side_effect=_run):
-            build_portable(profile="my-profile", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable")
+            build_portable(
+                profile="my-profile",
+                bundle_playwright=False,
+                out_dir=tmp_path / "dist" / "portable",
+            )
 
         # --add-data should include the profile path
-        add_data_args = [
-            captured[i + 1]
-            for i, v in enumerate(captured)
-            if v == "--add-data"
-        ]
+        add_data_args = [captured[i + 1] for i, v in enumerate(captured) if v == "--add-data"]
         assert any("my-profile" in arg for arg in add_data_args)
 
     def test_build_portable_creates_portable_data_marker(self, tmp_path, monkeypatch):
@@ -176,7 +184,9 @@ class TestBuildPortable:
             return r
 
         with patch("installer.build.subprocess.run", side_effect=_run):
-            result = build_portable(profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable")
+            result = build_portable(
+                profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable"
+            )
 
         assert result is True
         assert (app_dir / "portable_data").is_dir()
@@ -226,7 +236,9 @@ class TestBuildPortable:
             return r
 
         with patch("installer.build.subprocess.run", side_effect=_fail):
-            result = build_portable(profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable")
+            result = build_portable(
+                profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable"
+            )
 
         assert result is False
 
@@ -253,13 +265,11 @@ class TestBuildPortable:
             return r
 
         with patch("installer.build.subprocess.run", side_effect=_run):
-            build_portable(profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable")
+            build_portable(
+                profile="p", bundle_playwright=False, out_dir=tmp_path / "dist" / "portable"
+            )
 
-        add_data_args = [
-            captured[i + 1]
-            for i, v in enumerate(captured)
-            if v == "--add-data"
-        ]
+        add_data_args = [captured[i + 1] for i, v in enumerate(captured) if v == "--add-data"]
         assert not any("ms-playwright" in arg for arg in add_data_args)
 
     def test_tesseract_bundled_when_found(self, tmp_path, monkeypatch):
@@ -289,18 +299,19 @@ class TestBuildPortable:
             r.returncode = 0
             return r
 
-        with patch("installer.build.subprocess.run", side_effect=_run), \
-             patch.object(build_mod, "_find_tesseract_binary", return_value=fake_tess), \
-             patch.object(build_mod, "_find_tessdata_eng", return_value=fake_eng):
+        with (
+            patch("installer.build.subprocess.run", side_effect=_run),
+            patch.object(build_mod, "_find_tesseract_binary", return_value=fake_tess),
+            patch.object(build_mod, "_find_tessdata_eng", return_value=fake_eng),
+        ):
             result = build_portable(
-                profile="p", bundle_playwright=False,
+                profile="p",
+                bundle_playwright=False,
                 out_dir=tmp_path / "dist" / "portable",
             )
 
         assert result is True
-        add_data_args = [
-            captured[i + 1] for i, v in enumerate(captured) if v == "--add-data"
-        ]
+        add_data_args = [captured[i + 1] for i, v in enumerate(captured) if v == "--add-data"]
         assert any("tesseract" in arg for arg in add_data_args)
 
     def test_tesseract_missing_warns_not_fails(self, tmp_path, monkeypatch):
@@ -322,10 +333,13 @@ class TestBuildPortable:
             r.returncode = 0
             return r
 
-        with patch("installer.build.subprocess.run", side_effect=_run), \
-             patch.object(build_mod, "_find_tesseract_binary", return_value=None):
+        with (
+            patch("installer.build.subprocess.run", side_effect=_run),
+            patch.object(build_mod, "_find_tesseract_binary", return_value=None),
+        ):
             result = build_portable(
-                profile="p", bundle_playwright=False,
+                profile="p",
+                bundle_playwright=False,
                 out_dir=tmp_path / "dist" / "portable",
             )
 

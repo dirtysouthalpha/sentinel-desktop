@@ -20,7 +20,6 @@ import sys
 from unittest.mock import MagicMock, patch
 
 # ── MFADetector ────────────────────────────────────────────────────────────────
-
 from core.web.mfa_detector import MFADetector, MFAInputType
 
 
@@ -81,13 +80,17 @@ class TestMFAClassifyType:
         assert self.d._classify_mfa_type({"name": "mailcode", "id": ""}) == MFAInputType.EMAIL
 
     def test_recovery_keyword(self) -> None:
-        assert self.d._classify_mfa_type({"name": "recovery_code", "id": ""}) == MFAInputType.RECOVERY
+        assert (
+            self.d._classify_mfa_type({"name": "recovery_code", "id": ""}) == MFAInputType.RECOVERY
+        )
 
     def test_backup_keyword(self) -> None:
         assert self.d._classify_mfa_type({"name": "backup_key", "id": ""}) == MFAInputType.RECOVERY
 
     def test_restore_keyword(self) -> None:
-        assert self.d._classify_mfa_type({"name": "restore_code", "id": ""}) == MFAInputType.RECOVERY
+        assert (
+            self.d._classify_mfa_type({"name": "restore_code", "id": ""}) == MFAInputType.RECOVERY
+        )
 
 
 # ── MFAHandler ─────────────────────────────────────────────────────────────────

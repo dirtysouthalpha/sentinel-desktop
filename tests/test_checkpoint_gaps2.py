@@ -1,6 +1,7 @@
 """Additional gap tests for checkpoint.py — stale-then-valid sequence, save TypeError, config
 defaults.
 """
+
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path

@@ -10,8 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
-import time
 from unittest.mock import patch
 
 import pytest
@@ -19,8 +17,7 @@ import pytest
 from core.swarm.bus import AgentMessage, MessageBus
 from core.swarm.orchestrator import SwarmOrchestrator
 from core.swarm.registry import AgentRegistry
-from core.swarm.specialist import AgentRole, DesktopAgent
-
+from core.swarm.specialist import DesktopAgent
 
 # ── MessageBus ────────────────────────────────────────────────────────────
 
@@ -126,13 +123,12 @@ class TestOrchestratorTimeout:
 
         # Make monotonic appear to jump past timeout on first iteration check
         call_count = [0]
-        real_monotonic = time.monotonic
 
         def fake_monotonic():
             call_count[0] += 1
             if call_count[0] == 1:
                 return 0.0  # start = 0
-            return 9999.0   # immediately past timeout
+            return 9999.0  # immediately past timeout
 
         with patch("core.swarm.orchestrator.time.monotonic", side_effect=fake_monotonic):
             result = await swarm.execute("open the browser", timeout=1.0)

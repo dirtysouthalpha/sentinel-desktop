@@ -302,6 +302,7 @@ def test_start_process_running_process_no_warning():
 
 # ── set_priority ──────────────────────────────────────────────────────────────
 
+
 def test_set_priority_success():
     mock_proc = MagicMock()
     with patch("core.process_manager.psutil.Process", return_value=mock_proc):
@@ -327,6 +328,7 @@ def test_set_priority_unknown_returns_false():
 
 def test_set_priority_no_such_process():
     import psutil
+
     with patch("core.process_manager.psutil.Process", side_effect=psutil.NoSuchProcess(1234)):
         result = process_manager.set_priority(1234, "normal")
     assert result is False
@@ -334,6 +336,7 @@ def test_set_priority_no_such_process():
 
 def test_set_priority_access_denied():
     import psutil
+
     mock_proc = MagicMock()
     mock_proc.nice.side_effect = psutil.AccessDenied(1234)
     with patch("core.process_manager.psutil.Process", return_value=mock_proc):
@@ -351,10 +354,12 @@ def test_set_priority_oserror():
 
 # ── set_env ───────────────────────────────────────────────────────────────────
 
+
 def test_set_env_basic():
     result = process_manager.set_env("_SENTINEL_TEST_VAR", "hello")
     assert result is True
     import os
+
     assert os.environ.get("_SENTINEL_TEST_VAR") == "hello"
     del os.environ["_SENTINEL_TEST_VAR"]
 
@@ -364,6 +369,7 @@ def test_set_env_permanent_non_windows():
     result = process_manager.set_env("_SENTINEL_TEST_PERM", "world", permanent=True)
     assert result is True
     import os
+
     assert os.environ.get("_SENTINEL_TEST_PERM") == "world"
     del os.environ["_SENTINEL_TEST_PERM"]
 
@@ -378,10 +384,12 @@ def test_set_env_permanent_windows_oserror():
     assert result is False
     # Clean up env var that was set before the OSError was raised
     import os
+
     os.environ.pop("_SENTINEL_WINTEST", None)
 
 
 # ── service_control ───────────────────────────────────────────────────────────
+
 
 def test_service_control_non_windows():
     result = process_manager.service_control("Spooler", "start")
@@ -391,9 +399,11 @@ def test_service_control_non_windows():
 
 # ── _sanitize_command ────────────────────────────────────────────────────────
 
+
 def test_sanitize_command_dangerous_pattern():
     """_sanitize_command raises ValueError for dangerous patterns."""
     import pytest
+
     with pytest.raises(ValueError, match="dangerous"):
         process_manager._sanitize_command("rm -rf /tmp")
 
@@ -401,6 +411,7 @@ def test_sanitize_command_dangerous_pattern():
 def test_sanitize_command_shell_metachar_in_path():
     """_sanitize_command raises ValueError for shell metacharacters in path."""
     import pytest
+
     with pytest.raises(ValueError, match="metacharacter"):
         process_manager._sanitize_command("/usr/bin/app|evil")
 
@@ -413,9 +424,11 @@ def test_start_process_dangerous_command_returns_none():
 
 # ── get_env ──────────────────────────────────────────────────────────────────
 
+
 def test_get_env_existing():
     """get_env returns value for a set environment variable."""
     import os
+
     os.environ["_SENTINEL_GETENV_TEST"] = "sentinel_value"
     try:
         assert process_manager.get_env("_SENTINEL_GETENV_TEST") == "sentinel_value"
@@ -426,11 +439,13 @@ def test_get_env_existing():
 def test_get_env_missing():
     """get_env returns None for a missing environment variable."""
     import os
+
     os.environ.pop("_SENTINEL_MISSING_VAR", None)
     assert process_manager.get_env("_SENTINEL_MISSING_VAR") is None
 
 
 # ── set_env Windows success path ──────────────────────────────────────────────
+
 
 def test_set_env_permanent_windows_success():
     """set_env on Windows with permanent=True calls SetValueEx and CloseKey."""
@@ -447,10 +462,12 @@ def test_set_env_permanent_windows_success():
     mock_winreg.SetValueEx.assert_called_once()
     mock_winreg.CloseKey.assert_called_once_with(mock_key)
     import os
+
     os.environ.pop("_SENTINEL_WIN_SUCC", None)
 
 
 # ── service_control Windows paths ─────────────────────────────────────────────
+
 
 def _make_mock_ctypes(sc_val=1, svc_val=1, status_val=4):
     """Build a minimal ctypes mock for service_control tests."""
@@ -544,6 +561,7 @@ def test_service_control_windows_start_action():
 def test_service_control_windows_action_subprocess_error():
     """service_control handles subprocess errors for start/stop actions."""
     import subprocess
+
     mock_ctypes = MagicMock()
     with patch("sys.platform", "win32"):
         with patch("core.process_manager.ctypes", mock_ctypes, create=True):

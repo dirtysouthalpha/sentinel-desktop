@@ -51,6 +51,7 @@ def _record_usage(provider: str, model: str, data: object) -> None:
     except Exception:
         pass
 
+
 # Default network timeout (seconds) — generous for large generations.
 DEFAULT_TIMEOUT = 120
 

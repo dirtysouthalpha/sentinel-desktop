@@ -34,6 +34,7 @@ class TestIsEnabled:
         # This test does NOT touch the env var; it relies on conftest's default.
         # (If conftest's setdefault were removed, this test would catch it.)
         import os
+
         assert os.environ.get("SENTINEL_HUMANIZE", "1") == "0"
         assert is_enabled() is False
 

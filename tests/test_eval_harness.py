@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
-
 import pytest
 
 from eval.registry import EvalRegistry
@@ -12,16 +9,19 @@ from eval.report import EvalReport
 from eval.runner import ScenarioRunner
 from eval.scenario import Scenario, ScenarioResult, ScenarioStep, ScenarioStepResult
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_scenario(name: str = "test_scenario", steps: list[ScenarioStep] | None = None) -> Scenario:
+def _make_scenario(
+    name: str = "test_scenario", steps: list[ScenarioStep] | None = None
+) -> Scenario:
     if steps is None:
         steps = [
-            ScenarioStep(action="screenshot", params={}, expected_keys=["output"], expect_success=True),
+            ScenarioStep(
+                action="screenshot", params={}, expected_keys=["output"], expect_success=True
+            ),
         ]
     return Scenario(
         name=name,
@@ -54,7 +54,12 @@ class TestScenarioStep:
         assert d["expected_keys"] == ["output"]
 
     def test_from_dict(self):
-        data = {"action": "type_text", "params": {"text": "hello"}, "expected_keys": [], "expect_success": True}
+        data = {
+            "action": "type_text",
+            "params": {"text": "hello"},
+            "expected_keys": [],
+            "expect_success": True,
+        }
         step = ScenarioStep.from_dict(data)
         assert step.action == "type_text"
         assert step.params == {"text": "hello"}
@@ -85,7 +90,9 @@ class TestScenario:
 
 class TestScenarioResult:
     def test_to_dict(self):
-        sr = ScenarioStepResult(step_number=1, action="click", passed=True, result={"success": True}, duration_ms=5.0)
+        sr = ScenarioStepResult(
+            step_number=1, action="click", passed=True, result={"success": True}, duration_ms=5.0
+        )
         result = ScenarioResult(
             scenario_name="x",
             passed=True,

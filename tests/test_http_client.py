@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-import json
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from core.http_client import http_delete, http_download, http_get, http_post, http_put
-
+from core.http_client import http_download, http_get, http_post
 
 # ── URL validation ────────────────────────────────────────────────────────────
+
 
 class TestUrlValidation:
     def test_rejects_file_urls(self):
@@ -31,11 +26,12 @@ class TestUrlValidation:
 
 # ── http_get ──────────────────────────────────────────────────────────────────
 
+
 class TestHttpGet:
     def _mock_response(self, status=200, text='{"ok":true}', content_type="application/json"):
         resp = MagicMock()
         resp.status_code = status
-        resp.is_success = (200 <= status < 300)
+        resp.is_success = 200 <= status < 300
         resp.text = text
         resp.json.return_value = {"ok": True}
         resp.headers = {"content-type": content_type}
@@ -61,7 +57,12 @@ class TestHttpGet:
         assert kwargs["params"] == {"page": "1"}
 
     def test_get_404_returns_failure(self):
-        with patch("httpx.request", return_value=self._mock_response(status=404, text="not found", content_type="text/plain")):
+        with patch(
+            "httpx.request",
+            return_value=self._mock_response(
+                status=404, text="not found", content_type="text/plain"
+            ),
+        ):
             result = http_get("https://example.com/missing")
         assert result["success"] is False
         assert result["status_code"] == 404
@@ -96,6 +97,7 @@ class TestHttpGet:
 
 # ── http_post ─────────────────────────────────────────────────────────────────
 
+
 class TestHttpPost:
     def _mock_response(self, status=200):
         resp = MagicMock()
@@ -126,6 +128,7 @@ class TestHttpPost:
 
 
 # ── http_download ─────────────────────────────────────────────────────────────
+
 
 class TestHttpDownload:
     def test_download_writes_file(self, tmp_path):
@@ -168,17 +171,21 @@ class TestHttpDownload:
 
 # ── Executor integration ──────────────────────────────────────────────────────
 
+
 class TestHttpActionsInExecutor:
     def test_http_get_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "http_get" in ActionExecutor._dispatch_table
 
     def test_http_post_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "http_post" in ActionExecutor._dispatch_table
 
     def test_http_download_in_dispatch(self):
         from core.action_executor import ActionExecutor
+
         assert "http_download" in ActionExecutor._dispatch_table
 
     def test_http_get_executor_action(self):
@@ -190,6 +197,7 @@ class TestHttpActionsInExecutor:
         resp.headers = {"content-type": "text/plain"}
         with patch("httpx.request", return_value=resp):
             from core.action_executor import ActionExecutor
+
             executor = ActionExecutor()
             result = executor.execute_sync({"action": "http_get", "url": "https://example.com"})
         assert result["success"] is True

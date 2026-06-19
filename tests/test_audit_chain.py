@@ -11,12 +11,10 @@ import pytest
 from core.audit_chain import (
     GENESIS_HASH,
     AuditChain,
-    AuditChainError,
     _canonical,
     _compute_entry_hash,
     _sha256,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper / unit tests

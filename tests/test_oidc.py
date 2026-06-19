@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
-import os
 import time
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -14,7 +12,6 @@ from core.jwt_auth import JWTConfig, encode
 from core.oidc import (
     OIDCClaims,
     OIDCDiscoveryError,
-    OIDCError,
     OIDCNotConfigured,
     OIDCTokenInvalid,
     _derive_role,
@@ -23,7 +20,6 @@ from core.oidc import (
     provision_user,
     validate_oidc_token,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -133,9 +129,7 @@ class TestDeriveRole:
     def test_roles_list_first_valid(self, oidc_env: None) -> None:
         assert _derive_role({"roles": ["admin", "operator"]}) == "admin"
 
-    def test_admin_email_allowlist(
-        self, oidc_env: None, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_admin_email_allowlist(self, oidc_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SENTINEL_OIDC_ADMIN_EMAIL", "boss@corp.com,admin@corp.com")
         assert _derive_role({"email": "admin@corp.com"}) == "admin"
 
@@ -145,15 +139,11 @@ class TestDeriveRole:
         monkeypatch.setenv("SENTINEL_OIDC_ADMIN_EMAIL", "Boss@Corp.Com")
         assert _derive_role({"email": "boss@corp.com"}) == "admin"
 
-    def test_admin_email_not_matched(
-        self, oidc_env: None, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_admin_email_not_matched(self, oidc_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SENTINEL_OIDC_ADMIN_EMAIL", "other@corp.com")
         assert _derive_role({"email": "user@corp.com"}) == "viewer"
 
-    def test_admin_claim_presence(
-        self, oidc_env: None, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_admin_claim_presence(self, oidc_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SENTINEL_OIDC_ADMIN_CLAIM", "is_admin")
         assert _derive_role({"is_admin": True}) == "admin"
 
@@ -230,9 +220,7 @@ class TestValidateOidcToken:
         with pytest.raises(OIDCTokenInvalid, match="sub"):
             validate_oidc_token(token)
 
-    def test_role_derived_from_token(
-        self, oidc_env: None, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_role_derived_from_token(self, oidc_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
         token = _make_token(extra={"role": "operator"})
         claims = validate_oidc_token(token)
         assert claims.role == "operator"
@@ -274,8 +262,6 @@ class TestFetchOidcConfig:
 
     def test_uses_env_issuer(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SENTINEL_OIDC_ISSUER", "https://idp.example.com")
-        import urllib.error
-        import urllib.request
 
         fake_response = MagicMock()
         fake_response.read.return_value = b'{"issuer": "https://idp.example.com"}'
@@ -353,7 +339,7 @@ class TestProvisionUser:
     def test_creates_new_user(self) -> None:
         mgr = _make_auth_manager()
         claims = OIDCClaims(sub="new-uid", email="new@corp.com", name="New", role="viewer")
-        user = provision_user(claims, mgr)
+        provision_user(claims, mgr)
         mgr.create_user.assert_called_once()
         args, kwargs = mgr.create_user.call_args
         assert args[0] == "new-uid"  # username = sub
@@ -371,7 +357,7 @@ class TestProvisionUser:
         mgr.get_user.side_effect = [existing, existing]  # first call + after update
 
         claims = OIDCClaims(sub="existing", email=None, name=None, role="viewer")
-        user = provision_user(claims, mgr)
+        provision_user(claims, mgr)
         mgr.create_user.assert_not_called()
 
     def test_updates_role_when_changed(self) -> None:

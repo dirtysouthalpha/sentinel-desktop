@@ -132,9 +132,7 @@ class SkillMarketplace:
         query_lower = query.lower()
         results: list[SkillManifest] = []
         for m in self.list_skills():
-            haystack = " ".join(
-                [m.name, m.description, m.category] + m.tags
-            ).lower()
+            haystack = " ".join([m.name, m.description, m.category] + m.tags).lower()
             if query_lower in haystack:
                 results.append(m)
         return results
@@ -171,9 +169,7 @@ class SkillMarketplace:
 
         # Write manifest
         manifest_file = skill_dir / "manifest.json"
-        manifest_file.write_text(
-            json.dumps(manifest.to_dict(), indent=2), encoding="utf-8"
-        )
+        manifest_file.write_text(json.dumps(manifest.to_dict(), indent=2), encoding="utf-8")
 
         # Write or copy script
         target_script = skill_dir / (manifest.script_file or "script.json")
@@ -227,9 +223,7 @@ class SkillMarketplace:
         if not manifest_path.exists():
             raise FileNotFoundError(f"Skill not found: {name!r}")
 
-        manifest = SkillManifest.from_dict(
-            json.loads(manifest_path.read_text(encoding="utf-8"))
-        )
+        manifest = SkillManifest.from_dict(json.loads(manifest_path.read_text(encoding="utf-8")))
         script_path = skill_dir / (manifest.script_file or "script.json")
         script: dict[str, Any] = {}
         if script_path.exists():

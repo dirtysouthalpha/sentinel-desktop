@@ -120,10 +120,18 @@ def set_priority(pid: int, priority: str) -> bool:
         p = psutil.Process(pid)
         priority_map = {
             "idle": psutil.IDLE_PRIORITY_CLASS if hasattr(psutil, "IDLE_PRIORITY_CLASS") else 19,
-            "low": psutil.BELOW_NORMAL_PRIORITY_CLASS if hasattr(psutil, "BELOW_NORMAL_PRIORITY_CLASS") else 10,
-            "normal": psutil.NORMAL_PRIORITY_CLASS if hasattr(psutil, "NORMAL_PRIORITY_CLASS") else 0,
-            "high": psutil.ABOVE_NORMAL_PRIORITY_CLASS if hasattr(psutil, "ABOVE_NORMAL_PRIORITY_CLASS") else -5,
-            "realtime": psutil.REALTIME_PRIORITY_CLASS if hasattr(psutil, "REALTIME_PRIORITY_CLASS") else -20,
+            "low": psutil.BELOW_NORMAL_PRIORITY_CLASS
+            if hasattr(psutil, "BELOW_NORMAL_PRIORITY_CLASS")
+            else 10,
+            "normal": psutil.NORMAL_PRIORITY_CLASS
+            if hasattr(psutil, "NORMAL_PRIORITY_CLASS")
+            else 0,
+            "high": psutil.ABOVE_NORMAL_PRIORITY_CLASS
+            if hasattr(psutil, "ABOVE_NORMAL_PRIORITY_CLASS")
+            else -5,
+            "realtime": psutil.REALTIME_PRIORITY_CLASS
+            if hasattr(psutil, "REALTIME_PRIORITY_CLASS")
+            else -20,
         }
         pri = priority_map.get(priority.lower())
         if pri is None:
@@ -142,19 +150,24 @@ def set_priority(pid: int, priority: str) -> bool:
 def get_env(name: str) -> str | None:
     """Get an environment variable value."""
     import os
+
     return os.environ.get(name)
 
 
 def set_env(name: str, value: str, permanent: bool = False) -> bool:
     """Set an environment variable. Returns True on success."""
     import os
+
     try:
         os.environ[name] = value
         if permanent and sys.platform == "win32":
             import winreg
+
             key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, "Environment",
-                0, winreg.KEY_SET_VALUE,
+                winreg.HKEY_CURRENT_USER,
+                "Environment",
+                0,
+                winreg.KEY_SET_VALUE,
             )
             winreg.SetValueEx(key, name, 0, winreg.REG_SZ, value)
             winreg.CloseKey(key)
@@ -173,6 +186,7 @@ def service_control(
     Actions: start, stop, restart, query.
     """
     import sys
+
     if sys.platform != "win32":
         return {"success": False, "error": "Windows services not available on this platform"}
 
@@ -205,8 +219,12 @@ def service_control(
             advapi.CloseServiceHandle(svc)
             advapi.CloseServiceHandle(sc)
             state_map = {
-                1: "stopped", 2: "start_pending", 3: "stop_pending",
-                4: "running", 5: "continue_pending", 6: "pause_pending",
+                1: "stopped",
+                2: "start_pending",
+                3: "stop_pending",
+                4: "running",
+                5: "continue_pending",
+                6: "pause_pending",
                 7: "paused",
             }
             return {
@@ -219,9 +237,12 @@ def service_control(
 
     try:
         import subprocess
+
         result = subprocess.run(
             ["net", action, name],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         return {
             "success": result.returncode == 0,

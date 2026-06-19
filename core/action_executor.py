@@ -2814,7 +2814,10 @@ class ActionExecutor:
         engine.wake_word = wake_word.lower()
         started = engine.start_ambient()
         if started:
-            return {"success": True, "output": f"Ambient listening started (wake_word={wake_word!r})."}
+            return {
+                "success": True,
+                "output": f"Ambient listening started (wake_word={wake_word!r}).",
+            }
         return {"success": False, "output": "Ambient mode already running."}
 
     def _voice_stop_ambient(self, **_) -> dict:

@@ -83,10 +83,12 @@ class MemoryTab(ctk.CTkFrame):
         self._container.grid_rowconfigure(0, weight=1)
 
         self._memory_panel = ctk.CTkFrame(
-            self._container, corner_radius=4,
+            self._container,
+            corner_radius=4,
         )
         self._conductor_panel = ctk.CTkFrame(
-            self._container, corner_radius=4,
+            self._container,
+            corner_radius=4,
         )
 
         self._build_memory_panel()
@@ -100,7 +102,9 @@ class MemoryTab(ctk.CTkFrame):
 
         if which == "memory":
             self._memory_panel.grid(
-                row=0, column=0, sticky="nsew",
+                row=0,
+                column=0,
+                sticky="nsew",
             )
             self._sub_btn_memory.configure(
                 fg_color=t("accent", "#00F0FF"),
@@ -112,7 +116,9 @@ class MemoryTab(ctk.CTkFrame):
             )
         else:
             self._conductor_panel.grid(
-                row=0, column=0, sticky="nsew",
+                row=0,
+                column=0,
+                sticky="nsew",
             )
             self._sub_btn_conductor.configure(
                 fg_color=t("accent", "#00F0FF"),
@@ -178,7 +184,8 @@ class MemoryTab(ctk.CTkFrame):
 
         # Left: fact list
         left = ctk.CTkScrollableFrame(
-            panel, corner_radius=4,
+            panel,
+            corner_radius=4,
             fg_color=t("bg_secondary", "#0A0C10"),
         )
         left.grid(row=1, column=0, sticky="nsew", padx=(4, 2), pady=(0, 4))
@@ -224,7 +231,11 @@ class MemoryTab(ctk.CTkFrame):
             text_color=t("text_secondary", "#b9cacb"),
         )
         self._episodes_text.grid(
-            row=2, column=0, sticky="nsew", padx=4, pady=(2, 4),
+            row=2,
+            column=0,
+            sticky="nsew",
+            padx=4,
+            pady=(2, 4),
         )
 
     # ── Conductor Panel ──────────────────────────────────────────────
@@ -309,7 +320,11 @@ class MemoryTab(ctk.CTkFrame):
             fg_color=t("bg_secondary", "#0A0C10"),
         )
         self._subtasks_frame.grid(
-            row=1, column=0, sticky="nsew", padx=4, pady=(0, 4),
+            row=1,
+            column=0,
+            sticky="nsew",
+            padx=4,
+            pady=(0, 4),
         )
         self._subtasks_frame.grid_columnconfigure(0, weight=1)
 
@@ -332,7 +347,11 @@ class MemoryTab(ctk.CTkFrame):
             text_color=t("text_primary", "#e2e2e8"),
         )
         self._conductor_output.grid(
-            row=3, column=0, sticky="nsew", padx=4, pady=(2, 4),
+            row=3,
+            column=0,
+            sticky="nsew",
+            padx=4,
+            pady=(2, 4),
         )
 
     # ── Memory: refresh fact list ────────────────────────────────────
@@ -449,10 +468,7 @@ class MemoryTab(ctk.CTkFrame):
                 actions = ep.get("actions", [])
                 status = ep.get("status", "?")
                 icon = "✓" if status == "completed" else "○"
-                line = (
-                    f"{icon} [{ts[:16] if ts else '—'}] "
-                    f"{goal[:60]}  ({len(actions)} actions)\n"
-                )
+                line = f"{icon} [{ts[:16] if ts else '—'}] {goal[:60]}  ({len(actions)} actions)\n"
                 self._episodes_text.insert("end", line)
 
         self._episodes_text.configure(state="disabled")
@@ -514,7 +530,11 @@ class MemoryTab(ctk.CTkFrame):
 
             try:
                 self._semantic.store(
-                    key, value, category, tags, source="gui",
+                    key,
+                    value,
+                    category,
+                    tags,
+                    source="gui",
                 )
             except Exception as exc:
                 logger.warning("Store failed: %s", exc)
@@ -524,7 +544,10 @@ class MemoryTab(ctk.CTkFrame):
 
         btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
         btn_frame.grid(
-            row=len(fields), column=0, columnspan=2, pady=(12, 8),
+            row=len(fields),
+            column=0,
+            columnspan=2,
+            pady=(12, 8),
         )
         ctk.CTkButton(
             btn_frame,
@@ -560,7 +583,8 @@ class MemoryTab(ctk.CTkFrame):
 
         self._running_conductor = True
         self._run_conductor_btn.configure(
-            text="⏳ Running…", state="disabled",
+            text="⏳ Running…",
+            state="disabled",
         )
         timeout = int(self._timeout_slider.get())
 
@@ -595,9 +619,12 @@ class MemoryTab(ctk.CTkFrame):
                 if result.get("error"):
                     lines.append(f"\nError: {result['error']}")
 
-                self.after(0, lambda: self._set_conductor_output(
-                    "\n".join(lines) + "\n",
-                ))
+                self.after(
+                    0,
+                    lambda: self._set_conductor_output(
+                        "\n".join(lines) + "\n",
+                    ),
+                )
                 self.after(
                     0,
                     lambda: self._render_subtask_cards(
@@ -619,7 +646,8 @@ class MemoryTab(ctk.CTkFrame):
     def _finish_conductor(self) -> None:
         self._running_conductor = False
         self._run_conductor_btn.configure(
-            text="▶ Run", state="normal",
+            text="▶ Run",
+            state="normal",
         )
 
     def _render_subtask_cards(self, results: list[dict[str, Any]]) -> None:
