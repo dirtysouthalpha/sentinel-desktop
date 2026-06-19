@@ -356,7 +356,7 @@ class TestExportLog:
             patch.object(ht, "logger") as log,
         ):
             # Force the constructed export_path to be our failing mock.
-            with patch("gui.tabs.history_tab.Path") as PathCls:
+            with patch.object(ht, "Path") as PathCls:
                 PathCls.home.return_value = MagicMock()
                 # Path.home() / "Desktop" / filename -> chain returns fake_path
                 PathCls.home.return_value.__truediv__.return_value.__truediv__.return_value = (

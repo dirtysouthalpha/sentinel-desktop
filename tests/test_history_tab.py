@@ -19,9 +19,10 @@ def mock_app():
 
 @pytest.fixture()
 def history_tab(mock_app):
+    import gui.tabs.history_tab as history_tab_mod
     from gui.tabs.history_tab import HistoryTab
 
-    with patch("gui.tabs.history_tab.ctk"):
+    with patch.object(history_tab_mod, "ctk"):
         tab = HistoryTab.__new__(HistoryTab)
         tab.app = mock_app
         tab.sessions = []
