@@ -1,6 +1,6 @@
 """Tests for api.routes — the v18 route registry.
 
-The hard invariant: the registry must record the exact v17 route set (62
+The hard invariant: the registry must record the exact route set (63
 method/path pairs), proving the migration from imperative ``_register_*_routes``
 calls to the registry-driven approach introduced zero drift.
 """
@@ -18,7 +18,7 @@ def _make_server() -> SentinelServer:
     return SentinelServer(Config())
 
 
-# The exact 62 (METHOD, path) pairs the v17 _register_*_routes methods wired.
+# The exact 63 (METHOD, path) pairs wired by _register_*_routes.
 # Captured from the imperative app.get/post/put/delete/websocket calls.
 _V17_BASELINE_ROUTES = frozenset(
     {
@@ -54,6 +54,7 @@ _V17_BASELINE_ROUTES = frozenset(
         ("POST", "/auth/login"),
         ("POST", "/auth/logout"),
         ("GET", "/auth/users"),
+        ("POST", "/auth/oidc/token"),
         ("GET", "/audit/export"),
         ("GET", "/vault/keys"),
         ("GET", "/workflows/builder/list"),
@@ -95,7 +96,7 @@ class TestRouteParity:
     def test_registry_records_all_62_routes(self):
         server = _make_server()
         server.create_app()
-        assert len(server._route_registry) == 62
+        assert len(server._route_registry) == 63
 
     def test_registry_pairs_equal_v17_baseline(self):
         """No route may be silently added or removed vs the v17 set."""
@@ -110,7 +111,7 @@ class TestRouteParity:
         server = _make_server()
         assert not hasattr(server, "_route_registry") or len(server._route_registry) == 0
         server.create_app()
-        assert len(server._route_registry) == 62
+        assert len(server._route_registry) == 63
 
     def test_contains_check(self):
         server = _make_server()

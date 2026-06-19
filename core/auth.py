@@ -710,6 +710,31 @@ class AuthManager:
         """Return the number of currently active sessions."""
         return len(self._sessions)
 
+    def provision_from_oidc(self, id_token: str) -> User:
+        """Validate an OIDC id_token and provision or return a local user.
+
+        Delegates token validation to :mod:`core.oidc` and calls
+        :func:`~core.oidc.provision_user` to auto-create or update the
+        matching local account.
+
+        Args:
+            id_token: Compact JWT id_token from an OIDC provider.
+
+        Returns:
+            User: The provisioned or existing local user.
+
+        Raises:
+            core.oidc.OIDCNotConfigured: Required env vars are absent.
+            core.oidc.OIDCTokenInvalid: Token is invalid or expired.
+        """
+        from core.oidc import provision_user, validate_oidc_token
+
+        claims = validate_oidc_token(id_token)
+        user = provision_user(claims, self)
+        user.last_login = time.time()
+        self._save()
+        return user
+
     @staticmethod
     def hash_password(password: str) -> str:
         """Public helper to hash a password with bcrypt."""

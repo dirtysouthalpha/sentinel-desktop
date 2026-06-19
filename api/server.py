@@ -216,6 +216,12 @@ class AuthLogoutRequest(BaseModel):
     token: str
 
 
+class OIDCTokenRequest(BaseModel):
+    """Request body for POST /auth/oidc/token — exchange an OIDC id_token for a session."""
+
+    id_token: str
+
+
 # ── Server class ────────────────────────────────────────────────────────
 
 
@@ -366,6 +372,7 @@ class SentinelServer:
         self._route(app, "POST", "/auth/login", self._handle_auth_login)
         self._route(app, "POST", "/auth/logout", self._handle_auth_logout)
         self._route(app, "GET", "/auth/users", self._handle_auth_users)
+        self._route(app, "POST", "/auth/oidc/token", self._handle_auth_oidc_token)
         self._route(app, "GET", "/audit/export", self._handle_audit_export)
         self._route(app, "GET", "/vault/keys", self._handle_vault_keys)
 
@@ -1520,6 +1527,49 @@ class SentinelServer:
         except (OSError, ValueError) as exc:
             logger.exception("Failed to list users")
             raise HTTPException(500, f"Failed to list users: {exc}") from exc
+
+    async def _handle_auth_oidc_token(
+        self,
+        req: OIDCTokenRequest,
+    ) -> dict[str, str]:
+        """Exchange an OIDC id_token for a Sentinel session token.
+
+        Validates the id_token, auto-provisions the user if needed, and
+        returns the same payload as POST /auth/login.
+        """
+        from core.oidc import OIDCError, OIDCNotConfigured, OIDCTokenInvalid
+
+        if not self.engine:
+            raise HTTPException(500, "Engine not initialized")
+        try:
+            user = await asyncio.to_thread(
+                self.engine.auth_manager.provision_from_oidc,
+                req.id_token,
+            )
+        except OIDCNotConfigured as exc:
+            raise HTTPException(503, f"OIDC not configured: {exc}") from exc
+        except OIDCTokenInvalid as exc:
+            raise HTTPException(401, f"Invalid OIDC token: {exc}") from exc
+        except OIDCError as exc:
+            raise HTTPException(400, f"OIDC error: {exc}") from exc
+        except (OSError, ValueError) as exc:
+            raise HTTPException(500, f"User provisioning failed: {exc}") from exc
+
+        try:
+            token = self.engine.auth_manager.create_session(user)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(500, f"Session creation failed: {exc}") from exc
+
+        role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+        response: dict[str, str] = {
+            "token": token,
+            "role": role_value,
+            "username": user.username,
+        }
+        jwt_token = self.engine.auth_manager.create_jwt_session(user)
+        if jwt_token is not None:
+            response["jwt"] = jwt_token
+        return response
 
     async def _handle_audit_export(
         self,
