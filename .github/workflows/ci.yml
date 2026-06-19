@@ -104,4 +104,10 @@ jobs:
           # v18: pyproject.toml is the single source of truth.
           pip install -e ".[all]"
       - name: Audit
-        run: pip-audit --skip-editable
+        # CVE-2025-69872 (diskcache insecure deserialization) has no upstream
+        # fix as of 2026-06: it affects ALL versions through 5.6.3 (latest on
+        # PyPI). diskcache reaches us transitively via
+        # fastmcp -> py-key-value-aio[disk] -> diskcache, and is not imported
+        # anywhere in this project's source. Suppress until an upstream patch
+        # release exists (track: grantjenks/python-diskcache#357).
+        run: pip-audit --skip-editable --ignore-vuln CVE-2025-69872
