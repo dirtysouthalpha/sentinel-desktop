@@ -111,6 +111,10 @@ class _FakeEngine:
             return "tok"
 
         @staticmethod
+        def create_jwt_session(user):
+            return None
+
+        @staticmethod
         def revoke_session(tok):
             pass
 

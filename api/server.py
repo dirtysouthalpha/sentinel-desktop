@@ -248,10 +248,22 @@ class SentinelServer:
     def _check_auth(self, authorization: str | None) -> None:
         token = os.environ.get(API_TOKEN_ENV)
         if not token:
-            return  # auth disabled
+            # API_TOKEN auth is disabled; still allow valid JWTs when the
+            # engine's auth_manager can validate them.
+            if self.engine and authorization:
+                user = self.engine.auth_manager.validate_jwt_token(authorization)
+                if user is not None:
+                    return  # valid JWT — grant access
+            return  # no auth configured → allow all (legacy localhost mode)
         expected = f"Bearer {token}"
-        if not authorization or not hmac.compare_digest(authorization, expected):
-            raise HTTPException(401, "Missing or invalid Authorization header")
+        if authorization and hmac.compare_digest(authorization, expected):
+            return  # static API token match
+        # Fall back to JWT validation when the static token doesn't match.
+        if self.engine and authorization:
+            user = self.engine.auth_manager.validate_jwt_token(authorization)
+            if user is not None:
+                return
+        raise HTTPException(401, "Missing or invalid Authorization header")
 
     def create_app(self) -> FastAPI:
         """Build and return the configured FastAPI application instance."""
@@ -1468,7 +1480,16 @@ class SentinelServer:
             token = self.engine.auth_manager.create_session(user)
         except (OSError, ValueError) as exc:
             raise HTTPException(500, f"Session creation failed: {exc}") from exc
-        return {"token": token, "role": user.role.value, "username": user.username}
+        role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+        response: dict[str, str] = {
+            "token": token,
+            "role": role_value,
+            "username": user.username,
+        }
+        jwt_token = self.engine.auth_manager.create_jwt_session(user)
+        if jwt_token is not None:
+            response["jwt"] = jwt_token
+        return response
 
     async def _handle_auth_logout(
         self,

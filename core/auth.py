@@ -566,6 +566,86 @@ class AuthManager:
         logger.info("Session created for user '%s'", user.username)
         return token
 
+    def create_jwt_session(self, user: User) -> str | None:
+        """Create a signed JWT for *user* if ``SENTINEL_JWT_SECRET`` is set.
+
+        The JWT carries ``sub`` (username), ``role``, and ``exp`` (24-hour TTL
+        matching the opaque session lifetime).  Returns ``None`` when the env
+        var is absent so callers can fall back to :meth:`create_session`.
+
+        Args:
+            user: The authenticated user.
+
+        Returns:
+            Compact JWT string, or ``None`` if JWT auth is not configured.
+        """
+        import os
+
+        secret = os.environ.get("SENTINEL_JWT_SECRET")
+        if not secret:
+            return None
+
+        from core.jwt_auth import JWTConfig, encode
+
+        cfg = JWTConfig(
+            secret_key=secret,
+            issuer="sentinel",
+            audience="sentinel-api",
+        )
+        claims = {
+            "sub": user.username,
+            "role": user.role if isinstance(user.role, str) else user.role.value,
+            "exp": int(time.time()) + SESSION_EXPIRY_SECONDS,
+        }
+        token = encode(claims, cfg)
+        logger.info("JWT session created for user '%s'", user.username)
+        return token
+
+    def validate_jwt_token(self, bearer_header: str | None) -> User | None:
+        """Validate a ``Bearer <jwt>`` authorisation header.
+
+        Returns the associated :class:`User` when the JWT is valid and the
+        subject exists in the user store; ``None`` otherwise.  JWT auth is
+        silently disabled when ``SENTINEL_JWT_SECRET`` is not set.
+
+        Args:
+            bearer_header: Raw value of the ``Authorization`` header.
+
+        Returns:
+            User or None.
+        """
+        import os
+
+        secret = os.environ.get("SENTINEL_JWT_SECRET")
+        if not secret or not bearer_header:
+            return None
+        if not bearer_header.startswith("Bearer "):
+            return None
+
+        raw_token = bearer_header[len("Bearer "):]
+        try:
+            from core.jwt_auth import JWTConfig, decode
+
+            cfg = JWTConfig(
+                secret_key=secret,
+                issuer="sentinel",
+                audience="sentinel-api",
+            )
+            claims = decode(raw_token, cfg)
+        except Exception:  # JWTError and subclasses  # noqa: BLE001
+            return None
+
+        username = claims.get("sub")
+        if not isinstance(username, str) or not username:
+            return None
+
+        user = self._users.get(username)
+        if user is None:
+            return None
+
+        logger.debug("JWT auth: user '%s' validated via token", username)
+        return user
+
     def validate_session(self, token: str) -> User | None:
         """Validate *token* and return the associated ``User``.
 
