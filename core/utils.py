@@ -1,9 +1,14 @@
 """Sentinel Desktop — Shared utility functions used across multiple core modules."""
 
 import logging
+import os
 import platform
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+from core.paths import is_portable as _is_portable
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +32,40 @@ _TESSERACT_OK: bool | None = None
 _pytesseract = None  # pytesseract module ref
 
 
+def _resolve_portable_tesseract() -> str | None:
+    """Return the bundled Tesseract binary path when running portably.
+
+    In a PyInstaller portable bundle, Tesseract is copied into
+    ``_internal/tesseract/tesseract[.exe]``. If that path exists, also
+    configure ``TESSDATA_PREFIX`` so pytesseract can find eng.traineddata.
+
+    Returns the binary path string, or None if not applicable / not found.
+    """
+    if not _is_portable():
+        return None
+
+    binary_name = "tesseract.exe" if sys.platform == "win32" else "tesseract"
+
+    # sys._MEIPASS is set by PyInstaller inside the bundle (_internal/).
+    # Outside the bundle (dev/test), callers can set sys._MEIPASS manually.
+    meipass = getattr(sys, "_MEIPASS", None)
+    candidates: list[Path] = []
+    if meipass is not None:
+        candidates.append(Path(meipass))
+    # Fallback: look in _internal/ next to the executable (PyInstaller 6+)
+    candidates.append(Path(sys.executable).parent / "_internal")
+
+    for meipass_dir in candidates:
+        binary = meipass_dir / "tesseract" / binary_name
+        if binary.exists():
+            tessdata = meipass_dir / "tesseract" / "tessdata"
+            if tessdata.is_dir():
+                os.environ["TESSDATA_PREFIX"] = str(tessdata)
+            return str(binary)
+
+    return None
+
+
 def have_tesseract() -> bool:
     """Lazily probe for pytesseract + Tesseract binary.
 
@@ -35,12 +74,21 @@ def have_tesseract() -> bool:
 
     This is a shared utility used by multiple modules (ocr, mfa_detection,
     popup_handler) to avoid duplication of the availability check logic.
+
+    In portable mode, first tries to inject the bundled Tesseract binary path
+    so OCR works without a separate system install.
     """
     global _TESSERACT_OK, _pytesseract
     if _TESSERACT_OK is not None:
         return _TESSERACT_OK
+
+    bundled_cmd = _resolve_portable_tesseract()
+
     try:
         import pytesseract  # type: ignore
+
+        if bundled_cmd:
+            pytesseract.pytesseract.tesseract_cmd = bundled_cmd
 
         pytesseract.get_tesseract_version()
         _pytesseract = pytesseract

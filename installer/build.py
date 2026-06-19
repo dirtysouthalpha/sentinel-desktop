@@ -80,6 +80,62 @@ HIDDEN_IMPORTS = [
 ]
 
 
+def _find_tesseract_binary(explicit_path: str | None = None) -> Path | None:
+    """Locate the Tesseract binary for bundling.
+
+    Priority: explicit path arg → pytesseract.tesseract_cmd → shutil.which.
+    Returns None if not found (build continues with a warning, OCR degrades).
+    """
+    if explicit_path:
+        p = Path(explicit_path)
+        if p.exists():
+            return p
+        print(f"  ⚠ Tesseract binary not found at specified path: {p}")
+        return None
+
+    try:
+        import pytesseract  # type: ignore
+
+        cmd = pytesseract.pytesseract.tesseract_cmd
+        if cmd and Path(cmd).exists():
+            return Path(cmd)
+    except ImportError:
+        pass
+
+    for name in ("tesseract", "tesseract.exe"):
+        found = shutil.which(name)
+        if found:
+            return Path(found)
+
+    return None
+
+
+def _find_tessdata_eng(tesseract_bin: Path) -> Path | None:
+    """Locate eng.traineddata near the Tesseract binary.
+
+    Checks tessdata/ directories relative to the binary, then common Linux
+    system paths. Returns None if not found.
+    """
+    checks = [
+        tesseract_bin.parent / "tessdata" / "eng.traineddata",
+        tesseract_bin.parent.parent / "tessdata" / "eng.traineddata",
+        tesseract_bin.parent.parent / "share" / "tessdata" / "eng.traineddata",
+    ]
+    for path in checks:
+        if path.exists():
+            return path
+
+    # Linux: /usr/share/tesseract-ocr/<version>/tessdata/
+    tesseract_ocr_dir = tesseract_bin.parent.parent / "share" / "tesseract-ocr"
+    if tesseract_ocr_dir.is_dir():
+        for version_dir in sorted(tesseract_ocr_dir.iterdir(), reverse=True):
+            candidate = version_dir / "tessdata" / "eng.traineddata"
+            if candidate.exists():
+                return candidate
+
+    return None
+
+
 def clean() -> None:
     """Remove build artifacts."""
     for path in [BUILD_DIR, DIST_DIR]:
@@ -240,6 +296,7 @@ def build_portable(
     profile: str = "field-it-tech",
     bundle_playwright: bool = True,
     out_dir: Path | None = None,
+    tesseract_bin: str | None = None,
 ) -> bool:
     """Build a portable --onedir bundle with an embedded profile.
 
@@ -249,12 +306,16 @@ def build_portable(
     - ``portable_data/`` directory is created next to the exe so
       ``core.paths.is_portable()`` activates on first launch.
     - The chosen profile directory is embedded at ``profiles/<name>/``.
+    - Tesseract binary + eng.traineddata are bundled when found so OCR
+      works without a separate system install.
 
     Args:
         profile: Name of a directory under ``profiles/`` to embed (default
                  ``"field-it-tech"``).
         bundle_playwright: If True, include Playwright browser binaries.
         out_dir: Override output directory (default ``dist/portable/``).
+        tesseract_bin: Explicit path to Tesseract binary. Auto-detected if
+                       None; build continues with a warning when not found.
 
     Returns:
         True on success, False on failure.
@@ -308,6 +369,20 @@ def build_portable(
             print(f"  Playwright: {playwright_browsers}")
         else:
             print("  ℹ Playwright browsers not found — skipping bundling")
+
+    # Bundle Tesseract binary + eng.traineddata (OCR without a separate install)
+    tess = _find_tesseract_binary(tesseract_bin)
+    if tess:
+        cmd.extend(["--add-data", f"{tess};tesseract"])
+        print(f"  Tesseract: {tess}")
+        eng_data = _find_tessdata_eng(tess)
+        if eng_data:
+            cmd.extend(["--add-data", f"{eng_data};tesseract/tessdata"])
+            print(f"  Tessdata: {eng_data}")
+        else:
+            print("  ⚠ eng.traineddata not found — OCR may be degraded in bundle")
+    else:
+        print("  ⚠ Tesseract not found — OCR unavailable in portable bundle")
 
     # Hidden imports (same as build_exe)
     for imp in HIDDEN_IMPORTS:
@@ -372,6 +447,8 @@ def main() -> None:
     parser.add_argument("--profile", default="field-it-tech", help="Profile to embed in portable build")
     parser.add_argument("--no-playwright", action="store_true", help="Skip bundling Playwright browsers")
     parser.add_argument("--out-dir", default=None, help="Override output directory for portable build")
+    parser.add_argument("--tesseract-bin", default=None, dest="tesseract_bin",
+                        help="Path to Tesseract binary (auto-detected if unset)")
     args = parser.parse_args()
 
     action_flags = (args.exe, args.installer, args.all, args.clean, args.portable)
@@ -389,7 +466,12 @@ def main() -> None:
         build_all()
     if args.portable:
         out = Path(args.out_dir) if args.out_dir else None
-        build_portable(profile=args.profile, bundle_playwright=not args.no_playwright, out_dir=out)
+        build_portable(
+            profile=args.profile,
+            bundle_playwright=not args.no_playwright,
+            out_dir=out,
+            tesseract_bin=args.tesseract_bin,
+        )
 
 
 if __name__ == "__main__":

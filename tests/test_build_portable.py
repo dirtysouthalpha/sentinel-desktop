@@ -262,6 +262,76 @@ class TestBuildPortable:
         ]
         assert not any("ms-playwright" in arg for arg in add_data_args)
 
+    def test_tesseract_bundled_when_found(self, tmp_path, monkeypatch):
+        """When Tesseract binary is found, it is passed via --add-data."""
+        _make_fake_pyinstaller(monkeypatch)
+        monkeypatch.setattr(build_mod, "ROOT_DIR", tmp_path)
+        monkeypatch.setattr(build_mod, "DIST_DIR", tmp_path / "dist")
+        monkeypatch.setattr(build_mod, "BUILD_DIR", tmp_path / "build")
+        monkeypatch.setattr(build_mod, "ICON_PATH", tmp_path / "icon.ico")
+
+        profile_dir = tmp_path / "profiles" / "p"
+        profile_dir.mkdir(parents=True)
+        (tmp_path / "main.py").touch()
+        app_dir = tmp_path / "dist" / "portable" / "SentinelDesktop"
+
+        fake_tess = tmp_path / "tesseract"
+        fake_tess.touch()
+        fake_eng = tmp_path / "eng.traineddata"
+        fake_eng.touch()
+
+        captured = []
+
+        def _run(cmd, **kwargs):
+            captured.extend(cmd)
+            app_dir.mkdir(parents=True, exist_ok=True)
+            r = MagicMock()
+            r.returncode = 0
+            return r
+
+        with patch("installer.build.subprocess.run", side_effect=_run), \
+             patch.object(build_mod, "_find_tesseract_binary", return_value=fake_tess), \
+             patch.object(build_mod, "_find_tessdata_eng", return_value=fake_eng):
+            result = build_portable(
+                profile="p", bundle_playwright=False,
+                out_dir=tmp_path / "dist" / "portable",
+            )
+
+        assert result is True
+        add_data_args = [
+            captured[i + 1] for i, v in enumerate(captured) if v == "--add-data"
+        ]
+        assert any("tesseract" in arg for arg in add_data_args)
+
+    def test_tesseract_missing_warns_not_fails(self, tmp_path, monkeypatch):
+        """When Tesseract is not found, build continues (OCR degrades gracefully)."""
+        _make_fake_pyinstaller(monkeypatch)
+        monkeypatch.setattr(build_mod, "ROOT_DIR", tmp_path)
+        monkeypatch.setattr(build_mod, "DIST_DIR", tmp_path / "dist")
+        monkeypatch.setattr(build_mod, "BUILD_DIR", tmp_path / "build")
+        monkeypatch.setattr(build_mod, "ICON_PATH", tmp_path / "icon.ico")
+
+        profile_dir = tmp_path / "profiles" / "p"
+        profile_dir.mkdir(parents=True)
+        (tmp_path / "main.py").touch()
+        app_dir = tmp_path / "dist" / "portable" / "SentinelDesktop"
+
+        def _run(cmd, **kwargs):
+            app_dir.mkdir(parents=True, exist_ok=True)
+            r = MagicMock()
+            r.returncode = 0
+            return r
+
+        with patch("installer.build.subprocess.run", side_effect=_run), \
+             patch.object(build_mod, "_find_tesseract_binary", return_value=None):
+            result = build_portable(
+                profile="p", bundle_playwright=False,
+                out_dir=tmp_path / "dist" / "portable",
+            )
+
+        # Build must succeed even without Tesseract
+        assert result is True
+
     def test_build_portable_custom_out_dir(self, tmp_path, monkeypatch):
         """Custom --out-dir is passed as the --distpath to PyInstaller."""
         _make_fake_pyinstaller(monkeypatch)
