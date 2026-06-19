@@ -11,7 +11,7 @@ import pytest
 from core import action_executor as ae
 from core import action_registry as ar
 
-# The exact 110-name baseline captured from the v17 _dispatch_table literal.
+# The exact baseline captured from the _dispatch_table.
 # Locking this down prevents silent action additions/removals across the
 # registry migration and any future refactor.
 _V17_BASELINE_NAMES = frozenset(
@@ -148,6 +148,17 @@ _V17_BASELINE_NAMES = frozenset(
         "skill_export",
         "skill_uninstall",
         "skill_run",
+        # v22 — Event triggers
+        "trigger_add",
+        "trigger_remove",
+        "trigger_list",
+        "trigger_enable",
+        "trigger_disable",
+        "trigger_fire_custom",
+        # v22 — Voice engine
+        "voice_start_ambient",
+        "voice_stop_ambient",
+        "voice_status",
     }
 )
 
@@ -157,7 +168,7 @@ _V17_BASELINE_NAMES = frozenset(
 # ---------------------------------------------------------------------------
 class TestDispatchParity:
     def test_dispatch_table_has_128_entries(self):
-        assert len(ae.ActionExecutor._dispatch_table) == 128
+        assert len(ae.ActionExecutor._dispatch_table) == 137
 
     def test_dispatch_table_keys_equal_registry(self):
         """The dispatch table and the registry must expose the same names."""

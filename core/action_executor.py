@@ -2708,6 +2708,131 @@ class ActionExecutor:
             "error": result.error,
         }
 
+    # ------------------------------------------------------------------
+    # Triggers (v22.0)
+    # ------------------------------------------------------------------
+
+    def _trigger_add(
+        self,
+        *,
+        name: str,
+        event_type: str,
+        condition: dict | None = None,
+        action: dict | None = None,
+        description: str = "",
+        **_,
+    ) -> dict:
+        """Register a new event trigger.
+
+        Args:
+            name:        Human-readable trigger name.
+            event_type:  One of spoken_keyword, file_change, process_start,
+                         process_stop, schedule, custom.
+            condition:   Event-type-specific matching criteria.
+            action:      Executor action payload to fire when triggered.
+            description: Optional description.
+        """
+        from core.triggers import EventType, Trigger, get_trigger_registry
+
+        try:
+            et = EventType(event_type)
+        except ValueError:
+            valid = [e.value for e in EventType]
+            return {"success": False, "error": f"Unknown event_type. Valid: {valid}"}
+
+        t = Trigger(
+            name=name,
+            event_type=et,
+            condition=condition or {},
+            action=action or {},
+            description=description,
+        )
+        get_trigger_registry().add(t)
+        return {"success": True, "output": t.to_dict(), "id": t.id}
+
+    def _trigger_remove(self, *, id: str, **_) -> dict:  # noqa: A002
+        """Remove a trigger by ID."""
+        from core.triggers import get_trigger_registry
+
+        removed = get_trigger_registry().remove(id)
+        if removed:
+            return {"success": True, "output": f"Trigger '{id}' removed."}
+        return {"success": False, "error": f"Trigger '{id}' not found."}
+
+    def _trigger_list(self, **_) -> dict:
+        """List all registered triggers."""
+        from core.triggers import get_trigger_registry
+
+        triggers = get_trigger_registry().list_all()
+        return {
+            "success": True,
+            "output": [t.to_dict() for t in triggers],
+            "count": len(triggers),
+        }
+
+    def _trigger_enable(self, *, id: str, **_) -> dict:  # noqa: A002
+        """Enable a trigger by ID."""
+        from core.triggers import get_trigger_registry
+
+        ok = get_trigger_registry().enable(id)
+        if ok:
+            return {"success": True, "output": f"Trigger '{id}' enabled."}
+        return {"success": False, "error": f"Trigger '{id}' not found."}
+
+    def _trigger_disable(self, *, id: str, **_) -> dict:  # noqa: A002
+        """Disable a trigger by ID."""
+        from core.triggers import get_trigger_registry
+
+        ok = get_trigger_registry().disable(id)
+        if ok:
+            return {"success": True, "output": f"Trigger '{id}' disabled."}
+        return {"success": False, "error": f"Trigger '{id}' not found."}
+
+    def _trigger_fire_custom(self, *, event_name: str, **_) -> dict:
+        """Queue a named custom event in the TriggerEngine."""
+        from core.triggers import get_trigger_engine
+
+        engine = get_trigger_engine(executor_fn=lambda a: self.execute(**a))
+        if not engine.running:
+            engine.start()
+        engine.fire_custom(event_name)
+        return {"success": True, "output": f"Custom event '{event_name}' queued."}
+
+    # ------------------------------------------------------------------
+    # Voice engine (v22.0)
+    # ------------------------------------------------------------------
+
+    def _voice_start_ambient(self, *, wake_word: str = "sentinel", **_) -> dict:
+        """Start background wake-word listening.
+
+        Args:
+            wake_word: Keyword/phrase to detect (case-insensitive, default "sentinel").
+        """
+        from core.voice import get_voice_engine
+
+        engine = get_voice_engine()
+        engine.wake_word = wake_word.lower()
+        started = engine.start_ambient()
+        if started:
+            return {"success": True, "output": f"Ambient listening started (wake_word={wake_word!r})."}
+        return {"success": False, "output": "Ambient mode already running."}
+
+    def _voice_stop_ambient(self, **_) -> dict:
+        """Stop background wake-word listening."""
+        from core.voice import get_voice_engine
+
+        stopped = get_voice_engine().stop_ambient()
+        if stopped:
+            return {"success": True, "output": "Ambient listening stopped."}
+        return {"success": False, "output": "Ambient mode was not running."}
+
+    def _voice_status(self, **_) -> dict:
+        """Return current voice engine state."""
+        from core.voice import get_voice_engine
+
+        status = get_voice_engine().status()
+        return {"success": True, "output": status, **status}
+
     # Dispatch table (v18): derived from the action registry
     # (core/action_registry.py). Each entry is an unbound handler function;
     # callers pass ``self`` explicitly. The mapping below is the registration
@@ -2860,6 +2985,17 @@ class ActionExecutor:
         skill_export=_skill_export,
         skill_uninstall=_skill_uninstall,
         skill_run=_skill_run,
+        # v22 — triggers
+        trigger_add=_trigger_add,
+        trigger_remove=_trigger_remove,
+        trigger_list=_trigger_list,
+        trigger_enable=_trigger_enable,
+        trigger_disable=_trigger_disable,
+        trigger_fire_custom=_trigger_fire_custom,
+        # v22 — voice engine
+        voice_start_ambient=_voice_start_ambient,
+        voice_stop_ambient=_voice_stop_ambient,
+        voice_status=_voice_status,
     )
 
 

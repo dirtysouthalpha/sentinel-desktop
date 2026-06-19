@@ -1,19 +1,19 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v21.0 "Operator": eval harness, cost tracker, skill marketplace — agent quality now measurable and composable. See `docs/ROADMAP-v18-to-v22.md` for the v22 plan (Voice).**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v22.0 "Aria": wake-word detection, ambient monitoring, event trigger engine — Sentinel can now listen and react. See `docs/ROADMAP-v18-to-v22.md`.**
 
 ## What To Do (Priority Order)
-**v21 Operator complete — eval harness, cost tracker, skill marketplace production-ready ✅**
+**v22 Aria complete — voice engine + event trigger system production-ready ✅**
 
 All quality gates met:
-- ✅ 8,581 tests passing (152 skipped)
-- ✅ Zero lint errors (ruff check clean)
-- ✅ `eval/` — ScenarioRunner, EvalRegistry, EvalReport, JSONL result history
-- ✅ `core/cost_tracker.py` — per-run token/dollar accounting for 20+ models, JSONL persistence
-- ✅ `core/skill_marketplace.py` — install/uninstall/list/find/run skills from local registry
-- ✅ eval_list, eval_run, eval_results, cost_summary, cost_history, cost_reset, skill_* executor actions
+- ✅ 8,685 tests passing (152 skipped)
+- ✅ Zero lint errors (ruff check clean) on all changed files
+- ✅ `core/voice.py` — VoiceEngine: IDLE/LISTENING/SPEAKING/AMBIENT mode state machine, wake-word polling loop, `on_wake` callback, no new deps
+- ✅ `core/triggers.py` — EventType enum, Trigger dataclass, TriggerRegistry (JSON persistence), TriggerEngine (wake-event driven dispatch)
+- ✅ 9 new executor actions: trigger_add, trigger_remove, trigger_list, trigger_enable, trigger_disable, trigger_fire_custom, voice_start_ambient, voice_stop_ambient, voice_status
+- ✅ 9 new tool schemas wired for LLM tool calling
 
-> **Next:** v22 Voice — wake-word detection, ambient monitoring, event triggers.
+> **v22 complete.** Future work should be driven by actual user feedback or new feature requirements.
 > See `docs/ROADMAP-v18-to-v22.md`.
 
 **Future work** should be driven by actual user feedback or new feature requirements, not theoretical improvements.
@@ -145,6 +145,14 @@ All quality gates met:
 - ✅ Secrets vault broker (`core/secrets.py`) — OS keychain + encrypted vault.json fallback
 - ✅ MDM deployment toolkit (`installer/mdm.py`) — Intune configuration profile + ADMX/ADML Group Policy templates
 - ✅ 246 new tests; 8,393 total passing
+
+## v22.0 — Aria: Voice Engine + Event Trigger System (June 2026)
+- ✅ `core/voice.py` — VoiceEngine with IDLE/LISTENING/SPEAKING/AMBIENT mode state machine; `start_ambient()`/`stop_ambient()` background polling; configurable `wake_word` + `on_wake` callback; `speak()` / `listen_once()` wrappers; no new deps (reuses v17 `core/audio.py`)
+- ✅ `core/triggers.py` — `EventType` enum (spoken_keyword, file_change, process_start/stop, schedule, custom); `Trigger` dataclass with `to_dict`/`from_dict`; `TriggerRegistry` JSON persistence at `~/.sentinel/triggers/`; `TriggerEngine` wake-event-driven background loop
+- ✅ 6 trigger executor actions: trigger_add, trigger_remove, trigger_list, trigger_enable, trigger_disable, trigger_fire_custom
+- ✅ 3 voice executor actions: voice_start_ambient, voice_stop_ambient, voice_status
+- ✅ 9 new tool schemas for LLM tool calling
+- ✅ 8,685 total tests passing (274 new including 22 trigger + 14 voice tests)
 
 ## v21.0 — Operator: Eval Harness + Cost Tracker + Skill Marketplace (June 2026)
 - ✅ `eval/` — ScenarioStep/Scenario dataclasses with JSON save/load; ScenarioRunner with executor callback, step scoring, stop_on_failure; EvalRegistry list/load/save/delete + JSONL result history; EvalReport aggregate pass-rate + regression_check

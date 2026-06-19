@@ -2135,6 +2135,150 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    # ------------------------------------------------------------------
+    # v22 — Triggers
+    # ------------------------------------------------------------------
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_add",
+            "description": "Register a new event trigger that fires an executor action when a condition is met.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Human-readable trigger name."},
+                    "event_type": {
+                        "type": "string",
+                        "enum": [
+                            "spoken_keyword",
+                            "file_change",
+                            "process_start",
+                            "process_stop",
+                            "schedule",
+                            "custom",
+                        ],
+                        "description": "Event category this trigger listens for.",
+                    },
+                    "condition": {
+                        "type": "object",
+                        "description": "Event-specific match criteria (e.g. {\"keyword\": \"sentinel\"} or {\"event_name\": \"deploy_done\"}).",
+                    },
+                    "action": {
+                        "type": "object",
+                        "description": "Executor action payload to fire (e.g. {\"action\": \"speak\", \"text\": \"Yes?\"}).",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Optional description of what this trigger does.",
+                    },
+                },
+                "required": ["name", "event_type"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_remove",
+            "description": "Remove a registered trigger by ID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Trigger ID to remove."},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_list",
+            "description": "List all registered triggers with their IDs, event types, and enabled state.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_enable",
+            "description": "Enable a disabled trigger by ID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Trigger ID to enable."},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_disable",
+            "description": "Disable an active trigger by ID without deleting it.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Trigger ID to disable."},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_fire_custom",
+            "description": "Queue a named custom event in the TriggerEngine, firing any CUSTOM triggers whose condition matches.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "event_name": {
+                        "type": "string",
+                        "description": "Custom event name to fire.",
+                    },
+                },
+                "required": ["event_name"],
+            },
+        },
+    },
+    # ------------------------------------------------------------------
+    # v22 — Voice engine
+    # ------------------------------------------------------------------
+    {
+        "type": "function",
+        "function": {
+            "name": "voice_start_ambient",
+            "description": "Start background wake-word listening. The agent will detect the wake word via microphone and invoke configured callbacks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "wake_word": {
+                        "type": "string",
+                        "description": "Keyword or phrase to listen for (default: \"sentinel\").",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "voice_stop_ambient",
+            "description": "Stop background wake-word listening.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "voice_status",
+            "description": "Return current voice engine state: mode, wake_word, and whether ambient listening is active.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]
 
 
