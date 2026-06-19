@@ -57,6 +57,11 @@ jobs:
           path: dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # If PYPI_API_TOKEN secret is set, use explicit token auth.
+          # Otherwise fall back to OIDC trusted publishing (no token needed).
+          # To enable: gh secret set PYPI_API_TOKEN --body "pypi-..."
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
   github-release:
     name: Create GitHub Release
