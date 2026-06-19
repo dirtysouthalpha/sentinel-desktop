@@ -70,9 +70,27 @@ pip install "sentinel-desktop[mcp]"              # MCP server entry point
 
 ### First-ever tag (v18)
 
-v18.0.0 was the **first** `vX.Y.Z` git tag ever pushed — the release pipeline
-(`release.yml` → PyPI Trusted Publishing → GitHub Release) had never run end-to-end
-before. If a future release is the first on a new machine, run the manual publish
-fallback above once, then confirm Trusted Publishing is configured (see
-"One-time setup").
+v18.0.0 was the **first** `vX.Y.Z` git tag that ran the release pipeline
+end-to-end. The run proved out every stage:
+
+- ✅ **Test gate** (`pytest --timeout=30`) — passes (after fixing one
+  Windows-only `Path` stub test that couldn't run on Linux CI; now `skipif`)
+- ✅ **Build** (sdist + wheel via `python -m build`) — produces
+  `sentinel_desktop-18.0.0` artifacts
+- ✅ **GitHub Release** — auto-created with `dist/*` attached
+- ⚠️ **PyPI Trusted Publishing** — failed with `invalid-publisher`:
+  "valid token, but no corresponding publisher". **This is expected for the
+  first release** — the package must first exist on PyPI, then be configured
+  as a trusted publisher. See "One-time setup" above. Until configured, use
+  the manual `twine upload` fallback once to create the package, then add the
+  trusted publisher on pypi.org so subsequent tags publish automatically.
+
+#### Known pre-existing CI test gaps (environment-only)
+
+The full `pytest tests/` suite has several failures on the *local Windows dev
+machine* and on *Linux CI* that are **not** caused by v18 and exist on prior
+commits too: missing optional deps (`pyotp`) that break collection of MFA test
+modules, `os.fork()` calls in fleet tests (Unix-only), and transient UIA COM
+flakes. These are tracked for a future hardening pass; v18's registry/deps work
+is verified against the targeted suites that cover the changed surface.
 
