@@ -54,6 +54,13 @@ _TAB_DEFS = [
         "MemoryTab",
     ),
     (
+        "brain",
+        "\U0001f9eb",
+        "Brain",
+        "gui.tabs.brain_tab",
+        "BrainTab",
+    ),
+    (
         "history",
         "\U0001f4c1",
         "History",
