@@ -11,6 +11,13 @@ import time
 
 from PIL import Image
 
+from core import humanize
+from core.humanize import motion as _humanize_motion
+from core.humanize import profile as _humanize_profile
+from core.humanize import rng as _humanize_rng
+from core.humanize import timing as _humanize_timing
+from core.humanize import typing as _humanize_typing
+
 logger = logging.getLogger(__name__)
 
 # Lazy import pyautogui to avoid DISPLAY requirement on headless systems
@@ -122,7 +129,10 @@ class DesktopController:
         """
         try:
             _ensure_pyautogui()
-            pyautogui.click(x=x, y=y, button=button, clicks=clicks)
+            if humanize.is_enabled():
+                self._humanized_move_and_click(x, y, button=button, clicks=clicks)
+            else:
+                pyautogui.click(x=x, y=y, button=button, clicks=clicks)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("click failed: %s", exc)
 
@@ -136,7 +146,10 @@ class DesktopController:
         """
         try:
             _ensure_pyautogui()
-            pyautogui.doubleClick(x=x, y=y)
+            if humanize.is_enabled():
+                self._humanized_move_and_click(x, y, button="left", clicks=2)
+            else:
+                pyautogui.doubleClick(x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("double_click failed: %s", exc)
 
@@ -150,9 +163,53 @@ class DesktopController:
         """
         try:
             _ensure_pyautogui()
-            pyautogui.rightClick(x=x, y=y)
+            if humanize.is_enabled():
+                self._humanized_move_and_click(x, y, button="right", clicks=1)
+            else:
+                pyautogui.rightClick(x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("right_click failed: %s", exc)
+
+    def _humanized_move_and_click(
+        self, x: int, y: int, *, button: str, clicks: int
+    ) -> None:
+        """Move to (x, y) along a humanized curve, then click.
+
+        Falls back to a plain moveTo+click if the humanized path raises.
+        """
+        try:
+            self._humanized_move_to(x, y)
+        except Exception as exc:  # noqa: BLE001 — never let humanization block input
+            logger.debug("humanized move fell back to linear: %s", exc)
+            try:
+                pyautogui.moveTo(x=x, y=y)
+            except (_FailSafeException, OSError, RuntimeError):
+                pass
+        # Click with a humanized down→up hold between repeated clicks.
+        hold = None
+        try:
+            hold = _humanize_timing.click_hold_duration(
+                rng=_humanize_rng.get_rng(), profile=_humanize_profile.get_default_profile()
+            )
+        except Exception:  # noqa: BLE001
+            hold = None
+        for i in range(max(1, clicks)):
+            pyautogui.click(x=x, y=y, button=button, clicks=1)
+            if hold and i < clicks - 1:
+                time.sleep(hold)
+
+    def _humanized_move_to(self, x: int, y: int) -> None:
+        """Replay a humanized trajectory as a sequence of micro moveTo calls."""
+        start = self.get_mouse_position()
+        trajectory = _humanize_motion.humanized_path(
+            start, (int(x), int(y)),
+            rng=_humanize_rng.get_rng(),
+            profile=_humanize_profile.get_default_profile(),
+        )
+        for (px, py), dwell in trajectory:
+            pyautogui.moveTo(int(px), int(py), _pause=False)
+            if dwell > 0:
+                time.sleep(dwell)
 
     def move_to(self, x: int, y: int, duration: float = 0.3) -> None:
         """Move the mouse cursor to the specified coordinates.
@@ -160,12 +217,17 @@ class DesktopController:
         Args:
             x: Target X coordinate in pixels.
             y: Target Y coordinate in pixels.
-            duration: Time in seconds to animate the movement.
+            duration: Time in seconds to animate the movement (used only when
+                humanization is disabled; the humanized path derives its own
+                eased timing).
 
         """
         try:
             _ensure_pyautogui()
-            pyautogui.moveTo(x=x, y=y, duration=duration)
+            if humanize.is_enabled():
+                self._humanized_move_to(x, y)
+            else:
+                pyautogui.moveTo(x=x, y=y, duration=duration)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("move_to failed: %s", exc)
 
@@ -230,14 +292,38 @@ class DesktopController:
 
         Args:
             text: The string to type.
-            interval: Seconds between each keystroke.
+            interval: Seconds between each keystroke (used only when
+                humanization is disabled; the humanized path samples per-key
+                delays from a real distribution).
 
         """
         try:
             _ensure_pyautogui()
-            pyautogui.write(text, interval=interval)
+            if humanize.is_enabled() and len(text) > 1:
+                self._humanized_type(text)
+            else:
+                pyautogui.write(text, interval=interval)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("type_text failed: %s", exc)
+
+    def _humanized_type(self, text: str) -> None:
+        """Type `text` with per-keystroke cadence sampled from a human distribution.
+
+        Falls back to pyautogui.write if the humanized path raises.
+        """
+        try:
+            delays = _humanize_typing.keystroke_delays(
+                text,
+                rng=_humanize_rng.get_rng(),
+                profile=_humanize_profile.get_default_profile(),
+            )
+        except Exception:  # noqa: BLE001 — never let humanization block typing
+            pyautogui.write(text, interval=0.02)
+            return
+        for i, ch in enumerate(text):
+            pyautogui.press(ch)
+            if i < len(delays):
+                time.sleep(delays[i])
 
     def press_key(self, key: str) -> None:
         """Press and release a single key by name.
