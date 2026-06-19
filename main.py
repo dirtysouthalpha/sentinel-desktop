@@ -13,7 +13,9 @@ The package version is sourced from ``core.__version__``.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import os
 import sys
 from argparse import Namespace
 from pathlib import Path
@@ -84,7 +86,112 @@ def parse_args() -> Namespace:
         action="store_true",
         help="Skip every approval prompt and let the agent run uninterrupted",
     )
+    parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Path to a Sentinel profile directory to adopt on startup",
+    )
     return parser.parse_args()
+
+
+def _save_api_key(key: str, config_file: Path) -> None:
+    """Write *key* into *config_file* JSON, preserving all other keys."""
+    data: dict = {}
+    if config_file.exists():
+        try:
+            data = json.loads(config_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            pass
+    data["api_key"] = key
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    config_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _prompt_api_key(*, is_gui: bool) -> str | None:
+    """Return an API key entered by the user, or None if skipped."""
+    if is_gui:
+        try:
+            import tkinter as tk
+            from tkinter import simpledialog
+
+            root = tk.Tk()
+            root.withdraw()
+            key = simpledialog.askstring(
+                "Sentinel Desktop — First Run",
+                "Enter your LLM API key (e.g. sk-...):\n\n"
+                "This will be saved to portable_data/config.json.",
+                parent=root,
+            )
+            root.destroy()
+            return key.strip() if key else None
+        except Exception as exc:
+            logger.warning("GUI API key prompt failed (%s) — falling back to CLI input", exc)
+    try:
+        key = input("Enter your LLM API key (or press Enter to skip): ").strip()
+        return key or None
+    except (EOFError, KeyboardInterrupt):
+        return None
+
+
+def _portable_startup(args: Namespace) -> None:
+    """Detect and adopt a profile when running in portable mode.
+
+    On first run, if the adopted profile has ``secrets_redacted=True`` and no
+    API key is stored, prompt the user for one and save it to
+    ``portable_data/config.json``.  In API/headless mode, the key can be
+    supplied via the ``SENTINEL_API_KEY`` environment variable instead.
+    """
+    from core.paths import data_dir, is_portable
+
+    if not is_portable():
+        return
+
+    from core.profile import adopt_profile, detect_profile, needs_api_key
+
+    profile = detect_profile(cli_arg=getattr(args, "profile", None))
+    if profile is None or not profile.flags.auto_adopt:
+        return
+
+    target = data_dir()
+    adopt_profile(profile, target_dir=target)
+    logger.info("Profile '%s' adopted into %s", profile.name, target)
+
+    config_file = target / "config.json"
+    config_data: dict = {}
+    if config_file.exists():
+        try:
+            config_data = json.loads(config_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    if not needs_api_key(profile, config_data):
+        return
+
+    # Headless mode: check env var, log a warning if missing.
+    if getattr(args, "api", False):
+        api_key = os.environ.get("SENTINEL_API_KEY", "").strip()
+        if api_key:
+            _save_api_key(api_key, config_file)
+            logger.info("API key loaded from SENTINEL_API_KEY env var and saved.")
+        else:
+            logger.warning(
+                "Profile '%s' has secrets_redacted=True and no API key is configured. "
+                "Set the SENTINEL_API_KEY environment variable before starting the server.",
+                profile.name,
+            )
+        return
+
+    # GUI / CLI mode: prompt interactively.
+    is_gui = not getattr(args, "command", None)
+    api_key = _prompt_api_key(is_gui=is_gui)
+    if api_key:
+        _save_api_key(api_key, config_file)
+        logger.info("API key saved to %s", config_file)
+    else:
+        logger.warning(
+            "No API key entered — Sentinel will not be able to call the LLM until one is set."
+        )
 
 
 def run_gui() -> None:
@@ -174,6 +281,8 @@ def main() -> None:
 
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    _portable_startup(args)
 
     if args.api:
         run_api(host=args.host, port=args.port)

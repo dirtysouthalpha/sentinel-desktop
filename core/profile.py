@@ -221,6 +221,22 @@ _DETECT_ORDER = (
 )
 
 
+def needs_api_key(profile: Profile, config_data: dict) -> bool:
+    """Return True when a first-run API key prompt is required.
+
+    A prompt is needed when the profile marks secrets as redacted and no API
+    key has been saved to the local data store yet.
+
+    Args:
+        profile: The active :class:`Profile`.
+        config_data: The current config dict (may be empty on first run).
+
+    Returns:
+        True if the user should be prompted for an API key.
+    """
+    return profile.flags.secrets_redacted and not config_data.get("api_key", "")
+
+
 def detect_profile(*, cli_arg: str | None = None) -> "Profile | None":
     """Discover an available profile using the documented search order.
 
