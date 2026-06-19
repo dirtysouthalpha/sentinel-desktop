@@ -1,30 +1,23 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v18.0 "Foundation": reconciliation release on top of the Neuralis Brain fleet-memory, humanize, and portable-build work — version/docs sync, dependency unification, deprecation removal, action/endpoint registries, first real release tag. See `docs/ROADMAP-v18-to-v22.md` for the v19–v22 plan (Fortress/Penguin/Operator/Voice).**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v19.0 "Fortress": enterprise security release — OIDC/JWT SSO, declarative policy guardrails, secrets vault, tamper-evident audit chain, MDM deployment toolkit. See `docs/ROADMAP-v18-to-v22.md` for the v20–v22 plan (Penguin/Operator/Voice).**
 
 ## What To Do (Priority Order)
-**v18 Foundation complete — project reconciled and production-ready ✅**
+**v19 Fortress complete — enterprise security layer production-ready ✅**
 
 All quality gates met:
-- ✅ 8,147 tests passing (151 skipped)
+- ✅ 8,393 tests passing (152 skipped)
 - ✅ Zero lint errors (ruff check clean)
-- ✅ All API endpoints fully implemented (workflow builder complete)
-- ✅ All 19 IT support scripts validated and tested
-- ✅ Full senses: see (screenshots/OCR), touch (mouse/keyboard/UIA), hear (TTS/STT via SAPI)
-- ✅ Resilience: @retryable decorator + CircuitBreaker pattern across all subsystems
-- ✅ Config persistence: dot-notation JSON store with auto-save
-- ✅ Network diagnostics: DNS lookup, ping, port scan, traceroute
-- ✅ Window management: resize, move, minimize, maximize, restore, monitor enumeration
-- ✅ HTTP client: GET/POST/PUT/DELETE/download with SSRF protection
-- ✅ File/process monitoring: watch_file, watch_file_content, watch_process (polling-based)
-- ✅ Audio/voice: speak (SAPI/PowerShell TTS), listen (SAPI dictation), volume_get/set/mute, list_voices
-- ✅ 105 LLM tool schemas covering all actions
-- ✅ v18: action/endpoint registries (`core/action_registry.py`, `api/routes.py`); unified
-  dependency extras; deprecated surface removed
+- ✅ HS256 JWT auth + OIDC id_token validation with user auto-provisioning
+- ✅ Declarative policy guardrails (`core/policy.py`) — allow/deny rules over actions/endpoints/paths
+- ✅ Secrets vault broker (`core/secrets.py`) — OS keychain + vault.json backend
+- ✅ Tamper-evident signed audit logs (`core/audit_chain.py`) — append-only, hash-chained
+- ✅ Audit export (`core/audit_export.py`) — JSON/CSV/HTML report generation
+- ✅ MDM deployment toolkit (`installer/mdm.py`) — Intune profile + ADMX/ADML templates
 
-> **Note:** Some v13–v17 roadmap items (Docker management, tray/desktop-control actions,
-> goal-learning, loguru, `dns_leak_test`, working-memory actions) were planned but never
-> shipped. They are rescheduled as v19–v22 themes — see `docs/ROADMAP-v18-to-v22.md`.
+> **Next:** v20 Penguin — real Linux desktop parity. Route scattered win32/uiautomation
+> imports through `core/platform/` abstraction, AT-SPI accessibility, Wayland support,
+> cross-platform CI test matrix. See `docs/ROADMAP-v18-to-v22.md`.
 
 **Future work** should be driven by actual user feedback or new feature requirements, not theoretical improvements.
 
@@ -144,6 +137,17 @@ All quality gates met:
 - ✅ Brain executor actions: `brain_recall`, `brain_think`, `brain_fire`, `brain_search`, `brain_context`
 - ✅ GUI Brain tab — fleet-memory HUD panel in the cyberpunk interface
 - ✅ Tests: `tests/test_brain_bridge.py`, `tests/test_brain_tab.py`
+
+## v19.0 — Fortress (June 2026)
+- ✅ HS256 JWT auth layer (`core/jwt_auth.py`) — stdlib-only, no new deps; token issue/verify/revoke
+- ✅ OIDC id_token validation (`core/oidc.py`) — RS256/ES256, JWKS discovery, user auto-provisioning
+- ✅ JWT wired into AuthManager + API server — Bearer token middleware, `/auth/token` endpoint
+- ✅ Declarative policy guardrails (`core/policy.py`) — allow/deny rules over actions, endpoints, file paths
+- ✅ Tamper-evident audit chain (`core/audit_chain.py`) — append-only, SHA-256 hash-chained log entries
+- ✅ Audit export (`core/audit_export.py`) — JSON, CSV, HTML report generation with filtering
+- ✅ Secrets vault broker (`core/secrets.py`) — OS keychain + encrypted vault.json fallback
+- ✅ MDM deployment toolkit (`installer/mdm.py`) — Intune configuration profile + ADMX/ADML Group Policy templates
+- ✅ 246 new tests; 8,393 total passing
 
 ## v20.0 — Portable Build (June 2026)
 - ✅ `core/paths.py` — `is_portable()` / `data_dir()` single source of truth; activates on `portable_data/` marker or `SENTINEL_PORTABLE=1`
