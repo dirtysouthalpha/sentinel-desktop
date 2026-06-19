@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "default_effect": "allow",
+  "rules": [
+    {
+      "comment": "Example: restrict destructive file writes to admins only.",
+      "type": "action",
+      "name": "write_file",
+      "roles": ["viewer", "operator"],
+      "effect": "deny",
+      "reason": "File write actions require admin role"
+    },
+    {
+      "comment": "Example: block access to OS config directories.",
+      "type": "file_path",
+      "pattern": "/etc/**",
+      "effect": "deny",
+      "reason": "System configuration directories are off-limits"
+    },
+    {
+      "comment": "Example: viewers may not call DELETE endpoints.",
+      "type": "endpoint",
+      "method": "DELETE",
+      "path": "/api/**",
+      "roles": ["viewer"],
+      "effect": "deny",
+      "reason": "Viewers have read-only access"
+    }
+  ]
+}
