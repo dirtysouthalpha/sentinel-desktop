@@ -12,8 +12,7 @@ hashable; subclassing still works for the stealth extension point.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

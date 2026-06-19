@@ -22,7 +22,7 @@ import time
 
 # Module-level default RNG. Time-seeded at import so live runs are varied;
 # tests and replay call reset(seed=...) for determinism.
-_default_rng: random.Random = random.Random(time.time())
+_default_rng: random.Random = random.Random(time.time())  # noqa: S311
 
 
 def get_rng(seed: int | None = None) -> random.Random:
@@ -37,7 +37,7 @@ def get_rng(seed: int | None = None) -> random.Random:
         A random.Random instance.
     """
     if seed is not None:
-        return random.Random(seed)
+        return random.Random(seed)  # noqa: S311
     return _default_rng
 
 
@@ -48,4 +48,4 @@ def reset(seed: int | None = None) -> None:
         seed: Seed value. None → time-seeded (non-reproducible; for live runs).
     """
     global _default_rng
-    _default_rng = random.Random(seed if seed is not None else time.time())
+    _default_rng = random.Random(seed if seed is not None else time.time())  # noqa: S311
