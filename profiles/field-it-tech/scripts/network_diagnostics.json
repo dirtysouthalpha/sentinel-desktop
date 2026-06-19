@@ -1,0 +1,315 @@
+{
+  "name": "Network Diagnostics (Parameterized)",
+  "description": "Runs a comprehensive network diagnostic suite using PowerShell: adapter info, IP configuration, DNS resolution, ping tests, and port connectivity checks. Supports parameterized target host and port.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-17T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "network",
+    "diagnostics",
+    "ping",
+    "dns",
+    "troubleshooting",
+    "powershell"
+  ],
+  "category": "network",
+  "icon": "🌐",
+  "parameters": [
+    {
+      "name": "target_host",
+      "type": "string",
+      "label": "Target Host",
+      "description": "Hostname or IP address to test connectivity against (e.g., google.com, 8.8.8.8, or an internal server)",
+      "default": "google.com",
+      "required": true
+    },
+    {
+      "name": "dns_server",
+      "type": "string",
+      "label": "DNS Server",
+      "description": "Optional: DNS server to query for resolution tests. Default uses system-configured DNS.",
+      "default": "8.8.8.8",
+      "required": false
+    },
+    {
+      "name": "test_port",
+      "type": "integer",
+      "label": "Port to Test",
+      "description": "TCP port number to test connectivity on (e.g., 443 for HTTPS, 3389 for RDP). Set to 0 to skip port test.",
+      "default": 443,
+      "required": false
+    },
+    {
+      "name": "ping_count",
+      "type": "integer",
+      "label": "Ping Count",
+      "description": "Number of ICMP ping packets to send to the target host",
+      "default": 4,
+      "required": false
+    }
+  ],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": {
+        "command": "powershell",
+        "args": "-NoExit -ExecutionPolicy Bypass"
+      },
+      "description": "Open PowerShell for network diagnostics",
+      "wait_after_ms": 2500,
+      "name": "Open PowerShell for network diagnostics"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host '===== Sentinel Desktop — Network Diagnostics =====' -ForegroundColor Cyan"
+      },
+      "description": "Display diagnostic banner",
+      "wait_after_ms": 500,
+      "name": "Display diagnostic banner"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute banner display",
+      "wait_after_ms": 500,
+      "name": "Execute banner display"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"[1/6] Network Adapter Status:\" -ForegroundColor Yellow"
+      },
+      "description": "Section header — adapter status",
+      "wait_after_ms": 300,
+      "name": "Section header — adapter status"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute section header",
+      "wait_after_ms": 300,
+      "name": "Execute section header"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Format-Table Name, InterfaceDescription, Status, LinkSpeed -AutoSize"
+      },
+      "description": "List all active network adapters",
+      "wait_after_ms": 500,
+      "name": "List all active network adapters"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute adapter query",
+      "wait_after_ms": 3000,
+      "name": "Execute adapter query"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"[2/6] IP Configuration ({{target_host}}):\" -ForegroundColor Yellow"
+      },
+      "description": "Section header — IP configuration",
+      "wait_after_ms": 300,
+      "name": "Section header — IP configuration"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute section header",
+      "wait_after_ms": 300,
+      "name": "Execute section header"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway } | Format-List InterfaceAlias, IPv4Address, IPv4DefaultGateway, DNSServer"
+      },
+      "description": "Show IP configuration for adapters with default gateways",
+      "wait_after_ms": 500,
+      "name": "Show IP configuration for adapters with default ga"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute IP config query",
+      "wait_after_ms": 3000,
+      "name": "Execute IP config query"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"[3/6] DNS Resolution Test for {{target_host}}:\" -ForegroundColor Yellow"
+      },
+      "description": "Section header — DNS resolution",
+      "wait_after_ms": 300,
+      "name": "Section header — DNS resolution"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute section header",
+      "wait_after_ms": 300,
+      "name": "Execute section header"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Resolve-DnsName -Name '{{target_host}}' -Server {{dns_server}} -ErrorAction SilentlyContinue | Format-Table Name, IPAddress, NameHost -AutoSize"
+      },
+      "description": "DNS lookup of the target host against specified DNS server",
+      "wait_after_ms": 500,
+      "name": "DNS lookup of the target host against specified DN"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute DNS resolution",
+      "wait_after_ms": 5000,
+      "name": "Execute DNS resolution"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"[4/6] Ping Test — {{ping_count}} packets to {{target_host}}:\" -ForegroundColor Yellow"
+      },
+      "description": "Section header — ping test",
+      "wait_after_ms": 300,
+      "name": "Section header — ping test"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute section header",
+      "wait_after_ms": 300,
+      "name": "Execute section header"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Test-Connection -ComputerName '{{target_host}}' -Count {{ping_count}} -ErrorAction SilentlyContinue | Format-Table Address, ResponseTime, StatusCode -AutoSize"
+      },
+      "description": "Send ICMP ping packets to the target host",
+      "wait_after_ms": 500,
+      "name": "Send ICMP ping packets to the target host"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute ping test",
+      "wait_after_ms": 10000,
+      "name": "Execute ping test"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"[5/6] Default Gateway Ping Test:\" -ForegroundColor Yellow"
+      },
+      "description": "Section header — gateway ping",
+      "wait_after_ms": 300,
+      "name": "Section header — gateway ping"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute section header",
+      "wait_after_ms": 300,
+      "name": "Execute section header"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$gateway = (Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Select-Object -First 1).NextHop; if ($gateway) { Test-Connection -ComputerName $gateway -Count 2 -ErrorAction SilentlyContinue | Format-Table Address, ResponseTime -AutoSize } else { Write-Host 'No default gateway found.' -ForegroundColor Red }"
+      },
+      "description": "Ping the default gateway to test local network connectivity",
+      "wait_after_ms": 500,
+      "name": "Ping the default gateway to test local network con"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute gateway ping",
+      "wait_after_ms": 5000,
+      "name": "Execute gateway ping"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"[6/6] TCP Port {{test_port}} Test on {{target_host}}:\" -ForegroundColor Yellow"
+      },
+      "description": "Section header — port connectivity",
+      "wait_after_ms": 300,
+      "name": "Section header — port connectivity"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute section header",
+      "wait_after_ms": 300,
+      "name": "Execute section header"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$tcpResult = Test-NetConnection -ComputerName '{{target_host}}' -Port {{test_port}} -WarningAction SilentlyContinue -ErrorAction SilentlyContinue; Write-Host \"Remote Address: $($tcpResult.RemoteAddress) | Remote Port: $($tcpResult.RemotePort) | TCP Succeeded: $($tcpResult.TcpTestSucceeded)\" -ForegroundColor $(if ($tcpResult.TcpTestSucceeded) { 'Green' } else { 'Red' })"
+      },
+      "description": "Test TCP connectivity to the specified port on the target host",
+      "wait_after_ms": 500,
+      "name": "Test TCP connectivity to the specified port on the"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute port connectivity test",
+      "wait_after_ms": 10000,
+      "name": "Execute port connectivity test"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host '===== Network Diagnostics Complete =====' -ForegroundColor Cyan"
+      },
+      "description": "Display completion banner",
+      "wait_after_ms": 300,
+      "name": "Display completion banner"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute completion banner",
+      "wait_after_ms": 500,
+      "name": "Execute completion banner"
+    }
+  ]
+}

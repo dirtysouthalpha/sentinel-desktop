@@ -1,0 +1,119 @@
+{
+  "name": "Software Inventory Export",
+  "description": "Runs a PowerShell command to list all installed software from the registry and exports the results as a CSV file on the desktop.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "software",
+    "inventory",
+    "powershell",
+    "export",
+    "audit"
+  ],
+  "category": "asset_management",
+  "icon": "📦",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": {
+        "command": "powershell",
+        "args": "-NoExit"
+      },
+      "description": "Open PowerShell with no auto-exit",
+      "wait_after_ms": 2500,
+      "name": "Open PowerShell with no auto-exit"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$installedSoftware = Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*, HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Sort-Object DisplayName"
+      },
+      "description": "Build the installed software query from both registry paths",
+      "wait_after_ms": 500,
+      "name": "Build the installed software query from both regis"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute registry query",
+      "wait_after_ms": 3000,
+      "name": "Execute registry query"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$desktopPath = [Environment]::GetFolderPath('Desktop')"
+      },
+      "description": "Get the current user's desktop path",
+      "wait_after_ms": 300,
+      "name": "Get the current user's desktop path"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute desktop path assignment",
+      "wait_after_ms": 500,
+      "name": "Execute desktop path assignment"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$exportPath = Join-Path $desktopPath 'software_inventory.csv'"
+      },
+      "description": "Construct full export file path",
+      "wait_after_ms": 300,
+      "name": "Construct full export file path"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute path construction",
+      "wait_after_ms": 500,
+      "name": "Execute path construction"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$installedSoftware | Export-Csv -Path $exportPath -NoTypeInformation -Encoding UTF8"
+      },
+      "description": "Export software list to CSV on desktop",
+      "wait_after_ms": 500,
+      "name": "Export software list to CSV on desktop"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute CSV export",
+      "wait_after_ms": 2000,
+      "name": "Execute CSV export"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"Software inventory exported to: $exportPath\" -ForegroundColor Green"
+      },
+      "description": "Display confirmation message with file path",
+      "wait_after_ms": 300,
+      "name": "Display confirmation message with file path"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute confirmation message",
+      "wait_after_ms": 500,
+      "name": "Execute confirmation message"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "name": "Create Restore Point",
+  "description": "Opens System Properties > System Protection tab and creates a new system restore point with a custom description.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "restore point",
+    "system protection",
+    "backup",
+    "safety"
+  ],
+  "category": "system_admin",
+  "icon": "🛡️",
+  "parameters": [
+    {
+      "name": "description",
+      "type": "string",
+      "label": "Restore Point Description",
+      "description": "A descriptive name for the restore point being created",
+      "default": "Pre-maintenance restore point",
+      "required": true
+    }
+  ],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": {
+        "command": "SystemPropertiesProtection",
+        "args": ""
+      },
+      "description": "Open System Properties (System Protection tab)",
+      "wait_after_ms": 3000,
+      "name": "Open System Properties (System Protection tab)"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#Create"
+      },
+      "description": "Click the 'Create' button to start restore point creation",
+      "wait_after_ms": 1500,
+      "name": "Click the 'Create' button to start restore point c"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "{{description}}"
+      },
+      "description": "Type the restore point description",
+      "wait_after_ms": 500,
+      "name": "Type the restore point description"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#Create",
+        "description": "Create button in the description dialog"
+      },
+      "description": "Click Create to begin restore point generation",
+      "wait_after_ms": 10000,
+      "name": "Click Create to begin restore point generation"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#Close",
+        "description": "Success confirmation dialog"
+      },
+      "description": "Close the success notification dialog",
+      "wait_after_ms": 500,
+      "name": "Close the success notification dialog"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#OK"
+      },
+      "description": "Close System Properties window",
+      "wait_after_ms": 500,
+      "name": "Close System Properties window"
+    }
+  ]
+}

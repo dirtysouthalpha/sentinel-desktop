@@ -1,0 +1,54 @@
+{
+  "name": "Windows Update Check",
+  "description": "Opens Windows Update settings and initiates a manual check for available updates. Useful for ensuring systems are patched before compliance audits or after incident remediation.",
+  "author": "sentinel-desktop",
+  "created": "2026-06-01T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "windows-update",
+    "patch",
+    "security",
+    "compliance"
+  ],
+  "category": "system_maintenance",
+  "icon": "🛡️",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "hotkey",
+      "params": {
+        "keys": "Win+I"
+      },
+      "description": "Open Windows Settings",
+      "wait_after_ms": 2000,
+      "name": "Open Windows Settings"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#WindowsUpdate"
+      },
+      "description": "Navigate to Windows Update section",
+      "wait_after_ms": 1000,
+      "name": "Navigate to Windows Update section"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#CheckForUpdates"
+      },
+      "description": "Click Check for updates button",
+      "wait_after_ms": 3000,
+      "name": "Click Check for updates button"
+    },
+    {
+      "action": "wait",
+      "params": {
+        "duration_ms": 30000
+      },
+      "description": "Wait for update scan to complete",
+      "wait_after_ms": 0,
+      "name": "Wait for update scan to complete"
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "name": "Export Recent Event Log Errors",
+  "description": "Opens Event Viewer, navigates to the System log, filters for Error-level events from the last hour, and exports them to a file on the desktop.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "event viewer",
+    "logs",
+    "errors",
+    "diagnostics",
+    "export"
+  ],
+  "category": "diagnostics",
+  "icon": "📋",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": {
+        "command": "eventvwr.msc",
+        "args": ""
+      },
+      "description": "Open Event Viewer",
+      "wait_after_ms": 3000,
+      "name": "Open Event Viewer"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "treeitem#WindowsLogs"
+      },
+      "description": "Expand Windows Logs in the left panel",
+      "wait_after_ms": 1000,
+      "name": "Expand Windows Logs in the left panel"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "treeitem#System"
+      },
+      "description": "Click on System log",
+      "wait_after_ms": 2000,
+      "name": "Click on System log"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "menu#Action"
+      },
+      "description": "Open Action menu",
+      "wait_after_ms": 500,
+      "name": "Open Action menu"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "menuitem#FilterCurrentLog"
+      },
+      "description": "Click 'Filter Current Log'",
+      "wait_after_ms": 1000,
+      "name": "Click 'Filter Current Log'"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "dropdown#EventLevel"
+      },
+      "description": "Open Event level dropdown",
+      "wait_after_ms": 500,
+      "name": "Open Event level dropdown"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "checkbox#Error",
+        "check": true
+      },
+      "description": "Check Error level",
+      "wait_after_ms": 300,
+      "name": "Check Error level"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "dropdown#Logged",
+        "description": "Time range dropdown"
+      },
+      "description": "Open the 'Logged' time range dropdown",
+      "wait_after_ms": 500,
+      "name": "Open the 'Logged' time range dropdown"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "menuitem#LastHour"
+      },
+      "description": "Select 'Last 1 hour'",
+      "wait_after_ms": 500,
+      "name": "Select 'Last 1 hour'"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#OK"
+      },
+      "description": "Apply filter",
+      "wait_after_ms": 1500,
+      "name": "Apply filter"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "menu#Action"
+      },
+      "description": "Open Action menu again",
+      "wait_after_ms": 500,
+      "name": "Open Action menu again"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "menuitem#SaveAllEventsAs"
+      },
+      "description": "Click 'Save All Events As...'",
+      "wait_after_ms": 1000,
+      "name": "Click 'Save All Events As...'"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "%USERPROFILE%\\Desktop\\system_errors_last_hour.evtx"
+      },
+      "description": "Type export file path on desktop",
+      "wait_after_ms": 500,
+      "name": "Type export file path on desktop"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#Save"
+      },
+      "description": "Click Save",
+      "wait_after_ms": 2000,
+      "name": "Click Save"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#OK",
+        "description": "Confirm display info save if prompted"
+      },
+      "description": "Confirm saving display information if dialog appears",
+      "wait_after_ms": 1000,
+      "name": "Confirm saving display information if dialog appea"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Alt+F4"
+      },
+      "description": "Close Event Viewer",
+      "wait_after_ms": 500,
+      "name": "Close Event Viewer"
+    }
+  ]
+}

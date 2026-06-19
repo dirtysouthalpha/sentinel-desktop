@@ -1,0 +1,216 @@
+{
+  "name": "Active Directory Account Unlock",
+  "description": "Unlocks a locked Active Directory user account using PowerShell. Checks current lockout status, unlocks the account, verifies the unlock succeeded, and displays lockout-related event info.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-17T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "active_directory",
+    "unlock",
+    "account",
+    "user_management",
+    "lockout"
+  ],
+  "category": "user_management",
+  "icon": "🔓",
+  "parameters": [
+    {
+      "name": "username",
+      "type": "string",
+      "label": "Username (sAMAccountName)",
+      "description": "The Active Directory username (sAMAccountName) of the locked account to unlock",
+      "default": "",
+      "required": true
+    },
+    {
+      "name": "domain_controller",
+      "type": "string",
+      "label": "Domain Controller",
+      "description": "Optional: Target a specific domain controller (FQDN). If blank, uses the nearest DC.",
+      "default": "",
+      "required": false
+    },
+    {
+      "name": "reset_bad_password_count",
+      "type": "boolean",
+      "label": "Reset Bad Password Count",
+      "description": "Whether to reset the bad password count after unlocking (recommended: true)",
+      "default": true,
+      "required": false
+    }
+  ],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": {
+        "command": "powershell",
+        "args": "-NoExit -ExecutionPolicy Bypass"
+      },
+      "description": "Open PowerShell with execution policy bypass for AD cmdlets",
+      "wait_after_ms": 2500,
+      "name": "Open PowerShell with execution policy bypass for A"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Import-Module ActiveDirectory -ErrorAction Stop"
+      },
+      "description": "Import the Active Directory PowerShell module",
+      "wait_after_ms": 500,
+      "name": "Import the Active Directory PowerShell module"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute module import",
+      "wait_after_ms": 2000,
+      "name": "Execute module import"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$user = Get-ADUser -Identity '{{username}}' -Properties LockedOut, badPwdCount, LastBadPasswordAttempt, AccountLockoutTime -ErrorAction Stop"
+      },
+      "description": "Look up the AD user with lockout-related properties",
+      "wait_after_ms": 500,
+      "name": "Look up the AD user with lockout-related propertie"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute user lookup",
+      "wait_after_ms": 3000,
+      "name": "Execute user lookup"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Write-Host \"[INFO] Account: {{username}} | Locked Out: $($user.LockedOut) | Bad PWD Count: $($user.badPwdCount)\" -ForegroundColor Cyan"
+      },
+      "description": "Display current lockout status and bad password count",
+      "wait_after_ms": 500,
+      "name": "Display current lockout status and bad password co"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute status display",
+      "wait_after_ms": 500,
+      "name": "Execute status display"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "if ($user.LastBadPasswordAttempt) { Write-Host \"[INFO] Last bad password attempt: $($user.LastBadPasswordAttempt)\" -ForegroundColor Yellow }"
+      },
+      "description": "Show last bad password attempt timestamp if available",
+      "wait_after_ms": 500,
+      "name": "Show last bad password attempt timestamp if availa"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute bad password info display",
+      "wait_after_ms": 500,
+      "name": "Execute bad password info display"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "if (-not $user.LockedOut) { Write-Host \"[WARNING] Account '{{username}}' is NOT currently locked out.\" -ForegroundColor Yellow; exit }"
+      },
+      "description": "Check if account is already unlocked and warn if so",
+      "wait_after_ms": 500,
+      "name": "Check if account is already unlocked and warn if s"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute lockout check",
+      "wait_after_ms": 1000,
+      "name": "Execute lockout check"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Unlock-ADAccount -Identity '{{username}}' -Confirm:$false"
+      },
+      "description": "Unlock the Active Directory user account",
+      "wait_after_ms": 500,
+      "name": "Unlock the Active Directory user account"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute account unlock",
+      "wait_after_ms": 3000,
+      "name": "Execute account unlock"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$verify = Get-ADUser -Identity '{{username}}' -Properties LockedOut"
+      },
+      "description": "Re-fetch the account to verify the unlock succeeded",
+      "wait_after_ms": 500,
+      "name": "Re-fetch the account to verify the unlock succeede"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute verification lookup",
+      "wait_after_ms": 2000,
+      "name": "Execute verification lookup"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "if ($verify.LockedOut) { Write-Host '[ERROR] Account is still locked. Check replication or contact domain admin.' -ForegroundColor Red } else { Write-Host '[SUCCESS] Account {{username}} has been unlocked successfully.' -ForegroundColor Green }"
+      },
+      "description": "Display verification result — success or failure",
+      "wait_after_ms": 500,
+      "name": "Display verification result — success or failure"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute verification display",
+      "wait_after_ms": 500,
+      "name": "Execute verification display"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "$timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'; Write-Host \"[AUDIT] Account unlock performed at $timestamp for user: {{username}}\" -ForegroundColor Magenta"
+      },
+      "description": "Log an audit trail entry with timestamp",
+      "wait_after_ms": 500,
+      "name": "Log an audit trail entry with timestamp"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Execute audit log entry",
+      "wait_after_ms": 500,
+      "name": "Execute audit log entry"
+    }
+  ]
+}

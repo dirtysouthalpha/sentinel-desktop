@@ -1,0 +1,93 @@
+{
+  "name": "Export System Information",
+  "description": "Opens System Information (msinfo32) and exports a complete system information report to a file on the desktop.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "system info",
+    "export",
+    "hardware",
+    "audit",
+    "msinfo32"
+  ],
+  "category": "diagnostics",
+  "icon": "💻",
+  "parameters": [],
+  "steps": [
+    {
+      "action": "start_process",
+      "params": {
+        "command": "msinfo32",
+        "args": ""
+      },
+      "description": "Open System Information",
+      "wait_after_ms": 4000,
+      "name": "Open System Information"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "menu#File"
+      },
+      "description": "Open File menu",
+      "wait_after_ms": 500,
+      "name": "Open File menu"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "menuitem#Export"
+      },
+      "description": "Click Export in File menu",
+      "wait_after_ms": 1000,
+      "name": "Click Export in File menu"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Tab"
+      },
+      "description": "Navigate to filename field in Save dialog",
+      "wait_after_ms": 300,
+      "name": "Navigate to filename field in Save dialog"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "%USERPROFILE%\\Desktop\\system_info_report.txt"
+      },
+      "description": "Type the export file path on desktop",
+      "wait_after_ms": 500,
+      "name": "Type the export file path on desktop"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#Save"
+      },
+      "description": "Click Save to export",
+      "wait_after_ms": 5000,
+      "name": "Click Save to export"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#OK",
+        "description": "Confirm overwrite if file exists"
+      },
+      "description": "Confirm overwrite if dialog appears",
+      "wait_after_ms": 1000,
+      "name": "Confirm overwrite if dialog appears"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Alt+F4"
+      },
+      "description": "Close System Information",
+      "wait_after_ms": 500,
+      "name": "Close System Information"
+    }
+  ]
+}

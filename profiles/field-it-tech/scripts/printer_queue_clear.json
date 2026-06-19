@@ -1,0 +1,121 @@
+{
+  "name": "Clear Print Queue",
+  "description": "Opens Printers & Scanners settings, selects the specified printer, opens the print queue, and cancels all pending documents.",
+  "author": "sentinel-desktop",
+  "created": "2026-05-12T00:00:00",
+  "version": "3.0",
+  "tags": [
+    "printer",
+    "queue",
+    "print",
+    "troubleshooting"
+  ],
+  "category": "peripherals",
+  "icon": "🖨️",
+  "parameters": [
+    {
+      "name": "printer_name",
+      "type": "string",
+      "label": "Printer Name",
+      "description": "The name of the printer whose queue should be cleared",
+      "default": "",
+      "required": true
+    }
+  ],
+  "steps": [
+    {
+      "action": "hotkey",
+      "params": {
+        "keys": [
+          "Win",
+          "I"
+        ]
+      },
+      "description": "Open Windows Settings",
+      "wait_after_ms": 2000,
+      "name": "Open Windows Settings"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "Printers & scanners"
+      },
+      "description": "Search for Printers & scanners settings",
+      "wait_after_ms": 500,
+      "name": "Search for Printers & scanners settings"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Open Printers & scanners",
+      "wait_after_ms": 2000,
+      "name": "Open Printers & scanners"
+    },
+    {
+      "action": "type_text",
+      "params": {
+        "text": "{{printer_name}}"
+      },
+      "description": "Search/type for the specific printer",
+      "wait_after_ms": 1000,
+      "name": "Search/type for the specific printer"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Enter"
+      },
+      "description": "Select the printer",
+      "wait_after_ms": 1500,
+      "name": "Select the printer"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#OpenQueue"
+      },
+      "description": "Click 'Open print queue'",
+      "wait_after_ms": 1500,
+      "name": "Click 'Open print queue'"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Ctrl+A"
+      },
+      "description": "Select all documents in queue",
+      "wait_after_ms": 500,
+      "name": "Select all documents in queue"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Delete"
+      },
+      "description": "Delete/cancel all selected print jobs",
+      "wait_after_ms": 1000,
+      "name": "Delete/cancel all selected print jobs"
+    },
+    {
+      "action": "click",
+      "params": {
+        "target": "button#Yes",
+        "description": "Confirm cancellation if prompted"
+      },
+      "description": "Confirm cancellation dialog if it appears",
+      "wait_after_ms": 1000,
+      "name": "Confirm cancellation dialog if it appears"
+    },
+    {
+      "action": "press_key",
+      "params": {
+        "key": "Alt+F4"
+      },
+      "description": "Close print queue window",
+      "wait_after_ms": 500,
+      "name": "Close print queue window"
+    }
+  ]
+}

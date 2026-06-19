@@ -44,6 +44,8 @@ htmlcov/
 
 # Sentinel runtime data (NEVER commit — contains API keys!)
 config.json
+# Profile config templates are secrets-redacted and safe to commit
+!profiles/**/config.json
 sentinel_log_*.json
 logs/
 forensic_*.json

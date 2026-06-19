@@ -1,0 +1,17 @@
+{
+  "name": "field-it-tech",
+  "label": "Field IT Tech (default)",
+  "version": "1.0.0",
+  "sentinel_compat": ">=17.0",
+  "description": "Pre-loaded for IT support on servers and workstations. Includes 19 IT scripts, sensible defaults, and brain snapshot slot for offline recall.",
+  "includes": {
+    "config": "config.json",
+    "scripts_dir": "scripts",
+    "brain_snapshot": "brain-snapshot.jsonl",
+    "workflows_dir": "workflows"
+  },
+  "flags": {
+    "auto_adopt": true,
+    "secrets_redacted": true
+  }
+}
