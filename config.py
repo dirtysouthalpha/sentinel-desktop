@@ -7,9 +7,10 @@ or ~/.sentinel-desktop/ on other platforms.
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any
+
+from core import paths as _paths
 
 logger = logging.getLogger(__name__)
 
@@ -82,14 +83,10 @@ DEFAULTS: dict[str, Any] = {
 }
 
 # ---------------------------------------------------------------------------
-# Config directory
+# Config directory — resolved via core.paths (supports portable mode)
 # ---------------------------------------------------------------------------
-if os.name == "nt":
-    _CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "SentinelDesktop"
-else:
-    _CONFIG_DIR = Path.home() / ".sentinel-desktop"
-
-_CONFIG_PATH = _CONFIG_DIR / "config.json"
+_CONFIG_DIR = _paths.data_dir()
+_CONFIG_PATH = _paths.config_path()
 
 
 class Config:

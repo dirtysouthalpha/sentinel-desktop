@@ -10,27 +10,22 @@ Thread-safe. Uses only stdlib modules.
 
 import json
 import logging
-import os
 import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from core import paths as _paths
 from core.utils import iso_now as _iso_now
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Checkpoint directory — mirrors config.py AppData resolution
+# Checkpoint directory — resolved via core.paths (supports portable mode)
 # ---------------------------------------------------------------------------
-
-if os.name == "nt":
-    _BASE_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "SentinelDesktop"
-else:
-    _BASE_DIR = Path.home() / ".sentinel-desktop"
-
-_CHECKPOINT_DIR = _BASE_DIR / "checkpoints"
+_BASE_DIR = _paths.data_dir()
+_CHECKPOINT_DIR = _paths.checkpoint_dir()
 
 # Age-out threshold — checkpoints older than this are considered stale.
 _STALE_THRESHOLD = timedelta(hours=1)
