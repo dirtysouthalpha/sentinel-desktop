@@ -1,12 +1,12 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v17.0: Audio/Voice, Resilience Engine, Config Persistence, Network Diagnostics, Window Control, HTTP Client, File/Process Monitor.**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v20.0: Portable Build — USB-portable PyInstaller bundle with embedded profile, bundled Tesseract, and first-run API key prompt.**
 
 ## What To Do (Priority Order)
 **All priorities complete - project is production-ready ✅**
 
 All quality gates met:
-- ✅ 7,823 tests passing (150 skipped)
+- ✅ 8,147 tests passing (151 skipped)
 - ✅ Zero lint errors (ruff check clean)
 - ✅ All API endpoints fully implemented (workflow builder complete)
 - ✅ All 19 IT support scripts validated and tested
@@ -132,6 +132,23 @@ All quality gates met:
 - ✅ Thread-safe `_tts_voice` cached instance
 - ✅ `speak`, `listen`, `volume_get`, `volume_set`, `mute_toggle`, `list_voices` executor actions
 - ✅ Tests: `tests/test_audio.py`
+
+## v18.0 — Neuralis Brain Bridge (June 2026)
+- ✅ HTTP bridge to Neuralis brain API (`core/brain/bridge.py`)
+- ✅ Brain executor actions: `brain_recall`, `brain_think`, `brain_fire`, `brain_search`, `brain_context`
+- ✅ GUI Brain tab — fleet-memory HUD panel in the cyberpunk interface
+- ✅ Tests: `tests/test_brain_bridge.py`, `tests/test_brain_tab.py`
+
+## v20.0 — Portable Build (June 2026)
+- ✅ `core/paths.py` — `is_portable()` / `data_dir()` single source of truth; activates on `portable_data/` marker or `SENTINEL_PORTABLE=1`
+- ✅ `installer/build.py` — `build_portable()` target: `--onedir` PyInstaller bundle, no installer/registry writes, USB-portable
+- ✅ Embedded profile: selected `profiles/<name>/` directory bundled via `--add-data`; `portable_data/` marker created post-build
+- ✅ Tesseract bundling: `_find_tesseract_binary()` + `_find_tessdata_eng()`; graceful degrade when not found
+- ✅ Portable OCR: `_resolve_portable_tesseract()` in `core/utils.py`; injects bundled path + `TESSDATA_PREFIX` at runtime
+- ✅ `core/profile.py` — `load_profile()`, `adopt_profile()`, `detect_profile()`, `needs_api_key()` helpers
+- ✅ First-run API key prompt: `_portable_startup()` in `main.py` detects profile, adopts it, prompts for redacted key; headless mode reads `SENTINEL_API_KEY` env var
+- ✅ `--profile` CLI arg added to `parse_args()`
+- ✅ Tests: `tests/test_paths.py`, `tests/test_build_portable.py`, `tests/test_ocr_portable.py`, `tests/test_portable_startup.py`, `tests/test_profile.py`
 
 ## v4.0 — Multi-Platform Core (June 2025)
 - ✅ Platform abstraction layer (`core/platform/`) with ABC interfaces for all OS-specific code
