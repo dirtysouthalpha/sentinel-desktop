@@ -36,6 +36,21 @@ from .provider_registry import PROVIDERS, fetch_models, get_base_url
 
 logger = logging.getLogger(__name__)
 
+
+def _record_usage(provider: str, model: str, data: object) -> None:
+    """Side-effect hook: record token usage to the cost tracker if present."""
+    if not isinstance(data, dict):
+        return
+    usage = data.get("usage")
+    if not usage:
+        return
+    try:
+        from core.cost_tracker import get_cost_tracker
+
+        get_cost_tracker().record(provider, model, usage)
+    except Exception:
+        pass
+
 # Default network timeout (seconds) — generous for large generations.
 DEFAULT_TIMEOUT = 120
 
@@ -276,6 +291,7 @@ class LLMClient:
             base_delay=retry_base_delay,
             provider_label=provider,
         )
+        _record_usage(provider, model, data)
         return self._parse_openai_response(data, provider)
 
     @staticmethod
@@ -427,6 +443,7 @@ class LLMClient:
             base_delay=retry_base_delay,
             provider_label="anthropic",
         )
+        _record_usage("anthropic", model, data)
 
         # Parse response — translate computer tool actions to our format
         if computer_use_type == "anthropic":

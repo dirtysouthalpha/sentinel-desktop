@@ -2500,6 +2500,214 @@ class ActionExecutor:
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
+    # ------------------------------------------------------------------
+    # Cost tracker (v21.0)
+    # ------------------------------------------------------------------
+
+    def _cost_summary(self, **_) -> dict:
+        """Return LLM token and dollar usage for the current session."""
+        from core.cost_tracker import get_cost_tracker
+
+        summary = get_cost_tracker().session_summary()
+        return {"success": True, "output": summary, **summary}
+
+    def _cost_history(self, *, limit: int = 50, **_) -> dict:
+        """Return recent LLM usage records from persisted history."""
+        from core.cost_tracker import get_cost_tracker
+
+        records = get_cost_tracker().history(limit=int(limit))
+        return {"success": True, "output": records, "count": len(records)}
+
+    def _cost_reset(self, **_) -> dict:
+        """Clear in-memory session cost counters."""
+        from core.cost_tracker import get_cost_tracker
+
+        get_cost_tracker().reset_session()
+        return {"success": True, "output": "Session cost counters reset."}
+
+    # ------------------------------------------------------------------
+    # Eval harness (v21.0)
+    # ------------------------------------------------------------------
+
+    def _eval_list(self, **_) -> dict:
+        """List available evaluation scenarios."""
+        from eval.registry import EvalRegistry
+
+        registry = EvalRegistry()
+        names = registry.list_scenarios()
+        return {"success": True, "output": names, "count": len(names)}
+
+    def _eval_run(self, *, name: str, stop_on_failure: bool = False, **_) -> dict:
+        """Run an evaluation scenario by name and return the result.
+
+        Args:
+            name: Scenario name (file stem under eval/scenarios/).
+            stop_on_failure: Abort after the first failing step.
+        """
+        from eval.registry import EvalRegistry
+        from eval.runner import ScenarioRunner
+
+        registry = EvalRegistry()
+        try:
+            scenario = registry.load(name)
+        except FileNotFoundError as exc:
+            return {"success": False, "error": str(exc)}
+
+        def _exec(action: str, **params):
+            return self.execute(action, **params)
+
+        runner = ScenarioRunner(_exec, stop_on_failure=bool(stop_on_failure))
+        result = runner.run(scenario)
+        registry.save_result(result)
+        comparison = registry.compare_to_baseline(result)
+        return {
+            "success": True,
+            "output": result.to_dict(),
+            "score": result.score,
+            "passed": result.passed,
+            "steps_passed": result.steps_passed,
+            "steps_total": result.steps_total,
+            "regression": comparison.get("regression", False),
+            "score_delta": comparison.get("score_delta"),
+        }
+
+    def _eval_results(self, *, name: str, limit: int = 10, **_) -> dict:
+        """Return recent run results for a scenario."""
+        from eval.registry import EvalRegistry
+
+        registry = EvalRegistry()
+        records = registry.list_results(name, limit=int(limit))
+        return {"success": True, "output": records, "count": len(records)}
+
+    # ------------------------------------------------------------------
+    # Skill marketplace (v21.0)
+    # ------------------------------------------------------------------
+
+    def _skill_list(self, *, category: str | None = None, **_) -> dict:
+        """List installed skills, optionally filtered by category."""
+        from core.skill_marketplace import get_marketplace
+
+        skills = get_marketplace().list_skills(category=category)
+        return {
+            "success": True,
+            "output": [s.to_dict() for s in skills],
+            "count": len(skills),
+        }
+
+    def _skill_search(self, *, query: str, **_) -> dict:
+        """Search installed skills by name, description, or tags."""
+        from core.skill_marketplace import get_marketplace
+
+        skills = get_marketplace().find_skills(query)
+        return {
+            "success": True,
+            "output": [s.to_dict() for s in skills],
+            "count": len(skills),
+        }
+
+    def _skill_install(
+        self,
+        *,
+        name: str,
+        description: str,
+        script: dict | None = None,
+        version: str = "1.0.0",
+        author: str = "",
+        category: str = "general",
+        tags: list | None = None,
+        **_,
+    ) -> dict:
+        """Install a skill into the local marketplace.
+
+        Args:
+            name: Unique skill identifier.
+            description: Short human-readable description.
+            script: Automation script dict (ScriptEngine format).
+            version: Semantic version string.
+            author: Author name.
+            category: Skill category.
+            tags: Searchable tags.
+        """
+        from core.skill_marketplace import SkillManifest, get_marketplace
+
+        if script is None:
+            return {"success": False, "error": "skill_install requires 'script'"}
+
+        manifest = SkillManifest(
+            name=name,
+            description=description,
+            version=version,
+            author=author,
+            category=category,
+            tags=tags or [],
+        )
+        skill_dir = get_marketplace().install_skill(manifest, script=script)
+        return {
+            "success": True,
+            "output": f"Skill '{name}' installed → {skill_dir}",
+            "skill_dir": str(skill_dir),
+        }
+
+    def _skill_get(self, *, name: str, **_) -> dict:
+        """Retrieve a skill's manifest and script by name."""
+        from core.skill_marketplace import get_marketplace
+
+        try:
+            manifest, script = get_marketplace().get_skill(name)
+            return {
+                "success": True,
+                "output": {"manifest": manifest.to_dict(), "script": script},
+                "manifest": manifest.to_dict(),
+            }
+        except FileNotFoundError as exc:
+            return {"success": False, "error": str(exc)}
+
+    def _skill_export(self, *, name: str, **_) -> dict:
+        """Export a skill as a portable dict (manifest + script)."""
+        from core.skill_marketplace import get_marketplace
+
+        try:
+            bundle = get_marketplace().export_skill(name)
+            return {"success": True, "output": bundle}
+        except FileNotFoundError as exc:
+            return {"success": False, "error": str(exc)}
+
+    def _skill_uninstall(self, *, name: str, **_) -> dict:
+        """Remove an installed skill by name."""
+        from core.skill_marketplace import get_marketplace
+
+        removed = get_marketplace().uninstall_skill(name)
+        if removed:
+            return {"success": True, "output": f"Skill '{name}' uninstalled."}
+        return {"success": False, "error": f"Skill '{name}' not found."}
+
+    def _skill_run(self, *, name: str, params: dict | None = None, **_) -> dict:
+        """Run an installed skill through the ScriptEngine.
+
+        Args:
+            name: Installed skill name.
+            params: Template substitution parameters for the script.
+        """
+        from core.script_engine import ScriptEngine
+        from core.skill_marketplace import get_marketplace
+
+        try:
+            _, script = get_marketplace().get_skill(name)
+        except FileNotFoundError as exc:
+            return {"success": False, "error": str(exc)}
+
+        engine = ScriptEngine(self)
+        result = engine.run_script_from_dict(script, params=params or {})
+        return {
+            "success": result.success,
+            "output": {
+                "steps_completed": result.steps_completed,
+                "steps_total": result.steps_total,
+                "duration_ms": result.duration_ms,
+            },
+            "error": result.error,
+        }
+
     # Dispatch table (v18): derived from the action registry
     # (core/action_registry.py). Each entry is an unbound handler function;
     # callers pass ``self`` explicitly. The mapping below is the registration
@@ -2636,6 +2844,22 @@ class ActionExecutor:
         brain_search=_brain_search,
         brain_stats=_brain_stats,
         brain_fire=_brain_fire,
+        # v21 — cost tracker
+        cost_summary=_cost_summary,
+        cost_history=_cost_history,
+        cost_reset=_cost_reset,
+        # v21 — eval harness
+        eval_list=_eval_list,
+        eval_run=_eval_run,
+        eval_results=_eval_results,
+        # v21 — skill marketplace
+        skill_list=_skill_list,
+        skill_search=_skill_search,
+        skill_install=_skill_install,
+        skill_get=_skill_get,
+        skill_export=_skill_export,
+        skill_uninstall=_skill_uninstall,
+        skill_run=_skill_run,
     )
 
 

@@ -1925,6 +1925,216 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    # ------------------------------------------------------------------
+    # v21 — Cost tracker
+    # ------------------------------------------------------------------
+    {
+        "type": "function",
+        "function": {
+            "name": "cost_summary",
+            "description": "Return LLM token and dollar usage for the current session.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cost_history",
+            "description": "Return recent LLM usage records from persisted history.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (default 50).",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cost_reset",
+            "description": "Clear in-memory session cost counters.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    # ------------------------------------------------------------------
+    # v21 — Eval harness
+    # ------------------------------------------------------------------
+    {
+        "type": "function",
+        "function": {
+            "name": "eval_list",
+            "description": "List available evaluation scenarios.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "eval_run",
+            "description": "Run an evaluation scenario by name and return scoring results.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Scenario name (file stem under eval/scenarios/).",
+                    },
+                    "stop_on_failure": {
+                        "type": "boolean",
+                        "description": "Abort after the first failing step (default false).",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "eval_results",
+            "description": "Return recent run results for an evaluation scenario.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Scenario name.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum results to return (default 10).",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    # ------------------------------------------------------------------
+    # v21 — Skill marketplace
+    # ------------------------------------------------------------------
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_list",
+            "description": "List installed skills, optionally filtered by category.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "description": "Filter by category name (e.g. 'web', 'file', 'system').",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_search",
+            "description": "Search installed skills by name, description, or tags.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query string.",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_install",
+            "description": "Install a skill into the local marketplace.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Unique skill identifier."},
+                    "description": {"type": "string", "description": "Short human-readable purpose."},
+                    "script": {"type": "object", "description": "Automation script dict (ScriptEngine format)."},
+                    "version": {"type": "string", "description": "Semantic version (default '1.0.0')."},
+                    "author": {"type": "string", "description": "Author name or handle."},
+                    "category": {"type": "string", "description": "Skill category (default 'general')."},
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Searchable tag list.",
+                    },
+                },
+                "required": ["name", "description", "script"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_get",
+            "description": "Retrieve a skill's manifest and script by name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Skill name to look up."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_export",
+            "description": "Export a skill as a portable dict (manifest + script).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Skill name to export."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_uninstall",
+            "description": "Remove an installed skill by name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Skill name to uninstall."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_run",
+            "description": "Run an installed skill through the ScriptEngine.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Installed skill name."},
+                    "params": {
+                        "type": "object",
+                        "description": "Template substitution parameters for the script.",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
 ]
 
 

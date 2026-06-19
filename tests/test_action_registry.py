@@ -132,6 +132,22 @@ _V17_BASELINE_NAMES = frozenset(
         "brain_search",
         "brain_stats",
         "brain_fire",
+        # v21 — Cost tracker
+        "cost_summary",
+        "cost_history",
+        "cost_reset",
+        # v21 — Eval harness
+        "eval_list",
+        "eval_run",
+        "eval_results",
+        # v21 — Skill marketplace
+        "skill_list",
+        "skill_search",
+        "skill_install",
+        "skill_get",
+        "skill_export",
+        "skill_uninstall",
+        "skill_run",
     }
 )
 
@@ -140,8 +156,8 @@ _V17_BASELINE_NAMES = frozenset(
 # Parity: registry == dispatch table == v17 baseline
 # ---------------------------------------------------------------------------
 class TestDispatchParity:
-    def test_dispatch_table_has_115_entries(self):
-        assert len(ae.ActionExecutor._dispatch_table) == 115
+    def test_dispatch_table_has_128_entries(self):
+        assert len(ae.ActionExecutor._dispatch_table) == 128
 
     def test_dispatch_table_keys_equal_registry(self):
         """The dispatch table and the registry must expose the same names."""
