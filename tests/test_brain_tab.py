@@ -12,6 +12,8 @@ import types
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 # ── Fake CTk widgets ─────────────────────────────────────────────────────────
 
@@ -168,7 +170,8 @@ class FakeTkinter(types.ModuleType):
 # ── Install stubs before any import of the module under test ─────────────────
 
 def _install_stubs() -> None:
-    # customtkinter
+    # customtkinter — must be a superset of what conftest installs so that
+    # tests running after this file don't see a broken stub.
     ctk_mod = types.ModuleType("customtkinter")
     ctk_mod.CTkFrame = FakeWidget  # type: ignore[attr-defined]
     ctk_mod.CTkScrollableFrame = FakeScrollableFrame  # type: ignore[attr-defined]
@@ -178,6 +181,46 @@ def _install_stubs() -> None:
     ctk_mod.CTkTextbox = FakeTextbox  # type: ignore[attr-defined]
     ctk_mod.CTkOptionMenu = FakeOptionMenu  # type: ignore[attr-defined]
     ctk_mod.StringVar = FakeStringVar  # type: ignore[attr-defined]
+    # Remaining CTk widget classes used by other GUI modules
+    for _cls_name in (
+        "CTk",
+        "CTkCheckBox",
+        "CTkComboBox",
+        "CTkProgressBar",
+        "CTkRadioButton",
+        "CTkSlider",
+        "CTkSwitch",
+        "CTkTabview",
+        "CTkImage",
+        "CTkCanvas",
+        "CTkSegmentedButton",
+        "CTkToplevel",
+    ):
+        setattr(ctk_mod, _cls_name, type(_cls_name, (FakeWidget,), {}))
+    ctk_mod.CTkFont = lambda *a, **kw: None  # type: ignore[attr-defined]
+    # Typed variable stubs
+    for _var_name in ("IntVar", "DoubleVar", "BooleanVar"):
+        setattr(
+            ctk_mod,
+            _var_name,
+            type(
+                _var_name,
+                (),
+                {
+                    "__init__": lambda s, *a, **kw: None,
+                    "get": lambda s: 0,
+                    "set": lambda s, v: None,
+                    "trace_add": lambda s, *a, **kw: None,
+                },
+            ),
+        )
+    # Module-level functions and constants used by themes.py / app.py
+    ctk_mod.set_appearance_mode = lambda *a, **kw: None  # type: ignore[attr-defined]
+    ctk_mod.set_default_color_theme = lambda *a, **kw: None  # type: ignore[attr-defined]
+    ctk_mod.set_widget_scaling = lambda *a, **kw: None  # type: ignore[attr-defined]
+    ctk_mod.DARK = "Dark"  # type: ignore[attr-defined]
+    ctk_mod.LIGHT = "Light"  # type: ignore[attr-defined]
+    ctk_mod.SYSTEM = "System"  # type: ignore[attr-defined]
     sys.modules["customtkinter"] = ctk_mod
 
     # tkinter
@@ -185,7 +228,21 @@ def _install_stubs() -> None:
     sys.modules.setdefault("tkinter", tk_mod)
 
 
-_install_stubs()
+@pytest.fixture(autouse=True)
+def _restore_ctk_after_test():
+    """Restore the customtkinter stub to its pre-test state after each test.
+
+    Saving and restoring (rather than deleting) keeps all module-level
+    ``import customtkinter as ctk`` bindings in other test files pointing to
+    the same object, preventing cross-test assertion failures when those tests
+    call ``patch.object(ctk, ...)``.
+    """
+    original = sys.modules.get("customtkinter")
+    yield
+    if original is not None:
+        sys.modules["customtkinter"] = original
+    else:
+        sys.modules.pop("customtkinter", None)
 
 
 # ── Load the module under test ────────────────────────────────────────────────
@@ -203,6 +260,7 @@ def _make_app() -> MagicMock:
 
 def _load_brain_tab():
     """Import (or reload) BrainTab with the fakes in place."""
+    _install_stubs()  # reinstall brain-tab fakes — conftest may have replaced them
     if "gui.tabs.brain_tab" in sys.modules:
         del sys.modules["gui.tabs.brain_tab"]
     if "gui.tabs" in sys.modules:
@@ -488,10 +546,7 @@ class TestPulseTick:
 class TestTabRegistration:
     def test_brain_tab_in_tab_defs(self) -> None:
         """Verify BrainTab is registered in gui/app.py _TAB_DEFS."""
-        if "gui.app" in sys.modules:
-            del sys.modules["gui.app"]
-        # We can't import gui.app cleanly here (it needs full tk);
-        # parse the file instead.
+        # Parse the file — no need to import/delete the module
         from pathlib import Path
         content = Path("gui/app.py").read_text()
         assert '"brain"' in content
