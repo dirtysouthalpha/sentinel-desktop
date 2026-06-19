@@ -328,56 +328,6 @@ class LLMClient:
             content = " ".join(str(b.get("text", "")) for b in content if isinstance(b, dict))
         return content or ""
 
-    def chat_with_vision(
-        self,
-        provider: str,
-        api_key: str,
-        model: str,
-        messages: list[dict[str, Any]],
-        image_base64: str,
-        prompt: str = "Describe this screenshot.",
-        max_tokens: int = 4096,
-        temperature: float = 0.1,
-        custom_url: str | None = None,
-    ) -> str:
-        """Send a chat request with a screenshot image.
-
-        A convenience wrapper: the *image_base64* string is embedded as a
-        ``data:`` URI in a vision message appended to *messages*, then sent
-        via :meth:`chat`. The engine loop builds its own vision messages
-        directly (``AgentEngine._add_vision_message``); this method exists
-        for external callers and library use.
-
-        For Anthropic the image is sent in the native ``source.type =
-        "base64"`` format.
-
-        Args:
-            provider:     Provider key.
-            api_key:      API key.
-            model:        Model identifier.
-            messages:     Existing conversation history.
-            image_base64: Base64-encoded PNG/JPEG image data.
-            prompt:       Text instruction to accompany the image.
-            max_tokens:   Max response tokens.
-            temperature:  Sampling temperature.
-            custom_url:   Override base URL for the ``"custom"`` provider.
-
-        Returns:
-            Assistant message content (plain text).
-
-        """
-        vision_message = self._make_vision_message(provider, image_base64, prompt)
-        all_messages = messages + [vision_message]
-        return self.chat(
-            provider=provider,
-            api_key=api_key,
-            model=model,
-            messages=all_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            custom_url=custom_url,
-        )
-
     def _make_vision_message(self, provider: str, image_base64: str, prompt: str) -> dict[str, Any]:
         """Construct a vision message for the given provider."""
         provider_config = PROVIDERS.get(provider, {})

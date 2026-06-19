@@ -17,7 +17,7 @@ A reconciliation major version: closes the gap between what the project *claims*
 - `pip install sentinel-desktop[all]` now actually delivers the SSH, browser, MCP, and voice features that were advertised but silently uninstalled.
 
 ### Breaking changes (deprecation removal — justifies the major bump)
-- **Removed** `LLMClient.chat_with_screenshot()` (`core/llm_client.py`) — deprecated since v3.1.0, zero callers.
+- **Removed** `LLMClient.chat_with_vision()` (`core/llm_client.py`) — deprecated since v3.1.0; the engine loop builds vision messages via `_make_vision_message` + `chat()` directly. The private `_make_vision_message` helpers are retained and tested.
 - **Removed** async `ActionExecutor.execute()` (`core/action_executor.py`) — deprecated since v3.1.0; the engine loop uses `execute_sync()`. Callers updated.
 - **Removed** the legacy SHA-256 password verification path (`core/auth.py`) along with the `S324` ruff per-file ignore it required. **Migration:** users whose stored hash is still pre-bcrypt SHA-256 must reset their password on first login under v18.
 - **Removed** `gui/tray.py` (deprecated since v3.1.0); the GUI migrated to `gui/system_tray.SystemTrayIcon`, which provides status colours, IT quick actions, and a fuller menu.

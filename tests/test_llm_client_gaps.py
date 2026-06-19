@@ -200,21 +200,24 @@ class TestAnthropicVisionAndConversion:
 
     @patch("core.llm_client.requests.post")
     def test_vision_uses_native_anthropic_image_block(self, mock_post: MagicMock) -> None:
-        """chat_with_vision against an anthropic provider builds a native
-        image block via _make_anthropic_vision_message and routes to
-        _chat_anthropic."""
+        """An anthropic vision message carries a native image block via
+        _make_anthropic_vision_message and routes to _chat_anthropic.
+
+        (v18) The deprecated chat_with_vision() wrapper was removed; this test
+        now builds the vision message via the private helper and sends it with
+        chat() — the same path the engine loop uses.
+        """
         mock_post.return_value = MagicMock(
             status_code=200,
             json=MagicMock(return_value={"content": [{"type": "text", "text": "a cat"}]}),
         )
         client = LLMClient()
-        result = client.chat_with_vision(
+        vision_msg = client._make_vision_message("anthropic", "aGVsbG8=", "What is this?")
+        result = client.chat(
             "anthropic",
             "sk-ant",
             "claude-opus-4-7",
-            [{"role": "user", "content": "earlier"}],
-            image_base64="aGVsbG8=",
-            prompt="What is this?",
+            [{"role": "user", "content": "earlier"}, vision_msg],
         )
         assert result == "a cat"
         # The outgoing payload's final message must carry a native image block.

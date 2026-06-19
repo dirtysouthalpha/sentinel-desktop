@@ -247,20 +247,24 @@ class TestChatAnthropicPath:
         assert payload["system"] == "Be concise."
 
 
-class TestChatWithVision:
+class TestVisionMessageConstruction:
+    """Vision-message construction (v18: chat_with_vision removed; the engine
+    builds vision messages via _make_vision_message + chat)."""
+
     @patch("core.llm_client.requests.post")
-    def test_vision_appends_image_message(self, mock_post):
+    def test_vision_message_appends_image(self, mock_post):
         mock_post.return_value = _make_response(
             200, {"choices": [{"message": {"content": "I see a screenshot"}}]}
         )
         client = LLMClient()
-        result = client.chat_with_vision(
+        vision_msg = client._make_vision_message(
+            "openai", "iVBORabcd1234", "Describe this screenshot."
+        )
+        result = client.chat(
             "openai",
             "sk-test",
             "gpt-4o",
-            [{"role": "user", "content": "What do you see?"}],
-            image_base64="iVBORabcd1234",
-            prompt="Describe this screenshot.",
+            [{"role": "user", "content": "What do you see?"}, vision_msg],
         )
         assert result == "I see a screenshot"
         call_kwargs = mock_post.call_args
