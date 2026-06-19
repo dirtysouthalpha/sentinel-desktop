@@ -55,6 +55,11 @@ class TestActionExecutorAsyncExecute:
 class TestCheckpointWindowsPath:
     """Cover the Windows APPDATA branch at module level (line 28)."""
 
+    @pytest.mark.skipif(
+        os.name != "nt",
+        reason="Windows %APPDATA% path resolution can't run on Linux/macOS CI "
+        "(Path stub triggers _flavour AttributeError on non-Windows).",
+    )
     def test_windows_base_dir_uses_appdata(self, tmp_path):
         import pathlib
 
