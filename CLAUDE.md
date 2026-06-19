@@ -1,18 +1,19 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v20.0 "Penguin": Linux desktop parity — window management and stealth input routed through `core/platform/` backend on Linux/macOS, xdotool-based click/type, 18 new cross-platform parity tests. See `docs/ROADMAP-v18-to-v22.md` for the v21–v22 plan (Operator/Voice).**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v21.0 "Operator": eval harness, cost tracker, skill marketplace — agent quality now measurable and composable. See `docs/ROADMAP-v18-to-v22.md` for the v22 plan (Voice).**
 
 ## What To Do (Priority Order)
-**v20 Penguin complete — Linux desktop parity production-ready ✅**
+**v21 Operator complete — eval harness, cost tracker, skill marketplace production-ready ✅**
 
 All quality gates met:
-- ✅ 8,411 tests passing (152 skipped)
+- ✅ 8,581 tests passing (152 skipped)
 - ✅ Zero lint errors (ruff check clean)
-- ✅ window_manager: list_windows, focus_window, close_window, get_focused_window_rect routed through LinuxWindowBackend
-- ✅ stealth_input: post_click, post_text routed through LinuxStealthInputBackend; is_available() detects xdotool
-- ✅ 18 new cross-platform parity tests (`tests/test_platform_parity.py`) — mocked backends, run on any OS
+- ✅ `eval/` — ScenarioRunner, EvalRegistry, EvalReport, JSONL result history
+- ✅ `core/cost_tracker.py` — per-run token/dollar accounting for 20+ models, JSONL persistence
+- ✅ `core/skill_marketplace.py` — install/uninstall/list/find/run skills from local registry
+- ✅ eval_list, eval_run, eval_results, cost_summary, cost_history, cost_reset, skill_* executor actions
 
-> **Next:** v21 Operator — eval harness, cost dashboard, skill marketplace.
+> **Next:** v22 Voice — wake-word detection, ambient monitoring, event triggers.
 > See `docs/ROADMAP-v18-to-v22.md`.
 
 **Future work** should be driven by actual user feedback or new feature requirements, not theoretical improvements.
@@ -144,6 +145,13 @@ All quality gates met:
 - ✅ Secrets vault broker (`core/secrets.py`) — OS keychain + encrypted vault.json fallback
 - ✅ MDM deployment toolkit (`installer/mdm.py`) — Intune configuration profile + ADMX/ADML Group Policy templates
 - ✅ 246 new tests; 8,393 total passing
+
+## v21.0 — Operator: Eval Harness + Cost Tracker + Skill Marketplace (June 2026)
+- ✅ `eval/` — ScenarioStep/Scenario dataclasses with JSON save/load; ScenarioRunner with executor callback, step scoring, stop_on_failure; EvalRegistry list/load/save/delete + JSONL result history; EvalReport aggregate pass-rate + regression_check
+- ✅ `core/cost_tracker.py` — pricing table for 20+ models (OpenAI, Anthropic, Google, xAI, Z.ai); JSONL persistence; session summary by_model; hooked into llm_client
+- ✅ `core/skill_marketplace.py` — SkillManifest dataclass; install/uninstall/list/find/get/export skills; stored as `~/.sentinel/marketplace/<name>/`
+- ✅ eval_list, eval_run, eval_results, cost_summary, cost_history, cost_reset, skill_list, skill_search, skill_install, skill_get, skill_export, skill_uninstall, skill_run executor actions + tool schemas
+- ✅ 8,581 total tests passing (170 new)
 
 ## v20.0 — Penguin: Linux Desktop Parity (June 2026)
 - ✅ `core/window_manager.py` — `list_windows`, `focus_window`, `close_window`, `get_focused_window_rect`, `_get_foreground_window_info` route through `LinuxWindowBackend` on Linux/macOS
