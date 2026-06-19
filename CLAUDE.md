@@ -1,23 +1,19 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v19.0 "Fortress": enterprise security release — OIDC/JWT SSO, declarative policy guardrails, secrets vault, tamper-evident audit chain, MDM deployment toolkit. See `docs/ROADMAP-v18-to-v22.md` for the v20–v22 plan (Penguin/Operator/Voice).**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v20.0 "Penguin": Linux desktop parity — window management and stealth input routed through `core/platform/` backend on Linux/macOS, xdotool-based click/type, 18 new cross-platform parity tests. See `docs/ROADMAP-v18-to-v22.md` for the v21–v22 plan (Operator/Voice).**
 
 ## What To Do (Priority Order)
-**v19 Fortress complete — enterprise security layer production-ready ✅**
+**v20 Penguin complete — Linux desktop parity production-ready ✅**
 
 All quality gates met:
-- ✅ 8,393 tests passing (152 skipped)
+- ✅ 8,411 tests passing (152 skipped)
 - ✅ Zero lint errors (ruff check clean)
-- ✅ HS256 JWT auth + OIDC id_token validation with user auto-provisioning
-- ✅ Declarative policy guardrails (`core/policy.py`) — allow/deny rules over actions/endpoints/paths
-- ✅ Secrets vault broker (`core/secrets.py`) — OS keychain + vault.json backend
-- ✅ Tamper-evident signed audit logs (`core/audit_chain.py`) — append-only, hash-chained
-- ✅ Audit export (`core/audit_export.py`) — JSON/CSV/HTML report generation
-- ✅ MDM deployment toolkit (`installer/mdm.py`) — Intune profile + ADMX/ADML templates
+- ✅ window_manager: list_windows, focus_window, close_window, get_focused_window_rect routed through LinuxWindowBackend
+- ✅ stealth_input: post_click, post_text routed through LinuxStealthInputBackend; is_available() detects xdotool
+- ✅ 18 new cross-platform parity tests (`tests/test_platform_parity.py`) — mocked backends, run on any OS
 
-> **Next:** v20 Penguin — real Linux desktop parity. Route scattered win32/uiautomation
-> imports through `core/platform/` abstraction, AT-SPI accessibility, Wayland support,
-> cross-platform CI test matrix. See `docs/ROADMAP-v18-to-v22.md`.
+> **Next:** v21 Operator — eval harness, cost dashboard, skill marketplace.
+> See `docs/ROADMAP-v18-to-v22.md`.
 
 **Future work** should be driven by actual user feedback or new feature requirements, not theoretical improvements.
 
@@ -149,7 +145,14 @@ All quality gates met:
 - ✅ MDM deployment toolkit (`installer/mdm.py`) — Intune configuration profile + ADMX/ADML Group Policy templates
 - ✅ 246 new tests; 8,393 total passing
 
-## v20.0 — Portable Build (June 2026)
+## v20.0 — Penguin: Linux Desktop Parity (June 2026)
+- ✅ `core/window_manager.py` — `list_windows`, `focus_window`, `close_window`, `get_focused_window_rect`, `_get_foreground_window_info` route through `LinuxWindowBackend` on Linux/macOS
+- ✅ `_window_info_to_dict()` helper converts platform `WindowInfo` namedtuple to internal dict
+- ✅ `core/stealth_input.py` — `post_click`, `post_text` route through `LinuxStealthInputBackend` when win32 unavailable; `is_available()` returns True when xdotool present on Linux
+- ✅ 18 new cross-platform parity tests (`tests/test_platform_parity.py`) — all mocked, run on any OS
+- ✅ 8,411 total tests passing
+
+## v19.5 — Portable Build (June 2026)
 - ✅ `core/paths.py` — `is_portable()` / `data_dir()` single source of truth; activates on `portable_data/` marker or `SENTINEL_PORTABLE=1`
 - ✅ `installer/build.py` — `build_portable()` target: `--onedir` PyInstaller bundle, no installer/registry writes, USB-portable
 - ✅ Embedded profile: selected `profiles/<name>/` directory bundled via `--add-data`; `portable_data/` marker created post-build
