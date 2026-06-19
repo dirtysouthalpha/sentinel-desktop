@@ -6,6 +6,7 @@ display and the process crashes. We register lightweight stubs in
 ``sys.modules`` before any test imports run so the modules load cleanly.
 """
 
+import os
 import sys
 import types
 from pathlib import Path
@@ -16,6 +17,12 @@ import pytest
 PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+# Humanization safety net: force humanization OFF for the whole test suite.
+# Many existing tests assert exact coordinates / timings; humanized curves
+# and jitter would break them. Tests that specifically exercise humanization
+# set SENTINEL_HUMANIZE locally via monkeypatch. (core/humanize/__init__.py)
+os.environ.setdefault("SENTINEL_HUMANIZE", "0")
 
 
 # 2) Stub display-dependent libraries so they don't try to connect to X.
