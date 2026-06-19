@@ -21,9 +21,9 @@ import customtkinter as ctk
 
 from config import Config
 from gui.overlay import ActionOverlay
+from gui.system_tray import SystemTrayIcon
+from gui.system_tray import is_available as _tray_available
 from gui.themes import THEMES, apply_theme, get_theme
-from gui.tray import SentinelTray
-from gui.tray import is_available as _tray_available
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class SentinelApp:
 
     def _setup_overlay_and_tray(self) -> None:
         self.overlay = ActionOverlay(self.root)
-        self.tray: SentinelTray = None  # type: ignore[assignment]
+        self.tray: SystemTrayIcon | None = None
 
     # ── UI Build ─────────────────────────────────────────────────────
 
@@ -258,11 +258,16 @@ class SentinelApp:
             fg_color=self._t("sidebar_bg", "#0A0C10"),
         )
         self._sidebar_frame.grid(
-            row=1, column=0, sticky="ns", padx=0, pady=0,
+            row=1,
+            column=0,
+            sticky="ns",
+            padx=0,
+            pady=0,
         )
         self._sidebar_frame.grid_propagate(False)
         self._sidebar_frame.grid_rowconfigure(
-            len(_TAB_DEFS) + 1, weight=1,
+            len(_TAB_DEFS) + 1,
+            weight=1,
         )
 
         # Hamburger
@@ -309,7 +314,8 @@ class SentinelApp:
                 btn.configure(text=f"  {icon}", width=40)
             else:
                 btn.configure(
-                    text=f"  {icon}  {label}", width=192,
+                    text=f"  {icon}  {label}",
+                    width=192,
                 )
 
     def _highlight_sidebar_tab(self, active_key: str) -> None:
@@ -340,7 +346,11 @@ class SentinelApp:
             fg_color=self._t("bg_primary", "#050608"),
         )
         self._content_frame.grid(
-            row=1, column=1, sticky="nsew", padx=0, pady=0,
+            row=1,
+            column=1,
+            sticky="nsew",
+            padx=0,
+            pady=0,
         )
         self._content_frame.grid_columnconfigure(0, weight=1)
         self._content_frame.grid_rowconfigure(0, weight=1)
@@ -359,7 +369,8 @@ class SentinelApp:
             if module is None:
                 continue
             frame = ctk.CTkFrame(
-                self._content_frame, fg_color="transparent",
+                self._content_frame,
+                fg_color="transparent",
             )
             frame.grid(row=0, column=0, sticky="nsew")
             self._tab_frames[key] = frame
@@ -388,6 +399,7 @@ class SentinelApp:
     ) -> None:
         try:
             import importlib
+
             mod = importlib.import_module(module_path)
             inst = getattr(mod, class_name)(parent, self)
             self._tab_instances[attr] = inst
@@ -427,7 +439,11 @@ class SentinelApp:
             border_color=self._t("border_color", "#3b494b"),
         )
         self.chat_display.grid(
-            row=0, column=0, sticky="nsew", padx=4, pady=4,
+            row=0,
+            column=0,
+            sticky="nsew",
+            padx=4,
+            pady=4,
         )
 
         # Right panel
@@ -465,7 +481,11 @@ class SentinelApp:
         # Step progress bar
         self._progress_frame = ctk.CTkFrame(right, fg_color="transparent")
         self._progress_frame.grid(
-            row=2, column=0, sticky="ew", padx=4, pady=2,
+            row=2,
+            column=0,
+            sticky="ew",
+            padx=4,
+            pady=2,
         )
         ctk.CTkLabel(
             self._progress_frame,
@@ -481,7 +501,10 @@ class SentinelApp:
             progress_color=self._t("accent", "#00F0FF"),
         )
         self.step_progress.pack(
-            side="left", fill="x", expand=True, padx=4,
+            side="left",
+            fill="x",
+            expand=True,
+            padx=4,
         )
         self.step_progress.set(0)
         self.step_label = ctk.CTkLabel(
@@ -499,7 +522,11 @@ class SentinelApp:
             fg_color=self._t("bg_secondary", "#0A0C10"),
         )
         self._metrics_frame.grid(
-            row=3, column=0, sticky="ew", padx=4, pady=(4, 4),
+            row=3,
+            column=0,
+            sticky="ew",
+            padx=4,
+            pady=(4, 4),
         )
         self._build_metrics(self._metrics_frame)
 
@@ -537,6 +564,7 @@ class SentinelApp:
         """Refresh CPU/RAM/Disk bars (called every 2s)."""
         try:
             import psutil
+
             self._metric_bars["CPU"].set(
                 psutil.cpu_percent() / 100,
             )
@@ -561,7 +589,10 @@ class SentinelApp:
             fg_color=self._t("bg_secondary", "#0A0C10"),
         )
         bar.grid(
-            row=2, column=0, columnspan=2, sticky="ew",
+            row=2,
+            column=0,
+            columnspan=2,
+            sticky="ew",
         )
         bar.grid_propagate(False)
         bar.grid_columnconfigure(2, weight=1)
@@ -618,7 +649,10 @@ class SentinelApp:
             fg_color=self._t("bg_secondary", "#0A0C10"),
         )
         input_frame.grid(
-            row=3, column=0, columnspan=2, sticky="ew",
+            row=3,
+            column=0,
+            columnspan=2,
+            sticky="ew",
         )
         input_frame.grid_columnconfigure(0, weight=1)
         self._build_quick_chips(input_frame)
@@ -656,8 +690,7 @@ class SentinelApp:
         )
         self.goal_entry.grid(row=1, column=0, sticky="ew", padx=(8, 4), pady=4)
         self._placeholder_text = (
-            "Describe what you want done\u2026   "
-            "(Ctrl+Enter to run, Ctrl+K for commands)"
+            "Describe what you want done\u2026   (Ctrl+Enter to run, Ctrl+K for commands)"
         )
         self.goal_entry.insert("1.0", self._placeholder_text)
         self.goal_entry.configure(
@@ -673,7 +706,8 @@ class SentinelApp:
             lambda e: (
                 self.goal_entry.configure(
                     border_color=self._t(
-                        "border_active", "#00F0FF",
+                        "border_active",
+                        "#00F0FF",
                     ),
                 ),
                 self._clear_placeholder(e),
@@ -684,7 +718,8 @@ class SentinelApp:
             lambda e: (
                 self.goal_entry.configure(
                     border_color=self._t(
-                        "border_color", "#3b494b",
+                        "border_color",
+                        "#3b494b",
                     ),
                 ),
                 self._restore_placeholder(e),
@@ -837,6 +872,7 @@ class SentinelApp:
             return
         cfg = self.config.load()
         from core.engine import AgentEngine
+
         self.engine = AgentEngine(
             cfg,
             approval_callback=self._approve_action,
@@ -866,7 +902,8 @@ class SentinelApp:
             msg = result.get("msg", result.get("error", ""))
             if msg:
                 self._add_chat(
-                    f"  \u2192 {msg}", "assistant" if ok else "error",
+                    f"  \u2192 {msg}",
+                    "assistant" if ok else "error",
                 )
         self.root.after(0, self._update_step_labels, step)
         self.root.after(
@@ -913,14 +950,12 @@ class SentinelApp:
             self._add_chat(msg, "error")
         else:
             self._add_chat(
-                f"\u2705 Completed in {steps} step"
-                f"{'s' if steps != 1 else ''}."
-                + f"\n{summary}",
+                f"\u2705 Completed in {steps} step{'s' if steps != 1 else ''}." + f"\n{summary}",
                 "assistant",
             )
             if self.tray:
                 try:
-                    self.tray.notify(
+                    self.tray.show_notification(
                         "Sentinel Desktop",
                         f"Finished in {steps} steps. " + summary[:120],
                     )
@@ -929,19 +964,19 @@ class SentinelApp:
 
     def _handle_agent_error(self, exc: Exception, goal: str) -> None:
         import traceback
+
         tb = traceback.format_exc()
         self._add_chat(f"\u274c {type(exc).__name__}: {exc}", "error")
         log_path = (
-            Path(os.environ.get("APPDATA", str(Path.home())))
-            / "SentinelDesktop"
-            / "last_error.log"
+            Path(os.environ.get("APPDATA", str(Path.home()))) / "SentinelDesktop" / "last_error.log"
         )
         try:
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with log_path.open("w", encoding="utf-8") as f:
                 f.write(f"Goal: {goal}\n\n{tb}\n")
             self._add_chat(
-                f"   Traceback: {log_path}", "system",
+                f"   Traceback: {log_path}",
+                "system",
             )
         except (OSError, RuntimeError) as exc2:
             logger.debug("Failed to write error log: %s", exc2)
@@ -963,12 +998,15 @@ class SentinelApp:
             import io
 
             from PIL import Image
+
             img_data = base64.b64decode(b64_data)
             img = Image.open(io.BytesIO(img_data))
             max_w, max_h = 330, 250
             img.thumbnail((max_w, max_h))
             ctk_img = ctk.CTkImage(
-                light_image=img, dark_image=img, size=img.size,
+                light_image=img,
+                dark_image=img,
+                size=img.size,
             )
             self._screenshot_ctk_img = ctk_img
             self.screenshot_label.configure(image=ctk_img, text="")
@@ -981,7 +1019,8 @@ class SentinelApp:
         decision = {"approved": False}
         event = threading.Event()
         self.root.after(
-            0, lambda: self._build_approval_dialog(action, decision, event),
+            0,
+            lambda: self._build_approval_dialog(action, decision, event),
         )
         event.wait(timeout=60)
         return decision["approved"]
@@ -1063,7 +1102,10 @@ class SentinelApp:
     # ── History ──────────────────────────────────────────────────────
 
     def _add_history_entry(
-        self, step: int, action_name: str, result: dict[str, Any],
+        self,
+        step: int,
+        action_name: str,
+        result: dict[str, Any],
     ) -> None:
         pass  # History tab manages its own data
 
@@ -1071,7 +1113,10 @@ class SentinelApp:
 
     def _open_settings(self) -> None:
         SettingsWindow(
-            self.root, self.config, self._on_settings_saved, app=self,
+            self.root,
+            self.config,
+            self._on_settings_saved,
+            app=self,
         )
 
     def _on_settings_saved(self) -> None:
@@ -1139,7 +1184,8 @@ class SentinelApp:
         ]
 
         frame = ctk.CTkScrollableFrame(
-            palette, fg_color="transparent",
+            palette,
+            fg_color="transparent",
         )
         frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
@@ -1149,9 +1195,7 @@ class SentinelApp:
                 text=name,
                 anchor="w",
                 command=cmd,
-                fg_color=self._t(
-                    "bg_primary", "#050608"
-                ),
+                fg_color=self._t("bg_primary", "#050608"),
                 hover_color=self._t("bg_hover", "#333539"),
                 text_color=self._t("text_primary", "#e2e2e8"),
             ).pack(fill="x", pady=2)
@@ -1178,11 +1222,17 @@ class SentinelApp:
                 text_color=self._t("text_primary", "#e2e2e8"),
             )
             self._search_entry.pack(
-                side="left", fill="x", expand=True, padx=4,
+                side="left",
+                fill="x",
+                expand=True,
+                padx=4,
             )
             self._search_entry.bind("<Escape>", lambda e: self._search_frame.grid_remove())
         self._search_frame.grid(
-            row=3, column=0, columnspan=2, sticky="ew",
+            row=3,
+            column=0,
+            columnspan=2,
+            sticky="ew",
         )
         self._search_entry.focus()
 
@@ -1190,6 +1240,7 @@ class SentinelApp:
 
     def _take_screenshot(self) -> None:
         from core.screenshot import capture_to_base64
+
         try:
             b64 = capture_to_base64()
         except OSError as exc:
@@ -1278,6 +1329,7 @@ class SentinelApp:
     def _check_resume_checkpoint(self) -> None:
         try:
             from core.checkpoint import CheckpointManager
+
             cp = CheckpointManager()
             latest = cp.load_latest()
             if not latest:
@@ -1308,18 +1360,65 @@ class SentinelApp:
                 "system",
             )
             return
-        self.tray = SentinelTray(
-            on_show=self._show_from_tray,
-            on_hide=self._hide_to_tray,
-            on_stop_agent=lambda: (
-                self.engine.stop()
-                if self.engine and self.engine.running
-                else None
-            ),
-            on_quit=lambda: self.root.after(0, self.root.destroy),
-        )
-        if self.tray.run() and self.cfg.get("start_in_tray"):
+        # v18: migrated from the deprecated gui.tray.SentinelTray to the
+        # richer gui.system_tray.SystemTrayIcon (status colours, IT quick actions).
+        self.tray = SystemTrayIcon(self)
+        if self.tray.start() and self.cfg.get("start_in_tray"):
             self.root.after(100, self._hide_to_tray)
+
+    # ── Tray delegation hooks (called by SystemTrayIcon via root.after) ────
+
+    def _tray_show_window(self) -> None:
+        """Restore the window from the tray (SystemTrayIcon → Show Window)."""
+        self._show_from_tray()
+
+    def _tray_quit(self) -> None:
+        """Quit the application cleanly (SystemTrayIcon → Exit)."""
+        try:
+            self.root.destroy()
+        except (RuntimeError, tk.TclError) as exc:
+            logger.debug("Tray quit — root destroy failed: %s", exc)
+
+    def _tray_new_task(self) -> None:
+        """Show the window and focus the task input (SystemTrayIcon → New Task)."""
+        self._show_from_tray()
+        try:
+            if hasattr(self, "entry") and self.entry is not None:
+                self.entry.focus_set()
+        except (RuntimeError, tk.TclError) as exc:
+            logger.debug("Tray new task — focus failed: %s", exc)
+
+    def _tray_run_script(self, script_path: str) -> None:
+        """Run an IT support script from a tray quick action.
+
+        Runs headless via the ScriptEngine (does not require the Scripts tab).
+        The result is surfaced as a tray notification.
+        """
+        if self.engine and self.engine.running:
+            if self.tray:
+                self.tray.show_notification("Busy", "Agent is already running.")
+            return
+
+        def _run() -> None:
+            try:
+                from core.action_executor import ActionExecutor
+                from core.script_engine import ScriptEngine
+
+                executor = ActionExecutor()
+                engine = ScriptEngine(executor)
+                result = engine.run_script(script_path)
+                summary = f"{result.steps_completed}/{result.steps_total} steps"
+                if self.tray:
+                    self.tray.show_notification(
+                        "Script Done" if result.success else "Script Failed",
+                        summary,
+                    )
+            except (OSError, RuntimeError, ValueError) as exc:
+                logger.warning("Tray script run failed: %s", exc)
+                if self.tray:
+                    self.tray.show_notification("Script Error", str(exc)[:120])
+
+        threading.Thread(target=_run, daemon=True).start()
 
     def _hide_to_tray(self) -> None:
         if not self.tray:
@@ -1334,10 +1433,12 @@ class SentinelApp:
             self.root.after(0, self.root.deiconify)
             self.root.after(0, self.root.lift)
             self.root.after(
-                0, lambda: self.root.attributes("-topmost", True),
+                0,
+                lambda: self.root.attributes("-topmost", True),
             )
             self.root.after(
-                200, lambda: self.root.attributes("-topmost", False),
+                200,
+                lambda: self.root.attributes("-topmost", False),
             )
         except (RuntimeError, tk.TclError) as exc:
             logger.debug("Failed to show window: %s", exc)
@@ -1361,8 +1462,7 @@ class SentinelApp:
         cfg = self.config.load()
         provider = cfg.get("provider", "")
         if (
-            not cfg.get("api_key")
-            and provider not in ("ollama", "lmstudio", "custom")
+            not cfg.get("api_key") and provider not in ("ollama", "lmstudio", "custom")
         ) or not cfg.get("model"):
             self._add_chat(
                 "\u26a0 No LLM configured yet. Click \u2699 to choose a "
@@ -1404,8 +1504,11 @@ class SettingsWindow:
 
     def _build_provider_section(self) -> None:
         from core.provider_registry import PROVIDERS, get_provider_names
+
         ctk.CTkLabel(
-            self.win, text="Provider", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Provider",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(20, 4))
         self.provider_var = ctk.StringVar(
             value=self.cfg.get("provider", "openai"),
@@ -1418,13 +1521,16 @@ class SettingsWindow:
         )
         self.provider_menu.pack(fill="x", padx=20, pady=4)
         ctk.CTkLabel(
-            self.win, text="Base URL", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Base URL",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         url_frame = ctk.CTkFrame(self.win)
         url_frame.pack(fill="x", padx=20, pady=4)
         url_frame.grid_columnconfigure(0, weight=1)
         catalog_url = PROVIDERS.get(
-            self.provider_var.get(), {},
+            self.provider_var.get(),
+            {},
         ).get("base_url", "")
         self.base_url_var = ctk.StringVar(
             value=self.cfg.get("custom_base_url") or catalog_url,
@@ -1458,7 +1564,9 @@ class SettingsWindow:
 
     def _build_credentials_section(self) -> None:
         ctk.CTkLabel(
-            self.win, text="API Key", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="API Key",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         self.api_key_entry = ctk.CTkEntry(
             self.win,
@@ -1470,7 +1578,9 @@ class SettingsWindow:
         if self.cfg.get("api_key"):
             self.api_key_entry.insert(0, self.cfg["api_key"])
         ctk.CTkLabel(
-            self.win, text="Model", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Model",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         model_frame = ctk.CTkFrame(self.win)
         model_frame.pack(fill="x", padx=20, pady=4)
@@ -1495,7 +1605,9 @@ class SettingsWindow:
 
     def _build_theme_section(self) -> None:
         ctk.CTkLabel(
-            self.win, text="Theme", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Theme",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         self.theme_var = ctk.StringVar(
             value=self.cfg.get("theme", "sentinel"),
@@ -1511,9 +1623,7 @@ class SettingsWindow:
         if self.app:
             self.app.current_theme = get_theme(choice)
             apply_theme(choice)
-            self.app._t = lambda key, fb="": (
-                self.app.current_theme.get(key, fb)
-            )
+            self.app._t = lambda key, fb="": self.app.current_theme.get(key, fb)
             self.app.status_label.configure(
                 text_color=self.app._t("status_idle", "#849495"),
             )
@@ -1534,8 +1644,11 @@ class SettingsWindow:
 
     def _build_monitor_section(self) -> None:
         from core.screenshot import list_monitors
+
         ctk.CTkLabel(
-            self.win, text="Monitor", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Monitor",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         monitor_choices: list[str] = [
             "auto \u2014 monitor with focused window (recommended)",
@@ -1555,17 +1668,15 @@ class SettingsWindow:
                     monitor_choices.append(label)
         except (OSError, RuntimeError) as exc:
             logger.debug("Monitor enumeration failed: %s", exc)
-            monitor_choices.extend([
-                "0 \u2014 All monitors",
-                "1 \u2014 Primary",
-            ])
+            monitor_choices.extend(
+                [
+                    "0 \u2014 All monitors",
+                    "1 \u2014 Primary",
+                ]
+            )
         current_monitor = self.cfg.get("monitor")
         default_label = next(
-            (
-                s
-                for s in monitor_choices
-                if str(current_monitor) == s.split(" ", 1)[0]
-            ),
+            (s for s in monitor_choices if str(current_monitor) == s.split(" ", 1)[0]),
             monitor_choices[0],
         )
         self.monitor_var = ctk.StringVar(value=default_label)
@@ -1577,7 +1688,9 @@ class SettingsWindow:
 
     def _build_run_mode_section(self) -> None:
         ctk.CTkLabel(
-            self.win, text="Run mode", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Run mode",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         toggles = [
             (
@@ -1619,25 +1732,29 @@ class SettingsWindow:
 
     def _build_step_budget_section(self) -> None:
         ctk.CTkLabel(
-            self.win, text="Step Budget", font=("Segoe UI", 13, "bold"),
+            self.win,
+            text="Step Budget",
+            font=("Segoe UI", 13, "bold"),
         ).pack(anchor="w", padx=20, pady=(12, 4))
         self.steps_entry = ctk.CTkEntry(
-            self.win, height=36, placeholder_text="100",
+            self.win,
+            height=36,
+            placeholder_text="100",
         )
         self.steps_entry.pack(fill="x", padx=20, pady=4)
         self.steps_entry.insert(0, str(self.cfg.get("max_steps", 100)))
 
     def _on_provider_change(self, choice: str) -> None:
         from core.provider_registry import PROVIDERS
+
         catalog_url = PROVIDERS.get(choice, {}).get("base_url", "")
         current = self.base_url_var.get().strip()
-        if not current or current in {
-            p.get("base_url", "") for p in PROVIDERS.values()
-        }:
+        if not current or current in {p.get("base_url", "") for p in PROVIDERS.values()}:
             self.base_url_var.set(catalog_url)
 
     def _reset_base_url(self) -> None:
         from core.provider_registry import PROVIDERS
+
         provider = self.provider_var.get()
         self.base_url_var.set(
             PROVIDERS.get(provider, {}).get("base_url", ""),
@@ -1645,6 +1762,7 @@ class SettingsWindow:
 
     def _detect_models(self) -> None:
         from core.provider_registry import fetch_models
+
         provider = self.provider_var.get()
         api_key = self.api_key_entry.get().strip()
         if not api_key:
@@ -1656,10 +1774,7 @@ class SettingsWindow:
                 models[0] if len(models) == 1 else "",
             )
             self.model_entry.configure(
-                placeholder_text=(
-                    f"Found {len(models)} models: "
-                    f"{', '.join(models[:5])}"
-                ),
+                placeholder_text=(f"Found {len(models)} models: {', '.join(models[:5])}"),
             )
         else:
             self.model_var.set("")
@@ -1669,18 +1784,22 @@ class SettingsWindow:
 
     def _save(self) -> None:
         from core.provider_registry import PROVIDERS
+
         provider = self.provider_var.get()
         self.cfg["provider"] = provider
         self.cfg["api_key"] = self.api_key_entry.get().strip()
         self.cfg["model"] = self.model_var.get().strip()
         self.cfg["theme"] = self.theme_var.get()
         url = self.base_url_var.get().strip().rstrip("/")
-        catalog_url = PROVIDERS.get(provider, {}).get(
-            "base_url", "",
-        ).rstrip("/")
-        self.cfg["custom_base_url"] = (
-            url if url and url != catalog_url else ""
+        catalog_url = (
+            PROVIDERS.get(provider, {})
+            .get(
+                "base_url",
+                "",
+            )
+            .rstrip("/")
         )
+        self.cfg["custom_base_url"] = url if url and url != catalog_url else ""
         try:
             self.cfg["max_steps"] = int(self.steps_entry.get() or "100")
         except ValueError:
@@ -1702,6 +1821,7 @@ class SettingsWindow:
             self.config.save(self.cfg)
         except OSError as exc:
             from tkinter import messagebox
+
             messagebox.showerror("Save Error", f"Cannot save settings:\n{exc}")
             return
         if self.on_save:

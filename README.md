@@ -1,18 +1,18 @@
 <div align="center">
 
-# ⬡ Sentinel Desktop v17.0
+# ⬡ Sentinel Desktop v18.0
 
 **AI-powered desktop automation agent — cross-platform, cyberpunk HUD edition.**
 
 Give it a goal in plain English. It sees your screen, moves the mouse, types, and interacts with any application — autonomously.
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
-[![Version](https://img.shields.io/badge/version-17.0.0-orange)](https://github.com/dirtysouthalpha/sentinel-desktop/releases)
-[![Tests](https://img.shields.io/badge/tests-7823%20passing-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
+[![Version](https://img.shields.io/badge/version-18.0.0-orange)](https://github.com/dirtysouthalpha/sentinel-desktop/releases)
+[![Tests](https://img.shields.io/badge/tests-7882%20passing-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
 [![Lint](https://img.shields.io/badge/lint-0%20errors-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-105+ action types · 7,823 tests · 35+ API endpoints · 20+ LLM providers · MCP server · Fleet/daemon mode
+105+ action types · 7,882 tests · 35+ API endpoints · 20+ LLM providers · MCP server · Fleet/daemon mode
 
 </div>
 
@@ -86,7 +86,7 @@ Press **Esc three times within 1.5 seconds** to immediately stop the agent. This
 
 ```bash
 pip install -e ".[dev]"
-pytest tests/ -q          # 5,244 tests
+pytest tests/ -q          # 7,882 tests
 ruff check core/ gui/ api/ tests/   # zero lint errors
 ```
 
@@ -209,7 +209,7 @@ sentinel-desktop/
 │   ├── overlay.py       # Action overlay + animated cursor
 │   └── tabs/            # Settings, scripts, workflows, history tabs
 ├── scripts/it_support/  # 19 pre-built IT support script templates
-├── tests/               # 5,244 tests, 99% coverage
+├── tests/               # 7,882 tests, 99% coverage
 └── requirements.txt
 ```
 

@@ -3,6 +3,16 @@
 > Full requirements traceability for v13.0 through v17.0
 > Each requirement has a unique ID for test traceability.
 
+> **⚠️ v18 reconciliation (2026-06-19):** Not every requirement below shipped. The
+> following were *planned* for v13–v17 but never built and have been removed from the
+> shipped feature claims: **loguru migration** (SLOG-01), `working_get`/`working_set`
+> (WMA-05), `dns_leak_test` (DND-02), `tray_read`/`tray_click`/`desktop_control`
+> (STD-01–03), the **Docker Management** action group (DOK-01–06), `get_logs`/
+> `set_log_level` (SLOG-04/05), `learn_pattern` (ADP-05), and `suggest_action`
+> (GLN-02). They are rescheduled in `docs/ROADMAP-v18-to-v22.md` (Docker pairs with
+> v20 Penguin; goal-learning pairs with v21 Operator). The remaining requirements
+> shipped as described.
+
 ---
 
 ## v13.0 — OS Integration

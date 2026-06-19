@@ -1,4 +1,4 @@
-"""Tests for the bcrypt password migration in core.auth."""
+"""Tests for bcrypt password verification in core.auth."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import hashlib
 from core.auth import (
     AuthManager,
     Role,
-    _hash_password,
     _hash_password_bcrypt,
     _is_bcrypt_hash,
     _verify_password,
@@ -30,12 +29,13 @@ def test_verify_bcrypt_round_trip():
     assert _verify_password("nope", h) is False
 
 
-def test_verify_legacy_sha256():
-    """Pre-bcrypt users must still verify after the migration."""
+def test_legacy_sha256_hash_is_rejected():
+    """v18: the SHA-256 verification path was removed. A pre-bcrypt stored hash
+    can no longer be verified — the user must reset their password."""
     salt = "deadbeef" * 8
-    stored = _hash_password("hunter2", salt)
+    stored = hashlib.sha256(f"{salt}hunter2".encode()).hexdigest()
     assert not _is_bcrypt_hash(stored)
-    assert _verify_password("hunter2", stored, salt) is True
+    assert _verify_password("hunter2", stored, salt) is False
     assert _verify_password("wrong", stored, salt) is False
 
 
@@ -58,11 +58,10 @@ def test_create_user_uses_bcrypt(tmp_path):
     assert am.authenticate("alice", "wrong") is None
 
 
-def test_authenticate_upgrades_legacy_hash(tmp_path):
-    """A legacy SHA-256 user gets transparently rehashed to bcrypt on login."""
+def test_authenticate_rejects_legacy_hash(tmp_path):
+    """v18: a user whose stored hash is still pre-bcrypt SHA-256 cannot log in.
+    The transparent upgrade was removed; they must reset their password."""
     am = AuthManager(config_path=str(tmp_path / "users.json"))
-    # Create the default admin (already bcrypt) then forcibly downgrade
-    # to simulate an upgraded-from-old-install user.
     admin = am.get_user("admin")
     assert admin is not None
     legacy_salt = "cafebabe" * 8
@@ -70,14 +69,8 @@ def test_authenticate_upgrades_legacy_hash(tmp_path):
     admin.password_hash = hashlib.sha256(f"{legacy_salt}sentinel".encode()).hexdigest()
     assert not _is_bcrypt_hash(admin.password_hash)
 
-    # First successful login should rehash.
-    result = am.authenticate("admin", "sentinel")
-    assert result is admin
-    assert _is_bcrypt_hash(admin.password_hash), "expected hash upgraded to bcrypt"
-    assert admin.salt == ""
-
-    # Subsequent logins still work.
-    assert am.authenticate("admin", "sentinel") is admin
+    # Even the correct password is rejected because the hash is legacy format.
+    assert am.authenticate("admin", "sentinel") is None
 
 
 def test_update_user_password_rehashes_with_bcrypt(tmp_path):

@@ -602,13 +602,13 @@ class TestClickImage:
 class TestAsyncExecute:
     def test_async_execute_runs_handler(self, fake_executor):
         ex = fake_executor()
-        result = asyncio.run(ex.execute({"action": "note", "text": "async test"}))
+        result = asyncio.run(ex._execute_with_logging({"action": "note", "text": "async test"}))
         assert result["success"] is True
         assert result["output"] == "async test"
 
     def test_async_execute_unknown_action(self, fake_executor):
         ex = fake_executor()
-        result = asyncio.run(ex.execute({"action": "teleport"}))
+        result = asyncio.run(ex._execute_with_logging({"action": "teleport"}))
         assert result["success"] is False
 
 

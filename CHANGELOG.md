@@ -1,5 +1,144 @@
 # Changelog
 
+## [18.0.0] — "Foundation" (reconciliation)
+
+A reconciliation major version: closes the gap between what the project *claims* and what it *ships*. No new user-facing capability; this version pays down process and structural debt so v19+ (Fortress, Penguin, Operator, Voice) can land cleanly.
+
+### Version & docs sync
+- `core.__version__` → `18.0.0`; the FastAPI app now sources its `title`/`version` from `core.__version__` instead of the stale hardcoded `"3.1.0"` (unbumped since v3.1.0 across 14 major versions).
+- `CHANGELOG.md` backfilled for v7–v17 (previously stopped at v6.0.0).
+- README test count reconciled to reality (7,882 collected; the previous `5,244` was stale and the badge `7,823` was slightly off).
+- New `docs/ROADMAP-v18-to-v22.md` names the next four themed versions.
+- `.planning/` updated to reflect v18.
+
+### Dependency unification (manifests no longer diverge)
+- `pyproject.toml` is now the single source of truth; the previously-undeclared imports are exposed as extras: `[web]` (playwright), `[netops]` (paramiko), `[voice]` (SpeechRecognition, pyaudio, pycaw), `[mcp]` (fastmcp), `[net]` (dnspython), `[mfa]` (pyotp). `[all]` aggregates them.
+- `requirements.txt` reduced to a `-e .[all]` pointer.
+- `pip install sentinel-desktop[all]` now actually delivers the SSH, browser, MCP, and voice features that were advertised but silently uninstalled.
+
+### Breaking changes (deprecation removal — justifies the major bump)
+- **Removed** `LLMClient.chat_with_screenshot()` (`core/llm_client.py`) — deprecated since v3.1.0, zero callers.
+- **Removed** async `ActionExecutor.execute()` (`core/action_executor.py`) — deprecated since v3.1.0; the engine loop uses `execute_sync()`. Callers updated.
+- **Removed** the legacy SHA-256 password verification path (`core/auth.py`) along with the `S324` ruff per-file ignore it required. **Migration:** users whose stored hash is still pre-bcrypt SHA-256 must reset their password on first login under v18.
+- **Removed** `gui/tray.py` (deprecated since v3.1.0); the GUI migrated to `gui/system_tray.SystemTrayIcon`, which provides status colours, IT quick actions, and a fuller menu.
+
+### Structural
+- New `core/action_registry.py`: `@register_action(name, aliases=[...])` decorator + `ActionRegistry` replaces the 110-entry `_dispatch_table` dict literal in `action_executor.py`. Future versions add actions without editing a monolithic table.
+- New `api/routes.py`: `@api_route(method, path)` decorator evolving the imperative `_register_*_routes` methods into a collected registry wired at app-build time.
+- Files are *not* physically split — only the extension seam is introduced.
+
+### Release pipeline
+- The first real `v18.0.0` git tag was created and pushed. No tag had ever existed before; the tag-driven `release.yml` (PyPI Trusted Publishing) is now exercised end-to-end.
+
+### Phantom-feature reconciliation
+- Removed from docs the v13–v17 feature claims that were never built (Docker management, tray/desktop-control actions, goal-learning, loguru, `dns_leak_test`, working-memory actions). They return as real, tested features in v19–v22.
+
+## [17.0] — Audio/Voice (June 2026)
+
+### Audio
+- TTS via Windows SAPI `SpVoice` (pywin32, no new deps) + PowerShell fallback.
+- STT via SAPI dictation grammar + SpeechRecognition library fallback.
+- `speak(text, blocking, rate, volume)` — rate clamped ±10, volume clamped 0–100.
+- `listen(timeout, phrase_limit)` — returns transcribed text.
+- `volume_get()` / `volume_set(level)` — pycaw (optional) + PowerShell fallback.
+- `mute_toggle()` — Windows audio endpoint mute.
+- `list_voices()` / `set_voice(name_or_id)` — enumerate and select SAPI voices.
+- Thread-safe `_tts_voice` cached instance.
+- Actions: `speak`, `listen`, `volume_get`, `volume_set`, `mute_toggle`, `list_voices`.
+
+## [16.0] — Window Control, HTTP Client, File Monitor (June 2026)
+
+### Window management
+- `resize_window`, `move_window`, `minimize_window`, `maximize_window`, `restore_window`, `get_window_state`, `get_monitors`.
+
+### HTTP client
+- `http_get`, `http_post`, `http_put`, `http_delete`, `http_download` with SSRF protection and a 50k body cap.
+
+### File/process watcher
+- `watch_file` (modify/create/delete), `watch_file_content` (log tailing), `watch_process` (start/stop/cpu_spike).
+- All wired into executor dispatch table + tool schemas.
+
+## [15.0] — Config Persistence + DNS Tools (June 2026)
+
+### Config persistence
+- `ConfigStore` — dot-notation JSON persistence (`llm.provider`, `llm.model`, etc.); process-wide singleton via `get_default_store()`.
+
+### Network diagnostics
+- `dns_lookup` — A/AAAA/MX/PTR/TXT via socket + dnspython fallback.
+- `ping_host` — subprocess ping with Windows/Unix output parsing.
+- `port_open` / `scan_ports` — TCP reachability checks.
+- `traceroute` — hop-by-hop path tracing.
+- Actions: `config_get`, `config_set`, `dns_lookup`, `ping`, `port_scan`.
+
+## [14.0] — Resilience Engine (June 2026)
+
+- `@retryable` decorator — exponential backoff with jitter, configurable exceptions, `on_retry` hook.
+- `CircuitBreaker` — CLOSED/OPEN/HALF_OPEN state machine, context-manager interface.
+- `RetryExhausted` / `CircuitBreakerOpen` typed exceptions.
+- Pre-wired breakers for: ssh, browser, ocr, llm, desktop, netops.
+- `get_all_breaker_stats()` / `reset_all_breakers()` for monitoring.
+- Actions: `retry_last`, `get_circuit_breakers`.
+
+## [13.0] — Sentinel-Plus: MFA (June 2026)
+
+- MFA Detector — 4 strategies (keyword, DOM attributes, page structure, patterns).
+- MFA Handler — 3 approaches (TOTP auto-generation, user prompt, SMS/Email retrieval).
+- Browser integration — `detect_mfa()` and `handle_mfa()` methods.
+- TOTP provider supporting 9 authenticator apps (Google, Authy, Microsoft, etc.).
+- Service name extraction from URLs for automatic TOTP lookup; code caching with 5-min TTL.
+- Actions: `mfa_detect`, `mfa_handle`.
+- Added `pyotp ~= 2.9` dependency.
+
+## [12.0] — Conductor: Multi-Agent Orchestration (2026-06-07)
+
+- Task planner — rule-based goal decomposition with dependency detection.
+- Parallel executor — concurrent subtask execution respecting dependencies.
+- Result synthesizer — merge multi-agent results with status aggregation.
+- Conductor coordinator — end-to-end plan → execute → synthesize pipeline.
+- Action: `conductor_run` (async→sync bridge), Pydantic schema, tool schema.
+
+## [11.0] — Memory: Persistent Agent Memory (2026-06-07)
+
+- Episodic memory — timestamped JSONL with search, compression of old episodes.
+- Semantic memory — SQLite key-value facts with categories, tags, access tracking.
+- Working memory — in-memory session scratchpad with key-value and bucket stores.
+- Actions: `memory_store`, `memory_recall`, `memory_search`, `memory_forget`.
+
+## [10.0] — Sentinel Server: Fleet/Daemon Mode (2026-06-07)
+
+- Daemon service manager (start/stop/heartbeat/job tracking).
+- Fleet manager (register/unregister/heartbeat/nodes).
+- Persistent job queue (submit/claim/complete/fail/cancel with priority).
+- 14 API endpoints (`/daemon/*`, `/fleet/*`, `/jobs/*`).
+
+## [9.0] — Netops: SSH Network Device Control (2026-06-07)
+
+- SSH client via paramiko (connect, run_command, context manager).
+- Device-aware command runner (Cisco IOS/NX-OS, Juniper JunOS, FortiGate, SonicWall, MikroTik, pfSense, Linux).
+- Output parser for interfaces, ARP, routing, ping, version, IPs, MACs.
+- Actions: `ssh_connect`, `ssh_disconnect`, `ssh_run`, `ssh_show`, `ssh_ping`.
+
+## [8.0.0] — Webhand: Browser Automation (2026-06-06)
+
+- Embedded Playwright browser control (Chromium/Firefox/WebKit).
+- 11 web actions: `web_open`, `web_click`, `web_type`, `web_read`, `web_extract`, `web_wait_for`, `web_screenshot`, `web_eval_js`, `web_download`, `web_upload`, `web_tabs`.
+- Dual-mode detection (web vs native) with mode handoff.
+- Self-signed certificate whitelist for IT appliances.
+- IT appliance login page detection (10 vendors: SonicWall, FortiGate, UniFi, Meraki, pfSense, OPNsense, MikroTik, NinjaOne, ConnectWise, IT Glue).
+- Session vault — encrypted cookie persistence and restore.
+- Web recorder — capture browser actions as replayable JSON scripts.
+- 325 new tests, 5,662 total passing.
+
+## [7.0.0] — Perception: Grounding Revolution (2026-06-06)
+
+- Phase 1: DPI & coordinate calibration (per-monitor scaling, HiDPI transform, calibration persistence).
+- Phase 2: Hybrid grounding pipeline (a11y-first element map, ID-based targeting, vision fallback).
+- Phase 3: Set-of-Marks screenshots (numbered bounding boxes, multi-source fusion, CV contour detection).
+- Phase 4: Native computer-use adapters (Anthropic computer_20250124, OpenAI computer-use-preview, JSON fallback).
+- Phase 5: Click verification & self-correction (post-action diff, tiered retry, enforced self-healing).
+- Phase 6: Local grounding model (optional, feature-flagged, OmniParser/Florence-2/YOLO interface).
+- 179 new tests; 5,337 total passing.
+
 ## [6.0.0] - 2026-06-05
 
 ### Dependency upgrades

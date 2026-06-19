@@ -4,11 +4,11 @@
 
 ```yaml
 milestone:
-  version: "9.0-12.0"
-  name: "Netops + Server + Memory + Conductor"
+  version: "18.0.0"
+  name: "Foundation (reconciliation)"
   status: "complete"
-  started: 2026-06-07
-  completed: 2026-06-07
+  started: 2026-06-19
+  completed: 2026-06-19
 
 progress:
   phases_completed: 5
@@ -17,17 +17,20 @@ progress:
   total_requirements: 35
 
 metadata:
-  last_updated: 2026-06-07
-  last_phase: Phase 5
+  last_updated: 2026-06-19
+  last_phase: Foundation
 ```
 
 ---
 
 ## Current Position
 
-Phase: 5 of 5 (Testing & Verification)
-Status: ✅ Milestone Complete
-Last activity: 2026-06-07 — All v9-v12 milestones shipped with full agent integration
+Phase: v18 Foundation (complete)
+Status: ✅ Foundation shipped — version/docs sync, dep unification, deprecation removal,
+action/endpoint registries, first real release tag.
+Last activity: 2026-06-19 — v18.0.0 reconciliation release
+
+Next: v19 Fortress (enterprise security) — see `docs/ROADMAP-v18-to-v22.md`
 
 Progress: [██████████] 100%
 

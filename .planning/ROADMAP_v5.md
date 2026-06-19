@@ -3,6 +3,14 @@
 > Goal: A desktop automation agent that can literally do anything on a computer.
 > Starting point: v12.0 (6,072 tests, 62 tools, 69 executor handlers, 59 API routes)
 
+> **⚠️ v18 reconciliation (2026-06-19):** The v13–v17 phases below were partially
+> shipped. The **Docker Management** phase (16-D), `tray_click`/`tray_read`/
+> `desktop_control` (STD actions), `working_get`/`working_set`, `dns_leak_test`,
+> `learn_pattern`/`suggest_action`, and the **loguru** migration were planned but
+> never built. See `docs/ROADMAP-v18-to-v22.md` for their rescheduled home
+> (Docker → v20 Penguin; goal-learning → v21 Operator). Everything else in this
+> roadmap shipped.
+
 ---
 
 ## COMPLETED MILESTONES

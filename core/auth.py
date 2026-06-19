@@ -6,7 +6,6 @@ and password hashing for the Sentinel Desktop FastAPI server.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import secrets
@@ -24,7 +23,6 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-SALT_LENGTH: int = 32
 API_KEY_LENGTH: int = 32  # secrets.token_hex(32) → 64-char hex string
 SESSION_EXPIRY_SECONDS: int = 86_400  # 24 hours
 DEFAULT_ADMIN_USERNAME: str = "admin"
@@ -136,25 +134,15 @@ class User:
 # ---------------------------------------------------------------------------
 # Password Helpers
 #
-# New users are hashed with bcrypt — the resulting string starts with
-# ``$2b$`` and embeds the salt + cost factor. ``User.salt`` becomes an
-# empty string for these users.
+# Passwords are hashed with bcrypt — the resulting string starts with
+# ``$2b$`` and embeds the salt + cost factor. ``User.salt`` is an empty
+# string for all users (bcrypt embeds its own salt).
 #
-# Legacy users from the pre-bcrypt era use SHA-256(salt || password)
-# stored as a 64-char hex digest with a separate hex salt. They continue
-# to verify via _verify_password, and on the next successful login the
-# hash is transparently upgraded to bcrypt.
+# (v18) The legacy SHA-256(salt || password) verification path from the
+# pre-bcrypt era has been removed. Any still-stored SHA-256 hashes can no
+# longer be verified; affected users must reset their password. The
+# transparent-upgrade-on-login code was removed along with it.
 # ---------------------------------------------------------------------------
-
-
-def _generate_salt() -> str:
-    """Return a hex-encoded random salt. Kept for legacy callers only."""
-    return secrets.token_hex(SALT_LENGTH)
-
-
-def _hash_password(password: str, salt: str) -> str:
-    """Hash *password* with *salt* using SHA-256 (legacy verification path)."""
-    return hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
 
 
 def _hash_password_bcrypt(password: str) -> str:
@@ -169,15 +157,21 @@ def _is_bcrypt_hash(stored_hash: str) -> bool:
 
 
 def _verify_password(password: str, stored_hash: str, legacy_salt: str = "") -> bool:
-    """Constant-time verify *password* against a bcrypt or legacy SHA-256 hash."""
-    if _is_bcrypt_hash(stored_hash):
-        try:
-            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("ascii"))
-        except (ValueError, TypeError):
-            logger.debug("bcrypt verification failed for stored_hash prefix %s", stored_hash[:8])
-            return False
-    legacy = _hash_password(password, legacy_salt)
-    return secrets.compare_digest(legacy, stored_hash)
+    """Constant-time verify *password* against a bcrypt ``stored_hash``.
+
+    The *legacy_salt* parameter is accepted for call-site compatibility but
+    is unused: v18 removed the SHA-256 verification path, and bcrypt embeds
+    its own salt.
+    """
+    del legacy_salt  # accepted for compatibility; unused in bcrypt-only path
+    if not _is_bcrypt_hash(stored_hash):
+        # v18: non-bcrypt stored hashes (legacy SHA-256) are no longer verified.
+        return False
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("ascii"))
+    except (ValueError, TypeError):
+        logger.debug("bcrypt verification failed for stored_hash prefix %s", stored_hash[:8])
+        return False
 
 
 def is_default_password(password: str) -> bool:
@@ -445,13 +439,6 @@ class AuthManager:
         if not _verify_password(password, user.password_hash, user.salt):
             logger.warning("Authentication failed: bad password for '%s'", username)
             return None
-
-        # Transparently upgrade legacy SHA-256 hashes to bcrypt on first
-        # successful login so the at-rest hash strengthens over time.
-        if not _is_bcrypt_hash(user.password_hash):
-            user.password_hash = _hash_password_bcrypt(password)
-            user.salt = ""
-            logger.info("Upgraded user '%s' hash from legacy SHA-256 to bcrypt", username)
 
         # Warn if the user is still using the bootstrap default password.
         if is_default_password(password):

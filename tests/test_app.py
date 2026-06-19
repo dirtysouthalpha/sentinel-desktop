@@ -384,14 +384,14 @@ class TestRunGoal:
             patch.object(threading, "Thread", side_effect=self._sync_thread),
         ):
             app._run_goal("g")
-        app.tray.notify.assert_called_once()
+        app.tray.show_notification.assert_called_once()
 
     def test_run_goal_tray_notify_error_swallowed(self, app):
         fake_engine = MagicMock()
         fake_engine.running = False
         fake_engine.run.return_value = {"steps": 2, "notes": [], "finish_summary": "ok"}
         app.tray = MagicMock()
-        app.tray.notify.side_effect = RuntimeError("no tray")
+        app.tray.show_notification.side_effect = RuntimeError("no tray")
         with (
             patch("core.engine.AgentEngine", return_value=fake_engine),
             patch.object(threading, "Thread", side_effect=self._sync_thread),
@@ -675,22 +675,22 @@ class TestTray:
         app.cfg["minimize_to_tray"] = True
         app.cfg["start_in_tray"] = False
         fake_tray = MagicMock()
-        fake_tray.run.return_value = True
+        fake_tray.start.return_value = True
         with (
             patch.object(app_mod, "_tray_available", return_value=True),
-            patch.object(app_mod, "SentinelTray", return_value=fake_tray),
+            patch.object(app_mod, "SystemTrayIcon", return_value=fake_tray),
         ):
             app._start_tray_if_enabled()
         assert app.tray is fake_tray
-        fake_tray.run.assert_called_once()
+        fake_tray.start.assert_called_once()
 
     def test_start_tray_start_in_tray_hides(self, app):
         app.cfg["start_in_tray"] = True
         fake_tray = MagicMock()
-        fake_tray.run.return_value = True
+        fake_tray.start.return_value = True
         with (
             patch.object(app_mod, "_tray_available", return_value=True),
-            patch.object(app_mod, "SentinelTray", return_value=fake_tray),
+            patch.object(app_mod, "SystemTrayIcon", return_value=fake_tray),
         ):
             app._start_tray_if_enabled()
         # after(100, ...) scheduled the hide; no exception is enough here.
@@ -1040,8 +1040,13 @@ class TestSidebarAndTabSwitching:
     def test_toggle_sidebar_collapsed(self, app):
         app._sidebar_collapsed = False
         app._sidebar_frame = MagicMock()
-        app._sidebar_buttons = {key: MagicMock() for key, *_ in app._sidebar_buttons.items()} if hasattr(app, '_sidebar_buttons') else {}
+        app._sidebar_buttons = (
+            {key: MagicMock() for key, *_ in app._sidebar_buttons.items()}
+            if hasattr(app, "_sidebar_buttons")
+            else {}
+        )
         import gui.app as _am
+
         app._sidebar_buttons = {key: MagicMock() for key, *_ in _am._TAB_DEFS}
         app._toggle_sidebar()
         assert app._sidebar_collapsed is True
@@ -1051,6 +1056,7 @@ class TestSidebarAndTabSwitching:
         app._sidebar_collapsed = True
         app._sidebar_frame = MagicMock()
         import gui.app as _am
+
         app._sidebar_buttons = {key: MagicMock() for key, *_ in _am._TAB_DEFS}
         app._toggle_sidebar()
         assert app._sidebar_collapsed is False
@@ -1070,6 +1076,7 @@ class TestUpdateMetricsExceptionBranch:
 
     def test_import_error_swallowed(self, app):
         import builtins
+
         real_import = builtins.__import__
 
         def fake_import(name, *a, **kw):
@@ -1177,6 +1184,7 @@ class TestExportChatMd:
 
     def test_export_chat_md_oserror(self, app):
         from pathlib import Path
+
         app.chat_display = _FakeText()
         app.chat_display.insert("end", "some content")
         with patch.object(Path, "open", side_effect=OSError("disk full")):
@@ -1191,6 +1199,7 @@ class TestShowToast:
 
     def test_show_toast_tclError_swallowed(self, app):
         import tkinter as tk
+
         # Instance-level override guarantees the mock shadows the class method.
         app.root.after = MagicMock(side_effect=tk.TclError("no widget"))
         app._show_toast("crash toast")  # should not raise

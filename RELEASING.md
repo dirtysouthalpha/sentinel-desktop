@@ -54,3 +54,25 @@ sentinel-desktop --help              # GUI/API entry point
 sentinel-mcp-server                  # MCP server (stdio transport, default)
 SENTINEL_MCP_TRANSPORT=http sentinel-mcp-server   # HTTP transport (Tailscale fleet)
 ```
+
+### v18 — dependency extras
+
+As of v18, `pyproject.toml` is the single source of truth and `requirements.txt`
+is a thin `-e .[all]` pointer. Headline features ship as extras so a bare
+`pip install sentinel-desktop` stays light:
+
+```bash
+pip install "sentinel-desktop[all]"              # every subsystem feature
+pip install "sentinel-desktop[web,netops]"       # browser + SSH only
+pip install "sentinel-desktop[mcp]"              # MCP server entry point
+# Individual extras: [web] [netops] [net] [voice] [mfa] [ocr] [windows] [tray]
+```
+
+### First-ever tag (v18)
+
+v18.0.0 was the **first** `vX.Y.Z` git tag ever pushed — the release pipeline
+(`release.yml` → PyPI Trusted Publishing → GitHub Release) had never run end-to-end
+before. If a future release is the first on a new machine, run the manual publish
+fallback above once, then confirm Trusted Publishing is configured (see
+"One-time setup").
+

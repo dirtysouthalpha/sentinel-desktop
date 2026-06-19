@@ -28,7 +28,7 @@ import struct
 import threading
 import time
 from collections import defaultdict
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, NoReturn
@@ -39,7 +39,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from api.routes import RouteRegistry
 from config import Config
+from core import __version__ as _CORE_VERSION
 from core import process_manager as pm
 from core import system_info as sysinfo
 from core import window_manager as wm
@@ -265,9 +267,9 @@ class SentinelServer:
             yield
 
         app = FastAPI(
-            title="Sentinel Desktop v3",
+            title="Sentinel Desktop",
             description="AI-powered Windows desktop automation API",
-            version="3.1.0",
+            version=_CORE_VERSION,
             lifespan=lifespan,
         )
 
@@ -297,88 +299,109 @@ class SentinelServer:
         return app
 
     def _register_routes(self, app: FastAPI) -> None:
-        """Wire all API endpoints onto *app*."""
+        """Wire all API endpoints onto *app* and record them in the registry.
+
+        v18: each route is recorded in ``self._route_registry`` (api.routes)
+        as it is wired, making the full route table queryable for parity
+        checks and docs. ``_route()`` both registers on the app and records.
+        """
+        self._route_registry = RouteRegistry()
         self._register_core_routes(app)
         self._register_v3_routes(app)
         self._register_v31_routes(app)
+        # Pull in any @api_route-decorated handlers (future extension point).
+        self._route_registry.add_decorated(self)
+
+    def _route(self, app: FastAPI, method: str, path: str, handler: Callable) -> None:
+        """Wire *handler* onto *app* at (method, path) and record it."""
+        getattr(app, method.lower())(path)(handler)
+        self._route_registry.add(method, path, handler)
 
     def _register_core_routes(self, app: FastAPI) -> None:
         """Register core v1 + v3.0 script/recorder/workflow/scheduler routes."""
-        app.post("/goal")(self._handle_goal)
-        app.post("/command")(self._handle_command)
-        app.get("/screenshot")(self._handle_screenshot)
-        app.get("/status")(self._handle_status)
-        app.get("/windows")(self._handle_windows)
-        app.get("/processes")(self._handle_processes)
-        app.get("/system")(self._handle_system)
-        app.get("/config")(self._handle_get_config)
-        app.put("/config")(self._handle_put_config)
-        app.get("/log")(self._handle_log)
-        app.post("/stop")(self._handle_stop)
-        app.get("/scripts")(self._handle_scripts_list)
-        app.post("/scripts/run")(self._handle_script_run)
-        app.post("/powershell")(self._handle_powershell)
-        app.post("/recorder/start")(self._handle_recorder_start)
-        app.post("/recorder/stop")(self._handle_recorder_stop)
+        self._route(app, "POST", "/goal", self._handle_goal)
+        self._route(app, "POST", "/command", self._handle_command)
+        self._route(app, "GET", "/screenshot", self._handle_screenshot)
+        self._route(app, "GET", "/status", self._handle_status)
+        self._route(app, "GET", "/windows", self._handle_windows)
+        self._route(app, "GET", "/processes", self._handle_processes)
+        self._route(app, "GET", "/system", self._handle_system)
+        self._route(app, "GET", "/config", self._handle_get_config)
+        self._route(app, "PUT", "/config", self._handle_put_config)
+        self._route(app, "GET", "/log", self._handle_log)
+        self._route(app, "POST", "/stop", self._handle_stop)
+        self._route(app, "GET", "/scripts", self._handle_scripts_list)
+        self._route(app, "POST", "/scripts/run", self._handle_script_run)
+        self._route(app, "POST", "/powershell", self._handle_powershell)
+        self._route(app, "POST", "/recorder/start", self._handle_recorder_start)
+        self._route(app, "POST", "/recorder/stop", self._handle_recorder_stop)
 
     def _register_v3_routes(self, app: FastAPI) -> None:
         """Register v3.0 Phase 2-4 routes: workflow, scheduler, auth, agents, vault."""
-        app.get("/workflows")(self._handle_workflows_list)
-        app.post("/workflows/run")(self._handle_workflow_run)
-        app.get("/schedule")(self._handle_schedule_list)
-        app.post("/schedule/add")(self._handle_schedule_add)
-        app.post("/schedule/remove")(self._handle_schedule_remove)
-        app.post("/schedule/run")(self._handle_schedule_run)
-        app.post("/notify")(self._handle_notify)
-        app.get("/plugins")(self._handle_plugins_list)
-        app.post("/plugins/reload")(self._handle_plugins_reload)
-        app.get("/agents")(self._handle_agents_list)
-        app.post("/agents/submit")(self._handle_agents_submit)
-        app.post("/agents/cancel")(self._handle_agents_cancel)
-        app.get("/agents/{session_id}")(self._handle_agent_status)
-        app.post("/auth/login")(self._handle_auth_login)
-        app.post("/auth/logout")(self._handle_auth_logout)
-        app.get("/auth/users")(self._handle_auth_users)
-        app.get("/audit/export")(self._handle_audit_export)
-        app.get("/vault/keys")(self._handle_vault_keys)
+        self._route(app, "GET", "/workflows", self._handle_workflows_list)
+        self._route(app, "POST", "/workflows/run", self._handle_workflow_run)
+        self._route(app, "GET", "/schedule", self._handle_schedule_list)
+        self._route(app, "POST", "/schedule/add", self._handle_schedule_add)
+        self._route(app, "POST", "/schedule/remove", self._handle_schedule_remove)
+        self._route(app, "POST", "/schedule/run", self._handle_schedule_run)
+        self._route(app, "POST", "/notify", self._handle_notify)
+        self._route(app, "GET", "/plugins", self._handle_plugins_list)
+        self._route(app, "POST", "/plugins/reload", self._handle_plugins_reload)
+        self._route(app, "GET", "/agents", self._handle_agents_list)
+        self._route(app, "POST", "/agents/submit", self._handle_agents_submit)
+        self._route(app, "POST", "/agents/cancel", self._handle_agents_cancel)
+        self._route(app, "GET", "/agents/{session_id}", self._handle_agent_status)
+        self._route(app, "POST", "/auth/login", self._handle_auth_login)
+        self._route(app, "POST", "/auth/logout", self._handle_auth_logout)
+        self._route(app, "GET", "/auth/users", self._handle_auth_users)
+        self._route(app, "GET", "/audit/export", self._handle_audit_export)
+        self._route(app, "GET", "/vault/keys", self._handle_vault_keys)
 
     def _register_v31_routes(self, app: FastAPI) -> None:
         """Register v3.1 dashboard router and workflow builder endpoints."""
         app.include_router(dashboard_router)
         self._workflow_store = workflow_store
         self._workflow_templates = TEMPLATES
-        app.get("/workflows/builder/list")(self._handle_workflow_builder_list)
-        app.post("/workflows/builder/create")(self._handle_workflow_builder_create)
-        app.get("/workflows/builder/templates")(self._handle_workflow_templates)
-        app.post("/workflows/builder/{wf_id}/add-step")(self._handle_workflow_add_step)
-        app.post("/workflows/builder/{wf_id}/remove-step")(self._handle_workflow_remove_step)
-        app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
-        app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
-        app.websocket("/ws")(self._handle_ws)
-        app.websocket("/ws/terminal")(self._handle_terminal_ws)
+        self._route(app, "GET", "/workflows/builder/list", self._handle_workflow_builder_list)
+        self._route(app, "POST", "/workflows/builder/create", self._handle_workflow_builder_create)
+        self._route(app, "GET", "/workflows/builder/templates", self._handle_workflow_templates)
+        self._route(
+            app, "POST", "/workflows/builder/{wf_id}/add-step", self._handle_workflow_add_step
+        )
+        self._route(
+            app, "POST", "/workflows/builder/{wf_id}/remove-step", self._handle_workflow_remove_step
+        )
+        self._route(
+            app, "DELETE", "/workflows/builder/{wf_id}", self._handle_workflow_builder_delete
+        )
+        self._route(
+            app, "POST", "/workflows/builder/{wf_id}/duplicate", self._handle_workflow_duplicate
+        )
+        self._route(app, "WEBSOCKET", "/ws", self._handle_ws)
+        self._route(app, "WEBSOCKET", "/ws/terminal", self._handle_terminal_ws)
         # v10.0 — Sentinel Server routes
-        app.get("/daemon/status")(self._handle_daemon_status)
-        app.post("/daemon/start")(self._handle_daemon_start)
-        app.post("/daemon/stop")(self._handle_daemon_stop)
-        app.get("/fleet/nodes")(self._handle_fleet_nodes)
-        app.post("/fleet/register")(self._handle_fleet_register)
-        app.post("/fleet/unregister")(self._handle_fleet_unregister)
-        app.get("/jobs")(self._handle_jobs_list)
-        app.post("/jobs/submit")(self._handle_jobs_submit)
-        app.get("/jobs/{job_id}")(self._handle_job_status)
-        app.post("/jobs/{job_id}/cancel")(self._handle_job_cancel)
+        self._route(app, "GET", "/daemon/status", self._handle_daemon_status)
+        self._route(app, "POST", "/daemon/start", self._handle_daemon_start)
+        self._route(app, "POST", "/daemon/stop", self._handle_daemon_stop)
+        self._route(app, "GET", "/fleet/nodes", self._handle_fleet_nodes)
+        self._route(app, "POST", "/fleet/register", self._handle_fleet_register)
+        self._route(app, "POST", "/fleet/unregister", self._handle_fleet_unregister)
+        self._route(app, "GET", "/jobs", self._handle_jobs_list)
+        self._route(app, "POST", "/jobs/submit", self._handle_jobs_submit)
+        self._route(app, "GET", "/jobs/{job_id}", self._handle_job_status)
+        self._route(app, "POST", "/jobs/{job_id}/cancel", self._handle_job_cancel)
         # v11.0 — Memory routes
-        app.get("/memory/facts")(self._handle_memory_list)
-        app.get("/memory/facts/{key}")(self._handle_memory_get)
-        app.post("/memory/facts")(self._handle_memory_store)
-        app.delete("/memory/facts/{key}")(self._handle_memory_delete)
-        app.get("/memory/search")(self._handle_memory_search)
-        app.get("/memory/episodes")(self._handle_episodes_list)
-        app.get("/memory/episodes/search")(self._handle_episodes_search)
+        self._route(app, "GET", "/memory/facts", self._handle_memory_list)
+        self._route(app, "GET", "/memory/facts/{key}", self._handle_memory_get)
+        self._route(app, "POST", "/memory/facts", self._handle_memory_store)
+        self._route(app, "DELETE", "/memory/facts/{key}", self._handle_memory_delete)
+        self._route(app, "GET", "/memory/search", self._handle_memory_search)
+        self._route(app, "GET", "/memory/episodes", self._handle_episodes_list)
+        self._route(app, "GET", "/memory/episodes/search", self._handle_episodes_search)
         # v12.0 — Conductor route
-        app.post("/conductor/run")(self._handle_conductor_run)
+        self._route(app, "POST", "/conductor/run", self._handle_conductor_run)
         # Dashboard UI — serve static files (must be last; mount catches all sub-paths)
-        app.get("/")(self._handle_dashboard_index)
+        self._route(app, "GET", "/", self._handle_dashboard_index)
         static_dir = str(Path(__file__).parent / "static")
         if Path(static_dir).is_dir():
             app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -395,6 +418,7 @@ class SentinelServer:
         """GET /daemon/status — Get daemon service status."""
         try:
             from core.server.daemon import SentinelDaemon
+
             daemon = SentinelDaemon()
             return {"success": True, "data": daemon.get_status()}
         except Exception as exc:
@@ -404,6 +428,7 @@ class SentinelServer:
         """POST /daemon/start — Start the daemon service."""
         try:
             from core.server.daemon import SentinelDaemon
+
             daemon = SentinelDaemon()
             result = daemon.start()
             return {"success": True, "data": result}
@@ -414,6 +439,7 @@ class SentinelServer:
         """POST /daemon/stop — Stop the daemon service."""
         try:
             from core.server.daemon import SentinelDaemon
+
             daemon = SentinelDaemon()
             result = daemon.stop()
             return {"success": True, "data": result}
@@ -424,6 +450,7 @@ class SentinelServer:
         """GET /fleet/nodes — List all fleet nodes."""
         try:
             from core.server.fleet import FleetManager
+
             fleet = FleetManager()
             return {"success": True, "data": fleet.list_nodes()}
         except Exception as exc:
@@ -433,6 +460,7 @@ class SentinelServer:
         """POST /fleet/register — Register a fleet node."""
         try:
             from core.server.fleet import FleetManager
+
             fleet = FleetManager()
             result = fleet.register_node(
                 node_id=data.get("node_id", ""),
@@ -449,6 +477,7 @@ class SentinelServer:
         """POST /fleet/unregister — Unregister a fleet node."""
         try:
             from core.server.fleet import FleetManager
+
             fleet = FleetManager()
             return fleet.unregister_node(data.get("node_id", ""))
         except Exception as exc:
@@ -458,6 +487,7 @@ class SentinelServer:
         """GET /jobs — List jobs."""
         try:
             from core.server.job_queue import JobQueue
+
             queue = JobQueue()
             return {"success": True, "data": queue.list_jobs(status=status)}
         except Exception as exc:
@@ -467,6 +497,7 @@ class SentinelServer:
         """POST /jobs/submit — Submit a new job."""
         try:
             from core.server.job_queue import JobQueue
+
             queue = JobQueue()
             job_id = queue.submit(
                 goal=data.get("goal", ""),
@@ -481,6 +512,7 @@ class SentinelServer:
         """GET /jobs/{job_id} — Get job status."""
         try:
             from core.server.job_queue import JobQueue
+
             queue = JobQueue()
             job = queue.get_job(job_id)
             if job is None:
@@ -493,6 +525,7 @@ class SentinelServer:
         """POST /jobs/{job_id}/cancel — Cancel a job."""
         try:
             from core.server.job_queue import JobQueue
+
             queue = JobQueue()
             result = queue.cancel(job_id)
             return {"success": result}
@@ -505,6 +538,7 @@ class SentinelServer:
         """GET /memory/facts — List all memory facts."""
         try:
             from core.memory.semantic import SemanticMemory
+
             mem = SemanticMemory()
             keys = mem.list_keys(category=category)
             return {"success": True, "keys": keys, "count": len(keys)}
@@ -515,6 +549,7 @@ class SentinelServer:
         """GET /memory/facts/{key} — Get a specific fact."""
         try:
             from core.memory.semantic import SemanticMemory
+
             mem = SemanticMemory()
             result = mem.recall(key)
             if result is None:
@@ -527,6 +562,7 @@ class SentinelServer:
         """POST /memory/facts — Store a new fact."""
         try:
             from core.memory.semantic import SemanticMemory
+
             mem = SemanticMemory()
             fact_id = mem.store(
                 key=data.get("key", ""),
@@ -543,6 +579,7 @@ class SentinelServer:
         """DELETE /memory/facts/{key} — Delete a fact."""
         try:
             from core.memory.semantic import SemanticMemory
+
             mem = SemanticMemory()
             deleted = mem.delete(key)
             return {"success": deleted}
@@ -550,11 +587,14 @@ class SentinelServer:
             return {"success": False, "error": str(exc)}
 
     async def _handle_memory_search(
-        self, query: str = "", limit: int = 20,
+        self,
+        query: str = "",
+        limit: int = 20,
     ) -> dict:
         """GET /memory/search?query=... — Search memory facts."""
         try:
             from core.memory.semantic import SemanticMemory
+
             mem = SemanticMemory()
             results = mem.query(query, limit=limit)
             return {"success": True, "results": results, "count": len(results)}
@@ -565,6 +605,7 @@ class SentinelServer:
         """GET /memory/episodes — List recent episodes."""
         try:
             from core.memory.episodic import EpisodicMemory
+
             mem = EpisodicMemory()
             episodes = mem.recall(limit=limit)
             return {"success": True, "data": episodes, "count": len(episodes)}
@@ -572,11 +613,14 @@ class SentinelServer:
             return {"success": False, "error": str(exc)}
 
     async def _handle_episodes_search(
-        self, query: str = "", limit: int = 10,
+        self,
+        query: str = "",
+        limit: int = 10,
     ) -> dict:
         """GET /memory/episodes/search?query=... — Search episodes."""
         try:
             from core.memory.episodic import EpisodicMemory
+
             mem = EpisodicMemory()
             results = mem.search(query, limit=limit)
             return {"success": True, "data": results, "count": len(results)}
@@ -588,8 +632,8 @@ class SentinelServer:
     async def _handle_conductor_run(self, data: dict) -> dict:
         """POST /conductor/run — Decompose and execute a complex goal."""
         try:
-
             from core.conductor.coordinator import Conductor
+
             conductor = Conductor()
             goal = data.get("goal", "")
             timeout = data.get("timeout", 120.0)

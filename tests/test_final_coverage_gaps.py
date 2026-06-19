@@ -28,7 +28,7 @@ class TestActionExecutorAsyncExecute:
         from core.action_executor import ActionExecutor
 
         ex = ActionExecutor(dry_run=True)
-        result = asyncio.run(ex.execute({"action": "click", "x": 1, "y": 2}))
+        result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 1, "y": 2}))
         assert result.get("dry_run") is True
         assert result.get("success") is True
 
@@ -42,7 +42,7 @@ class TestActionExecutorAsyncExecute:
             return {"success": True, "output": "async-done", "method": "async"}
 
         ex._dispatch_table["_test_async_action"] = _fake_async_handler
-        result = asyncio.run(ex.execute({"action": "_test_async_action"}))
+        result = asyncio.run(ex._execute_with_logging({"action": "_test_async_action"}))
         assert result.get("success") is True
         assert result.get("method") == "async"
 

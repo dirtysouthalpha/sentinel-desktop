@@ -75,7 +75,7 @@ class TestApprovalCallbackRejection:
             return False
 
         ex = fake_executor(approval_callback=reject)
-        result = asyncio.run(ex.execute({"action": "click", "x": 10, "y": 20}))
+        result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 10, "y": 20}))
         assert result["success"] is False
         assert result["error"] == "rejected"
         assert "rejected" in result["output"].lower()
@@ -85,7 +85,7 @@ class TestApprovalCallbackRejection:
             return False
 
         ex = fake_executor(approval_callback=reject)
-        asyncio.run(ex.execute({"action": "click", "x": 1, "y": 2}))
+        asyncio.run(ex._execute_with_logging({"action": "click", "x": 1, "y": 2}))
         assert len(ex.log) == 1
         assert ex.log[0]["success"] is False
 
@@ -103,7 +103,7 @@ class TestPreActionCallbackFailureAsync:
             raise RuntimeError("overlay crashed")
 
         ex = fake_executor(pre_action_callback=boom)
-        result = asyncio.run(ex.execute({"action": "click", "x": 5, "y": 5}))
+        result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 5, "y": 5}))
         assert result["success"] is True
 
 
@@ -122,7 +122,7 @@ class TestHandlerExceptionAsync:
         ex._dispatch_table["note"] = lambda self, **kw: (_ for _ in ()).throw(
             RuntimeError("handler exploded")
         )
-        result = asyncio.run(ex.execute({"action": "note", "text": "boom"}))
+        result = asyncio.run(ex._execute_with_logging({"action": "note", "text": "boom"}))
         assert result["success"] is False
         assert "RuntimeError" in result["error"]
 
@@ -961,7 +961,7 @@ class TestApprovalCallbackApproved:
             return True
 
         ex = ActionExecutor(approval_callback=approve)
-        result = asyncio.run(ex.execute({"action": "click", "x": 5, "y": 5}))
+        result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 5, "y": 5}))
         assert result["success"] is True
 
 
@@ -990,7 +990,7 @@ class TestHandlerTimeoutAsync:
             return await original_wait_for(coro, timeout=0.001)
 
         monkeypatch.setattr(ae_mod.asyncio, "wait_for", _short_wait)
-        result = asyncio_mod.run(ex.execute({"action": "click", "x": 1, "y": 1}))
+        result = asyncio_mod.run(ex._execute_with_logging({"action": "click", "x": 1, "y": 1}))
         assert result["success"] is False
         assert result["error"] == "timeout"
 

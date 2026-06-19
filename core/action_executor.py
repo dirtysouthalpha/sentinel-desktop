@@ -44,7 +44,6 @@ MAX_COLLECTION_STRING_LENGTH = 500
 
 # Timeout constants
 DEFAULT_ACTION_TIMEOUT = 60.0
-EXECUTE_WITH_LOGGING_TIMEOUT = 65.0
 APPROVAL_CALLBACK_TIMEOUT = 300.0  # 5 minutes for user approval
 
 # Actions that *change state* on the user's machine. In dry-run mode these
@@ -86,6 +85,30 @@ STATE_CHANGING_ACTIONS = {
     "mute_toggle",
     "speak",
 }
+
+
+def _build_dispatch_table(**handlers: Callable) -> dict[str, Callable]:
+    """Seed the action registry and return the dispatch dict.
+
+    v18: this is the bridge from the v17 hand-maintained dict literal to the
+    decorator-based registry (``core/action_registry.py``). Each keyword is an
+    action name and each value its unbound handler. Calling this registers
+    every name→handler pair in the module-level registry and returns the same
+    mapping for use as ``ActionExecutor._dispatch_table``. New actions in v19+
+    should use ``@register_action`` directly instead of extending this call.
+    """
+    from core.action_registry import _REGISTRY, ActionAlreadyRegistered
+
+    table: dict[str, Callable] = {}
+    for name, handler in handlers.items():
+        existing = _REGISTRY.get(name)
+        if existing is not None and existing is not handler:
+            raise ActionAlreadyRegistered(
+                f"action {name!r} already registered by {existing.__qualname__}",
+            )
+        _REGISTRY[name] = handler
+        table[name] = handler
+    return table
 
 
 class ActionExecutor:
@@ -150,34 +173,6 @@ class ActionExecutor:
 
         """
         return list(self._log)
-
-    async def execute(self, action: dict[str, Any]) -> dict[str, Any]:
-        """Execute a single action.
-
-        .. deprecated:: 3.1.0
-            The async ``execute()`` method is not used by the engine loop,
-            which calls ``execute_sync()`` instead. Kept for backward
-            compatibility. Prefer ``execute_sync()`` for new code.
-
-        Args:
-            action: Dict with at least 'action' key and relevant params.
-
-        Returns:
-            Result dict: {success, output, error}
-
-        """
-        try:
-            return await asyncio.wait_for(
-                self._execute_with_logging(action),
-                timeout=EXECUTE_WITH_LOGGING_TIMEOUT,
-            )
-        except asyncio.TimeoutError:
-            action_type = action.get("action", "").lower()
-            params = {k: v for k, v in action.items() if k != "action"}
-            error_msg = f"Action '{action_type}' timed out"
-            result = {"success": False, "output": error_msg, "error": "timeout"}
-            self._log_entry(action_type, params, result)
-            return result
 
     async def _execute_with_logging(self, action: dict[str, Any]) -> dict[str, Any]:
         """Execute action with approval checks and logging."""
@@ -1346,7 +1341,9 @@ class ActionExecutor:
     ) -> dict:
         """Search for files matching a glob pattern."""
         results = file_ops.find_files(
-            pattern, root=root, max_results=max_results,
+            pattern,
+            root=root,
+            max_results=max_results,
         )
         if results is not None:
             return {
@@ -1370,7 +1367,9 @@ class ActionExecutor:
     ) -> dict:
         """Create a zip archive."""
         ok = file_ops.archive_create(
-            archive_path, files, base_dir=base_dir,
+            archive_path,
+            files,
+            base_dir=base_dir,
         )
         if ok:
             return {
@@ -1408,6 +1407,7 @@ class ActionExecutor:
     def _set_priority(self, *, pid: int, priority: str, **_) -> dict:
         """Set process priority."""
         from core.process_manager import set_priority
+
         ok = set_priority(pid, priority)
         return {
             "success": ok,
@@ -1417,6 +1417,7 @@ class ActionExecutor:
     def _get_env(self, *, name: str, **_) -> dict:
         """Read an environment variable."""
         from core.process_manager import get_env
+
         value = get_env(name)
         if value is not None:
             return {"success": True, "output": value, "name": name}
@@ -1427,10 +1428,16 @@ class ActionExecutor:
         }
 
     def _set_env(
-        self, *, name: str, value: str, permanent: bool = False, **_,
+        self,
+        *,
+        name: str,
+        value: str,
+        permanent: bool = False,
+        **_,
     ) -> dict:
         """Set an environment variable."""
         from core.process_manager import set_env
+
         ok = set_env(name, value, permanent=permanent)
         return {
             "success": ok,
@@ -1438,10 +1445,15 @@ class ActionExecutor:
         }
 
     def _service_control(
-        self, *, name: str, control_action: str, **_,
+        self,
+        *,
+        name: str,
+        control_action: str,
+        **_,
     ) -> dict:
         """Control a Windows service."""
         from core.process_manager import service_control
+
         return service_control(name, control_action)
 
     # -------------------------------------------------------------------
@@ -1451,6 +1463,7 @@ class ActionExecutor:
     def _cred_store(self, *, key: str, value: str, **_) -> dict:
         """Store a credential in the vault."""
         from core.encryption import CredentialVault
+
         vault = CredentialVault()
         ok = vault.store(key, value)
         return {
@@ -1461,6 +1474,7 @@ class ActionExecutor:
     def _cred_read(self, *, key: str, **_) -> dict:
         """Read a credential from the vault."""
         from core.encryption import CredentialVault
+
         vault = CredentialVault()
         value = vault.retrieve(key)
         if value is not None:
@@ -1476,10 +1490,15 @@ class ActionExecutor:
     # -------------------------------------------------------------------
 
     def _registry_read(
-        self, *, path: str, value_name: str = "", **_,
+        self,
+        *,
+        path: str,
+        value_name: str = "",
+        **_,
     ) -> dict:
         """Read a registry value."""
         from core.registry import registry_read
+
         result = registry_read(path, value_name)
         if result is not None:
             return {"success": True, "output": result}
@@ -1500,6 +1519,7 @@ class ActionExecutor:
     ) -> dict:
         """Write a registry value."""
         from core.registry import registry_write
+
         ok = registry_write(path, value_name, data, reg_type)
         return {
             "success": ok,
@@ -1507,10 +1527,15 @@ class ActionExecutor:
         }
 
     def _registry_delete(
-        self, *, path: str, value_name: str | None = None, **_,
+        self,
+        *,
+        path: str,
+        value_name: str | None = None,
+        **_,
     ) -> dict:
         """Delete a registry key or value."""
         from core.registry import registry_delete
+
         ok = registry_delete(path, value_name)
         return {
             "success": ok,
@@ -1626,8 +1651,12 @@ class ActionExecutor:
     ) -> dict:
         """Click an element in the browser by selector, text, or ARIA role."""
         return self.browser.click(
-            selector=selector, text=text, role=role, name=name,
-            button=button, click_count=click_count,
+            selector=selector,
+            text=text,
+            role=role,
+            name=name,
+            button=button,
+            click_count=click_count,
         )
 
     def _web_type(
@@ -1643,8 +1672,12 @@ class ActionExecutor:
     ) -> dict:
         """Type text into a browser form field."""
         return self.browser.type_text(
-            text=text, selector=selector, label=label,
-            role=role, name=name, clear=clear,
+            text=text,
+            selector=selector,
+            label=label,
+            role=role,
+            name=name,
+            clear=clear,
         )
 
     def _web_read(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
@@ -1666,7 +1699,10 @@ class ActionExecutor:
     ) -> dict:
         """Wait for an element or condition in the browser."""
         return self.browser.wait_for(
-            selector=selector, text=text, state=state, timeout=timeout * 1000,
+            selector=selector,
+            text=text,
+            state=state,
+            timeout=timeout * 1000,
         )
 
     def _web_screenshot(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
@@ -1756,8 +1792,11 @@ class ActionExecutor:
             from core.netops.ssh_client import SSHClient
 
             client = SSHClient(
-                hostname=hostname, username=username, password=password,
-                port=port, key_filename=key_filename,
+                hostname=hostname,
+                username=username,
+                password=password,
+                port=port,
+                key_filename=key_filename,
             )
             client.connect()
             self._ssh_clients[hostname] = client
@@ -1908,6 +1947,7 @@ class ActionExecutor:
             "output": parsed,
             "raw": result.stdout,
         }
+
     # -------------------------------------------------------------------
     # Memory actions (v11.0 — persistent memory)
     # -------------------------------------------------------------------
@@ -1980,6 +2020,7 @@ class ActionExecutor:
         """Lazy-init semantic memory."""
         if self._semantic_memory is None:
             from core.memory.semantic import SemanticMemory
+
             self._semantic_memory = SemanticMemory()
         return self._semantic_memory
 
@@ -1997,6 +2038,7 @@ class ActionExecutor:
         """Decompose and execute a complex goal via conductor."""
         try:
             from core.conductor.coordinator import Conductor
+
             conductor = Conductor()
             result = await conductor.run(goal, timeout=timeout)
             return result
@@ -2043,6 +2085,7 @@ class ActionExecutor:
     def _get_circuit_breakers(self, **_) -> dict:
         """Return state of all circuit breakers."""
         from core.resilience import get_all_breaker_stats
+
         stats = get_all_breaker_stats()
         return {"success": True, "output": stats, "breakers": stats}
 
@@ -2053,12 +2096,14 @@ class ActionExecutor:
     def _config_get(self, *, key: str, default: Any = None, **_) -> dict:
         """Read a persisted config value."""
         from core.config_store import get_default_store
+
         val = get_default_store().get(key, default)
         return {"success": True, "key": key, "value": val, "output": str(val)}
 
     def _config_set(self, *, key: str, value: Any, **_) -> dict:
         """Persist a config value."""
         from core.config_store import get_default_store
+
         get_default_store().set(key, value)
         return {"success": True, "key": key, "value": value, "output": f"Set {key} = {value!r}"}
 
@@ -2076,6 +2121,7 @@ class ActionExecutor:
     ) -> dict:
         """Resolve a hostname via DNS."""
         from core.net_tools import dns_lookup
+
         result = dns_lookup(hostname, record_type=record_type, server=server)
         result["success"] = not bool(result.get("error"))
         result["output"] = result.get("addresses", [])
@@ -2091,6 +2137,7 @@ class ActionExecutor:
     ) -> dict:
         """Ping a host."""
         from core.net_tools import ping_host
+
         result = ping_host(host, count=count, timeout=timeout)
         result["output"] = result.get("output", "")
         return result
@@ -2105,6 +2152,7 @@ class ActionExecutor:
     ) -> dict:
         """Scan TCP ports on a host."""
         from core.net_tools import scan_ports
+
         results = scan_ports(host, ports, timeout=timeout)
         open_ports = [p for p, open_ in results.items() if open_]
         return {
@@ -2122,36 +2170,43 @@ class ActionExecutor:
     def _resize_window(self, *, title: str, width: int, height: int, **_) -> dict:
         """Resize a window by title."""
         from core.window_control import resize_window
+
         return resize_window(title, width, height)
 
     def _move_window(self, *, title: str, x: int, y: int, **_) -> dict:
         """Move a window by title."""
         from core.window_control import move_window
+
         return move_window(title, x, y)
 
     def _minimize_window(self, *, title: str, **_) -> dict:
         """Minimize a window by title."""
         from core.window_control import minimize_window
+
         return minimize_window(title)
 
     def _maximize_window(self, *, title: str, **_) -> dict:
         """Maximize a window by title."""
         from core.window_control import maximize_window
+
         return maximize_window(title)
 
     def _restore_window(self, *, title: str, **_) -> dict:
         """Restore a window by title."""
         from core.window_control import restore_window
+
         return restore_window(title)
 
     def _get_window_state(self, *, title: str, **_) -> dict:
         """Get window geometry and state."""
         from core.window_control import get_window_state
+
         return get_window_state(title)
 
     def _get_monitors(self, **_) -> dict:
         """Return all connected monitor info."""
         from core.window_control import get_monitors
+
         monitors = get_monitors()
         return {"success": True, "monitors": monitors, "count": len(monitors), "output": monitors}
 
@@ -2171,8 +2226,8 @@ class ActionExecutor:
     ) -> dict:
         """HTTP GET request."""
         from core.http_client import http_get
-        return http_get(url, headers=headers, params=params,
-                        timeout=timeout, verify_ssl=verify_ssl)
+
+        return http_get(url, headers=headers, params=params, timeout=timeout, verify_ssl=verify_ssl)
 
     def _http_post(
         self,
@@ -2188,8 +2243,16 @@ class ActionExecutor:
     ) -> dict:
         """HTTP POST request."""
         from core.http_client import http_post
-        return http_post(url, body=body, json=json, headers=headers,
-                         params=params, timeout=timeout, verify_ssl=verify_ssl)
+
+        return http_post(
+            url,
+            body=body,
+            json=json,
+            headers=headers,
+            params=params,
+            timeout=timeout,
+            verify_ssl=verify_ssl,
+        )
 
     def _http_download(
         self,
@@ -2203,8 +2266,10 @@ class ActionExecutor:
     ) -> dict:
         """Download file via HTTP."""
         from core.http_client import http_download
-        return http_download(url, save_path, headers=headers,
-                             timeout=timeout, verify_ssl=verify_ssl)
+
+        return http_download(
+            url, save_path, headers=headers, timeout=timeout, verify_ssl=verify_ssl
+        )
 
     # -------------------------------------------------------------------
     # File / process monitoring actions (v16.0)
@@ -2221,6 +2286,7 @@ class ActionExecutor:
     ) -> dict:
         """Wait for a file event (modify/create/delete)."""
         from core.file_watcher import watch_file
+
         return watch_file(path, timeout=timeout, poll_interval=poll_interval, event=event)
 
     def _watch_file_content(
@@ -2233,6 +2299,7 @@ class ActionExecutor:
     ) -> dict:
         """Wait until a file contains a specific string."""
         from core.file_watcher import watch_file_content
+
         return watch_file_content(path, contains, timeout=timeout)
 
     def _watch_process(
@@ -2246,6 +2313,7 @@ class ActionExecutor:
     ) -> dict:
         """Wait for a process event (start/stop/cpu_spike)."""
         from core.file_watcher import watch_process
+
         return watch_process(name, event=event, pid=pid, timeout=timeout)
 
     # -------------------------------------------------------------------
@@ -2263,6 +2331,7 @@ class ActionExecutor:
     ) -> dict:
         """Speak text via Windows TTS."""
         from core.audio import speak
+
         ok = speak(text, blocking=blocking, rate=rate, volume=volume)
         return {"success": ok, "output": f"Spoke: {text[:80]}" if ok else "TTS failed"}
 
@@ -2275,6 +2344,7 @@ class ActionExecutor:
     ) -> dict:
         """Capture microphone input and return transcription."""
         from core.audio import listen
+
         text = listen(timeout=timeout, phrase_limit=phrase_limit)
         if text:
             return {"success": True, "text": text, "output": text}
@@ -2283,6 +2353,7 @@ class ActionExecutor:
     def _volume_get(self, **_) -> dict:
         """Get system master volume."""
         from core.audio import volume_get
+
         level = volume_get()
         if level < 0:
             return {"success": False, "output": "Volume unavailable on this platform"}
@@ -2291,18 +2362,25 @@ class ActionExecutor:
     def _volume_set(self, *, level: int, **_) -> dict:
         """Set system master volume."""
         from core.audio import volume_set
+
         ok = volume_set(level)
-        return {"success": ok, "level": level, "output": f"Set volume to {level}%" if ok else "Volume set failed"}
+        return {
+            "success": ok,
+            "level": level,
+            "output": f"Set volume to {level}%" if ok else "Volume set failed",
+        }
 
     def _mute_toggle(self, **_) -> dict:
         """Toggle system mute."""
         from core.audio import mute_toggle
+
         muted = mute_toggle()
         return {"success": True, "muted": muted, "output": "Muted" if muted else "Unmuted"}
 
     def _list_voices(self, **_) -> dict:
         """List available TTS voices."""
         from core.audio import list_voices
+
         voices = list_voices()
         return {"success": True, "voices": voices, "count": len(voices), "output": voices}
 
@@ -2313,6 +2391,7 @@ class ActionExecutor:
     def _brain_think(self, *, content: str, region: str = "knowledge", **_) -> dict:
         """Persist a thought to the Neuralis Brain (auto-write, no gate)."""
         from core import brain
+
         try:
             result = brain.think(content=content, region=region, source="sentinel-desktop")
             neuron_id = result.get("neuron", {}).get("id")
@@ -2323,14 +2402,18 @@ class ActionExecutor:
                 "op": "brain_think",
             }
         except brain.BrainUnavailableError:
-            return {"success": False, "error": "brain_unavailable",
-                    "output": "Brain API unreachable (homeserver:8000)."}
+            return {
+                "success": False,
+                "error": "brain_unavailable",
+                "output": "Brain API unreachable (homeserver:8000).",
+            }
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
     def _brain_recall(self, *, context: str, **_) -> dict:
         """Retrieve the most relevant thoughts from the fleet brain."""
         from core import brain
+
         try:
             result = brain.recall(context=context)
             direct = result.get("direct", [])
@@ -2343,14 +2426,18 @@ class ActionExecutor:
                 "op": "brain_recall",
             }
         except brain.BrainUnavailableError:
-            return {"success": False, "error": "brain_unavailable",
-                    "output": "Brain API unreachable (homeserver:8000)."}
+            return {
+                "success": False,
+                "error": "brain_unavailable",
+                "output": "Brain API unreachable (homeserver:8000).",
+            }
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
     def _brain_search(self, *, q: str, **_) -> dict:
         """Free-text search across all neurons in the fleet brain."""
         from core import brain
+
         try:
             result = brain.search(q=q)
             count = result.get("count", len(result.get("results", [])))
@@ -2361,14 +2448,18 @@ class ActionExecutor:
                 "op": "brain_search",
             }
         except brain.BrainUnavailableError:
-            return {"success": False, "error": "brain_unavailable",
-                    "output": "Brain API unreachable (homeserver:8000)."}
+            return {
+                "success": False,
+                "error": "brain_unavailable",
+                "output": "Brain API unreachable (homeserver:8000).",
+            }
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
     def _brain_stats(self, **_) -> dict:
         """Return fleet brain health stats."""
         from core import brain
+
         try:
             result = brain.stats()
             totals = result.get("totals", {})
@@ -2380,14 +2471,18 @@ class ActionExecutor:
                 "op": "brain_stats",
             }
         except brain.BrainUnavailableError:
-            return {"success": False, "error": "brain_unavailable",
-                    "output": "Brain API unreachable (homeserver:8000)."}
+            return {
+                "success": False,
+                "error": "brain_unavailable",
+                "output": "Brain API unreachable (homeserver:8000).",
+            }
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
     def _brain_fire(self, *, neuron_id: int, **_) -> dict:
         """Fire (reinforce) a neuron by ID."""
         from core import brain
+
         try:
             result = brain.fire(neuron_id=neuron_id)
             return {
@@ -2397,144 +2492,151 @@ class ActionExecutor:
                 "op": "brain_fire",
             }
         except brain.BrainUnavailableError:
-            return {"success": False, "error": "brain_unavailable",
-                    "output": "Brain API unreachable (homeserver:8000)."}
+            return {
+                "success": False,
+                "error": "brain_unavailable",
+                "output": "Brain API unreachable (homeserver:8000).",
+            }
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
-    # Dispatch table
-    _dispatch_table: dict[str, Callable] = {
-        "click": _click,
-        "double_click": _click,
-        "right_click": _click,
-        "click_text": _click_text,
-        "click_image": _click_image,
-        "click_control": _click_control,
-        "click_element": _click_element,
-        "click_mark": _click_mark,
-        "list_controls": _list_controls,
-        "list_elements": _list_elements,
-        "web_open": _web_open,
-        "web_click": _web_click,
-        "web_type": _web_type,
-        "web_read": _web_read,
-        "web_extract": _web_extract,
-        "web_wait_for": _web_wait_for,
-        "web_screenshot": _web_screenshot,
-        "web_eval_js": _web_eval_js,
-        "web_download": _web_download,
-        "web_upload": _web_upload,
-        "web_tabs": _web_tabs,
+    # Dispatch table (v18): derived from the action registry
+    # (core/action_registry.py). Each entry is an unbound handler function;
+    # callers pass ``self`` explicitly. The mapping below is the registration
+    # seed — handlers register their canonical name plus aliases. Future
+    # versions add actions with @register_action instead of editing this table.
+    _dispatch_table: dict[str, Callable] = _build_dispatch_table(
+        click=_click,
+        double_click=_click,
+        right_click=_click,
+        click_text=_click_text,
+        click_image=_click_image,
+        click_control=_click_control,
+        click_element=_click_element,
+        click_mark=_click_mark,
+        list_controls=_list_controls,
+        list_elements=_list_elements,
+        web_open=_web_open,
+        web_click=_web_click,
+        web_type=_web_type,
+        web_read=_web_read,
+        web_extract=_web_extract,
+        web_wait_for=_web_wait_for,
+        web_screenshot=_web_screenshot,
+        web_eval_js=_web_eval_js,
+        web_download=_web_download,
+        web_upload=_web_upload,
+        web_tabs=_web_tabs,
         # Netops (v9.0)
-        "ssh_connect": _ssh_connect,
-        "ssh_disconnect": _ssh_disconnect,
-        "ssh_run": _ssh_run,
-        "ssh_show": _ssh_show,
-        "ssh_ping": _ssh_ping,
-        "ssh_traceroute": _ssh_traceroute,
+        ssh_connect=_ssh_connect,
+        ssh_disconnect=_ssh_disconnect,
+        ssh_run=_ssh_run,
+        ssh_show=_ssh_show,
+        ssh_ping=_ssh_ping,
+        ssh_traceroute=_ssh_traceroute,
         # Memory (v11.0)
-        "memory_store": _memory_store,
-        "memory_recall": _memory_recall,
-        "memory_search": _memory_search,
-        "memory_forget": _memory_forget,
+        memory_store=_memory_store,
+        memory_recall=_memory_recall,
+        memory_search=_memory_search,
+        memory_forget=_memory_forget,
         # Conductor (v12.0)
-        "conductor_run": _conductor_run_sync,
-        "set_text": _set_text,
-        "read_text": _read_text,
-        "read_window": _read_window,
-        "type_text": _type_text,
-        "press_key": _press_key,
-        "hotkey": _hotkey,
-        "scroll": _scroll,
-        "mouse_move": _mouse_move,
-        "drag": _drag,
-        "screenshot": _screenshot,
-        "find_image": _find_image,
-        "wait": _wait,
-        "wait_for_image": _wait_for_image,
-        "smart_wait": _smart_wait,
-        "wait_for_stable": _wait_for_stable,
-        "wait_for_text": _wait_for_text,
-        "open_app": _open_app,
-        "smart_open": _smart_open,
-        "close_app": _close_app,
-        "focus_window": _focus_window,
-        "close_window": _close_window,
-        "list_windows": _list_windows,
-        "read_file": _read_file,
-        "write_file": _write_file,
-        "list_directory": _list_directory,
+        conductor_run=_conductor_run_sync,
+        set_text=_set_text,
+        read_text=_read_text,
+        read_window=_read_window,
+        type_text=_type_text,
+        press_key=_press_key,
+        hotkey=_hotkey,
+        scroll=_scroll,
+        mouse_move=_mouse_move,
+        drag=_drag,
+        screenshot=_screenshot,
+        find_image=_find_image,
+        wait=_wait,
+        wait_for_image=_wait_for_image,
+        smart_wait=_smart_wait,
+        wait_for_stable=_wait_for_stable,
+        wait_for_text=_wait_for_text,
+        open_app=_open_app,
+        smart_open=_smart_open,
+        close_app=_close_app,
+        focus_window=_focus_window,
+        close_window=_close_window,
+        list_windows=_list_windows,
+        read_file=_read_file,
+        write_file=_write_file,
+        list_directory=_list_directory,
         # File Operations Plus (v13.0)
-        "delete_file": _delete_file,
-        "move_file": _move_file,
-        "copy_file": _copy_file,
-        "mkdir": _mkdir,
-        "stat_file": _stat_file,
-        "find_files": _find_files,
-        "archive_create": _archive_create,
-        "archive_extract": _archive_extract,
+        delete_file=_delete_file,
+        move_file=_move_file,
+        copy_file=_copy_file,
+        mkdir=_mkdir,
+        stat_file=_stat_file,
+        find_files=_find_files,
+        archive_create=_archive_create,
+        archive_extract=_archive_extract,
         # Process & Service Control (v13.0)
-        "set_priority": _set_priority,
-        "get_env": _get_env,
-        "set_env": _set_env,
-        "service_control": _service_control,
+        set_priority=_set_priority,
+        get_env=_get_env,
+        set_env=_set_env,
+        service_control=_service_control,
         # Credential Vault (v13.0)
-        "cred_store": _cred_store,
-        "cred_read": _cred_read,
+        cred_store=_cred_store,
+        cred_read=_cred_read,
         # Registry (v13.0)
-        "registry_read": _registry_read,
-        "registry_write": _registry_write,
-        "registry_delete": _registry_delete,
-        "clipboard_read": _clipboard_read,
-        "clipboard_write": _clipboard_write,
-        "system_info": _system_info,
-        "list_processes": _list_processes,
-        "start_process": _start_process,
-        "kill_process": _kill_process,
-        "note": _note,
-        "finish": _finish,
-        "powershell": _powershell,
-        "run_script": _run_script,
+        registry_read=_registry_read,
+        registry_write=_registry_write,
+        registry_delete=_registry_delete,
+        clipboard_read=_clipboard_read,
+        clipboard_write=_clipboard_write,
+        system_info=_system_info,
+        list_processes=_list_processes,
+        start_process=_start_process,
+        kill_process=_kill_process,
+        note=_note,
+        finish=_finish,
+        powershell=_powershell,
+        run_script=_run_script,
         # Resilience (v14.0)
-        "retry_last": _retry_last,
-        "get_circuit_breakers": _get_circuit_breakers,
+        retry_last=_retry_last,
+        get_circuit_breakers=_get_circuit_breakers,
         # Config (v15.0)
-        "config_get": _config_get,
-        "config_set": _config_set,
+        config_get=_config_get,
+        config_set=_config_set,
         # Network diagnostics (v15.0)
-        "dns_lookup": _dns_lookup,
-        "ping": _ping,
-        "port_scan": _port_scan,
+        dns_lookup=_dns_lookup,
+        ping=_ping,
+        port_scan=_port_scan,
         # Window management (v16.0)
-        "resize_window": _resize_window,
-        "move_window": _move_window,
-        "minimize_window": _minimize_window,
-        "maximize_window": _maximize_window,
-        "restore_window": _restore_window,
-        "get_window_state": _get_window_state,
-        "get_monitors": _get_monitors,
+        resize_window=_resize_window,
+        move_window=_move_window,
+        minimize_window=_minimize_window,
+        maximize_window=_maximize_window,
+        restore_window=_restore_window,
+        get_window_state=_get_window_state,
+        get_monitors=_get_monitors,
         # HTTP client (v16.0)
-        "http_get": _http_get,
-        "http_post": _http_post,
-        "http_download": _http_download,
+        http_get=_http_get,
+        http_post=_http_post,
+        http_download=_http_download,
         # File / process monitoring (v16.0)
-        "watch_file": _watch_file,
-        "watch_file_content": _watch_file_content,
-        "watch_process": _watch_process,
+        watch_file=_watch_file,
+        watch_file_content=_watch_file_content,
+        watch_process=_watch_process,
         # Audio / voice (v17.0)
-        "speak": _speak,
-        "listen": _listen,
-        "volume_get": _volume_get,
-        "volume_set": _volume_set,
-        "mute_toggle": _mute_toggle,
-        "list_voices": _list_voices,
-        # Neuralis Brain (v18.0)
-        "brain_think": _brain_think,
-        "brain_recall": _brain_recall,
-        "brain_search": _brain_search,
-        "brain_stats": _brain_stats,
-        "brain_fire": _brain_fire,
-    }
+        speak=_speak,
+        listen=_listen,
+        volume_get=_volume_get,
+        volume_set=_volume_set,
+        mute_toggle=_mute_toggle,
+        list_voices=_list_voices,
+        # Neuralis Brain (fleet-wide shared memory)
+        brain_think=_brain_think,
+        brain_recall=_brain_recall,
+        brain_search=_brain_search,
+        brain_stats=_brain_stats,
+        brain_fire=_brain_fire,
+    )
 
 
 # ---------------------------------------------------------------------------

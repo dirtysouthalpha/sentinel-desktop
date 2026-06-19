@@ -36,12 +36,11 @@ dependencies = [
     "uvicorn ~= 0.47",
     "websockets ~= 16.0",
     "pydantic ~= 2.13",
-    "pygetwindow ~= 0.0.9; sys_platform == 'win32'",
     "bcrypt ~= 4.3",
-    "pyotp ~= 2.9",
 ]
 
 [project.optional-dependencies]
+# ── Subsystem extras (each enables a feature group; all gracefully degrade if absent) ──
 ocr = [
     "opencv-python ~= 4.8",
     "pytesseract ~= 0.3.10",
@@ -56,6 +55,34 @@ windows = [
     "pywin32 >= 306; sys_platform == 'win32'",
     "uiautomation ~= 2.0; sys_platform == 'win32'",
     "keyboard ~= 0.13.5; sys_platform == 'win32'",
+    "pygetwindow ~= 0.0.9; sys_platform == 'win32'",
+    "pycaw; sys_platform == 'win32'",           # v17 volume control (Windows audio endpoint)
+]
+web = [
+    # v8 Webhand — Playwright browser automation (web_* actions). Also run:
+    #   pip install playwright && playwright install
+    "playwright ~= 1.52",
+]
+netops = [
+    # v9 — SSH / network device control (ssh_* actions)
+    "paramiko ~= 5.0",
+]
+net = [
+    # v15 — advanced network diagnostics (dns_lookup AAAA/MX/PTR/TXT fallback)
+    "dnspython ~= 2.6",
+]
+mfa = [
+    # v13 — TOTP / MFA handling
+    "pyotp ~= 2.9",
+]
+voice = [
+    # v17 — STT (SpeechRecognition) + audio capture (pyaudio)
+    "SpeechRecognition ~= 3.10",
+    "pyaudio ~= 0.2.14; sys_platform == 'win32'",
+]
+mcp = [
+    # MCP server entry point (sentinel-mcp-server) — proxies MCP tool calls to the API
+    "fastmcp ~= 2.0",
 ]
 dev = [
     "pytest ~= 8.4",
@@ -67,8 +94,9 @@ dev = [
     "pip-audit ~= 2.7",
     "pre-commit ~= 3.6",
 ]
+# Everything — installs all subsystem features on supported platforms.
 all = [
-    "sentinel-desktop[ocr,screenshot,tray]",
+    "sentinel-desktop[ocr,screenshot,tray,windows,web,netops,net,mfa,voice,mcp]",
 ]
 
 [project.urls]
@@ -124,7 +152,6 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "S105", "S106", "S108", "S603", "S607", "E701", "E741", "E402"]
 "installer/*" = ["S603", "S607"]
-"core/auth.py" = ["S324"]  # Legacy SHA-256 verification only; transparently upgrades to bcrypt on login
 
 [tool.ruff.format]
 quote-style = "double"

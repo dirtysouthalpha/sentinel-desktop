@@ -237,6 +237,30 @@ class TestCORS:
         assert app is not None
 
 
+class TestAppMetadata:
+    """v18 — the FastAPI app must source its version from core.__version__."""
+
+    def test_app_version_matches_core_version(self):
+        from core import __version__
+
+        server = _make_server()
+        app = server.create_app()
+        assert app.version == __version__
+
+    def test_app_version_is_not_stale(self):
+        """Guard against re-introducing a hardcoded stale version string."""
+        server = _make_server()
+        app = server.create_app()
+        # The pre-v18 code hardcoded "3.1.0" — it must never return to that.
+        assert app.version != "3.1.0"
+
+    def test_app_title_has_no_hardcoded_version(self):
+        """Title should be the product name, not a version-stamped string."""
+        server = _make_server()
+        app = server.create_app()
+        assert app.title == "Sentinel Desktop"
+
+
 # ---------------------------------------------------------------------------
 # Broadcast
 # ---------------------------------------------------------------------------

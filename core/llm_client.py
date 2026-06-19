@@ -342,14 +342,11 @@ class LLMClient:
     ) -> str:
         """Send a chat request with a screenshot image.
 
-        .. deprecated:: 3.1.0
-            This method is no longer called by the engine loop. Vision
-            messages are now constructed directly by
-            ``AgentEngine._add_vision_message`` and sent via ``chat()``.
-            Kept for backward compatibility with external callers.
-
-        The *image_base64* string is embedded as a ``data:`` URI in a vision
-        message appended to *messages*.
+        A convenience wrapper: the *image_base64* string is embedded as a
+        ``data:`` URI in a vision message appended to *messages*, then sent
+        via :meth:`chat`. The engine loop builds its own vision messages
+        directly (``AgentEngine._add_vision_message``); this method exists
+        for external callers and library use.
 
         For Anthropic the image is sent in the native ``source.type =
         "base64"`` format.
@@ -558,11 +555,13 @@ class LLMClient:
                 else:
                     # Handle malformed tool_use blocks by creating a default tool_call
                     # This ensures graceful degradation when responses are incomplete
-                    actions.append({
-                        "action": block.get("name", ""),
-                        "_original_id": block.get("id", ""),
-                        "_input": block.get("input", {}),
-                    })
+                    actions.append(
+                        {
+                            "action": block.get("name", ""),
+                            "_original_id": block.get("id", ""),
+                            "_input": block.get("input", {}),
+                        }
+                    )
 
         if actions:
             # Return as tool_calls format so the engine picks it up
@@ -571,28 +570,35 @@ class LLMClient:
                 # Check if this is a malformed action (has _id and _input keys)
                 if "_id" in action or "_input" in action:
                     # Handle malformed tool_use block
-                    tool_calls.append({
-                        "id": action.get("_id", ""),
-                        "type": "function",
-                        "function": {
-                            "name": action.get("action", ""),
-                            "arguments": json.dumps(action.get("_input", {})),
-                        },
-                    })
+                    tool_calls.append(
+                        {
+                            "id": action.get("_id", ""),
+                            "type": "function",
+                            "function": {
+                                "name": action.get("action", ""),
+                                "arguments": json.dumps(action.get("_input", {})),
+                            },
+                        }
+                    )
                 else:
                     # Handle normal computer use action
                     # Use the original tool_use block's id if available, otherwise use empty string
-                    tool_calls.append({
-                        "id": action.get("_original_id", ""),
-                        "type": "function",
-                        "function": {
-                            "name": action["action"],
-                            "arguments": json.dumps({
-                                k: v for k, v in action.items()
-                                if k not in ("action", "_original_id")
-                            }),
-                        },
-                    })
+                    tool_calls.append(
+                        {
+                            "id": action.get("_original_id", ""),
+                            "type": "function",
+                            "function": {
+                                "name": action["action"],
+                                "arguments": json.dumps(
+                                    {
+                                        k: v
+                                        for k, v in action.items()
+                                        if k not in ("action", "_original_id")
+                                    }
+                                ),
+                            },
+                        }
+                    )
             return json.dumps({"tool_calls": tool_calls})
 
         return "\n".join(text_parts).strip()

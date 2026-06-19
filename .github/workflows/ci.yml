@@ -27,8 +27,8 @@ jobs:
       - name: Install runtime + dev dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e ".[dev]"
+          # v18: pyproject.toml is the single source of truth (requirements.txt is a pointer to .[all])
+          pip install -e ".[all,dev]"
 
       - name: Pytest
         run: |
@@ -63,8 +63,7 @@ jobs:
       - name: Install dev deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e ".[dev]"
+          pip install -e ".[all,dev]"
 
       - name: Ruff lint
         run: ruff check .
@@ -85,8 +84,7 @@ jobs:
       - name: Install dev deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e ".[dev]"
+          pip install -e ".[all,dev]"
       - name: Mypy
         run: mypy core api
 
@@ -99,6 +97,11 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pip-audit
-        run: pip install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+          # Install the project so pip-audit can scan the resolved environment.
+          # v18: pyproject.toml is the single source of truth.
+          pip install -e ".[all]"
       - name: Audit
-        run: pip-audit -r requirements.txt --no-deps
+        run: pip-audit --skip-editable

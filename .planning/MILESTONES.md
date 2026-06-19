@@ -2,6 +2,62 @@
 
 Project milestones and their release dates.
 
+## v18.0.0 — Foundation (2026-06-19)
+
+A reconciliation major version: no new capability, but closes the gap between the project's
+claims and reality.
+
+**Shipped:**
+- Version & docs sync: `core.__version__` → 18.0.0; FastAPI app sources `title`/`version`
+  from `core.__version__` (was hardcoded "3.1.0"); `CHANGELOG.md` backfilled for v7–v17;
+  README test count reconciled (7,882); new `docs/ROADMAP-v18-to-v22.md`.
+- Dependency unification: `pyproject.toml` is the single source; new extras `[web]`,
+  `[netops]`, `[voice]`, `[mcp]`, `[net]`, `[mfa]`, `[all]`; `requirements.txt` → pointer.
+- Breaking changes (deprecation removal): dropped `LLMClient.chat_with_screenshot()`,
+  async `ActionExecutor.execute()`, legacy SHA-256 auth path, `gui/tray.py` (migrated to
+  `gui/system_tray.SystemTrayIcon`); removed `S324` ruff per-file ignore.
+- Structural: new `core/action_registry.py` (`@register_action`) and `api/routes.py`
+  (`@api_route`) registry patterns replace the 110-entry dispatch dict literal and the
+  imperative `_register_*_routes` calls. No file splitting.
+- Release pipeline: first real `v18.0.0` git tag; `release.yml` (PyPI Trusted Publishing)
+  exercised end-to-end.
+- Phantom v13–v17 feature claims removed from docs.
+
+## v17.0 — Audio/Voice (June 2026)
+
+**Shipped:**
+- TTS via Windows SAPI `SpVoice` + PowerShell fallback; STT via SAPI dictation +
+  SpeechRecognition fallback; volume_get/set, mute_toggle, list_voices, speak, listen.
+- pycaw (optional) for volume control; thread-safe cached `_tts_voice`.
+
+## v16.0 — Window Control, HTTP Client, File Monitor (June 2026)
+
+**Shipped:**
+- Window management: resize/move/minimize/maximize/restore_window, get_window_state,
+  get_monitors.
+- HTTP client: http_get/post/put/delete/download with SSRF protection and 50k body cap.
+- File/process watcher: watch_file, watch_file_content, watch_process.
+
+## v15.0 — Config Persistence + DNS Tools (June 2026)
+
+**Shipped:**
+- `ConfigStore` dot-notation JSON persistence + process-wide singleton.
+- Network diagnostics: dns_lookup, ping, port_scan, traceroute.
+
+## v14.0 — Resilience Engine (June 2026)
+
+**Shipped:**
+- `@retryable` decorator (exponential backoff + jitter) and `CircuitBreaker` state machine.
+- Pre-wired breakers for ssh/browser/ocr/llm/desktop/netops; retry_last,
+  get_circuit_breakers actions.
+
+## v13.0 — Sentinel-Plus: MFA (June 2026)
+
+**Shipped:**
+- MFA Detector (4 strategies) and MFA Handler (TOTP/user-prompt/SMS-Email).
+- TOTP provider supporting 9 authenticator apps; service-name extraction; 5-min code cache.
+- mfa_detect, mfa_handle actions; added `pyotp ~= 2.9`.
+
 ## v7.0.0 — Perception: Grounding Revolution (2026-06-06)
 
 **Shipped:**
@@ -102,4 +158,21 @@ Project milestones and their release dates.
 
 ## Future Milestones
 
-*To be added...*
+v18 reconciled the project with its claims and laid the foundation. The next four themed
+versions are scheduled in `docs/ROADMAP-v18-to-v22.md`:
+
+- **v19 — Fortress** (enterprise security): SSO/OIDC, declarative policy guardrails,
+  secrets vault, tamper-evident audit logs, MDM deployment.
+- **v20 — Penguin** (real Linux desktop parity): route scattered `win32` imports through
+  `core/platform/`, AT-SPI on Linux, Wayland support, cross-platform parity test matrix.
+  Pairs naturally with a Docker management action group.
+- **v21 — Operator** (eval harness + skill marketplace): `eval/` simulation/scoring
+  harness, cost dashboard, skill/profile marketplace, long-horizon autonomy. Pairs
+  naturally with goal-learning actions.
+- **v22 — Voice** (ambient / proactive): wake words, ambient monitoring, event triggers,
+  full `core/voice.py` built on the v17 `core/audio.py` foundation.
+
+Each returns as a real, tested feature. The v13–v17 phantom-feature claims (Docker
+management, tray/desktop-control actions, goal-learning, loguru, `dns_leak_test`,
+working-memory actions) were removed from docs in v18 and will reappear here as they
+become real.

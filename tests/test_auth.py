@@ -7,8 +7,6 @@ from core.auth import (
     AuthManager,
     Role,
     User,
-    _generate_salt,
-    _hash_password,
     _hash_password_bcrypt,
     _is_bcrypt_hash,
     _verify_password,
@@ -71,13 +69,6 @@ class TestUser:
 
 
 class TestPasswordHashing:
-    def test_legacy_sha256(self):
-        salt = _generate_salt()
-        hashed = _hash_password("secret", salt)
-        assert isinstance(hashed, str)
-        assert len(hashed) == 64
-        assert _hash_password("secret", salt) == hashed
-
     def test_bcrypt_hash(self):
         hashed = _hash_password_bcrypt("secret")
         assert hashed.startswith("$2b$")
@@ -94,11 +85,12 @@ class TestPasswordHashing:
         assert _verify_password("mypassword", hashed)
         assert not _verify_password("wrong", hashed)
 
-    def test_verify_legacy_password(self):
-        salt = _generate_salt()
-        hashed = _hash_password("legacy_pass", salt)
-        assert _verify_password("legacy_pass", hashed, salt)
-        assert not _verify_password("wrong", hashed, salt)
+    def test_legacy_sha256_hash_no_longer_verified(self):
+        """v18: the SHA-256 verification path was removed. A stored hash that
+        is not bcrypt-format is rejected outright (affected users must reset)."""
+        legacy_hash = "a" * 64  # a 64-char hex digest, not bcrypt-format
+        assert not _is_bcrypt_hash(legacy_hash)
+        assert _verify_password("anything", legacy_hash, legacy_salt="deadbeef") is False
 
 
 class TestAuthManager:

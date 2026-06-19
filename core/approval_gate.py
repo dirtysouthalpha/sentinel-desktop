@@ -75,7 +75,7 @@ class ApprovalGate:
         # In agent loop:
         decision, action = gate.evaluate(action, step_num)
         if decision == ApprovalDecision.APPROVE:
-            executor.execute(action)
+            executor.execute_sync(action)
     """
 
     def __init__(self, enabled: bool = False) -> None:

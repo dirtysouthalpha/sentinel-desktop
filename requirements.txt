@@ -1,57 +1,24 @@
 # Sentinel Desktop — AI-powered desktop automation
-# Version is sourced from core.__version__ (pyproject.toml [tool.setuptools.dynamic]).
 #
-# Pinning policy: compatible-release (~=). Allows patch updates, blocks
-# breaking minor bumps. To regenerate after a deliberate upgrade:
-#     pip install -U <pkg> && pip freeze | grep -i <pkg>
-
-# ── Core ─────────────────────────────────────────────────────────────────
-customtkinter ~= 5.2
-pyautogui ~= 0.9.54
-psutil ~= 5.9
-Pillow ~= 12.2
-pyperclip ~= 1.8
-requests ~= 2.31
-httpx ~= 0.28
-
-# ── API server ───────────────────────────────────────────────────────────
-fastapi ~= 0.136
-uvicorn ~= 0.47
-websockets ~= 16.0
-pydantic ~= 2.13
-# Password hashing for the RBAC layer (core/auth.py). Used to replace
-# the legacy SHA-256 path; legacy hashes auto-upgrade on next login.
-bcrypt ~= 4.3
-
-# ── Screen analysis (optional but recommended) ──────────────────────────
-opencv-python ~= 4.8
-
-# ── Fast multi-monitor capture (optional — falls back to pyautogui) ─────
-mss ~= 9.0
-
-# ── Global Esc-x3 failsafe hotkey (optional — agent runs without it) ────
-keyboard ~= 0.13.5; sys_platform == "win32"
-
-# ── OCR for click_text / read_text (optional — also requires the Tesseract binary)
-# Windows install: choco install tesseract  OR  download from https://github.com/UB-Mannheim/tesseract
-pytesseract ~= 0.3.10
-
-# ── Native Windows accessibility (optional — enables click_control / set_text / list_controls)
-uiautomation ~= 2.0; sys_platform == "win32"
-
-# ── System-tray support (optional — enables minimize-to-tray + background mode)
-pystray ~= 0.19
-
-# ── Browser automation (optional — enables web_* actions via Playwright) ──
-# Install: pip install playwright && playwright install
-playwright ~= 1.52
-
-# ── SSH / network device control (v9.0 — enables ssh_* actions) ─────────
-paramiko ~= 5.0
-
-# ── Windows-specific ────────────────────────────────────────────────────
-# pygetwindow only works on Windows and its dependency pyrect ships a
-# distutils-based setup.py that fails to build on Python 3.12+. Gate it
-# on win32 so Linux/macOS test runners don't choke.
-pygetwindow ~= 0.0.9; sys_platform == "win32"
-pywin32 >= 306; sys_platform == "win32"
+# As of v18, this file is a THIN POINTER. The single source of truth for dependencies
+# is pyproject.toml ([project.dependencies] + [project.optional-dependencies]).
+#
+# Install everything (all subsystem features on supported platforms):
+#     pip install -e ".[all]"
+#
+# Install a specific feature group:
+#     pip install -e ".[web]"        # Playwright browser automation
+#     pip install -e ".[netops]"     # SSH / network device control
+#     pip install -e ".[voice]"      # STT / audio capture
+#     pip install -e ".[mcp]"        # MCP server entry point
+#     pip install -e ".[net]"        # advanced DNS diagnostics
+#     pip install -e ".[mfa]"        # TOTP / MFA handling
+#     pip install -e ".[ocr]"        # OCR (click_text / read_text)
+#     pip install -e ".[windows]"    # Windows-only: UIA, pywin32, keyboard, tray, pycaw
+#
+# CI (lint + tests):
+#     pip install -e ".[dev]"
+#
+# NOTE: the [web] extra installs the playwright Python package but NOT the browser
+# binaries. After installing, also run:  playwright install
+-e .[all]

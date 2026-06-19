@@ -1,9 +1,9 @@
 # Sentinel Desktop — AI-Powered Cross-Platform Desktop Automation
 
-Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v20.0: Portable Build — USB-portable PyInstaller bundle with embedded profile, bundled Tesseract, and first-run API key prompt.**
+Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v18.0 "Foundation": reconciliation release on top of the Neuralis Brain fleet-memory, humanize, and portable-build work — version/docs sync, dependency unification, deprecation removal, action/endpoint registries, first real release tag. See `docs/ROADMAP-v18-to-v22.md` for the v19–v22 plan (Fortress/Penguin/Operator/Voice).**
 
 ## What To Do (Priority Order)
-**All priorities complete - project is production-ready ✅**
+**v18 Foundation complete — project reconciled and production-ready ✅**
 
 All quality gates met:
 - ✅ 8,147 tests passing (151 skipped)
@@ -19,6 +19,12 @@ All quality gates met:
 - ✅ File/process monitoring: watch_file, watch_file_content, watch_process (polling-based)
 - ✅ Audio/voice: speak (SAPI/PowerShell TTS), listen (SAPI dictation), volume_get/set/mute, list_voices
 - ✅ 105 LLM tool schemas covering all actions
+- ✅ v18: action/endpoint registries (`core/action_registry.py`, `api/routes.py`); unified
+  dependency extras; deprecated surface removed
+
+> **Note:** Some v13–v17 roadmap items (Docker management, tray/desktop-control actions,
+> goal-learning, loguru, `dns_leak_test`, working-memory actions) were planned but never
+> shipped. They are rescheduled as v19–v22 themes — see `docs/ROADMAP-v18-to-v22.md`.
 
 **Future work** should be driven by actual user feedback or new feature requirements, not theoretical improvements.
 

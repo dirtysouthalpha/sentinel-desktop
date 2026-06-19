@@ -375,7 +375,9 @@ def test_approval_callback_timeout_returns_error(fake_executor):
         action_executor.APPROVAL_CALLBACK_TIMEOUT = 0.1  # 100ms
 
         try:
-            out = await ex.execute({"action": "click", "x": 1, "y": 2})
+            # v18: the deprecated async execute() wrapper was removed; the
+            # approval-gate timeout logic lives in _execute_with_logging.
+            out = await ex._execute_with_logging({"action": "click", "x": 1, "y": 2})
             return out
         finally:
             action_executor.APPROVAL_CALLBACK_TIMEOUT = original_timeout
@@ -394,7 +396,7 @@ def test_approval_callback_rejection_returns_error(fake_executor):
 
     async def run_rejection_test():
         ex = fake_executor(approval_callback=always_reject)
-        return await ex.execute({"action": "click", "x": 1, "y": 2})
+        return await ex._execute_with_logging({"action": "click", "x": 1, "y": 2})
 
     out = asyncio.run(run_rejection_test())
     assert out["success"] is False
@@ -410,7 +412,7 @@ def test_approval_callback_acceptance_allows_action(fake_executor):
 
     async def run_approval_test():
         ex = fake_executor(approval_callback=always_approve)
-        return await ex.execute({"action": "click", "x": 1, "y": 2})
+        return await ex._execute_with_logging({"action": "click", "x": 1, "y": 2})
 
     out = asyncio.run(run_approval_test())
     assert out["success"] is True
