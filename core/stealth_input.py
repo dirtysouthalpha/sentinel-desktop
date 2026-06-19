@@ -25,6 +25,7 @@ Invoke. Callers should always be prepared to fall back to physical input
 from __future__ import annotations
 
 import logging
+import platform as _platform
 import time
 
 from core import humanize
@@ -32,8 +33,11 @@ from core.humanize import profile as _humanize_profile
 from core.humanize import rng as _humanize_rng
 from core.humanize import timing as _humanize_timing
 from core.humanize import typing as _humanize_typing
+from core.platform import get_backend, is_linux, is_macos
 
 logger = logging.getLogger(__name__)
+
+_SYSTEM = _platform.system()
 
 try:
     import win32api  # type: ignore
@@ -47,7 +51,16 @@ except ImportError:
 
 def is_available() -> bool:
     """Check if the stealth transports can actually be used on this OS."""
-    return _HAS_WIN32
+    if _HAS_WIN32:
+        return True
+    if is_linux():
+        # xdotool-based stealth input is available when the backend supports it.
+        try:
+            import shutil
+            return shutil.which("xdotool") is not None
+        except Exception:
+            return False
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +74,11 @@ def post_click(x: int, y: int, button: str = "left", clicks: int = 1, delay: flo
     Returns True if at least one click message was posted successfully.
     """
     if not _HAS_WIN32:
+        if is_linux() or is_macos():
+            try:
+                return get_backend().input.click(x, y, button=button, clicks=clicks)
+            except Exception as exc:
+                logger.debug("post_click via platform backend failed: %s", exc)
         return False
     try:
         hwnd = win32gui.WindowFromPoint((int(x), int(y)))
@@ -111,7 +129,14 @@ def post_text(text: str, hwnd: int | None = None, delay: float = 0.005) -> bool:
 
     Returns True if all characters were posted.
     """
-    if not _HAS_WIN32 or not text:
+    if not _HAS_WIN32:
+        if (is_linux() or is_macos()) and text:
+            try:
+                return get_backend().input.type_text(text)
+            except Exception as exc:
+                logger.debug("post_text via platform backend failed: %s", exc)
+        return False
+    if not text:
         return False
     try:
         if hwnd is None:

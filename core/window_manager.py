@@ -1,16 +1,22 @@
-"""Sentinel Desktop v3.0 — Window management utilities.
+"""Sentinel Desktop v20.0 — Window management utilities.
 
 Provides functions to list, find, focus, resize, and close windows.
-Cross-platform support with Windows-specific enhancements via win32gui.
+On Windows: win32gui (preferred) or pygetwindow fallback.
+On Linux: core.platform backend (wnck or xdotool).
+On macOS: core.platform backend (AppleScript).
 """
 
 import logging
 import platform
 from typing import Any
 
+from core.platform import get_backend, is_linux, is_macos
+
 logger = logging.getLogger(__name__)
 
-if platform.system() == "Windows":
+_SYSTEM = platform.system()
+
+if _SYSTEM == "Windows":
     try:
         import win32con
         import win32gui
@@ -40,6 +46,19 @@ else:
 _MIN_WINDOW_SIZE = 200  # Minimum width/height for valid windows
 _MIN_COORDINATE = -32000  # Windows uses this for minimized/hidden windows
 _MIN_RECT_COMPONENTS = 4  # Expected number of components in a rectangle (x, y, w, h)
+
+
+def _window_info_to_dict(wi: Any) -> dict[str, Any]:
+    """Convert a platform-backend WindowInfo to the internal dict format."""
+    return {
+        "title": wi.title or "",
+        "x": wi.x,
+        "y": wi.y,
+        "width": wi.width,
+        "height": wi.height,
+        "is_focused": wi.is_focused,
+        "hwnd": wi.handle,
+    }
 
 
 def list_windows() -> list[dict[str, Any]]:
@@ -85,6 +104,11 @@ def list_windows() -> list[dict[str, Any]]:
             )
         except (OSError, RuntimeError) as e:
             logger.error("list_windows via pygetwindow failed: %s", e)
+    elif is_linux() or is_macos():
+        try:
+            windows = [_window_info_to_dict(wi) for wi in get_backend().window.list_windows()]
+        except Exception as exc:
+            logger.warning("list_windows via platform backend failed: %s", exc)
     else:
         logger.warning("No window management library available")
     return windows
@@ -101,6 +125,11 @@ def focus_window(title: str) -> bool:
         return _focus_window_win32(title)
     if HAS_PGW:
         return _focus_window_pgw(title)
+    if is_linux() or is_macos():
+        try:
+            return get_backend().window.focus_window(title)
+        except Exception as exc:
+            logger.warning("focus_window via platform backend failed: %s", exc)
     return False
 
 
@@ -191,6 +220,11 @@ def get_focused_window_rect() -> tuple[int, int, int, int] | None:
                 return (w.left, w.top, w.width, w.height)
         except (OSError, RuntimeError) as exc:
             logger.debug("pgw get_focused_window_rect failed: %s", exc)
+    if is_linux() or is_macos():
+        try:
+            return get_backend().window.get_focused_window_rect()
+        except Exception as exc:
+            logger.debug("get_focused_window_rect via platform backend failed: %s", exc)
     return None
 
 
@@ -224,6 +258,15 @@ def _get_foreground_window_info() -> tuple[str, tuple[int, int, int, int] | None
                 focused_rect = (r[0], r[1], r[2] - r[0], r[3] - r[1])
         except _Win32Error as exc:
             logger.debug("get_target_window_rect foreground lookup failed: %s", exc)
+    elif is_linux() or is_macos():
+        try:
+            focused_rect = get_backend().window.get_focused_window_rect()
+            for wi in get_backend().window.list_windows():
+                if wi.is_focused:
+                    focused_title = wi.title or ""
+                    break
+        except Exception as exc:
+            logger.debug("_get_foreground_window_info via platform backend failed: %s", exc)
     return focused_title, focused_rect
 
 
@@ -365,4 +408,9 @@ def close_window(title: str) -> bool:
                 return True
         except (OSError, RuntimeError) as exc:
             logger.debug("pgw close_window(%s) failed: %s", title, exc)
+    elif is_linux() or is_macos():
+        try:
+            return get_backend().window.close_window(title)
+        except Exception as exc:
+            logger.warning("close_window via platform backend failed: %s", exc)
     return False

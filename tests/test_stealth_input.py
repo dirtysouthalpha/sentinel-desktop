@@ -107,8 +107,10 @@ def test_stealth_press_named_key(fake_executor, monkeypatch):
 
 
 def test_is_available_false_without_win32(monkeypatch):
-    """On Linux/non-Windows, is_available returns False."""
+    """Without win32 and without xdotool/macOS, is_available returns False."""
     monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
+    monkeypatch.setattr(stealth_input, "is_linux", lambda: False)
+    monkeypatch.setattr(stealth_input, "is_macos", lambda: False)
     assert stealth_input.is_available() is False
 
 
