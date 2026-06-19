@@ -18,6 +18,25 @@ Give it a goal in plain English. It sees your screen, moves the mouse, types, an
 
 ---
 
+<div align="center">
+
+### 🧠 Neuralis Brain — One mind across your whole fleet
+
+</div>
+
+Sentinel doesn't just automate — **it learns.** Every task it runs, every fix it lands, every tricky issue it solves gets distilled into the **Neuralis Brain** — a shared memory that *every* agent in your fleet reads from and writes to.
+
+**The brain learns from all clients and gets better and better with every task.**
+
+- 🔁 **Cross-agent memory** — Sentinel Desktop, Claude Code, opencode, and every other tool in the fleet share one brain. A fix Sentinel finds on a server at 2am is knowledge Claude Code can recall at noon.
+- 📈 **Gets smarter over time** — the more tasks it runs, the more context the brain holds. Hard-won solutions to advanced technical issues (server configs, stubborn drivers, network edge cases) are never solved twice.
+- 🖥️ **Built for the field** — engineered for IT work on servers and workstations. Sentinel captures the *goal → actions → outcome* of each engagement and feeds the durable lessons back in.
+- 🔌 **Direct bridge** — Sentinel speaks to the brain over HTTP (`NEURALIS_BRAIN_URL`), no extra processes. Seven operations: `think`, `recall`, `search`, `context`, `opinions`, `fire`, `stats`.
+
+> **Status:** arriving in **v18.0**. The bridge is the foundation — automatic recall-at-task-start and a full consolidation loop land in the phases that follow. Track progress in [CLAUDE.md](CLAUDE.md).
+
+---
+
 ## Features
 
 - 🤖 **Vision-driven agent loop** — screenshots → LLM → action → verify → repeat
@@ -36,6 +55,7 @@ Give it a goal in plain English. It sees your screen, moves the mouse, types, an
 - 🖥️ **Virtual Desktop isolation** — agent operates on its own Windows desktop, never interrupts the user
 - 🥷 **Stealth input** — PostMessage / UIAInvoke for non-interrupting actions (no mouse/keyboard hijack)
 - 📡 **WebSocket live feed** — every step broadcast to connected clients
+- 🧠 **Neuralis Brain integration** *(v18.0)* — shared, fleet-wide memory: Sentinel writes what it learns and recalls what every other agent has learned, so it gets smarter with every task
 
 ## Quick Start
 
@@ -209,6 +229,7 @@ sentinel-desktop/
 
 ## Companion Projects
 
+- **[Neuralis Brain](https://github.com/dirtysouthalpha)** — Shared, fleet-wide memory that every Sentinel-family agent reads from and writes to; the brain learns from all clients and gets better with every task
 - **[Sentinel Override](https://github.com/dirtysouthalpha/sentinel-override)** — Browser automation agent (Chrome extension)
 - **[Sentinel MCP](https://github.com/dirtysouthalpha/sentinel-mcp-server)** — Model Context Protocol server
 
