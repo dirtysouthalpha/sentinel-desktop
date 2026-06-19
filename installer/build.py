@@ -236,6 +236,121 @@ Filename: "{{app}}\\{{#MyAppExeName}}"; Description: "{{cm:LaunchProgram,{{#MyAp
     return str(iss_path)
 
 
+def build_portable(
+    profile: str = "field-it-tech",
+    bundle_playwright: bool = True,
+    out_dir: Path | None = None,
+) -> bool:
+    """Build a portable --onedir bundle with an embedded profile.
+
+    Unlike build_exe() which produces a single-file --onefile EXE, this
+    produces an --onedir folder that is USB-portable:
+    - No installer, no registry writes, no admin rights required.
+    - ``portable_data/`` directory is created next to the exe so
+      ``core.paths.is_portable()`` activates on first launch.
+    - The chosen profile directory is embedded at ``profiles/<name>/``.
+
+    Args:
+        profile: Name of a directory under ``profiles/`` to embed (default
+                 ``"field-it-tech"``).
+        bundle_playwright: If True, include Playwright browser binaries.
+        out_dir: Override output directory (default ``dist/portable/``).
+
+    Returns:
+        True on success, False on failure.
+    """
+    print(f"📦 Building portable {APP_NAME} v{APP_VERSION} (profile={profile})...")
+
+    try:
+        import PyInstaller  # noqa: F401
+    except ImportError:
+        print("❌ PyInstaller not installed. Run: pip install pyinstaller")
+        return False
+
+    profile_dir = ROOT_DIR / "profiles" / profile
+    if not profile_dir.is_dir():
+        print(f"❌ Profile not found: {profile_dir}")
+        return False
+
+    portable_out = out_dir or DIST_DIR / "portable"
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--name",
+        APP_NAME,
+        "--windowed",
+        "--onedir",  # NOT --onefile — portable bundles must be a folder
+        "--noconfirm",
+    ]
+
+    if ICON_PATH.exists():
+        cmd.extend(["--icon", str(ICON_PATH)])
+        print(f"  Icon: {ICON_PATH}")
+
+    # Bundle core data directories
+    for data_dir in ["config", "plugins", "assets"]:
+        src = ROOT_DIR / data_dir
+        if src.exists():
+            cmd.extend(["--add-data", f"{src};{data_dir}"])
+            print(f"  Data: {data_dir}/")
+
+    # Embed the selected profile
+    cmd.extend(["--add-data", f"{profile_dir};profiles/{profile}"])
+    print(f"  Profile: profiles/{profile}/")
+
+    # Bundle Playwright if requested
+    if bundle_playwright:
+        playwright_browsers = Path.home() / ".cache" / "ms-playwright"
+        if playwright_browsers.exists():
+            cmd.extend(["--add-data", f"{playwright_browsers};ms-playwright"])
+            print(f"  Playwright: {playwright_browsers}")
+        else:
+            print("  ℹ Playwright browsers not found — skipping bundling")
+
+    # Hidden imports (same as build_exe)
+    for imp in HIDDEN_IMPORTS:
+        cmd.extend(["--hidden-import", imp])
+
+    cmd.extend(
+        [
+            "--distpath",
+            str(portable_out),
+            "--workpath",
+            str(BUILD_DIR / "portable"),
+            "--specpath",
+            str(ROOT_DIR),
+            str(ROOT_DIR / "main.py"),
+        ]
+    )
+
+    print("  Running PyInstaller (--onedir)...")
+    try:
+        result = subprocess.run(cmd, cwd=str(ROOT_DIR))
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"❌ PyInstaller invocation failed: {exc}")
+        return False
+
+    if result.returncode != 0:
+        print(f"❌ Build failed (exit {result.returncode})")
+        return False
+
+    app_dir = portable_out / APP_NAME
+    if not app_dir.exists():
+        print(f"❌ Expected output directory not found: {app_dir}")
+        return False
+
+    # Create portable_data/ marker — presence activates core.paths portable mode
+    portable_data = app_dir / "portable_data"
+    portable_data.mkdir(exist_ok=True)
+    (portable_data / ".gitkeep").touch()
+    print(f"  Created portable marker: {portable_data}")
+
+    print(f"✅ Portable build: {app_dir}")
+    return True
+
+
 def build_all() -> bool:
     """Build EXE then generate installer."""
     if not build_exe():
@@ -253,9 +368,14 @@ def main() -> None:
     parser.add_argument("--installer", action="store_true", help="Generate Inno Setup .iss")
     parser.add_argument("--all", action="store_true", help="Build everything")
     parser.add_argument("--clean", action="store_true", help="Remove build artifacts")
+    parser.add_argument("--portable", action="store_true", help="Build portable --onedir bundle")
+    parser.add_argument("--profile", default="field-it-tech", help="Profile to embed in portable build")
+    parser.add_argument("--no-playwright", action="store_true", help="Skip bundling Playwright browsers")
+    parser.add_argument("--out-dir", default=None, help="Override output directory for portable build")
     args = parser.parse_args()
 
-    if not any(vars(args).values()):
+    action_flags = (args.exe, args.installer, args.all, args.clean, args.portable)
+    if not any(action_flags):
         parser.print_help()
         return
 
@@ -267,6 +387,9 @@ def main() -> None:
         generate_inno_setup()
     if args.all:
         build_all()
+    if args.portable:
+        out = Path(args.out_dir) if args.out_dir else None
+        build_portable(profile=args.profile, bundle_playwright=not args.no_playwright, out_dir=out)
 
 
 if __name__ == "__main__":

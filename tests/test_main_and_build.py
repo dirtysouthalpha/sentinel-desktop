@@ -80,11 +80,13 @@ class TestGenerateInnoSetup:
             orig_dist_dir = build.DIST_DIR
             orig_root_dir = build.ROOT_DIR
             orig_icon_path = build.ICON_PATH
+            orig_version = build.APP_VERSION
 
             build.INSTALLER_DIR = tmp_path / "installer"
             build.DIST_DIR = tmp_path / "dist"
             build.ROOT_DIR = tmp_path
             build.ICON_PATH = tmp_path / "assets" / "icon.ico"
+            build.APP_VERSION = "1.0.0"
 
             try:
                 result = build.generate_inno_setup()
@@ -100,6 +102,7 @@ class TestGenerateInnoSetup:
                 build.DIST_DIR = orig_dist_dir
                 build.ROOT_DIR = orig_root_dir
                 build.ICON_PATH = orig_icon_path
+                build.APP_VERSION = orig_version
 
     def test_iss_contains_app_guid(self, tmp_path: Path) -> None:
         with patch.dict(sys.modules, {"core": MagicMock(__version__="2.5.0")}):
@@ -109,11 +112,13 @@ class TestGenerateInnoSetup:
             orig_dist_dir = build.DIST_DIR
             orig_root_dir = build.ROOT_DIR
             orig_icon_path = build.ICON_PATH
+            orig_version = build.APP_VERSION
 
             build.INSTALLER_DIR = tmp_path / "installer"
             build.DIST_DIR = tmp_path / "dist"
             build.ROOT_DIR = tmp_path
             build.ICON_PATH = tmp_path / "assets" / "icon.ico"
+            build.APP_VERSION = "2.5.0"
 
             try:
                 result = build.generate_inno_setup()
@@ -125,6 +130,7 @@ class TestGenerateInnoSetup:
                 build.DIST_DIR = orig_dist_dir
                 build.ROOT_DIR = orig_root_dir
                 build.ICON_PATH = orig_icon_path
+                build.APP_VERSION = orig_version
 
 
 # ── installer/build.py: clean ────────────────────────────────────────────
