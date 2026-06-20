@@ -53,7 +53,8 @@ def test_sensitive_text_is_blocked(fake_executor):
 
 
 def test_dry_run_does_not_invoke_handler(fake_executor):
-    ex = fake_executor(dry_run=True)
+    from core.action_executor import ExecutorConfig
+    ex = fake_executor(config=ExecutorConfig(dry_run=True))
     out = ex.execute_sync({"action": "click", "x": 1, "y": 2})
     assert out["success"] is True
     assert out.get("dry_run") is True
@@ -61,7 +62,8 @@ def test_dry_run_does_not_invoke_handler(fake_executor):
 
 
 def test_dry_run_still_runs_read_only_actions(fake_executor):
-    ex = fake_executor(dry_run=True)
+    from core.action_executor import ExecutorConfig
+    ex = fake_executor(config=ExecutorConfig(dry_run=True))
     # `note` is read-only — should still report success and not be marked dry_run.
     out = ex.execute_sync({"action": "note", "text": "hi"})
     assert out["success"] is True
@@ -69,25 +71,28 @@ def test_dry_run_still_runs_read_only_actions(fake_executor):
 
 
 def test_normal_click_routes_to_desktop(fake_executor):
-    ex = fake_executor(dry_run=False)
+    from core.action_executor import ExecutorConfig
+    ex = fake_executor(config=ExecutorConfig(dry_run=False))
     out = ex.execute_sync({"action": "click", "x": 5, "y": 6})
     assert out["success"] is True
     assert any(c[0] == "click" for c in ex._desktop.calls)
 
 
 def test_pre_action_callback_fires_before_dispatch(fake_executor):
+    from core.action_executor import ExecutorCallbacks
     seen = []
-    ex = fake_executor(pre_action_callback=lambda a: seen.append(a["action"]))
+    ex = fake_executor(callbacks=ExecutorCallbacks(pre_action_callback=lambda a: seen.append(a["action"])))
     ex.execute_sync({"action": "click", "x": 1, "y": 2})
     ex.execute_sync({"action": "press_key", "key": "enter"})
     assert seen == ["click", "press_key"]
 
 
 def test_pre_action_callback_failure_does_not_break_dispatch(fake_executor):
+    from core.action_executor import ExecutorCallbacks
     def boom(_a):
         raise RuntimeError("kaboom")
 
-    ex = fake_executor(pre_action_callback=boom)
+    ex = fake_executor(callbacks=ExecutorCallbacks(pre_action_callback=boom))
     out = ex.execute_sync({"action": "click", "x": 1, "y": 2})
     assert out["success"] is True
 
@@ -267,7 +272,8 @@ def test_action_log_is_a_copy(fake_executor):
     ],
 )
 def test_dry_run_blocks_state_changing_actions(fake_executor, action):
-    ex = fake_executor(dry_run=True)
+    from core.action_executor import ExecutorConfig
+    ex = fake_executor(config=ExecutorConfig(dry_run=True))
     out = ex.execute_sync(action)
     assert out["success"] is True
     assert out.get("dry_run") is True
@@ -278,29 +284,32 @@ def test_dry_run_blocks_state_changing_actions(fake_executor, action):
 
 
 def test_dry_run_screenshot_still_runs(fake_executor, monkeypatch):
+    from core.action_executor import ExecutorConfig
     from core import screenshot as ss
 
     monkeypatch.setattr(ss, "capture_to_base64", lambda **kw: "fake_base64")
-    ex = fake_executor(dry_run=True)
+    ex = fake_executor(config=ExecutorConfig(dry_run=True))
     out = ex.execute_sync({"action": "screenshot"})
     assert out["success"] is True
     assert not out.get("dry_run")
 
 
 def test_dry_run_read_file_still_runs(fake_executor, tmp_path):
+    from core.action_executor import ExecutorConfig
     test_file = tmp_path / "test.txt"
     test_file.write_text("hello from test")
-    ex = fake_executor(dry_run=True)
+    ex = fake_executor(config=ExecutorConfig(dry_run=True))
     out = ex.execute_sync({"action": "read_file", "path": str(test_file)})
     assert out["success"] is True
     assert "hello from test" in out["output"]
 
 
 def test_dry_run_system_info_still_runs(fake_executor, monkeypatch):
+    from core.action_executor import ExecutorConfig
     from core import system_info as si
 
     monkeypatch.setattr(si, "system_info", lambda: {"os": "test"})
-    ex = fake_executor(dry_run=True)
+    ex = fake_executor(config=ExecutorConfig(dry_run=True))
     out = ex.execute_sync({"action": "system_info"})
     assert out["success"] is True
     assert not out.get("dry_run")
@@ -367,7 +376,8 @@ def test_approval_callback_timeout_returns_error(fake_executor):
         return True
 
     async def run_timeout_test():
-        ex = fake_executor(approval_callback=never_approve)
+        from core.action_executor import ExecutorCallbacks
+        ex = fake_executor(callbacks=ExecutorCallbacks(approval_callback=never_approve))
         # Monkey patch the timeout to be very short for testing
         from core import action_executor
 
@@ -395,7 +405,8 @@ def test_approval_callback_rejection_returns_error(fake_executor):
         return False
 
     async def run_rejection_test():
-        ex = fake_executor(approval_callback=always_reject)
+        from core.action_executor import ExecutorCallbacks
+        ex = fake_executor(callbacks=ExecutorCallbacks(approval_callback=always_reject))
         return await ex._execute_with_logging({"action": "click", "x": 1, "y": 2})
 
     out = asyncio.run(run_rejection_test())
@@ -411,7 +422,8 @@ def test_approval_callback_acceptance_allows_action(fake_executor):
         return True
 
     async def run_approval_test():
-        ex = fake_executor(approval_callback=always_approve)
+        from core.action_executor import ExecutorCallbacks
+        ex = fake_executor(callbacks=ExecutorCallbacks(approval_callback=always_approve))
         return await ex._execute_with_logging({"action": "click", "x": 1, "y": 2})
 
     out = asyncio.run(run_approval_test())

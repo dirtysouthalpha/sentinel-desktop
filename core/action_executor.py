@@ -7,6 +7,7 @@ the appropriate desktop, file, window, or process functions.
 import asyncio
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from core import clipboard as clip
@@ -18,6 +19,79 @@ from core import window_manager as wm
 from core.browser import BrowserManager
 from core.dpi import transform_action_coordinates
 from core.screenshot import capture_to_base64, find_template, wait_for_template
+
+
+@dataclass
+class ExecutorCallbacks:
+    """Callbacks for action executor lifecycle events."""
+    approval_callback: Callable | None = None
+    pre_action_callback: Callable[[dict[str, Any]], None] | None = None
+
+
+@dataclass
+class ExecutorConfig:
+    """Configuration for action executor behavior."""
+    dry_run: bool = False
+    stealth: bool = False
+    click_offset: tuple = (0, 0)
+    monitor: int | None = None
+
+
+@dataclass
+class DragCoordinates:
+    """Coordinates for drag operation."""
+    from_x: int
+    from_y: int
+    to_x: int
+    to_y: int
+    duration: float = 0.5
+    button: str = "left"
+
+
+@dataclass
+class WebClickParams:
+    """Parameters for web click actions."""
+    selector: str | None = None
+    text: str | None = None
+    role: str | None = None
+    name: str | None = None
+    button: str = "left"
+    click_count: int = 1
+
+
+@dataclass
+class WebTypeParams:
+    """Parameters for web type actions."""
+    text: str
+    selector: str | None = None
+    label: str | None = None
+    role: str | None = None
+    name: str | None = None
+    clear: bool = True
+
+
+@dataclass
+class HttpRequestParams:
+    """Parameters for HTTP requests."""
+    url: str
+    json: dict | list | None = None
+    body: str | None = None
+    headers: dict | None = None
+    params: dict | None = None
+    timeout: float = 30.0
+    verify_ssl: bool = True
+
+
+@dataclass
+class SkillInstallParams:
+    """Parameters for skill installation."""
+    name: str
+    description: str
+    script: dict | None = None
+    version: str = "1.0.0"
+    author: str = ""
+    category: str = "general"
+    tags: list | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -116,41 +190,38 @@ class ActionExecutor:
 
     def __init__(
         self,
-        approval_callback: Callable | None = None,
-        dry_run: bool = False,
-        pre_action_callback: Callable[[dict[str, Any]], None] | None = None,
-        click_offset: tuple = (0, 0),
-        monitor: int | None = None,
-        stealth: bool = False,
+        callbacks: ExecutorCallbacks | None = None,
+        config: ExecutorConfig | None = None,
     ) -> None:
         """Initialize the action executor.
 
         Args:
-            approval_callback: Async callable(action_dict) → bool.
-                If provided, actions are sent for approval before execution.
-            dry_run: When True, state-changing actions are logged but not
-                executed. Useful for safely testing prompts.
-            pre_action_callback: Optional sync callable(action_dict) invoked
-                immediately before each action is dispatched. Used by the GUI
-                to flash an on-screen overlay over the target location.
-            click_offset: (x, y) screen-coord offset of the captured image's
-                origin. Required for multi-monitor mode where the virtual
-                desktop top-left may have negative coords. Defaults to (0, 0).
-            monitor: Monitor index for multi-monitor setups. When None,
-                uses the primary monitor.
-            stealth: If True, uses stealth input methods (PostMessage/UIA)
-                instead of physical mouse/keyboard movements. Falls back to
-                physical input on stealth mode failures.
-
+            callbacks: ExecutorCallbacks containing approval_callback and
+                pre_action_callback. approval_callback is an async callable
+                (action_dict) → bool that, if provided, sends actions for
+                approval before execution. pre_action_callback is an optional
+                sync callable (action_dict) invoked immediately before each
+                action is dispatched, used by GUI to flash an on-screen overlay.
+            config: ExecutorConfig containing behavioral settings:
+                dry_run (bool) — When True, state-changing actions are logged
+                but not executed. stealth (bool) — If True, uses stealth input
+                methods (PostMessage/UIA) instead of physical mouse/keyboard
+                movements. click_offset (tuple) — (x, y) screen-coord offset
+                of the captured image's origin, required for multi-monitor mode.
+                monitor (int | None) — Monitor index for multi-monitor setups.
         """
-        self.approval_callback = approval_callback
-        self.dry_run = dry_run
-        self.pre_action_callback = pre_action_callback
-        self.click_offset = click_offset
-        self.monitor = monitor
-        # stealth: don't move the cursor / keyboard if False routes via win32
-        # PostMessage / UIA Invoke. Falls back to physical input on failure.
-        self.stealth = bool(stealth)
+        # Initialize callbacks with defaults
+        callbacks = callbacks or ExecutorCallbacks()
+        config = config or ExecutorConfig()
+
+        self.approval_callback = callbacks.approval_callback
+        self.pre_action_callback = callbacks.pre_action_callback
+
+        # Initialize configuration
+        self.dry_run = config.dry_run
+        self.stealth = bool(config.stealth)
+        self.click_offset = config.click_offset
+        self.monitor = config.monitor
         self._desktop = desktop_mod.DesktopEngine()
         self._log: list[dict[str, Any]] = []
         # Perception: the engine stores the latest PerceptionResult here so
@@ -875,39 +946,41 @@ class ActionExecutor:
     def _drag(
         self,
         *,
-        from_x: int,
-        from_y: int,
-        to_x: int,
-        to_y: int,
-        duration: float = 0.5,
-        button: str = "left",
+        coords: DragCoordinates | None = None,
         **_,
     ) -> dict:
         """Drag from one screen position to another with stealth PostMessage support."""
-        sx = int(from_x) + self.click_offset[0]
-        sy = int(from_y) + self.click_offset[1]
-        tx = int(to_x) + self.click_offset[0]
-        ty = int(to_y) + self.click_offset[1]
+        coords = coords or DragCoordinates(
+            from_x=0, from_y=0, to_x=0, to_y=0
+        )
+
+        sx = int(coords.from_x) + self.click_offset[0]
+        sy = int(coords.from_y) + self.click_offset[1]
+        tx = int(coords.to_x) + self.click_offset[0]
+        ty = int(coords.to_y) + self.click_offset[1]
         if self.stealth and stealth_input.is_available():
-            result = self._stealth_drag_win32(sx, sy, tx, ty, duration, button)
+            result = self._stealth_drag_win32((sx, sy), (tx, ty), coords)
             if result is not None:
                 return result
         try:
-            self._desktop.drag(sx, sy, tx, ty, duration=duration, button=button)
-            return {"success": True, "output": f"Dragged ({from_x},{from_y})→({to_x},{to_y})"}
+            self._desktop.drag(sx, sy, tx, ty, duration=coords.duration, button=coords.button)
+            return {"success": True, "output": f"Dragged ({coords.from_x},{coords.from_y})→({coords.to_x},{coords.to_y})"}
         except Exception as exc:
             return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
 
     def _stealth_drag_win32(
         self,
-        sx: int,
-        sy: int,
-        tx: int,
-        ty: int,
-        duration: float,
-        button: str,
+        start_coords: tuple[int, int],
+        end_coords: tuple[int, int],
+        drag_params: DragCoordinates,
     ) -> dict | None:
-        """Attempt a stealth drag via Win32 PostMessage; returns result dict or None on failure."""
+        """Attempt a stealth drag via Win32 PostMessage; returns result dict or None on failure.
+
+        Args:
+            start_coords: (x, y) starting screen coordinates.
+            end_coords: (x, y) ending screen coordinates.
+            drag_params: DragCoordinates containing duration and button.
+        """
         try:
             import time as _t
 
@@ -915,20 +988,23 @@ class ActionExecutor:
             import win32con
             import win32gui
 
+            sx, sy = start_coords
+            tx, ty = end_coords
+
             hwnd = win32gui.WindowFromPoint((sx, sy))
             cx, cy = win32gui.ScreenToClient(hwnd, (sx, sy))
             cx2, cy2 = win32gui.ScreenToClient(hwnd, (tx, ty))
             lparam_down = ((cy & 0xFFFF) << 16) | (cx & 0xFFFF)
             lparam_up = ((cy2 & 0xFFFF) << 16) | (cx2 & 0xFFFF)
-            mk = win32con.MK_LBUTTON if button == "left" else win32con.MK_RBUTTON
+            mk = win32con.MK_LBUTTON if drag_params.button == "left" else win32con.MK_RBUTTON
             win32api.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, mk, lparam_down)
-            steps = max(1, int(duration / 0.01))
+            steps = max(1, int(drag_params.duration / 0.01))
             for i in range(1, steps + 1):
                 mx = int(cx + (cx2 - cx) * i / steps)
                 my = int(cy + (cy2 - cy) * i / steps)
                 lparam_move = ((my & 0xFFFF) << 16) | (mx & 0xFFFF)
                 win32api.PostMessage(hwnd, win32con.WM_MOUSEMOVE, mk, lparam_move)
-                _t.sleep(duration / steps)
+                _t.sleep(drag_params.duration / steps)
             win32api.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lparam_up)
             return {"success": True, "output": f"Dragged ({sx},{sy})→({tx},{ty}) — stealth"}
         except Exception as exc:
@@ -1641,43 +1717,35 @@ class ActionExecutor:
     def _web_click(
         self,
         *,
-        selector: str | None = None,
-        text: str | None = None,
-        role: str | None = None,
-        name: str | None = None,
-        button: str = "left",
-        click_count: int = 1,
+        params: WebClickParams | None = None,
         **_,
     ) -> dict:
         """Click an element in the browser by selector, text, or ARIA role."""
+        params = params or WebClickParams()
         return self.browser.click(
-            selector=selector,
-            text=text,
-            role=role,
-            name=name,
-            button=button,
-            click_count=click_count,
+            selector=params.selector,
+            text=params.text,
+            role=params.role,
+            name=params.name,
+            button=params.button,
+            click_count=params.click_count,
         )
 
     def _web_type(
         self,
         *,
-        text: str,
-        selector: str | None = None,
-        label: str | None = None,
-        role: str | None = None,
-        name: str | None = None,
-        clear: bool = True,
+        params: WebTypeParams | None = None,
         **_,
     ) -> dict:
         """Type text into a browser form field."""
+        params = params or WebTypeParams(text="")
         return self.browser.type_text(
-            text=text,
-            selector=selector,
-            label=label,
-            role=role,
-            name=name,
-            clear=clear,
+            text=params.text,
+            selector=params.selector,
+            label=params.label,
+            role=params.role,
+            name=params.name,
+            clear=params.clear,
         )
 
     def _web_read(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
@@ -2232,26 +2300,21 @@ class ActionExecutor:
     def _http_post(
         self,
         *,
-        url: str,
-        json: dict | list | None = None,
-        body: str | None = None,
-        headers: dict | None = None,
-        params: dict | None = None,
-        timeout: float = 30.0,
-        verify_ssl: bool = True,
+        params: HttpRequestParams | None = None,
         **_,
     ) -> dict:
         """HTTP POST request."""
         from core.http_client import http_post
 
+        params = params or HttpRequestParams(url="")
         return http_post(
-            url,
-            body=body,
-            json=json,
-            headers=headers,
-            params=params,
-            timeout=timeout,
-            verify_ssl=verify_ssl,
+            params.url,
+            body=params.body,
+            json=params.json,
+            headers=params.headers,
+            params=params.params,
+            timeout=params.timeout,
+            verify_ssl=params.verify_ssl,
         )
 
     def _http_download(
@@ -2608,43 +2671,40 @@ class ActionExecutor:
     def _skill_install(
         self,
         *,
-        name: str,
-        description: str,
-        script: dict | None = None,
-        version: str = "1.0.0",
-        author: str = "",
-        category: str = "general",
-        tags: list | None = None,
+        params: SkillInstallParams | None = None,
         **_,
     ) -> dict:
         """Install a skill into the local marketplace.
 
         Args:
-            name: Unique skill identifier.
-            description: Short human-readable description.
-            script: Automation script dict (ScriptEngine format).
-            version: Semantic version string.
-            author: Author name.
-            category: Skill category.
-            tags: Searchable tags.
+            params: SkillInstallParams containing installation parameters:
+                name (str) — Unique skill identifier.
+                description (str) — Short human-readable description.
+                script (dict | None) — Automation script dict (ScriptEngine format).
+                version (str) — Semantic version string.
+                author (str) — Author name.
+                category (str) — Skill category.
+                tags (list | None) — Searchable tags.
         """
         from core.skill_marketplace import SkillManifest, get_marketplace
 
-        if script is None:
+        params = params or SkillInstallParams(name="", description="")
+
+        if params.script is None:
             return {"success": False, "error": "skill_install requires 'script'"}
 
         manifest = SkillManifest(
-            name=name,
-            description=description,
-            version=version,
-            author=author,
-            category=category,
-            tags=tags or [],
+            name=params.name,
+            description=params.description,
+            version=params.version,
+            author=params.author,
+            category=params.category,
+            tags=params.tags or [],
         )
-        skill_dir = get_marketplace().install_skill(manifest, script=script)
+        skill_dir = get_marketplace().install_skill(manifest, script=params.script)
         return {
             "success": True,
-            "output": f"Skill '{name}' installed → {skill_dir}",
+            "output": f"Skill '{params.name}' installed → {skill_dir}",
             "skill_dir": str(skill_dir),
         }
 

@@ -53,10 +53,26 @@ def fake_executor(monkeypatch):
 
 def _make_executor(**kw):
     """Create an ActionExecutor with FakeDesktop patched in."""
+    from core.action_executor import ExecutorCallbacks, ExecutorConfig
     original = desktop_mod.DesktopEngine
     desktop_mod.DesktopEngine = FakeDesktop
     try:
-        ex = ActionExecutor(**kw)
+        # Convert old-style parameters to new configuration objects
+        callbacks = None
+        config = None
+
+        callback_keys = ['approval_callback', 'pre_action_callback']
+        config_keys = ['dry_run', 'stealth', 'click_offset', 'monitor']
+
+        callback_params = {k: v for k, v in kw.items() if k in callback_keys and v is not None}
+        config_params = {k: v for k, v in kw.items() if k in config_keys and v is not None}
+
+        if callback_params:
+            callbacks = ExecutorCallbacks(**callback_params)
+        if config_params:
+            config = ExecutorConfig(**config_params)
+
+        ex = ActionExecutor(callbacks=callbacks, config=config)
     finally:
         desktop_mod.DesktopEngine = original
     return ex
@@ -74,7 +90,8 @@ class TestApprovalCallbackRejection:
         async def reject(_action):
             return False
 
-        ex = fake_executor(approval_callback=reject)
+        from core.action_executor import ExecutorCallbacks
+        ex = fake_executor(callbacks=ExecutorCallbacks(approval_callback=reject))
         result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 10, "y": 20}))
         assert result["success"] is False
         assert result["error"] == "rejected"
@@ -84,7 +101,8 @@ class TestApprovalCallbackRejection:
         async def reject(_action):
             return False
 
-        ex = fake_executor(approval_callback=reject)
+        from core.action_executor import ExecutorCallbacks
+        ex = fake_executor(callbacks=ExecutorCallbacks(approval_callback=reject))
         asyncio.run(ex._execute_with_logging({"action": "click", "x": 1, "y": 2}))
         assert len(ex.log) == 1
         assert ex.log[0]["success"] is False
@@ -102,7 +120,8 @@ class TestPreActionCallbackFailureAsync:
         def boom(_a):
             raise RuntimeError("overlay crashed")
 
-        ex = fake_executor(pre_action_callback=boom)
+        from core.action_executor import ExecutorCallbacks
+        ex = fake_executor(callbacks=ExecutorCallbacks(pre_action_callback=boom))
         result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 5, "y": 5}))
         assert result["success"] is True
 
@@ -960,7 +979,8 @@ class TestApprovalCallbackApproved:
         async def approve(_action):
             return True
 
-        ex = ActionExecutor(approval_callback=approve)
+        from core.action_executor import ExecutorCallbacks
+        ex = ActionExecutor(callbacks=ExecutorCallbacks(approval_callback=approve))
         result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 5, "y": 5}))
         assert result["success"] is True
 
