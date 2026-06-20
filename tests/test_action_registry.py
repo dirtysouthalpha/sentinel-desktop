@@ -204,7 +204,7 @@ class TestRegisterAction:
         Uses a throwaway name so the global registry is restored cleanly — no
         ``clear()``/reload (which would break other tests' parity checks).
         """
-        from core.action_registry import _REGISTRY, ActionAlreadyRegistered
+        from core.action_registry import _REGISTRY, ActionAlreadyRegisteredError
 
         sentinel_name = "__test_dup_unique_v18__"
 
@@ -213,7 +213,7 @@ class TestRegisterAction:
             return {}
 
         try:
-            with pytest.raises(ActionAlreadyRegistered):
+            with pytest.raises(ActionAlreadyRegisteredError):
 
                 @ar.register_action(sentinel_name)
                 def _b(self):

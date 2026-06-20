@@ -13,7 +13,7 @@ Design notes
 * ``aliases`` let one handler serve multiple action names (e.g. ``click`` /
   ``double_click`` / ``right_click`` all map to ``_click``).
 * Duplicate registration is a **loud failure at import time** — the registry
-  raises :class:`ActionAlreadyRegistered` rather than silently overwriting.
+  raises :class:`ActionAlreadyRegisteredError` rather than silently overwriting.
 * The resolved action-name set is stable and queryable via
   :func:`registered_names`, which the parity test checks against the known
   v17 baseline.
@@ -32,7 +32,7 @@ from typing import Any
 ActionHandler = Callable[..., dict[str, Any]]
 
 
-class ActionAlreadyRegistered(ValueError):
+class ActionAlreadyRegisteredError(ValueError):
     """Raised when an action name is registered more than once."""
 
 
@@ -59,7 +59,7 @@ def register_action(
     def decorator(func: ActionHandler) -> ActionHandler:
         for n in (name, *aliases):
             if n in _REGISTRY and _REGISTRY[n] is not func:
-                raise ActionAlreadyRegistered(
+                raise ActionAlreadyRegisteredError(
                     f"action {n!r} is already registered "
                     f"(by {_REGISTRY[n].__qualname__}); cannot also register "
                     f"{func.__qualname__}",

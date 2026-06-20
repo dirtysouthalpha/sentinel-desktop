@@ -122,8 +122,8 @@ def _get_windows_dpi_scaling() -> dict[int, float]:
         # Enumerate monitors and get their DPI
         monitor_handles: list[int] = []
 
-        # MONITORENUMPROC callback type
-        MONITORENUMPROC = ctypes.WINFUNCTYPE(
+        # MONITORENUMPROC callback type (matches Windows API naming)
+        MONITORENUMPROC = ctypes.WINFUNCTYPE(  # noqa: N806
             ctypes.c_int,
             ctypes.c_ulong,  # hMonitor
             ctypes.c_ulong,  # hdcMonitor

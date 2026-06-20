@@ -10,9 +10,9 @@ from core.jwt_auth import (
     JWTClaimError,
     JWTConfig,
     JWTError,
-    JWTExpired,
-    JWTInvalidSignature,
-    JWTMalformed,
+    JWTExpiredError,
+    JWTInvalidSignatureError,
+    JWTMalformedError,
     _b64url_decode,
     _b64url_encode,
     decode,
@@ -94,7 +94,7 @@ class TestBase64Helpers:
         assert "/" not in encoded
 
     def test_decode_invalid_raises(self):
-        with pytest.raises(JWTMalformed):
+        with pytest.raises(JWTMalformedError):
             _b64url_decode("not!valid@base64#")
 
     def test_decode_with_or_without_padding(self):
@@ -194,21 +194,21 @@ class TestDecodeValid:
 
 class TestDecodeErrors:
     def test_wrong_number_of_parts(self, cfg):
-        with pytest.raises(JWTMalformed):
+        with pytest.raises(JWTMalformedError):
             decode("only.two", cfg)
 
     def test_too_many_parts(self, cfg):
-        with pytest.raises(JWTMalformed):
+        with pytest.raises(JWTMalformedError):
             decode("a.b.c.d", cfg)
 
     def test_invalid_base64_header(self, cfg):
-        with pytest.raises(JWTMalformed):
+        with pytest.raises(JWTMalformedError):
             decode("!!not-b64!!.payload.sig", cfg)
 
     def test_wrong_secret_raises_invalid_sig(self, cfg):
         token = encode({"sub": "u", "exp": _future_exp()}, cfg)
         wrong_cfg = JWTConfig(secret_key="wrong-secret")
-        with pytest.raises(JWTInvalidSignature):
+        with pytest.raises(JWTInvalidSignatureError):
             decode(token, wrong_cfg)
 
     def test_tampered_payload_raises_invalid_sig(self, cfg):
@@ -217,13 +217,13 @@ class TestDecodeErrors:
         # Corrupt the payload by appending a char
         parts[1] = parts[1] + "x"
         tampered = ".".join(parts)
-        with pytest.raises(JWTInvalidSignature):
+        with pytest.raises(JWTInvalidSignatureError):
             decode(tampered, cfg)
 
     def test_expired_token_raises(self):
         cfg = JWTConfig(secret_key="s", leeway_seconds=0)
         token = encode({"sub": "u", "exp": _past_exp(10)}, cfg)
-        with pytest.raises(JWTExpired):
+        with pytest.raises(JWTExpiredError):
             decode(token, cfg)
 
     def test_missing_exp_when_required(self):
@@ -270,13 +270,13 @@ class TestDecodeErrors:
         )
         payload = _b64url_encode(json.dumps({"sub": "u"}).encode())
         fake_token = f"{header}.{payload}.fakesig"
-        with pytest.raises(JWTMalformed, match="algorithm"):
+        with pytest.raises(JWTMalformedError, match="algorithm"):
             decode(fake_token, cfg)
 
     def test_jwt_error_hierarchy(self):
-        assert issubclass(JWTMalformed, JWTError)
-        assert issubclass(JWTInvalidSignature, JWTError)
-        assert issubclass(JWTExpired, JWTError)
+        assert issubclass(JWTMalformedError, JWTError)
+        assert issubclass(JWTInvalidSignatureError, JWTError)
+        assert issubclass(JWTExpiredError, JWTError)
         assert issubclass(JWTClaimError, JWTError)
 
 

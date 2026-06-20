@@ -97,13 +97,13 @@ def _build_dispatch_table(**handlers: Callable) -> dict[str, Callable]:
     mapping for use as ``ActionExecutor._dispatch_table``. New actions in v19+
     should use ``@register_action`` directly instead of extending this call.
     """
-    from core.action_registry import _REGISTRY, ActionAlreadyRegistered
+    from core.action_registry import _REGISTRY, ActionAlreadyRegisteredError
 
     table: dict[str, Callable] = {}
     for name, handler in handlers.items():
         existing = _REGISTRY.get(name)
         if existing is not None and existing is not handler:
-            raise ActionAlreadyRegistered(
+            raise ActionAlreadyRegisteredError(
                 f"action {name!r} already registered by {existing.__qualname__}",
             )
         _REGISTRY[name] = handler

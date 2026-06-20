@@ -41,7 +41,7 @@ from pydantic import BaseModel, Field
 
 from api.routes import RouteRegistry
 from config import Config
-from core import __version__ as _CORE_VERSION
+from core import __version__ as core_version
 from core import process_manager as pm
 from core import system_info as sysinfo
 from core import window_manager as wm
@@ -287,7 +287,7 @@ class SentinelServer:
         app = FastAPI(
             title="Sentinel Desktop",
             description="AI-powered Windows desktop automation API",
-            version=_CORE_VERSION,
+            version=core_version,
             lifespan=lifespan,
         )
 
@@ -1545,7 +1545,7 @@ class SentinelServer:
         Validates the id_token, auto-provisions the user if needed, and
         returns the same payload as POST /auth/login.
         """
-        from core.oidc import OIDCError, OIDCNotConfigured, OIDCTokenInvalid
+        from core.oidc import OIDCError, OIDCNotConfiguredError, OIDCTokenInvalidError
 
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
@@ -1554,9 +1554,9 @@ class SentinelServer:
                 self.engine.auth_manager.provision_from_oidc,
                 req.id_token,
             )
-        except OIDCNotConfigured as exc:
+        except OIDCNotConfiguredError as exc:
             raise HTTPException(503, f"OIDC not configured: {exc}") from exc
-        except OIDCTokenInvalid as exc:
+        except OIDCTokenInvalidError as exc:
             raise HTTPException(401, f"Invalid OIDC token: {exc}") from exc
         except OIDCError as exc:
             raise HTTPException(400, f"OIDC error: {exc}") from exc

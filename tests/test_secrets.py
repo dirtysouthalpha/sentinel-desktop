@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 
 from core.audit_chain import AuditChain
-from core.policy import PolicyEngine, PolicyViolation
+from core.policy import PolicyEngine, PolicyViolationError
 from core.secrets import (
-    SecretNotFound,
+    SecretNotFoundError,
     SecretsVault,
     _make_key,
     get_default_vault,
@@ -115,13 +115,13 @@ class TestSecretsVaultGet:
 
     def test_get_not_found_raises(self, tmp_path):
         vault, _ = _make_vault(tmp_path)
-        with pytest.raises(SecretNotFound):
+        with pytest.raises(SecretNotFoundError):
             vault.get("missing")
 
     def test_get_category_isolation(self, tmp_path):
         vault, _ = _make_vault(tmp_path)
         vault.put("key", "val", category="a")
-        with pytest.raises(SecretNotFound):
+        with pytest.raises(SecretNotFoundError):
             vault.get("key", category="b")
 
     def test_get_emits_audit_event(self, tmp_path):
@@ -169,7 +169,7 @@ class TestSecretsVaultRotate:
 
     def test_rotate_nonexistent_raises(self, tmp_path):
         vault, _ = _make_vault(tmp_path)
-        with pytest.raises(SecretNotFound):
+        with pytest.raises(SecretNotFoundError):
             vault.rotate("missing", "new_val")
 
     def test_rotate_emits_audit_event(self, tmp_path):
@@ -229,7 +229,7 @@ class TestSecretsVaultExists:
 class TestSecretsVaultPolicy:
     def test_policy_denies_put(self, tmp_path):
         vault, _ = _make_vault(tmp_path, with_policy=True, deny_pattern="/secret/**")
-        with pytest.raises(PolicyViolation):
+        with pytest.raises(PolicyViolationError):
             vault.put("key", "val")
 
     def test_policy_denies_get(self, tmp_path):
@@ -258,7 +258,7 @@ class TestSecretsVaultPolicy:
         policy = PolicyEngine(str(policy_file))
         audit = AuditChain(audit_file)
         protected = SV(str(vault_file), policy_engine=policy, audit_chain=audit)
-        with pytest.raises(PolicyViolation):
+        with pytest.raises(PolicyViolationError):
             protected.get("secret_key")
 
     def test_policy_role_scoped(self, tmp_path):
@@ -287,7 +287,7 @@ class TestSecretsVaultPolicy:
         vault = SecretsVault(str(vault_file), policy_engine=policy)
         vault.put("key", "val", role="admin")  # admin can put
 
-        with pytest.raises(PolicyViolation):
+        with pytest.raises(PolicyViolationError):
             vault.get("key", role="viewer")  # viewer blocked
 
         assert vault.get("key", role="admin") == "val"  # admin can read

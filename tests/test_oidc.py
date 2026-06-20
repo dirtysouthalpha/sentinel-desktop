@@ -12,8 +12,8 @@ from core.jwt_auth import JWTConfig, encode
 from core.oidc import (
     OIDCClaims,
     OIDCDiscoveryError,
-    OIDCNotConfigured,
-    OIDCTokenInvalid,
+    OIDCNotConfiguredError,
+    OIDCTokenInvalidError,
     _derive_role,
     _get_oidc_config,
     fetch_oidc_config,
@@ -77,27 +77,27 @@ class TestGetOidcConfig:
         monkeypatch.setenv("SENTINEL_OIDC_AUDIENCE", AUDIENCE)
         monkeypatch.setenv("SENTINEL_JWT_SECRET", SECRET)
         monkeypatch.delenv("SENTINEL_OIDC_ISSUER", raising=False)
-        with pytest.raises(OIDCNotConfigured, match="SENTINEL_OIDC_ISSUER"):
+        with pytest.raises(OIDCNotConfiguredError, match="SENTINEL_OIDC_ISSUER"):
             _get_oidc_config()
 
     def test_raises_when_audience_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SENTINEL_OIDC_ISSUER", ISSUER)
         monkeypatch.setenv("SENTINEL_JWT_SECRET", SECRET)
         monkeypatch.delenv("SENTINEL_OIDC_AUDIENCE", raising=False)
-        with pytest.raises(OIDCNotConfigured, match="SENTINEL_OIDC_AUDIENCE"):
+        with pytest.raises(OIDCNotConfiguredError, match="SENTINEL_OIDC_AUDIENCE"):
             _get_oidc_config()
 
     def test_raises_when_secret_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SENTINEL_OIDC_ISSUER", ISSUER)
         monkeypatch.setenv("SENTINEL_OIDC_AUDIENCE", AUDIENCE)
         monkeypatch.delenv("SENTINEL_JWT_SECRET", raising=False)
-        with pytest.raises(OIDCNotConfigured, match="SENTINEL_JWT_SECRET"):
+        with pytest.raises(OIDCNotConfiguredError, match="SENTINEL_JWT_SECRET"):
             _get_oidc_config()
 
     def test_raises_when_all_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         for k in ("SENTINEL_OIDC_ISSUER", "SENTINEL_OIDC_AUDIENCE", "SENTINEL_JWT_SECRET"):
             monkeypatch.delenv(k, raising=False)
-        with pytest.raises(OIDCNotConfigured):
+        with pytest.raises(OIDCNotConfiguredError):
             _get_oidc_config()
 
 
@@ -186,27 +186,27 @@ class TestValidateOidcToken:
         monkeypatch.delenv("SENTINEL_OIDC_ISSUER", raising=False)
         monkeypatch.delenv("SENTINEL_OIDC_AUDIENCE", raising=False)
         monkeypatch.delenv("SENTINEL_JWT_SECRET", raising=False)
-        with pytest.raises(OIDCNotConfigured):
+        with pytest.raises(OIDCNotConfiguredError):
             validate_oidc_token("any.token.here")
 
     def test_expired_token_raises(self, oidc_env: None) -> None:
         token = _make_token(exp_offset=-7200)
-        with pytest.raises(OIDCTokenInvalid, match="expired"):
+        with pytest.raises(OIDCTokenInvalidError, match="expired"):
             validate_oidc_token(token)
 
     def test_wrong_secret_raises(self, oidc_env: None) -> None:
         token = _make_token(secret="wrong-secret")
-        with pytest.raises(OIDCTokenInvalid):
+        with pytest.raises(OIDCTokenInvalidError):
             validate_oidc_token(token)
 
     def test_wrong_issuer_raises(self, oidc_env: None) -> None:
         token = _make_token(issuer="https://evil.com")
-        with pytest.raises(OIDCTokenInvalid):
+        with pytest.raises(OIDCTokenInvalidError):
             validate_oidc_token(token)
 
     def test_wrong_audience_raises(self, oidc_env: None) -> None:
         token = _make_token(audience="other-app")
-        with pytest.raises(OIDCTokenInvalid):
+        with pytest.raises(OIDCTokenInvalidError):
             validate_oidc_token(token)
 
     def test_missing_sub_raises(self, oidc_env: None) -> None:
@@ -217,7 +217,7 @@ class TestValidateOidcToken:
             "exp": int(time.time()) + 3600,
         }
         token = encode(claims, cfg)
-        with pytest.raises(OIDCTokenInvalid, match="sub"):
+        with pytest.raises(OIDCTokenInvalidError, match="sub"):
             validate_oidc_token(token)
 
     def test_role_derived_from_token(self, oidc_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -241,11 +241,11 @@ class TestValidateOidcToken:
         assert claims.raw.get("foo") == "bar"
 
     def test_garbage_token_raises(self, oidc_env: None) -> None:
-        with pytest.raises(OIDCTokenInvalid):
+        with pytest.raises(OIDCTokenInvalidError):
             validate_oidc_token("not.a.jwt")
 
     def test_empty_string_raises(self, oidc_env: None) -> None:
-        with pytest.raises(OIDCTokenInvalid):
+        with pytest.raises(OIDCTokenInvalidError):
             validate_oidc_token("")
 
 
@@ -257,7 +257,7 @@ class TestValidateOidcToken:
 class TestFetchOidcConfig:
     def test_no_issuer_raises_not_configured(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("SENTINEL_OIDC_ISSUER", raising=False)
-        with pytest.raises(OIDCNotConfigured):
+        with pytest.raises(OIDCNotConfiguredError):
             fetch_oidc_config()
 
     def test_uses_env_issuer(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -423,19 +423,19 @@ class TestAuthManagerProvisionFromOidc:
 
     def test_invalid_token_raises(self, tmp_path: Any, oidc_env: None) -> None:
         from core.auth import AuthManager
-        from core.oidc import OIDCTokenInvalid
+        from core.oidc import OIDCTokenInvalidError
 
         am = AuthManager(config_path=str(tmp_path / "users.json"))
-        with pytest.raises(OIDCTokenInvalid):
+        with pytest.raises(OIDCTokenInvalidError):
             am.provision_from_oidc("not.a.valid.token")
 
     def test_not_configured_raises(self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.auth import AuthManager
-        from core.oidc import OIDCNotConfigured
+        from core.oidc import OIDCNotConfiguredError
 
         monkeypatch.delenv("SENTINEL_OIDC_ISSUER", raising=False)
         monkeypatch.delenv("SENTINEL_OIDC_AUDIENCE", raising=False)
         monkeypatch.delenv("SENTINEL_JWT_SECRET", raising=False)
         am = AuthManager(config_path=str(tmp_path / "users.json"))
-        with pytest.raises(OIDCNotConfigured):
+        with pytest.raises(OIDCNotConfiguredError):
             am.provision_from_oidc("any.token.value")

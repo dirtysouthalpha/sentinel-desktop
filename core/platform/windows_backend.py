@@ -102,7 +102,7 @@ def _init_dpapi() -> None:
     try:
         from ctypes import POINTER, Structure, c_byte, c_uint, c_void_p, c_wchar_p
 
-        class _DATA_BLOB(Structure):
+        class _DATA_BLOB(Structure):  # noqa: N801
             _fields_ = [("cbData", c_uint), ("pbData", POINTER(c_byte))]
 
         crypt32 = ctypes.windll.crypt32  # type: ignore[attr-defined]
@@ -436,7 +436,7 @@ class WindowsStealthInput(StealthInputBackend):
                     ("bottom", ctypes.c_long),
                 ]
 
-            class _GUI_THREAD_INFO(ctypes.Structure):
+            class _GUI_THREAD_INFO(ctypes.Structure):  # noqa: N801
                 _fields_ = [
                     ("cbSize", wintypes.DWORD),
                     ("flags", wintypes.DWORD),

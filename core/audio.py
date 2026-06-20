@@ -196,7 +196,9 @@ def _listen_sapi(timeout: float, phrase_limit: float) -> str:
         deadline = time.time() + timeout + phrase_limit
 
         class _EventSink:
-            def OnRecognition(self, _stream_n, _audio, _result):
+            def OnRecognition(  # noqa: N802 — COM event handler, name fixed by SAPI interface
+                self, _stream_n, _audio, _result
+            ):
                 phrase = _result.PhraseInfo.GetText()
                 result_text.append(phrase)
 
@@ -334,8 +336,12 @@ def _volume_set_powershell(level: int) -> bool:
             f"$vol = {level}; "
             "Add-Type -TypeDefinition '"
             "using System; using System.Runtime.InteropServices; "
-            '[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)] '
-            "public interface IAudioEndpointVolume { void dummy(); void dummy2(); void dummy3(); [return:MarshalAs(UnmanagedType.Bool)] bool GetMute(); int GetMasterVolumeLevelScalar([Out] out float fLevel); int SetMasterVolumeLevelScalar(float fLevel, IntPtr pguidEventContext); } "
+            '[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"),'
+            "InterfaceType(ComInterfaceType.InterfaceIsIUnknown)] "
+            "public interface IAudioEndpointVolume { void dummy(); void dummy2(); "
+            "void dummy3(); [return:MarshalAs(UnmanagedType.Bool)] bool GetMute(); "
+            "int GetMasterVolumeLevelScalar([Out] out float fLevel); "
+            "int SetMasterVolumeLevelScalar(float fLevel, IntPtr pguidEventContext); } "
             "'; "
             # simpler approach: use a known working method
             f"(New-Object -ComObject Shell.Application).SetVolume({level})"

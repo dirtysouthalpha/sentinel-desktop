@@ -1540,7 +1540,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "dns_lookup",
-            "description": "Resolve a hostname to IP addresses (or reverse lookup). Supports A, AAAA, PTR, MX, TXT.",
+            "description": (
+                "Resolve a hostname to IP addresses (or reverse lookup). "
+                "Supports A, AAAA, PTR, MX, TXT."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1673,7 +1676,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_monitors",
-            "description": "Return information about all connected monitors (resolution, position, primary flag).",
+            "description": (
+                "Return information about all connected monitors "
+                "(resolution, position, primary flag)."
+            ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -1949,7 +1955,9 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "brain_stats",
-            "description": "Return fleet brain health stats — neuron/synapse counts, active regions.",
+            "description": (
+                "Return fleet brain health stats — neuron/synapse counts, active regions."
+            ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -1957,7 +1965,9 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "brain_fire",
-            "description": "Reinforce a specific neuron by ID — strengthens its synaptic connections.",
+            "description": (
+                "Reinforce a specific neuron by ID — strengthens its synaptic connections."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -2196,7 +2206,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "trigger_add",
-            "description": "Register a new event trigger that fires an executor action when a condition is met.",
+            "description": (
+                "Register a new event trigger that fires an executor action "
+                "when a condition is met."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -2215,11 +2228,17 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "condition": {
                         "type": "object",
-                        "description": 'Event-specific match criteria (e.g. {"keyword": "sentinel"} or {"event_name": "deploy_done"}).',
+                        "description": (
+                            'Event-specific match criteria '
+                            '(e.g. {"keyword": "sentinel"} or {"event_name": "deploy_done"}).'
+                        ),
                     },
                     "action": {
                         "type": "object",
-                        "description": 'Executor action payload to fire (e.g. {"action": "speak", "text": "Yes?"}).',
+                        "description": (
+                            'Executor action payload to fire '
+                            '(e.g. {"action": "speak", "text": "Yes?"}).'
+                        ),
                     },
                     "description": {
                         "type": "string",
@@ -2248,7 +2267,9 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "trigger_list",
-            "description": "List all registered triggers with their IDs, event types, and enabled state.",
+            "description": (
+                "List all registered triggers with their IDs, event types, and enabled state."
+            ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -2284,7 +2305,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "trigger_fire_custom",
-            "description": "Queue a named custom event in the TriggerEngine, firing any CUSTOM triggers whose condition matches.",
+            "description": (
+                "Queue a named custom event in the TriggerEngine, "
+                "firing any CUSTOM triggers whose condition matches."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -2304,7 +2328,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "voice_start_ambient",
-            "description": "Start background wake-word listening. The agent will detect the wake word via microphone and invoke configured callbacks.",
+            "description": (
+                "Start background wake-word listening. The agent will detect the wake word "
+                "via microphone and invoke configured callbacks."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -2329,7 +2356,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "voice_status",
-            "description": "Return current voice engine state: mode, wake_word, and whether ambient listening is active.",
+            "description": (
+                "Return current voice engine state: mode, wake_word, "
+                "and whether ambient listening is active."
+            ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },

@@ -39,8 +39,11 @@ if _IS_WINDOWS:
     import ctypes
     from ctypes import POINTER, Structure, c_byte, c_uint, c_void_p, c_wchar_p
 
-    class _DATA_BLOB(Structure):
-        """Wrapper for the Windows DATA_BLOB structure used by DPAPI."""
+    class _DATA_BLOB(Structure):  # noqa: N801
+        """Wrapper for the Windows DATA_BLOB structure used by DPAPI.
+
+        Name matches Windows API convention for DPAPI structures.
+        """
 
         _fields_ = [
             ("cbData", c_uint),

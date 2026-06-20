@@ -55,7 +55,7 @@ def _make_key(name: str, category: str) -> str:
     return f"{cat}{_SEP}{name}"
 
 
-class SecretNotFound(KeyError):
+class SecretNotFoundError(KeyError):
     """Raised when a requested secret does not exist in the vault."""
 
 
@@ -163,14 +163,14 @@ class SecretsVault:
 
         Raises:
             PolicyViolation: If policy denies the read.
-            SecretNotFound: If no such secret exists.
+            SecretNotFoundError: If no such secret exists.
         """
         key = _make_key(name, category)
         self._check_policy("get", key, role)
         with self._lock:
             value = self._vault.retrieve(key)
         if value is None:
-            raise SecretNotFound(f"Secret '{key}' not found in vault")
+            raise SecretNotFoundError(f"Secret '{key}' not found in vault")
         self._log("secret_get", actor, {"key": key, "category": category})
         return value
 
@@ -226,14 +226,14 @@ class SecretsVault:
 
         Raises:
             PolicyViolation: If policy denies the write.
-            SecretNotFound: If the secret does not already exist.
+            SecretNotFoundError: If the secret does not already exist.
             RuntimeError: If the vault store fails.
         """
         key = _make_key(name, category)
         self._check_policy("rotate", key, role)
         with self._lock:
             if not self._vault.has_key(key):
-                raise SecretNotFound(f"Secret '{key}' not found — use put() for new secrets")
+                raise SecretNotFoundError(f"Secret '{key}' not found — use put() for new secrets")
             ok = self._vault.store(key, new_value)
         if not ok:
             raise RuntimeError(f"Vault store failed during rotation of '{key}'")

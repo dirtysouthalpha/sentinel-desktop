@@ -171,9 +171,9 @@ class CursorOverlay:
             import ctypes
 
             hwnd = int(self._root.winfo_id())
-            GWL_EXSTYLE = -20
-            WS_EX_TRANSPARENT = 0x20
-            WS_EX_LAYERED = 0x80000
+            GWL_EXSTYLE = -20  # noqa: N806
+            WS_EX_TRANSPARENT = 0x20  # noqa: N806
+            WS_EX_LAYERED = 0x80000  # noqa: N806
             ex = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
             ctypes.windll.user32.SetWindowLongW(
                 hwnd,

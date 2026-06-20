@@ -243,10 +243,10 @@ def _make_clickthrough(window: Any) -> None:
             return
         import ctypes
 
-        GWL_EXSTYLE = -20
-        WS_EX_LAYERED = 0x00080000
-        WS_EX_TRANSPARENT = 0x00000020
-        WS_EX_NOACTIVATE = 0x08000000
+        GWL_EXSTYLE = -20  # noqa: N806
+        WS_EX_LAYERED = 0x00080000  # noqa: N806
+        WS_EX_TRANSPARENT = 0x00000020  # noqa: N806
+        WS_EX_NOACTIVATE = 0x08000000  # noqa: N806
 
         hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
         if not hwnd:

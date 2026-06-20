@@ -6,8 +6,8 @@ import pytest
 
 from core.resilience import (
     CircuitBreaker,
-    CircuitBreakerOpen,
-    RetryExhausted,
+    CircuitBreakerOpenError,
+    RetryExhaustedError,
     circuit_breaker,
     get_all_breaker_stats,
     reset_all_breakers,
@@ -48,7 +48,7 @@ class TestRetryable:
         def fn():
             raise OSError("always fails")
 
-        with pytest.raises(RetryExhausted) as exc_info:
+        with pytest.raises(RetryExhaustedError) as exc_info:
             fn()
         assert exc_info.value.attempts == 3
         assert isinstance(exc_info.value.last_exc, OSError)
@@ -77,7 +77,7 @@ class TestRetryable:
         def fn():
             raise OSError("fail")
 
-        with pytest.raises(RetryExhausted):
+        with pytest.raises(RetryExhaustedError):
             fn()
         assert retries == [1, 2]  # called after attempt 1 and 2
 
@@ -93,7 +93,7 @@ class TestRetryable:
         def fn():
             raise OSError("fail")
 
-        with pytest.raises(RetryExhausted) as exc_info:
+        with pytest.raises(RetryExhaustedError) as exc_info:
             fn()
         assert exc_info.value.attempts == 1
 
@@ -167,7 +167,7 @@ class TestCircuitBreaker:
     def test_context_manager_raises_when_open(self):
         for _ in range(3):
             self.cb.record_failure()
-        with pytest.raises(CircuitBreakerOpen):
+        with pytest.raises(CircuitBreakerOpenError):
             with self.cb:
                 pass
 

@@ -521,7 +521,7 @@ class AgentPool:
         session: AgentSession,
         session_id: str,
         desktop_name: str,
-        AgentEngine: type,
+        agent_engine: type,
     ) -> None:
         """Run an AgentEngine inside a virtual desktop and record the result."""
         vd: VirtualDesktop | None = None
@@ -529,7 +529,7 @@ class AgentPool:
             vd = self._setup_virtual_desktop(session_id, desktop_name)
             merged_config = dict(session.config or {})
             merged_config["virtual_desktop"] = False  # we handle it ourselves
-            engine = AgentEngine(config=merged_config)
+            engine = agent_engine(config=merged_config)
             result = engine.run(goal=session.goal)
             with self._lock:
                 session.status = STATUS_COMPLETED

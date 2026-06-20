@@ -724,8 +724,8 @@ class AuthManager:
             User: The provisioned or existing local user.
 
         Raises:
-            core.oidc.OIDCNotConfigured: Required env vars are absent.
-            core.oidc.OIDCTokenInvalid: Token is invalid or expired.
+            core.oidc.OIDCNotConfiguredError: Required env vars are absent.
+            core.oidc.OIDCTokenInvalidError: Token is invalid or expired.
         """
         from core.oidc import provision_user, validate_oidc_token
 

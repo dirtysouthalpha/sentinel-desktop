@@ -64,11 +64,11 @@ class OIDCError(Exception):
     """Base exception for OIDC validation errors."""
 
 
-class OIDCNotConfigured(OIDCError):
+class OIDCNotConfiguredError(OIDCError):
     """Required environment variables are missing."""
 
 
-class OIDCTokenInvalid(OIDCError):
+class OIDCTokenInvalidError(OIDCError):
     """Token could not be validated (expired, bad sig, wrong claims)."""
 
 
@@ -112,7 +112,7 @@ def _get_oidc_config() -> tuple[str, str, str]:
         Tuple of (issuer, audience, jwt_secret).
 
     Raises:
-        OIDCNotConfigured: If any required variable is missing.
+        OIDCNotConfiguredError: If any required variable is missing.
     """
     issuer = os.environ.get("SENTINEL_OIDC_ISSUER", "").strip()
     audience = os.environ.get("SENTINEL_OIDC_AUDIENCE", "").strip()
@@ -128,7 +128,9 @@ def _get_oidc_config() -> tuple[str, str, str]:
         if not val
     ]
     if missing:
-        raise OIDCNotConfigured(f"OIDC not configured — missing env vars: {', '.join(missing)}")
+        raise OIDCNotConfiguredError(
+            f"OIDC not configured — missing env vars: {', '.join(missing)}"
+        )
     return issuer, audience, secret
 
 
@@ -197,8 +199,8 @@ def validate_oidc_token(id_token: str) -> OIDCClaims:
         :class:`OIDCClaims` with extracted and derived fields.
 
     Raises:
-        OIDCNotConfigured: If required env vars are absent.
-        OIDCTokenInvalid: If the token is invalid, expired, or mismatched.
+        OIDCNotConfiguredError: If required env vars are absent.
+        OIDCTokenInvalidError: If the token is invalid, expired, or mismatched.
     """
     issuer, audience, secret = _get_oidc_config()
 
@@ -211,11 +213,11 @@ def validate_oidc_token(id_token: str) -> OIDCClaims:
     try:
         claims = decode(id_token, cfg)
     except (JWTError, UnicodeDecodeError, ValueError) as exc:
-        raise OIDCTokenInvalid(f"OIDC token validation failed: {exc}") from exc
+        raise OIDCTokenInvalidError(f"OIDC token validation failed: {exc}") from exc
 
     sub = claims.get("sub")
     if not isinstance(sub, str) or not sub:
-        raise OIDCTokenInvalid("OIDC token missing required 'sub' claim")
+        raise OIDCTokenInvalidError("OIDC token missing required 'sub' claim")
 
     email_raw = claims.get("email")
     email = str(email_raw).strip() if isinstance(email_raw, str) else None
@@ -246,12 +248,12 @@ def fetch_oidc_config(issuer: str | None = None) -> dict[str, Any]:
         Parsed JSON discovery document as a dict.
 
     Raises:
-        OIDCNotConfigured: If no issuer is provided or configured.
+        OIDCNotConfiguredError: If no issuer is provided or configured.
         OIDCDiscoveryError: If the document cannot be fetched or parsed.
     """
     base = (issuer or os.environ.get("SENTINEL_OIDC_ISSUER", "")).rstrip("/")
     if not base:
-        raise OIDCNotConfigured("SENTINEL_OIDC_ISSUER is not set")
+        raise OIDCNotConfiguredError("SENTINEL_OIDC_ISSUER is not set")
 
     url = f"{base}/.well-known/openid-configuration"
     logger.debug("Fetching OIDC discovery document from %s", url)

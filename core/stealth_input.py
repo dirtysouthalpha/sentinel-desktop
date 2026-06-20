@@ -348,7 +348,7 @@ if _HAS_WIN32:
             ("bottom", ctypes.c_long),
         ]
 
-    class _GUI_THREAD_INFO(ctypes.Structure):
+    class _GUI_THREAD_INFO(ctypes.Structure):  # noqa: N801
         _fields_ = [
             ("cbSize", wintypes.DWORD),
             ("flags", wintypes.DWORD),
@@ -362,5 +362,5 @@ if _HAS_WIN32:
         ]
 else:
 
-    class _GUI_THREAD_INFO:  # type: ignore[no-redef]
+    class _GUI_THREAD_INFO:  # type: ignore[no-redef]  # noqa: N801
         pass

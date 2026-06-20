@@ -354,7 +354,7 @@ class _Win32VirtualDesktop:
                 ("hStdError", wintypes.HANDLE),
             ]
 
-        class PROCESS_INFORMATION(ctypes.Structure):
+        class PROCESS_INFORMATION(ctypes.Structure):  # noqa: N801
             _fields_ = [
                 ("hProcess", wintypes.HANDLE),
                 ("hThread", wintypes.HANDLE),
@@ -495,7 +495,9 @@ class _Win32VirtualDesktop:
                 if not self._is_active:
                     switched = self._switch_to_locked()
 
-                WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+                WNDENUMPROC = ctypes.WINFUNCTYPE(  # noqa: N806
+                    wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
+                )
                 callback = WNDENUMPROC(self._make_enum_callback(windows, user32, ctypes, wintypes))
                 user32.EnumWindows(callback, 0)
 

@@ -61,15 +61,15 @@ class JWTError(Exception):
     """Base class for all JWT validation errors."""
 
 
-class JWTMalformed(JWTError):
+class JWTMalformedError(JWTError):
     """Token cannot be parsed — wrong format or corrupted base64."""
 
 
-class JWTInvalidSignature(JWTError):
+class JWTInvalidSignatureError(JWTError):
     """HMAC signature does not match the token header + payload."""
 
 
-class JWTExpired(JWTError):
+class JWTExpiredError(JWTError):
     """Token ``exp`` claim is in the past (beyond the configured leeway)."""
 
 
@@ -126,20 +126,20 @@ def _b64url_decode(s: str) -> bytes:
     """Decode a base64url string (with or without padding).
 
     Raises:
-        JWTMalformed: If the string contains non-base64url characters or
+        JWTMalformedError: If the string contains non-base64url characters or
             cannot be decoded.
     """
     # Strip any existing padding before validation
     stripped = s.rstrip("=")
     if not _B64URL_RE.match(stripped):
-        raise JWTMalformed("Invalid base64url characters in token segment")
+        raise JWTMalformedError("Invalid base64url characters in token segment")
     # Restore padding
     padding = 4 - len(stripped) % 4
     padded = stripped + ("=" * padding if padding != 4 else "")
     try:
         return base64.urlsafe_b64decode(padded)
     except Exception as exc:
-        raise JWTMalformed(f"Invalid base64url encoding: {exc}") from exc
+        raise JWTMalformedError(f"Invalid base64url encoding: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -212,42 +212,42 @@ def decode(token: str, config: JWTConfig) -> dict[str, Any]:
         Decoded payload claims dict.
 
     Raises:
-        JWTMalformed: If the token cannot be parsed.
-        JWTInvalidSignature: If the signature does not match.
-        JWTExpired: If the token has expired.
+        JWTMalformedError: If the token cannot be parsed.
+        JWTInvalidSignatureError: If the signature does not match.
+        JWTExpiredError: If the token has expired.
         JWTClaimError: If a required claim is missing or wrong.
     """
     parts = token.split(".")
     if len(parts) != 3:
-        raise JWTMalformed(f"Expected 3 JWT parts, got {len(parts)}")
+        raise JWTMalformedError(f"Expected 3 JWT parts, got {len(parts)}")
 
     header_b64, payload_b64, sig_b64 = parts
 
     # Decode header
     try:
         header = json.loads(_b64url_decode(header_b64))
-    except (json.JSONDecodeError, JWTMalformed) as exc:
-        raise JWTMalformed(f"Cannot decode JWT header: {exc}") from exc
+    except (json.JSONDecodeError, JWTMalformedError) as exc:
+        raise JWTMalformedError(f"Cannot decode JWT header: {exc}") from exc
 
     if header.get("alg") != "HS256":
-        raise JWTMalformed(f"Unsupported JWT algorithm: {header.get('alg')!r}")
+        raise JWTMalformedError(f"Unsupported JWT algorithm: {header.get('alg')!r}")
 
     # Verify signature
     expected_sig = _sign(header_b64, payload_b64, config.secret_key)
     if not hmac.compare_digest(expected_sig, sig_b64):
-        raise JWTInvalidSignature("JWT signature verification failed")
+        raise JWTInvalidSignatureError("JWT signature verification failed")
 
     # Decode payload
     try:
         claims: dict[str, Any] = json.loads(_b64url_decode(payload_b64))
-    except (json.JSONDecodeError, JWTMalformed) as exc:
-        raise JWTMalformed(f"Cannot decode JWT payload: {exc}") from exc
+    except (json.JSONDecodeError, JWTMalformedError) as exc:
+        raise JWTMalformedError(f"Cannot decode JWT payload: {exc}") from exc
 
     # Check expiry
     now = int(time.time())
     if "exp" in claims:
         if now > claims["exp"] + config.leeway_seconds:
-            raise JWTExpired(
+            raise JWTExpiredError(
                 f"JWT expired at {claims['exp']} (now={now}, leeway={config.leeway_seconds}s)"
             )
     elif config.require_exp:

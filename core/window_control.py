@@ -55,7 +55,7 @@ def _get_monitors_win32() -> list[dict[str, Any]]:
                 ("bottom", ctypes.c_long),
             ]
 
-        MONITORENUMPROC = ctypes.WINFUNCTYPE(
+        MONITORENUMPROC = ctypes.WINFUNCTYPE(  # noqa: N806
             ctypes.c_bool,
             ctypes.c_ulong,
             ctypes.c_ulong,
@@ -63,7 +63,12 @@ def _get_monitors_win32() -> list[dict[str, Any]]:
             ctypes.c_double,
         )
 
-        def _callback(hMonitor, hdcMonitor, lprcMonitor, dwData):  # noqa: N802
+        def _callback(
+            hMonitor,  # noqa: N803
+            hdcMonitor,  # noqa: N803
+            lprcMonitor,  # noqa: N803
+            dwData,  # noqa: N803
+        ):
             r = lprcMonitor.contents
             rects.append((r.left, r.top, r.right, r.bottom))
             return True

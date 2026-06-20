@@ -10,7 +10,7 @@ import pytest
 
 from core.policy import (
     PolicyEngine,
-    PolicyViolation,
+    PolicyViolationError,
     _fnmatch_path,
     _role_matches,
     get_default_engine,
@@ -283,7 +283,7 @@ class TestAssertHelpers:
             [{"type": "action", "name": "write_file", "effect": "deny", "reason": "blocked"}]
         )
         engine = PolicyEngine(path)
-        with pytest.raises(PolicyViolation) as exc_info:
+        with pytest.raises(PolicyViolationError) as exc_info:
             engine.assert_action("write_file")
         assert "write_file" in str(exc_info.value)
         assert exc_info.value.reason == "blocked"
@@ -293,13 +293,13 @@ class TestAssertHelpers:
             [{"type": "endpoint", "method": "DELETE", "path": "/api/**", "effect": "deny"}]
         )
         engine = PolicyEngine(path)
-        with pytest.raises(PolicyViolation):
+        with pytest.raises(PolicyViolationError):
             engine.assert_endpoint("DELETE", "/api/x")
 
     def test_assert_file_path_raises(self, policy_file):
         path = policy_file([{"type": "file_path", "pattern": "/etc/**", "effect": "deny"}])
         engine = PolicyEngine(path)
-        with pytest.raises(PolicyViolation):
+        with pytest.raises(PolicyViolationError):
             engine.assert_file_path("/etc/hosts")
 
     def test_policy_violation_attributes(self, policy_file):
@@ -307,7 +307,7 @@ class TestAssertHelpers:
             [{"type": "action", "name": "rm_rf", "effect": "deny", "reason": "too dangerous"}]
         )
         engine = PolicyEngine(path)
-        with pytest.raises(PolicyViolation) as exc_info:
+        with pytest.raises(PolicyViolationError) as exc_info:
             engine.assert_action("rm_rf")
         err = exc_info.value
         assert err.action == "rm_rf"

@@ -5,7 +5,7 @@ per subsystem (SSH, browser, OCR, LLM, desktop).
 
 Usage::
 
-    from core.resilience import retryable, circuit_breaker, CircuitBreakerOpen
+    from core.resilience import retryable, circuit_breaker, CircuitBreakerOpenError
 
     @retryable(max_attempts=3, exceptions=(OSError, TimeoutError))
     def flaky_click(x, y):
@@ -57,7 +57,7 @@ TRANSIENT_EXCEPTIONS = (
 # ── Retry decorator ──────────────────────────────────────────────────────────
 
 
-class RetryExhausted(Exception):
+class RetryExhaustedError(Exception):
     """Raised when all retry attempts have been consumed."""
 
     def __init__(self, attempts: int, last_exc: Exception) -> None:
@@ -88,7 +88,7 @@ def retryable(
         on_retry:     Optional callback(attempt_number, exception) called on each retry.
 
     Raises:
-        RetryExhausted: When all attempts fail.
+        RetryExhaustedError: When all attempts fail.
     """
 
     def decorator(fn: Callable) -> Callable:
@@ -118,7 +118,7 @@ def retryable(
                 except Exception:
                     # Non-transient: let it propagate immediately
                     raise
-            raise RetryExhausted(max_attempts, last_exc)  # type: ignore[arg-type]
+            raise RetryExhaustedError(max_attempts, last_exc)  # type: ignore[arg-type]
 
         return wrapper
 
@@ -128,7 +128,7 @@ def retryable(
 # ── Circuit Breaker ──────────────────────────────────────────────────────────
 
 
-class CircuitBreakerOpen(Exception):
+class CircuitBreakerOpenError(Exception):
     """Raised when a circuit is open and calls are rejected."""
 
     def __init__(self, subsystem: str) -> None:
@@ -230,9 +230,9 @@ class CircuitBreaker:
             return True
 
     def __enter__(self) -> CircuitBreaker:
-        """Context-manager entry: raise CircuitBreakerOpen if tripped."""
+        """Context-manager entry: raise CircuitBreakerOpenError if tripped."""
         if not self.allow_call():
-            raise CircuitBreakerOpen(self.name)
+            raise CircuitBreakerOpenError(self.name)
         return self
 
     def __exit__(

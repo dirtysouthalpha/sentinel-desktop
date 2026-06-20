@@ -944,7 +944,10 @@ class SentinelApp:
                 self._add_chat(f"\u274c {n}", "error")
         elif not summary:
             # Run ended without finish() \u2014 hit max steps, consecutive failures, or abort.
-            msg = f"\u26a0\ufe0f Run ended after {steps} step{'s' if steps != 1 else ''} without completing."
+            msg = (
+                f"\u26a0\ufe0f Run ended after {steps} step{'s' if steps != 1 else ''} "
+                "without completing."
+            )
             if notes:
                 msg += "\n" + "\n".join(notes[-3:])
             self._add_chat(msg, "error")

@@ -24,11 +24,11 @@ logger = logging.getLogger(__name__)
 pyautogui = None
 
 
-class _FailSafeSentinel(Exception):
+class _FailSafeSentinelError(Exception):
     """Sentinel used when pyautogui has not been imported yet."""
 
 
-_FailSafeException: type[Exception] = _FailSafeSentinel
+_FailSafeException: type[Exception] = _FailSafeSentinelError
 
 
 def _ensure_pyautogui():

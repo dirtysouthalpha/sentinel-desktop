@@ -82,7 +82,7 @@ _ALLOW = "allow"
 _DENY = "deny"
 
 
-class PolicyViolation(Exception):
+class PolicyViolationError(Exception):
     """Raised by assert_* helpers when a policy check fails.
 
     Attributes:
@@ -157,7 +157,7 @@ class PolicyEngine:
         engine = PolicyEngine("config/policy.json")
         allowed, reason = engine.check_action("write_file", role="operator")
         if not allowed:
-            raise PolicyViolation(...)
+            raise PolicyViolationError(...)
 
         # Or use the assert helper (raises on deny):
         engine.assert_action("delete_file", role="viewer")
@@ -361,24 +361,24 @@ class PolicyEngine:
     # ------------------------------------------------------------------
 
     def assert_action(self, action_name: str, role: str | None = None) -> None:
-        """Like ``check_action`` but raises ``PolicyViolation`` on deny.
+        """Like ``check_action`` but raises ``PolicyViolationError`` on deny.
 
         Args:
             action_name: The action key to check.
             role: The caller's role.
 
         Raises:
-            PolicyViolation: If the action is denied by policy.
+            PolicyViolationError: If the action is denied by policy.
         """
         allowed, reason = self.check_action(action_name, role)
         if not allowed:
             msg = f"Action '{action_name}' denied by policy"
             if reason:
                 msg = f"{msg}: {reason}"
-            raise PolicyViolation(msg, action=action_name, reason=reason)
+            raise PolicyViolationError(msg, action=action_name, reason=reason)
 
     def assert_endpoint(self, method: str, path: str, role: str | None = None) -> None:
-        """Like ``check_endpoint`` but raises ``PolicyViolation`` on deny.
+        """Like ``check_endpoint`` but raises ``PolicyViolationError`` on deny.
 
         Args:
             method: HTTP method.
@@ -386,31 +386,31 @@ class PolicyEngine:
             role: The caller's role.
 
         Raises:
-            PolicyViolation: If the endpoint call is denied by policy.
+            PolicyViolationError: If the endpoint call is denied by policy.
         """
         allowed, reason = self.check_endpoint(method, path, role)
         if not allowed:
             msg = f"Endpoint '{method} {path}' denied by policy"
             if reason:
                 msg = f"{msg}: {reason}"
-            raise PolicyViolation(msg, action=f"{method} {path}", reason=reason)
+            raise PolicyViolationError(msg, action=f"{method} {path}", reason=reason)
 
     def assert_file_path(self, path: str, role: str | None = None) -> None:
-        """Like ``check_file_path`` but raises ``PolicyViolation`` on deny.
+        """Like ``check_file_path`` but raises ``PolicyViolationError`` on deny.
 
         Args:
             path: File path to check.
             role: The caller's role.
 
         Raises:
-            PolicyViolation: If file path access is denied by policy.
+            PolicyViolationError: If file path access is denied by policy.
         """
         allowed, reason = self.check_file_path(path, role)
         if not allowed:
             msg = f"File path '{path}' denied by policy"
             if reason:
                 msg = f"{msg}: {reason}"
-            raise PolicyViolation(msg, action=path, reason=reason)
+            raise PolicyViolationError(msg, action=path, reason=reason)
 
     # ------------------------------------------------------------------
     # Inspection
