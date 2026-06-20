@@ -7,8 +7,7 @@ Vision-driven desktop automation agent. Give it a goal in plain English, it sees
 
 Quality gates status:
 - ✅ Zero lint errors (ruff check clean)
-- ⚠️ Test suite: 297 test files, minor test failures (8 tests) due to recent API refactoring
-- 🔄 Recent fixes: 56 tests updated for new ActionExecutor API (committed ab72683)
+- ✅ Test suite green: 8,697 passing, 182 skipped, 0 failed across 509 test files
 - ✅ `core/voice.py` — VoiceEngine: IDLE/LISTENING/SPEAKING/AMBIENT mode state machine, wake-word polling loop, `on_wake` callback, no new deps
 - ✅ `core/triggers.py` — EventType enum, Trigger dataclass, TriggerRegistry (JSON persistence), TriggerEngine (wake-event driven dispatch)
 - ✅ 9 new executor actions: trigger_add, trigger_remove, trigger_list, trigger_enable, trigger_disable, trigger_fire_custom, voice_start_ambient, voice_stop_ambient, voice_status
@@ -38,6 +37,8 @@ Quality gates status:
 - **core/server/** — Fleet/daemon mode (v10.0): daemon service, fleet manager, persistent job queue
 - **core/memory/** — Persistent memory (v11.0): episodic (JSONL), semantic (SQLite), working memory (in-memory scratchpad)
 - **core/conductor/** — Multi-agent orchestration (v12.0): task planner, parallel executor, result synthesizer, coordinator
+- **core/humanize/** — Humanization Engine (v18.x): seeded RNG, tempo Profile, bezier motion, keystroke cadence, timing helpers — naturalistic input at the two chokepoints
+- **core/brain/** — Neuralis Brain bridge (v18.0): sync HTTP client to the fleet-wide brain memory; graceful degradation when unreachable
 - **gui/** — Cyberpunk HUD GUI with tkinter (13 modules): app, cursor overlay, themes, tabs, system tray
 - **api/** — FastAPI headless server (35+ endpoints, PTY terminal Unix-only)
 - **plugins/** — Plugin system
@@ -130,11 +131,19 @@ Quality gates status:
 - ✅ `speak`, `listen`, `volume_get`, `volume_set`, `mute_toggle`, `list_voices` executor actions
 - ✅ Tests: `tests/test_audio.py`
 
+## v18.x — Humanization Engine (June 2026)
+- ✅ Naturalistic input humanization at the two input chokepoints (`core/desktop.py`, `core/stealth_input.py`) — curved bezier cursor paths, eased (bell-curve) velocity, variable per-keystroke typing cadence, natural micro-pauses
+- ✅ `core/humanize/` subpackage: `rng.py` (seeded, reproducible RNG for record/replay), `profile.py` (tempo `Profile` dataclass — the stealth-tier extension point), `motion.py` (bezier + easing + imprecise landing), `typing.py` (log-normal-ish keystroke cadence), `timing.py` (click-hold / think-bump / maybe-pause)
+- ✅ `SENTINEL_HUMANIZE` master switch (ON in production, OFF in tests via `conftest.py`) so existing coordinate/timing assertions stay green
+- ✅ Stealth-readiness architectural debt paid now (profile interface, curve-agnostic motion, seeded RNG, no timing constants in `action_executor.py`) so the deferred adversarial tier (`docs/superpowers/notes/future-stealth-mode.md`) needs no chokepoint rewrite
+- ✅ Tests: `tests/test_humanize_{rng,profile,motion,typing,timing,switch,desktop_integration,stealth_integration}.py`
+
 ## v18.0 — Neuralis Brain Bridge (June 2026)
-- ✅ HTTP bridge to Neuralis brain API (`core/brain/bridge.py`)
-- ✅ Brain executor actions: `brain_recall`, `brain_think`, `brain_fire`, `brain_search`, `brain_context`
-- ✅ GUI Brain tab — fleet-memory HUD panel in the cyberpunk interface
-- ✅ Tests: `tests/test_brain_bridge.py`, `tests/test_brain_tab.py`
+- ✅ HTTP bridge to the Neuralis Brain fleet memory (`core/brain/client.py`) — verified contract against `homeserver:8000/openapi.json` (Neuralis v4.0.0); 5 ops: `POST /neurons/think`, `GET /recall?context=`, `GET /neurons/search?q=`, `POST /neurons/{id}/fire`, `GET /stats`; `GET /health` liveness
+- ✅ Graceful degradation — `BrainUnavailableError` on connect/timeout/network; executor returns `{"success": False, "error": "brain_unavailable"}`, never crashes or stalls the agent loop
+- ✅ 5 brain executor actions: `brain_think`, `brain_recall`, `brain_search`, `brain_fire`, `brain_stats` (the originally-proposed `context`/`opinions` endpoints don't exist in the real API and were dropped)
+- ✅ GUI Brain tab (`gui/tabs/brain_tab.py`) — fleet-memory HUD panel; offline state is first-class (red dot + "Brain offline" header); brain-is-alive pulse motif
+- ✅ Tests: `tests/test_brain_client.py`, `tests/test_brain_executor.py`, `tests/test_brain_tab.py`
 
 ## v19.0 — Fortress (June 2026)
 - ✅ HS256 JWT auth layer (`core/jwt_auth.py`) — stdlib-only, no new deps; token issue/verify/revoke
@@ -153,7 +162,7 @@ Quality gates status:
 - ✅ 6 trigger executor actions: trigger_add, trigger_remove, trigger_list, trigger_enable, trigger_disable, trigger_fire_custom
 - ✅ 3 voice executor actions: voice_start_ambient, voice_stop_ambient, voice_status
 - ✅ 9 new tool schemas for LLM tool calling
-- ✅ 8,685 total tests passing (274 new including 22 trigger + 14 voice tests)
+- ✅ 8,697 total tests passing (274 new including 22 trigger + 14 voice tests)
 
 ## v21.0 — Operator: Eval Harness + Cost Tracker + Skill Marketplace (June 2026)
 - ✅ `eval/` — ScenarioStep/Scenario dataclasses with JSON save/load; ScenarioRunner with executor callback, step scoring, stop_on_failure; EvalRegistry list/load/save/delete + JSONL result history; EvalReport aggregate pass-rate + regression_check
