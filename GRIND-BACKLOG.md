@@ -18,10 +18,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Active
 
-- [ ] Phase 2: Pre-load the Neuralis brain with the sentinel-desktop knowledge base
-  — use `core.brain.think` to persist the v18-v22 architecture, the grind-loop
-  coordination lesson, and the fleet topology so every other agent reads it. See
-  `docs/superpowers/specs/2026-06-18-neuralis-brain-bridge-design.md`.
 - [ ] Phase 3: Cut v22.0.0 release tag — push an annotated tag, confirm
   `.github/workflows/release.yml` runs (test → build → publish), verify the PyPI +
   GitHub Release succeeds. GATED: before doing this, confirm PyPI trusted-publishing
@@ -39,6 +35,10 @@ _(none)_
 
 ## Done
 
+- [x] Phase 2: Pre-load the Neuralis brain with the sentinel-desktop knowledge base
+  — created scripts/seed_brain.py and successfully persisted v18-v22 architecture,
+  grind-loop coordination protocol, and fleet topology to the brain (neurons 8891,
+  8892, 8893). All fleet agents can now recall this knowledge. (commit 223d07b)
 - [x] Phase 1: Design the deferred fully-stealth humanization tier — wrote
   comprehensive 1160-line design spec covering biometric profiles, Fitts's-Law,
   overshoot/correction, error injection, scroll momentum, attention simulation,
