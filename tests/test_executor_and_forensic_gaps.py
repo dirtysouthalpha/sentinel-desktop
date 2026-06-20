@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from core.action_executor import ActionExecutor
+from core.action_executor import ActionExecutor, ExecutorConfig
 from core.forensic_log import ForensicLog
 
 # ── _focus_window ──────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ class TestClickControlOcrFallback:
     def test_ocr_fallback_with_offset(self, mock_ui_tree, mock_ocr):
         mock_ui_tree.click_control.return_value = None
         mock_ocr.find_text.return_value = (100, 200)
-        ex = ActionExecutor(click_offset=(10, 20))
+        ex = ActionExecutor(config=ExecutorConfig(click_offset=(10, 20)))
         ex._desktop = MagicMock()
         ex._click_control(name="Submit")
         ex._desktop.click.assert_called_once_with(110, 220, button="left")

@@ -65,7 +65,9 @@ class TestNoBackendFallThroughs:
 
     @patch("core.window_manager.HAS_WIN32", False)
     @patch("core.window_manager.HAS_PGW", False)
-    def test_get_focused_window_rect_no_backend_returns_none(self):
+    @patch("core.window_manager.is_linux", return_value=False)
+    @patch("core.window_manager.is_macos", return_value=False)
+    def test_get_focused_window_rect_no_backend_returns_none(self, *args):
         assert get_focused_window_rect() is None
 
     @patch("core.window_manager.HAS_WIN32", False)
@@ -75,12 +77,16 @@ class TestNoBackendFallThroughs:
 
     @patch("core.window_manager.HAS_WIN32", False)
     @patch("core.window_manager.HAS_PGW", False)
-    def test_list_windows_no_backend_returns_empty(self):
+    @patch("core.window_manager.is_linux", return_value=False)
+    @patch("core.window_manager.is_macos", return_value=False)
+    def test_list_windows_no_backend_returns_empty(self, *args):
         """Line 79: with no window library, list_windows logs and returns []."""
         assert list_windows() == []
 
     @patch("core.window_manager.HAS_WIN32", False)
-    def test_get_target_window_rect_no_win32_uses_scan(self):
+    @patch("core.window_manager.is_linux", return_value=False)
+    @patch("core.window_manager.is_macos", return_value=False)
+    def test_get_target_window_rect_no_win32_uses_scan(self, *args):
         """Branch 181->191: HAS_WIN32 False skips the foreground block."""
         other = {"title": "Editor", "x": 1, "y": 2, "width": 320, "height": 240}
         with patch("core.window_manager.list_windows", return_value=[other]):

@@ -947,12 +947,24 @@ class ActionExecutor:
         self,
         *,
         coords: DragCoordinates | None = None,
+        from_x: int = 0,
+        from_y: int = 0,
+        to_x: int = 0,
+        to_y: int = 0,
+        duration: float = 0.5,
+        button: str = "left",
         **_,
     ) -> dict:
         """Drag from one screen position to another with stealth PostMessage support."""
-        coords = coords or DragCoordinates(
-            from_x=0, from_y=0, to_x=0, to_y=0
-        )
+        if coords is None:
+            coords = DragCoordinates(
+                from_x=int(from_x),
+                from_y=int(from_y),
+                to_x=int(to_x),
+                to_y=int(to_y),
+                duration=duration,
+                button=button,
+            )
 
         sx = int(coords.from_x) + self.click_offset[0]
         sy = int(coords.from_y) + self.click_offset[1]
@@ -1718,10 +1730,24 @@ class ActionExecutor:
         self,
         *,
         params: WebClickParams | None = None,
+        selector: str | None = None,
+        text: str | None = None,
+        role: str | None = None,
+        name: str | None = None,
+        button: str = "left",
+        click_count: int = 1,
         **_,
     ) -> dict:
         """Click an element in the browser by selector, text, or ARIA role."""
-        params = params or WebClickParams()
+        if params is None:
+            params = WebClickParams(
+                selector=selector,
+                text=text,
+                role=role,
+                name=name,
+                button=button,
+                click_count=click_count,
+            )
         return self.browser.click(
             selector=params.selector,
             text=params.text,
@@ -1735,10 +1761,24 @@ class ActionExecutor:
         self,
         *,
         params: WebTypeParams | None = None,
+        text: str = "",
+        selector: str | None = None,
+        label: str | None = None,
+        role: str | None = None,
+        name: str | None = None,
+        clear: bool = True,
         **_,
     ) -> dict:
         """Type text into a browser form field."""
-        params = params or WebTypeParams(text="")
+        if params is None:
+            params = WebTypeParams(
+                text=text,
+                selector=selector,
+                label=label,
+                role=role,
+                name=name,
+                clear=clear,
+            )
         return self.browser.type_text(
             text=params.text,
             selector=params.selector,
@@ -2301,12 +2341,26 @@ class ActionExecutor:
         self,
         *,
         params: HttpRequestParams | None = None,
+        url: str = "",
+        body: str | None = None,
+        json: dict | list | None = None,
+        headers: dict | None = None,
+        timeout: float = 30.0,
+        verify_ssl: bool = True,
         **_,
     ) -> dict:
         """HTTP POST request."""
         from core.http_client import http_post
 
-        params = params or HttpRequestParams(url="")
+        if params is None:
+            params = HttpRequestParams(
+                url=url,
+                body=body,
+                json=json,
+                headers=headers,
+                timeout=timeout,
+                verify_ssl=verify_ssl,
+            )
         return http_post(
             params.url,
             body=params.body,

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any
 from core import failsafe
 from core import system_info as sysinfo
 from core import window_manager as wm
-from core.action_executor import ActionExecutor
+from core.action_executor import ActionExecutor, ExecutorCallbacks, ExecutorConfig
 from core.action_schemas import validate_action
 from core.app_profiles import detect_profile
 from core.approval_gate import ApprovalDecision, ApprovalGate
@@ -342,11 +342,16 @@ class AgentEngine:
         self.approval_callback = approval_callback
         self.pre_action_callback = pre_action_callback
         self.executor = ActionExecutor(
-            dry_run=bool(self.config.get("dry_run", False)),
-            pre_action_callback=pre_action_callback,
-            click_offset=get_capture_offset(self.config.get("monitor")),
-            monitor=self.config.get("monitor"),
-            stealth=bool(self.config.get("stealth_input", False)),
+            callbacks=ExecutorCallbacks(
+                approval_callback=approval_callback,
+                pre_action_callback=pre_action_callback,
+            ),
+            config=ExecutorConfig(
+                dry_run=bool(self.config.get("dry_run", False)),
+                stealth=bool(self.config.get("stealth_input", False)),
+                click_offset=get_capture_offset(self.config.get("monitor")),
+                monitor=self.config.get("monitor"),
+            ),
         )
 
         # Public state (accessed by GUI and API)

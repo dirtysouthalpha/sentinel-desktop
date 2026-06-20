@@ -44,6 +44,11 @@ def test_get_target_window_skips_self_via_fallback(monkeypatch):
     # Pretend the focused window is Sentinel's own GUI.
     monkeypatch.setattr(wm, "HAS_WIN32", False)
     monkeypatch.setattr(wm, "HAS_PGW", False)
+    # On Linux/Mac the foreground-info path falls through to the platform
+    # backend; patch these so the test exercises the no-backend branch on
+    # any host (the test injects list_windows directly).
+    monkeypatch.setattr(wm, "is_linux", lambda: False)
+    monkeypatch.setattr(wm, "is_macos", lambda: False)
 
     result = wm.get_target_window_rect()
     assert result is not None
@@ -70,4 +75,6 @@ def test_get_target_window_returns_none_when_only_self_visible(monkeypatch):
     )
     monkeypatch.setattr(wm, "HAS_WIN32", False)
     monkeypatch.setattr(wm, "HAS_PGW", False)
+    monkeypatch.setattr(wm, "is_linux", lambda: False)
+    monkeypatch.setattr(wm, "is_macos", lambda: False)
     assert wm.get_target_window_rect() is None

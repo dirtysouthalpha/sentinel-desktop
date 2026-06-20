@@ -573,9 +573,9 @@ class TestExecutorIntegration:
 
     def test_execute_sync_transforms_coordinates(self):
         """execute_sync should transform physical coords to logical."""
-        from core.action_executor import ActionExecutor
+        from core.action_executor import ActionExecutor, ExecutorConfig
 
-        executor = ActionExecutor(dry_run=True)
+        executor = ActionExecutor(config=ExecutorConfig(dry_run=True))
 
         with patch("core.dpi.get_monitors") as mock_mon:
             mock_mon.return_value = [

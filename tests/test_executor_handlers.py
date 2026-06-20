@@ -38,9 +38,12 @@ class FakeDesktop:
 @pytest.fixture
 def fake_executor(monkeypatch):
     monkeypatch.setattr(desktop_mod, "DesktopEngine", FakeDesktop)
-    from core.action_executor import ActionExecutor
+    from core.action_executor import ActionExecutor, ExecutorConfig
 
-    return ActionExecutor
+    def make_executor(click_offset=(0, 0), **kwargs):
+        return ActionExecutor(config=ExecutorConfig(click_offset=click_offset))
+
+    return make_executor
 
 
 # -------------------------------------------------------------------

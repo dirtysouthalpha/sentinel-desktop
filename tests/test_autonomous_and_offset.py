@@ -28,9 +28,13 @@ class FakeDesktop:
 @pytest.fixture
 def fake_executor(monkeypatch):
     monkeypatch.setattr(desktop_mod, "DesktopEngine", FakeDesktop)
-    from core.action_executor import ActionExecutor
+    from core.action_executor import ActionExecutor, ExecutorConfig
 
-    return ActionExecutor
+    def make_executor(click_offset=(0, 0)):
+        config = ExecutorConfig(click_offset=click_offset)
+        return ActionExecutor(config=config)
+
+    return make_executor
 
 
 def test_click_with_no_offset_passes_coords_through(fake_executor):

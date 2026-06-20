@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from core.action_executor import ActionExecutor
+from core.action_executor import ActionExecutor, ExecutorConfig
 from core.perception.types import (
     ElementSource,
     ElementType,
@@ -81,7 +81,7 @@ class TestClickElement:
 
     def test_click_valid_element(self):
         """Clicks at the center of the specified element."""
-        executor = ActionExecutor(dry_run=True)
+        executor = ActionExecutor(config=ExecutorConfig(dry_run=True))
         executor.perception_result = _make_result()
         # Element 1 has bbox (100, 100, 80, 30) → center (140, 115)
         result = executor.execute_sync({"action": "click_element", "element_id": 1})
@@ -89,7 +89,7 @@ class TestClickElement:
 
     def test_click_element_resolves_coordinates(self):
         """Verify the element center is computed correctly."""
-        executor = ActionExecutor(dry_run=True)
+        executor = ActionExecutor(config=ExecutorConfig(dry_run=True))
         elem = _make_element(5, "OK", bbox=(200, 300, 100, 40))
         executor.perception_result = _make_result([elem])
 
@@ -100,7 +100,7 @@ class TestClickElement:
 
     def test_click_element_with_right_button(self):
         """Supports button parameter."""
-        executor = ActionExecutor(dry_run=True)
+        executor = ActionExecutor(config=ExecutorConfig(dry_run=True))
         executor.perception_result = _make_result()
         result = executor.execute_sync(
             {
@@ -127,7 +127,7 @@ class TestClickMark:
         assert result["success"] is False
 
     def test_click_mark_valid(self):
-        executor = ActionExecutor(dry_run=True)
+        executor = ActionExecutor(config=ExecutorConfig(dry_run=True))
         executor.perception_result = _make_result()
         result = executor.execute_sync({"action": "click_mark", "mark_id": 2})
         assert result["success"] is True

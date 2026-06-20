@@ -375,7 +375,9 @@ class TestGetFocusedWindowRectPGW:
 
     @patch.object(wm, "HAS_WIN32", False)
     @patch.object(wm, "HAS_PGW", True)
-    def test_pgw_none_active(self):
+    @patch.object(wm, "is_linux", return_value=False)
+    @patch.object(wm, "is_macos", return_value=False)
+    def test_pgw_none_active(self, *args):
         mock_pgw = _mock_pgw()
         mock_pgw.getActiveWindow.return_value = None
         wm.pgw = mock_pgw
@@ -384,7 +386,9 @@ class TestGetFocusedWindowRectPGW:
 
     @patch.object(wm, "HAS_WIN32", False)
     @patch.object(wm, "HAS_PGW", True)
-    def test_pgw_zero_size(self):
+    @patch.object(wm, "is_linux", return_value=False)
+    @patch.object(wm, "is_macos", return_value=False)
+    def test_pgw_zero_size(self, *args):
         mock_pgw = _mock_pgw()
         win = MagicMock()
         win.width, win.height = 0, 600
@@ -395,7 +399,9 @@ class TestGetFocusedWindowRectPGW:
 
     @patch.object(wm, "HAS_WIN32", False)
     @patch.object(wm, "HAS_PGW", True)
-    def test_pgw_error(self):
+    @patch.object(wm, "is_linux", return_value=False)
+    @patch.object(wm, "is_macos", return_value=False)
+    def test_pgw_error(self, *args):
         mock_pgw = _mock_pgw()
         mock_pgw.getActiveWindow.side_effect = OSError("fail")
         wm.pgw = mock_pgw

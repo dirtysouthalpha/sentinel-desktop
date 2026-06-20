@@ -25,18 +25,18 @@ class TestActionExecutorAsyncExecute:
 
     def test_async_execute_dry_run_state_changing(self):
         """Async execute() with dry_run=True on a state-changing action returns dry_run result."""
-        from core.action_executor import ActionExecutor
+        from core.action_executor import ActionExecutor, ExecutorConfig
 
-        ex = ActionExecutor(dry_run=True)
+        ex = ActionExecutor(config=ExecutorConfig(dry_run=True))
         result = asyncio.run(ex._execute_with_logging({"action": "click", "x": 1, "y": 2}))
         assert result.get("dry_run") is True
         assert result.get("success") is True
 
     def test_async_execute_async_handler(self):
         """Async execute() dispatches to an async handler correctly."""
-        from core.action_executor import ActionExecutor
+        from core.action_executor import ActionExecutor, ExecutorConfig
 
-        ex = ActionExecutor(dry_run=False)
+        ex = ActionExecutor(config=ExecutorConfig(dry_run=False))
 
         async def _fake_async_handler(self_ref: Any, **kwargs: Any) -> dict[str, Any]:
             return {"success": True, "output": "async-done", "method": "async"}

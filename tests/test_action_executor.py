@@ -284,8 +284,8 @@ def test_dry_run_blocks_state_changing_actions(fake_executor, action):
 
 
 def test_dry_run_screenshot_still_runs(fake_executor, monkeypatch):
-    from core.action_executor import ExecutorConfig
     from core import screenshot as ss
+    from core.action_executor import ExecutorConfig
 
     monkeypatch.setattr(ss, "capture_to_base64", lambda **kw: "fake_base64")
     ex = fake_executor(config=ExecutorConfig(dry_run=True))
@@ -305,8 +305,8 @@ def test_dry_run_read_file_still_runs(fake_executor, tmp_path):
 
 
 def test_dry_run_system_info_still_runs(fake_executor, monkeypatch):
-    from core.action_executor import ExecutorConfig
     from core import system_info as si
+    from core.action_executor import ExecutorConfig
 
     monkeypatch.setattr(si, "system_info", lambda: {"os": "test"})
     ex = fake_executor(config=ExecutorConfig(dry_run=True))
