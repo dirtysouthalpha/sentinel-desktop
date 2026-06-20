@@ -111,3 +111,62 @@ class TestTermColor:
 
         src = inspect.getsource(SentinelServer._setup_pty_child)
         assert 'env["TERM"] = "xterm-256color"' in src
+
+
+# ---------------------------------------------------------------------------
+# Regression: slave_fd must NOT be closed before its ioctl/dup2 uses
+# ---------------------------------------------------------------------------
+# Bug (py3.14): _setup_pty_child called os.close(slave_fd) at the top, then used
+# slave_fd for TIOCSCTTY / TIOCSWINSZ / dup2 → OSError: Bad file descriptor,
+# which crashed the PTY child and surfaced downstream as
+# `RuntimeError: loop ... is not the running loop`. The close belongs AFTER
+# dup2 (and only when slave_fd > 2).
+
+
+class TestSlaveFdNotPrematurelyClosed:
+    def test_no_close_before_ioctl_or_dup2(self):
+        """The premature os.close(slave_fd) must stay gone. We assert on source
+        ordering: every os.close(slave_fd) must come AFTER all fcntl.ioctl and
+        os.dup2 uses of slave_fd."""
+        import inspect
+
+        from api.server import SentinelServer
+
+        src = inspect.getsource(SentinelServer._setup_pty_child)
+        lines = src.splitlines()
+
+        # Find positions (line index within the method) of the relevant calls.
+        close_idx = next(
+            (i for i, ln in enumerate(lines) if "os.close(slave_fd)" in ln),
+            None,
+        )
+        last_use_idx = max(
+            (i for i, ln in enumerate(lines)
+             if "fcntl.ioctl(slave_fd" in ln or "os.dup2(slave_fd" in ln),
+            default=-1,
+        )
+        assert close_idx is not None, "no os.close(slave_fd) found at all"
+        assert close_idx > last_use_idx, (
+            f"regression: os.close(slave_fd) at line {close_idx} runs before "
+            f"the last slave_fd use at line {last_use_idx} (Bad fd crash)"
+        )
+
+    def test_setup_does_not_top_level_close_slave_fd(self):
+        """The very first body statement must NOT be os.close(slave_fd) — that
+        was the exact bug. (The legitimate close is guarded by `slave_fd > 2`
+        after dup2.)"""
+        import inspect
+        import re
+
+        from api.server import SentinelServer
+
+        src = inspect.getsource(SentinelServer._setup_pty_child)
+        # Strip docstring + assertion, find the first real os.* call.
+        body = re.sub(r'""".*?"""', "", src, flags=re.DOTALL)
+        body = re.sub(r"assert .*\n", "", body)
+        os_calls = re.findall(r"os\.\w+\(", body)
+        assert os_calls, "no os.* calls found in _setup_pty_child body"
+        assert os_calls[0] != "os.close(", (
+            f"regression: first os call is {os_calls[0]!r} — must be os.setsid(), "
+            "not os.close() (premature close was the Bad-fd crash)"
+        )

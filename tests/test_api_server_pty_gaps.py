@@ -102,7 +102,10 @@ class TestSetupPtyChild:
 
     @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
     def test_setup_pty_child_slave_fd_le_2_skips_second_close(self):
-        """Line 632 — if slave_fd <= 2, second os.close(slave_fd) is skipped."""
+        """slave_fd <= 2 → the guarded close (after dup2, `if slave_fd > 2`)
+        is skipped, AND there is no top-level close anymore (the premature
+        os.close(slave_fd) that caused the Bad-fd crash was removed). So with
+        slave_fd=1, os.close is never called at all."""
         server = _make_server()
         close_calls = []
 
@@ -123,8 +126,9 @@ class TestSetupPtyChild:
         ):
             server._setup_pty_child(slave_fd=1)
 
-        # Only one os.close() call (the first one, not the conditional second)
-        assert 1 in close_calls
+        # No close at all: no premature top-level close (removed), and the
+        # post-dup2 close is guarded by `slave_fd > 2` which 1 fails.
+        assert close_calls == []
         mock_exit.assert_called_once_with(1)
 
 

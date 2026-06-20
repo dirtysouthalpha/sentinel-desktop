@@ -699,10 +699,15 @@ class SentinelServer:
     def _setup_pty_child(self, slave_fd: int) -> NoReturn:
         """Set up child process for PTY and exec the platform-appropriate shell.
 
-        Only called when _HAS_PTY is True (Unix only).
+        Only called when _HAS_PTY is true (Unix only).
         """
         assert _HAS_PTY, "_setup_pty_child called without PTY support"
-        os.close(slave_fd)
+        # NOTE: do NOT close slave_fd here — it is still needed below for
+        # TIOCSCTTY, TIOCSWINSZ, and dup2 into stdin/stdout/stderr. The close
+        # happens after dup2, guarded by `slave_fd > 2`. Closing prematurely
+        # (a prior bug) raised OSError: [Errno 9] Bad file descriptor on the
+        # ioctl calls and crashed the PTY child, which surfaced downstream as
+        # `RuntimeError: loop ... is not the running loop` in the parent.
         os.setsid()
 
         # Acquire controlling terminal
