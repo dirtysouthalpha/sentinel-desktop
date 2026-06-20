@@ -12,6 +12,7 @@ import json
 import logging
 import threading
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,18 @@ from core import paths as _paths
 from core.utils import iso_now as _iso_now
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CheckpointData:
+    """Data for agent checkpoint save/restore."""
+    goal: str
+    step_num: int
+    agent_memory: list[Any]
+    last_screenshot_path: str | None
+    config: dict[str, Any]
+    status: str = "running"
+    messages: list[dict[str, Any]] | None = None
 
 # ---------------------------------------------------------------------------
 # Checkpoint directory — resolved via core.paths (supports portable mode)
@@ -117,7 +130,7 @@ class CheckpointManager:
     # Save
     # ------------------------------------------------------------------
 
-    def save(
+    def save(  # noqa: PLR0913
         self,
         goal: str,
         step_num: int,
@@ -126,6 +139,8 @@ class CheckpointManager:
         config: dict[str, Any],
         status: str = "running",
         messages: list[dict[str, Any]] | None = None,
+        *,
+        data: CheckpointData | None = None,
     ) -> str | None:
         """Persist a checkpoint to disk.
 
@@ -133,13 +148,11 @@ class CheckpointManager:
             goal: The original user goal text.
             step_num: Current 1-based step counter.
             agent_memory: The full agent memory state list.
-            last_screenshot_path: Path to the most recent screenshot, or
-                ``None``.
+            last_screenshot_path: Path to the most recent screenshot, or None.
             config: Provider/model/feature configuration dict.
-            status: One of ``"running"``, ``"paused"``, ``"interrupted"``,
-                ``"error"``.
-            messages: The LLM conversation history so far (for context
-                resume).  Defaults to an empty list.
+            status: One of "running", "paused", "interrupted", "error".
+            messages: The LLM conversation history so far (for context resume).
+            data: CheckpointData object (optional). If provided, individual parameters are ignored.
 
         Returns:
             The checkpoint ``id`` (UUID string).
@@ -149,48 +162,49 @@ class CheckpointManager:
             logger.warning("Invalid checkpoint status %r — defaulting to 'running'", status)
             status = "running"
 
+        # Handle both parameter object and individual parameters for backward compatibility
+        if data is None:
+            # Use individual parameters if no data object provided
+            data = CheckpointData(
+                goal=goal,
+                step_num=step_num,
+                agent_memory=agent_memory,
+                last_screenshot_path=last_screenshot_path,
+                config=config,
+                status=status,
+                messages=messages,
+            )
+
         checkpoint_id = str(uuid.uuid4())
         record = self._build_checkpoint_record(
             checkpoint_id,
-            goal,
-            step_num,
-            status,
-            agent_memory,
-            last_screenshot_path,
-            config,
-            messages,
+            data,
         )
         return (
             checkpoint_id
-            if self._persist_checkpoint(record, checkpoint_id, step_num, status)
+            if self._persist_checkpoint(record, checkpoint_id, data.step_num, data.status)
             else None
         )
 
     def _build_checkpoint_record(
         self,
         checkpoint_id: str,
-        goal: str,
-        step_num: int,
-        status: str,
-        agent_memory: list[Any],
-        last_screenshot_path: str | None,
-        config: dict[str, Any],
-        messages: list[dict[str, Any]] | None,
+        data: CheckpointData,
     ) -> dict[str, Any]:
         """Assemble the checkpoint record dict."""
         return {
             "id": checkpoint_id,
             "timestamp": _iso_now(),
-            "goal": goal,
-            "goal_preview": goal[:200] if goal else "",
-            "step_num": step_num,
-            "status": status,
-            "agent_memory": agent_memory,
-            "last_screenshot_path": last_screenshot_path,
-            "config": config,
-            "messages": messages or [],
-            "provider": config.get("provider", ""),
-            "model": config.get("model", ""),
+            "goal": data.goal,
+            "goal_preview": data.goal[:200] if data.goal else "",
+            "step_num": data.step_num,
+            "status": data.status,
+            "agent_memory": data.agent_memory,
+            "last_screenshot_path": data.last_screenshot_path,
+            "config": data.config,
+            "messages": data.messages or [],
+            "provider": data.config.get("provider", ""),
+            "model": data.config.get("model", ""),
         }
 
     def _persist_checkpoint(

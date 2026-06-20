@@ -22,9 +22,34 @@ Usage::
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class BrowserClickParams:
+    """Parameters for browser click actions."""
+    selector: str | None = None
+    text: str | None = None
+    role: str | None = None
+    name: str | None = None
+    button: str = "left"
+    click_count: int = 1
+    timeout: float = 10000
+
+
+@dataclass
+class BrowserTypeParams:
+    """Parameters for browser type actions."""
+    text: str
+    selector: str | None = None
+    label: str | None = None
+    role: str | None = None
+    name: str | None = None
+    clear: bool = True
+    timeout: float = 10000
 
 # Check if Playwright is available
 _HAS_PLAYWRIGHT = False
@@ -229,8 +254,10 @@ class BrowserManager:
                 "error": str(exc),
             }
 
-    def click(
+    def click(  # noqa: PLR0913
         self,
+        *,
+        params: BrowserClickParams | None = None,
         selector: str | None = None,
         text: str | None = None,
         role: str | None = None,
@@ -238,6 +265,7 @@ class BrowserManager:
         button: str = "left",
         click_count: int = 1,
         timeout: float = 10000,
+        **kwargs,
     ) -> dict[str, Any]:
         """Click an element (web_click action).
 
@@ -245,6 +273,8 @@ class BrowserManager:
         Auto-scrolls element into view before clicking.
 
         Args:
+            params: BrowserClickParams object (optional). If provided, individual
+                parameters are ignored.
             selector: CSS selector to find element.
             text: Text content to match (exact or contains).
             role: ARIA role (e.g., "button", "link", "textbox").
@@ -256,46 +286,62 @@ class BrowserManager:
         Returns:
             Dict with success and description of what was clicked.
         """
+        # Handle both parameter object and individual parameters for backward compatibility
+        if params is None:
+            # Use individual parameters if no params object provided
+            params = BrowserClickParams(
+                selector=selector,
+                text=text,
+                role=role,
+                name=name,
+                button=button,
+                click_count=click_count,
+                timeout=timeout,
+            )
+
         self._ensure_launched()
         page = self.active_page
 
         try:
-            locator = self._resolve_locator(page, selector, text, role, name)
+            locator = self._resolve_locator(page, params.selector, params.text, params.role, params.name)
 
             # Wait for element and scroll into view
-            locator.wait_for(state="visible", timeout=timeout)
+            locator.wait_for(state="visible", timeout=params.timeout)
             locator.scroll_into_view_if_needed()
 
             # Perform the click
-            kwargs: dict[str, Any] = {}
-            if button == "right":
-                kwargs["button"] = "right"
-            elif button == "middle":
-                kwargs["button"] = "middle"
-            if click_count > 1:
-                kwargs["click_count"] = click_count
+            click_kwargs: dict[str, Any] = {}
+            if params.button == "right":
+                click_kwargs["button"] = "right"
+            elif params.button == "middle":
+                click_kwargs["button"] = "middle"
+            if params.click_count > 1:
+                click_kwargs["click_count"] = params.click_count
 
-            locator.click(**kwargs)
+            locator.click(**click_kwargs)
 
-            desc = self._describe_target(selector, text, role, name)
+            desc = self._describe_target(params.selector, params.text, params.role, params.name)
             logger.info("Clicked: %s", desc)
 
-            return {"success": True, "target": desc, "button": button}
+            return {"success": True, "target": desc, "button": params.button}
 
         except Exception as exc:
-            desc = self._describe_target(selector, text, role, name)
+            desc = self._describe_target(params.selector, params.text, params.role, params.name)
             logger.warning("Click failed on %s: %s", desc, exc)
             return {"success": False, "target": desc, "error": str(exc)}
 
-    def type_text(
+    def type_text(  # noqa: PLR0913
         self,
         text: str,
+        *,
+        params: BrowserTypeParams | None = None,
         selector: str | None = None,
         label: str | None = None,
         role: str | None = None,
         name: str | None = None,
         clear: bool = True,
         timeout: float = 10000,
+        **kwargs,
     ) -> dict[str, Any]:
         """Type text into a form field (web_type action).
 
@@ -304,6 +350,8 @@ class BrowserManager:
 
         Args:
             text: Text to type.
+            params: BrowserTypeParams object (optional). If provided, individual
+                selector/label/role/name parameters are ignored.
             selector: CSS selector for the input.
             label: Label text associated with the input.
             role: ARIA role (e.g., "textbox", "searchbox").
@@ -314,34 +362,54 @@ class BrowserManager:
         Returns:
             Dict with success and target description.
         """
+        # Handle both parameter object and individual parameters for backward compatibility
+        if params is None:
+            # Use individual parameters if no params object provided
+            params = BrowserTypeParams(
+                text=text,
+                selector=selector,
+                label=label,
+                role=role,
+                name=name,
+                clear=clear,
+                timeout=timeout,
+            )
+
         self._ensure_launched()
         page = self.active_page
 
         try:
             # Try to find by label if no selector provided
-            if selector:
-                locator = page.locator(selector)
-            elif label:
+            if params.selector:
+                locator = page.locator(params.selector)
+            elif params.label:
                 # Find input associated with a label
-                locator = page.get_by_label(label)
-            elif role or name:
-                locator = self._resolve_locator(page, None, None, role, name)
+                locator = page.get_by_label(params.label)
+            elif params.role or params.name:
+                locator = self._resolve_locator(page, None, None, params.role, params.name)
             else:
                 return {"success": False, "error": "No selector, label, role, or name provided"}
 
-            locator.wait_for(state="visible", timeout=timeout)
+            locator.wait_for(state="visible", timeout=params.timeout)
 
-            if clear:
+            if params.clear:
                 locator.fill("")
-            locator.type(text, delay=10)
+            locator.type(params.text, delay=10)
 
-            desc = selector or label or f"role={role}, name={name}"
-            logger.info("Typed %d chars into %s", len(text), desc)
+            desc = params.selector or params.label or f"role={params.role}, name={params.name}"
+            logger.info("Typed %d chars into %s", len(params.text), desc)
 
-            return {"success": True, "target": desc, "text_length": len(text)}
+            return {"success": True, "target": desc, "text_length": len(params.text)}
 
         except Exception as exc:
-            desc = selector or label or f"role={role}, name={name}"
+            # Handle case where params might not be set if validation failed
+            try:
+                if params and hasattr(params, 'selector'):
+                    desc = params.selector or params.label or f"role={params.role}, name={params.name}"
+                else:
+                    desc = selector or label or f"role={role}, name={name}"
+            except (AttributeError, TypeError):
+                desc = "unknown target"
             logger.warning("Type failed on %s: %s", desc, exc)
             return {"success": False, "target": desc, "error": str(exc)}
 
