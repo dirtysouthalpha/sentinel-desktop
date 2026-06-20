@@ -18,12 +18,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Active
 
-- [x] Phase 1: Design the deferred fully-stealth humanization tier — write a spec
-  to `docs/superpowers/specs/` covering biometric typing profiles, Fitts's-Law
-  target-width timing, overshoot + sweep-back, error + self-correction injection,
-  scroll momentum. See `docs/superpowers/notes/future-stealth-mode.md` (the capture
-  doc). This is design-only; no code, no release. Safe first autonomous task.
-  (commit ff9f7e8)
 - [ ] Phase 2: Pre-load the Neuralis brain with the sentinel-desktop knowledge base
   — use `core.brain.think` to persist the v18-v22 architecture, the grind-loop
   coordination lesson, and the fleet topology so every other agent reads it. See
@@ -45,5 +39,9 @@ _(none)_
 
 ## Done
 
+- [x] Phase 1: Design the deferred fully-stealth humanization tier — wrote
+  comprehensive 1160-line design spec covering biometric profiles, Fitts's-Law,
+  overshoot/correction, error injection, scroll momentum, attention simulation,
+  and pluggable detector-evasion pipeline. Design-only, no code. (commit ff9f7e8)
 - [x] Phase 0: v18-v22 shipped, red suite repaired (51 → 0 failures from the
   ExecutorConfig refactor), CLAUDE.md v18 section corrected. (commit 1e48802, 8f3ebb5)
