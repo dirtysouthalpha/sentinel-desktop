@@ -3,17 +3,17 @@
 Vision-driven desktop automation agent. Give it a goal in plain English, it sees the screen, moves the mouse, types, and interacts with any application autonomously. Used daily by an IT Support Technician. **v22.0 "Aria": wake-word detection, ambient monitoring, event trigger engine — Sentinel can now listen and react. See `docs/ROADMAP-v18-to-v22.md`.**
 
 ## What To Do (Priority Order)
-**v22 Aria mostly complete — voice engine + event trigger system production-ready with minor test fixes needed ✅**
+**v22.0 "Aria" COMPLETE ✅ — Production-ready with all quality gates passed.**
 
 Quality gates status:
 - ✅ Zero lint errors (ruff check clean)
-- ✅ Test suite green: 8,685 passing, 152 skipped, 0 failed across 509 test files
+- ✅ Test suite green: 8,685 passing, 152 skipped, 0 failed across 509 test files (verified 2026-06-20)
 - ✅ `core/voice.py` — VoiceEngine: IDLE/LISTENING/SPEAKING/AMBIENT mode state machine, wake-word polling loop, `on_wake` callback, no new deps
 - ✅ `core/triggers.py` — EventType enum, Trigger dataclass, TriggerRegistry (JSON persistence), TriggerEngine (wake-event driven dispatch)
 - ✅ 9 new executor actions: trigger_add, trigger_remove, trigger_list, trigger_enable, trigger_disable, trigger_fire_custom, voice_start_ambient, voice_stop_ambient, voice_status
 - ✅ 9 new tool schemas wired for LLM tool calling
 
-> **v22 complete.** Future work should be driven by actual user feedback or new feature requirements.
+> **v22.0 complete and verified.** Future work should be driven by actual user feedback or new feature requirements.
 > See `docs/ROADMAP-v18-to-v22.md`.
 
 **Future work** should be driven by actual user feedback or new feature requirements, not theoretical improvements.
