@@ -66,6 +66,37 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Shells that support an interactive flag and source the user's rc file
+# (e.g. ~/.zshrc, ~/.bashrc — where prompt frameworks like Starship /
+# Powerlevel10k initialize). For these we pass both --login and -i so the
+# rendered prompt matches the user's normal interactive shell.
+_INTERACTIVE_SHELLS = ("zsh", "bash")
+
+
+def _shell_argv(shell_path: str) -> list[str]:
+    """Build the argv for exec'ing a terminal shell.
+
+    For zsh/bash (the shells that source a user rc on `-i`), pass both
+    ``--login`` and ``-i`` so frameworks like Starship/Powerlevel10k init and
+    the prompt renders exactly as in the user's normal interactive terminal.
+    For other shells (sh, fish) pass ``--login`` only — `-i` semantics vary and
+    ``--login`` is the safe common denominator.
+
+    Args:
+        shell_path: Absolute path to the shell binary (e.g. ``/bin/zsh``).
+
+    Returns:
+        argv list suitable for ``os.execvpe``.
+    """
+    name = os.path.basename(shell_path)
+    # Match exact names plus versioned/suffixed variants (zsh-5.0, bash-static).
+    # `startswith(s + "-")` (not bare `startswith(s)`) avoids matching unrelated
+    # binaries like a hypothetical "bashfoo".
+    if any(name == s or name.startswith(s + "-") for s in _INTERACTIVE_SHELLS):
+        return [shell_path, "--login", "-i"]
+    return [shell_path, "--login"]
+
+
 # Timeout constants for API operations (seconds)
 DEFAULT_API_TIMEOUT = 30
 LONG_OPERATION_TIMEOUT = 300  # 5 minutes for complex operations
@@ -695,20 +726,28 @@ class SentinelServer:
         if slave_fd > 2:
             os.close(slave_fd)
 
-        # Find the best available shell for this platform
-        shell_candidates = ["/bin/bash", "/bin/zsh", "/bin/sh"]
-        # On some systems, bash is at /usr/bin/bash
+        # Resolve the shell to exec. Prefer the user's $SHELL (their configured
+        # interactive shell — zsh for Starship/Powerlevel10k users) so the
+        # terminal matches their normal prompt. Fall back to PATH-resolved
+        # shells, then the hardcoded list.
+        user_shell = env.get("SHELL") or ""
+        shell_candidates: list[str] = []
+        if user_shell:
+            shell_candidates.append(user_shell)
         if os.name != "nt":
             import shutil
 
-            for candidate in [shutil.which("bash"), shutil.which("zsh"), shutil.which("sh")]:
+            for candidate in [shutil.which("zsh"), shutil.which("bash"), shutil.which("sh")]:
                 if candidate and candidate not in shell_candidates:
-                    shell_candidates.insert(0, candidate)
+                    shell_candidates.append(candidate)
+        for hardcoded in ("/bin/zsh", "/bin/bash", "/bin/sh"):
+            if hardcoded not in shell_candidates:
+                shell_candidates.append(hardcoded)
 
         try:
             for shell in shell_candidates:
                 if os.path.isfile(shell):
-                    os.execvpe(shell, [shell, "--login"], env)  # noqa: S606
+                    os.execvpe(shell, _shell_argv(shell), env)  # noqa: S606
             # Last resort: just /bin/sh
             os.execvpe("/bin/sh", ["/bin/sh"], env)  # noqa: S606
         except OSError:
