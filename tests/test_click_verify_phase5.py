@@ -95,9 +95,10 @@ class TestClickVerifier:
     """Test tiered retry through grounding methods on miss."""
 
     def setup_method(self):
-        from core.action_executor import ActionExecutor
+        from core.action_executor import ActionExecutor, ExecutorConfig
 
-        self.executor = ActionExecutor(dry_run=True)
+        config = ExecutorConfig(dry_run=True)
+        self.executor = ActionExecutor(config=config)
         self.verifier = ClickVerifier(self.executor)
 
     def test_non_click_actions_skip_verification(self):
@@ -291,9 +292,10 @@ class TestClickVerifierEdgeCases:
     """Test edge cases in ClickVerifier."""
 
     def setup_method(self):
-        from core.action_executor import ActionExecutor
+        from core.action_executor import ActionExecutor, ExecutorConfig
 
-        self.executor = ActionExecutor(dry_run=True)
+        config = ExecutorConfig(dry_run=True)
+        self.executor = ActionExecutor(config=config)
         self.verifier = ClickVerifier(self.executor)
 
     def test_execute_without_screenshot_capability(self):

@@ -31,9 +31,13 @@ class FakeDesktop:
 @pytest.fixture
 def fake_executor(monkeypatch):
     monkeypatch.setattr(desktop_mod, "DesktopEngine", FakeDesktop)
-    from core.action_executor import ActionExecutor
+    from core.action_executor import ActionExecutor, ExecutorConfig
 
-    return ActionExecutor
+    def make_executor(stealth=False):
+        config = ExecutorConfig(stealth=stealth)
+        return ActionExecutor(config=config)
+
+    return make_executor
 
 
 def test_stealth_off_uses_physical_input(fake_executor, monkeypatch):
