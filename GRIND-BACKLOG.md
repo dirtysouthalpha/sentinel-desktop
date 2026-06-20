@@ -20,6 +20,91 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 <!-- Phase 3 moved to Blocked: PyPI trusted-publishing not configured -->
 
+<!-- STEALTH-TIER IMPLEMENTATION — sourced from the Phase 1 design spec
+     (docs/superpowers/specs/2026-06-20-fully-stealth-humanization-tier.md).
+     One phase per module, TDD, ordered by dependency. The spec's
+     "## Deliverables" lists the exact files + tests for each. A phase is
+     done when: the module exists, its tests/test_humanize_stealth_*.py passes,
+     ruff clean, full pytest exit 0, committed + pushed. Do NOT wire a module
+     into the chokepoints until its own phase is complete — wiring is its own
+     dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
+
+- [ ] Phase 4: StealthProfile extension — `core/humanize/profile.py`. Add a
+  frozen `StealthProfile(Profile)` dataclass (subclass — inherits the naturalistic
+  fields, overrides with biometric-sampled defaults) + a `STEALTH` preset registered
+  in `_PRESETS`. Spec §"profile.py — StealthProfile extension", Deliverable #1.
+  Gate: `tests/test_humanize_stealth_profile.py` passes (instantiation, field
+  validation, preset registry lookup via `get_default_profile()` under
+  `SENTINEL_HUMANIZE_PROFILE=stealth`). ruff + full pytest exit 0. This is the
+  foundation every other stealth phase imports — do it first.
+
+- [ ] Phase 5: Fitts's-Law targeting — `core/humanize/fitts.py` (NEW). Pure
+  function `fitts_move_duration(distance_px, target_width_px, *, rng, profile) -> float`
+  computing ID = log2(distance/width + 1) and scaling duration via the profile's
+  Fitts coefficients. Spec §"fitts.py", Deliverable #3. Gate:
+  `tests/test_humanize_fitts.py` passes (ID computation, duration scaling,
+  edge cases: tiny target, zero distance, clamp bounds). No deps on other stealth
+  modules — standalone math.
+
+- [ ] Phase 6: Overshoot + sweep-back — `core/humanize/overshoot.py` (NEW).
+  `overshoot_target(target, current, *, rng, profile, target_width_px) -> tuple`
+  returning a point past the target (overshoot) or short of it (undershoot),
+  probabilistically scaled by target size. Spec §"overshoot.py", Deliverable #4.
+  Gate: `tests/test_humanize_stealth_overshoot.py` passes (overshoot probability
+  scales inversely with target width; undershoot vs overshoot distribution;
+  sweep-back lands within jitter of target). Depends on rng.py (exists) only.
+
+- [ ] Phase 7: Error + self-correction injection — `core/humanize/errors.py`
+  (NEW). `inject_errors(text, *, rng, profile) -> list[(char, delay)]` that, at a
+  profile-driven rate, inserts a wrong char + backspace + correct char with human
+  correction delays. Spec §"errors.py", Deliverable #5. Gate:
+  `tests/test_humanize_stealth_errors.py` passes (error rate within bounds;
+  backspace handling; correction delay distribution; seed reproducibility).
+
+- [ ] Phase 8: Inertial scroll momentum — `core/humanize/scroll.py` (NEW).
+  `momentum_scroll(delta, *, rng, profile) -> list[int]` decomposing a discrete
+  scroll delta into a decaying momentum frame sequence with jitter. Spec
+  §"scroll.py", Deliverable #6. Gate: `tests/test_humanize_stealth_scroll.py`
+  passes (momentum decay, jitter, frame-count caps, sum preserves net delta).
+
+- [ ] Phase 9: Attention drift + dwell — `core/humanize/attention.py` (NEW).
+  `attention_pause(action_context, *, rng, profile) -> float` returning an
+  occasional gaze-like pause, scaled by context (longer on ambiguous UI). Spec
+  §"attention.py", Deliverable #7. Gate: `tests/test_humanize_stealth_attention.py`
+  passes (pause probability, context-aware scaling, re-read pause branch, zero
+  when disabled).
+
+- [ ] Phase 10: Biometric sampler — `core/humanize/biometric_sampler.py` (NEW).
+  `sample_operator(session_log_path) -> BiometricStats` extracting real inter-key
+  + inter-move distributions from a captured session, returning a dataclass the
+  StealthProfile can consume. Spec §"biometric_sampler.py", Deliverable #2.
+  IMPORTANT: the spec forbids inventing synthetic values — if no real samples
+  exist, return None / raise a clear error, don't fake it. Gate:
+  `tests/test_humanize_stealth_biometric.py` passes (parses a fixture session log
+  into correct stats; returns None/raises on empty input; never synthesizes).
+  Last of the leaf modules since it only feeds StealthProfile defaults.
+
+- [ ] Phase 11: Stealth wiring at the chokepoints — modify `core/humanize/motion.py`
+  (`humanized_path` accepts `target_size`, routes through fitts+overshoot when
+  profile is StealthProfile), `core/humanize/typing.py` (`keystroke_delays`
+  accepts `errors: bool`, routes through errors.py),
+  `core/action_executor.py` (`_click`/`_type_text`/`_scroll` pass context:
+  target_size, field_type, action_context), `core/desktop.py` (physical chokepoint
+  uses `fitts_move_duration` for StealthProfile). Spec Deliverables #9-12.
+  Gate: existing humanize tests still green with `SENTINEL_HUMANIZE=0` (the
+  naturalistic path must NOT change); new tests assert the stealth path activates
+  only under StealthProfile. ruff + full pytest exit 0. Do this ONLY after Phases
+  4-10 are done — it's the integration point where a half-wire breaks main.
+
+- [ ] Phase 12: Detector-evasion pipeline — `core/humanize/detector_evasion.py`
+  (NEW). A pluggable `EvasionPipeline` that wraps the stealth modules and applies
+  a configurable ordered list of evasion strategies. Spec §"detector_evasion.py",
+  Deliverable #8. Gate: `tests/test_humanize_stealth_detector_evasion.py` passes
+  (pipeline applies strategies in order; a no-op pipeline is a passthrough;
+  adding a strategy changes output; per-strategy failure degrades gracefully).
+  Last — it wraps everything, so all other stealth phases must be done first.
+
+
 ## Blocked
 
 <!-- Move a phase here with a [BLOCKED: <one-line reason>] note if it can't proceed. -->
