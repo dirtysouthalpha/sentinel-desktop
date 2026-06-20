@@ -18,20 +18,20 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Active
 
-- [ ] Phase 3: Cut v22.0.0 release tag — push an annotated tag, confirm
-  `.github/workflows/release.yml` runs (test → build → publish), verify the PyPI +
-  GitHub Release succeeds. GATED: before doing this, confirm PyPI trusted-publishing
-  is configured per `RELEASING.md` (owner/repo/workflow/environment). If not set up,
-  move this to ## Blocked with [BLOCKED: PyPI trusted-publishing not configured]
-  rather than attempting a release that will fail mid-publish. Demoted from Phase 1
-  because firing a PyPI release is high-blast-radius and shouldn't be the loop's
-  first autonomous action.
+<!-- Phase 3 moved to Blocked: PyPI trusted-publishing not configured -->
 
 ## Blocked
 
 <!-- Move a phase here with a [BLOCKED: <one-line reason>] note if it can't proceed. -->
 
-_(none)_
+- [BLOCKED: PyPI trusted-publishing not configured] Phase 3: Cut v22.0.0 release tag —
+  push an annotated tag, confirm `.github/workflows/release.yml` runs (test → build →
+  publish), verify the PyPI + GitHub Release succeeds. GATED: before doing this,
+  confirm PyPI trusted-publishing is configured per `RELEASING.md`
+  (owner/repo/workflow/environment). If not set up, move this to ## Blocked with
+  [BLOCKED: PyPI trusted-publishing not configured] rather than attempting a release
+  that will fail mid-publish. Demoted from Phase 1 because firing a PyPI release is
+  high-blast-radius and shouldn't be the loop's first autonomous action.
 
 ## Done
 
