@@ -114,6 +114,126 @@ class TestAgentEngineHeadlessConstruction:
         assert engine.executor._desktop._screen_size == (1920, 1080)
 
 
+# ---------------------------------------------------------------------------
+# Phase B: input routing through the platform backend when headless
+# ---------------------------------------------------------------------------
+
+
+class _RecordingInput:
+    """Test double for backend.input — records every call so we can assert
+    the DesktopController routed through it instead of pyautogui."""
+
+    def __init__(self):
+        self.calls: list[str] = []
+
+    def click(self, x, y, button="left", clicks=1):
+        self.calls.append("click"); return True
+
+    def doubleClick(self, x, y):
+        self.calls.append("doubleClick"); return True
+
+    def rightClick(self, x, y, clicks=1):
+        self.calls.append("rightClick"); return True
+
+    def moveTo(self, x, y, duration=0.0):
+        self.calls.append("moveTo"); return True
+
+    def drag(self, x1, y1, x2, y2, duration=0.5, button="left"):
+        self.calls.append("drag"); return True
+
+    def scroll(self, amount, x=None, y=None):
+        self.calls.append("scroll"); return True
+
+    def position(self):
+        self.calls.append("position"); return (1, 2)
+
+    def type_text(self, text):
+        self.calls.append("type_text"); return True
+
+    def press_key(self, key):
+        self.calls.append("press_key"); return True
+
+    def hotkey(self, *keys):
+        self.calls.append("hotkey"); return True
+
+    def screenshot(self):
+        self.calls.append("screenshot")
+        from PIL import Image
+        return Image.new("RGB", (10, 10))
+
+
+class TestDesktopControllerRoutesThroughBackendWhenHeadless:
+    """When pyautogui is unavailable (None), every input method must route
+    through backend.input rather than crashing. This is the Phase B contract."""
+
+    def _controller_with_backend(self, monkeypatch):
+        from core import desktop as desktop_mod
+
+        # Force pyautogui to None (simulates headless where import fails).
+        monkeypatch.setattr(desktop_mod, "pyautogui", None)
+        # Avoid touching real pyautogui import during construction.
+        monkeypatch.setattr(desktop_mod, "_ensure_pyautogui", lambda: None)
+        ctrl = desktop_mod.DesktopController()
+        recorder = _RecordingInput()
+        ctrl._backend_input = recorder
+        return ctrl, recorder
+
+    def test_click_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.click(10, 20)
+        assert "click" in rec.calls
+
+    def test_double_click_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.double_click(1, 2)
+        assert "doubleClick" in rec.calls
+
+    def test_right_click_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.right_click(1, 2)
+        assert "rightClick" in rec.calls
+
+    def test_move_to_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.move_to(5, 6)
+        assert "moveTo" in rec.calls
+
+    def test_drag_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.drag(1, 1, 2, 2)
+        assert "drag" in rec.calls
+
+    def test_scroll_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.scroll(3)
+        assert "scroll" in rec.calls
+
+    def test_type_text_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.type_text("hello")
+        assert "type_text" in rec.calls
+
+    def test_press_key_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.press_key("enter")
+        assert "press_key" in rec.calls
+
+    def test_hotkey_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.hotkey("ctrl", "c")
+        assert "hotkey" in rec.calls
+
+    def test_get_mouse_position_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        assert ctrl.get_mouse_position() == (1, 2)
+        assert "position" in rec.calls
+
+    def test_screenshot_routes_to_backend(self, monkeypatch):
+        ctrl, rec = self._controller_with_backend(monkeypatch)
+        ctrl.screenshot()
+        assert "screenshot" in rec.calls
+
+
 # Re-export for direct pytest invocation
 if __name__ == "__main__":
     import sys

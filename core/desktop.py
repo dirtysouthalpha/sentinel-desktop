@@ -79,9 +79,27 @@ class DesktopController:
             self._screen_size: tuple[int, int] = (
                 pg.size() if pg is not None else (1920, 1080)
             )
-        except (OSError, RuntimeError, AttributeError, ValueError, KeyError):
+        except (OSError, RuntimeError, ValueError, KeyError):
             logger.warning("Could not detect screen size, defaulting to 1920x1080")
             self._screen_size = (1920, 1080)
+        # v23 cross-platform: route input through the platform backend when
+        # pyautogui is unavailable (headless Linux). See _backend_input.
+        try:
+            from core.platform import get_backend
+            self._backend_input = get_backend().input
+        except Exception:  # pragma: no cover - defensive
+            self._backend_input = None
+
+    @property
+    def _use_backend_input(self) -> bool:
+        """True when input should route through the platform backend (not pyautogui).
+
+        Routing prefers pyautogui when it's available (Windows/Mac and
+        Linux-with-a-display) so existing behavior is byte-identical there.
+        When pyautogui is None (headless Linux / no DISPLAY), the platform
+        backend (.input) handles click/type/scroll/etc via xdotool.
+        """
+        return pyautogui is None and self._backend_input is not None
 
     def screenshot(self) -> Image.Image:
         """Take a full-screen screenshot.
@@ -92,6 +110,8 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                return self._backend_input.screenshot()
             _ensure_pyautogui()
             return pyautogui.screenshot()
         except (OSError, RuntimeError, AttributeError) as exc:
@@ -131,6 +151,10 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                # Backend screenshot is full-screen; crop to the requested region.
+                full = self._backend_input.screenshot()
+                return full.crop((x, y, x + w, y + h))
             _ensure_pyautogui()
             return pyautogui.screenshot(region=(x, y, w, h))
         except (OSError, RuntimeError, AttributeError) as exc:
@@ -166,6 +190,10 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                # Headless Linux: route through the platform backend (xdotool).
+                self._backend_input.click(x, y, button=button, clicks=clicks)
+                return
             _ensure_pyautogui()
             if humanize.is_enabled():
                 self._humanized_move_and_click(
@@ -185,6 +213,9 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                self._backend_input.doubleClick(x, y)
+                return
             _ensure_pyautogui()
             if humanize.is_enabled():
                 self._humanized_move_and_click(x, y, button="left", clicks=2)
@@ -202,6 +233,9 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                self._backend_input.rightClick(x, y)
+                return
             _ensure_pyautogui()
             if humanize.is_enabled():
                 self._humanized_move_and_click(x, y, button="right", clicks=1)
@@ -288,6 +322,9 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                self._backend_input.moveTo(x, y, duration=duration)
+                return
             _ensure_pyautogui()
             if humanize.is_enabled():
                 self._humanized_move_to(x, y)
@@ -317,6 +354,11 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                self._backend_input.drag(
+                    from_x, from_y, to_x, to_y, duration=duration, button=button
+                )
+                return
             _ensure_pyautogui()
             pyautogui.moveTo(from_x, from_y)
             pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)
@@ -333,6 +375,9 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                self._backend_input.scroll(amount, x=x, y=y)
+                return
             _ensure_pyautogui()
             # Stealth-tier: momentum scroll trajectory for StealthProfile
             if humanize.is_enabled():
@@ -353,6 +398,8 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                return self._backend_input.position()
             _ensure_pyautogui()
             return pyautogui.position()
         except (OSError, RuntimeError, AttributeError) as exc:
@@ -370,6 +417,9 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                self._backend_input.type_text(text)
+                return
             _ensure_pyautogui()
             if humanize.is_enabled() and len(text) > 1:
                 self._humanized_type(text)
@@ -433,6 +483,9 @@ class DesktopController:
 
         """
         try:
+            if self._use_backend_input:
+                self._backend_input.press_key(key)
+                return
             _ensure_pyautogui()
             pyautogui.press(key)
         except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
@@ -441,6 +494,9 @@ class DesktopController:
     def hotkey(self, *keys: str) -> None:
         """Press multiple keys simultaneously as a keyboard shortcut."""
         try:
+            if self._use_backend_input:
+                self._backend_input.hotkey(*keys)
+                return
             _ensure_pyautogui()
             pyautogui.hotkey(*keys)
         except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
