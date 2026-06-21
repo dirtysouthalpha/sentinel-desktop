@@ -677,3 +677,22 @@ def _restore_headless_stubs():
     """
     yield
     _install_headless_stubs()
+
+
+def pytest_sessionstart():
+    """Clean up stale .pytest_tmp directory at session start.
+
+    Pytest 8.x uses .pytest_tmp for tmp_path fixture. If a previous run was
+    interrupted (e.g., by user, crash, timeout), the directory may remain,
+    causing FileExistsError on subsequent runs. Clean it up proactively.
+    """
+    import shutil
+    import warnings
+
+    pytest_tmp = Path(__file__).resolve().parent.parent / ".pytest_tmp"
+    if pytest_tmp.exists():
+        try:
+            shutil.rmtree(pytest_tmp)
+        except OSError as e:
+            # If cleanup fails (permission issues, etc.), warn but don't block tests
+            warnings.warn(f"Failed to clean up .pytest_tmp: {e}", stacklevel=2)
