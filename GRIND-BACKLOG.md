@@ -50,34 +50,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-- [x] Phase 7: Error + self-correction injection — `core/humanize/errors.py`
-  (NEW). `inject_errors_and_corrections(text, *, rng, profile) -> list[(char, delay)]`
-  that, at a profile-driven rate, inserts a wrong char + backspace + correct char
-  with human correction delays. Spec §"errors.py", Deliverable #5.
-  Implements error injection (3% default rate), 4 error types (adjacent 40%,
-  shifted 30%, skip 20%, random 10%), backspace handling, realistic correction
-  delays (error_delay_s, correction_delay_s), StealthProfile-only activation,
-  no errors on first char. 20 comprehensive tests covering rate bounds, backspace
-  handling, correction delays, seed reproducibility, adjacent key mistypes,
-  edge cases, integration scenarios. ruff clean, all 8,722 tests passing.
-  (commit 59282a5)
-
-- [x] Phase 8: Inertial scroll momentum — `core/humanize/scroll.py` (NEW).
-  `momentum_scroll_trajectory(delta, *, rng, profile) -> list[tuple[int, float]]`
-  decomposing a discrete scroll delta into a decaying momentum frame sequence
-  with jitter. Spec §"scroll.py", Deliverable #6. Implements exponential
-  decay (delta[t] = delta[0] * momentum^t), Gaussian jitter, frame dwell timing
-  (16ms base + 4ms per frame), 60-frame safety cap, naturalistic fallback.
-  22 comprehensive tests covering momentum decay, jitter, frame caps, edge cases,
-  seed reproducibility. ruff clean, all 8,810 tests passing. (commit 583851b)
-
-- [ ] Phase 9: Attention drift + dwell — `core/humanize/attention.py` (NEW).
-  `attention_pause(action_context, *, rng, profile) -> float` returning an
-  occasional gaze-like pause, scaled by context (longer on ambiguous UI). Spec
-  §"attention.py", Deliverable #7. Gate: `tests/test_humanize_stealth_attention.py`
-  passes (pause probability, context-aware scaling, re-read pause branch, zero
-  when disabled).
-
 - [ ] Phase 10: Biometric sampler — `core/humanize/biometric_sampler.py` (NEW).
   `sample_operator(session_log_path) -> BiometricStats` extracting real inter-key
   + inter-move distributions from a captured session, returning a dataclass the
@@ -139,6 +111,18 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Done
 
+- [x] Phase 9: Attention drift + dwell — `core/humanize/attention.py` (NEW).
+  `attention_pause(action_context, *, rng, profile) -> float` returning an
+  occasional gaze-like pause, scaled by context (longer on ambiguous UI). Spec
+  §"attention.py", Deliverable #7. Gate: `tests/test_humanize_stealth_attention.py`
+  passes (pause probability, context-aware scaling, re-read pause branch, zero
+  when disabled).
+  Implements attention_pause() and re_read_pause() functions with context-aware
+  probability (destructive 2×, password 1.5×, repetitive 0.5×), Gaussian duration
+  sampling, StealthProfile-only activation, deterministic seeded RNG.
+  19 comprehensive tests covering pause probability, context-aware scaling,
+  re-read pauses, zero when disabled, determinism, duration bounds.
+  ruff clean, all 8,810 tests passing. (commit bdd2c96)
 - [x] Phase 6: Overshoot + sweep-back — `core/humanize/overshoot.py` (NEW).
   `overshoot_target(target, current, *, rng, profile, target_width_px) -> tuple`
   returning a point past the target (overshoot) or short of it (undershoot),
