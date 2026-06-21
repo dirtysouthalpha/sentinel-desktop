@@ -27,7 +27,7 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-- [ ] Phase 11: Stealth wiring at the chokepoints — modify `core/humanize/motion.py`
+- [ ] Phase 12: Detector-evasion pipeline — `core/humanize/detector_evasion.py`
   (`humanized_path` accepts `target_size`, routes through fitts+overshoot when
   profile is StealthProfile), `core/humanize/typing.py` (`keystroke_delays`
   accepts `errors: bool`, routes through errors.py),
@@ -82,6 +82,24 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 
 ## Done
+
+- [x] Phase 11: Stealth wiring at the chokepoints — modify `core/humanize/motion.py`
+  (`humanized_path` accepts `target_size`, routes through fitts+overshoot when
+  profile is StealthProfile), `core/humanize/typing.py` (`keystroke_delays`
+  accepts `errors: bool`, routes through errors.py),
+  `core/action_executor.py` (`_click`/`_type_text`/`_scroll` pass context:
+  target_size, field_type, action_context), `core/desktop.py` (physical chokepoint
+  uses `fitts_move_duration` for StealthProfile). Spec Deliverables #9-12.
+  Gate: existing humanize tests still green with `SENTINEL_HUMANIZE=0` (the
+  naturalistic path must NOT change); new tests assert the stealth path activates
+  only under StealthProfile. ruff + full pytest exit 0. Do this ONLY after Phases
+  4-10 are done — it's the integration point where a half-wire breaks main.
+  Implemented all wiring: motion.py now accepts target_size and routes through
+  Fitts's-Law timing and overshoot/correction for StealthProfile; typing.py
+  accepts errors flag and routes through error injection; action_executor passes
+  context parameters and applies attention pauses; desktop.click passes target_size
+  and desktop.scroll uses momentum trajectory. ruff clean, all 8,705+ tests passing.
+  (commit 5a401a9)
 
 - [x] Phase 10: Biometric sampler — `core/humanize/biometric_sampler.py` (NEW).
   `sample_operator(session_log_path) -> BiometricStats` extracting real inter-key
