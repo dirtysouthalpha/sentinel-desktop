@@ -86,16 +86,8 @@ class ResultSynthesizer:
 
     def extract_errors(self, results: list[dict[str, Any]]) -> list[str]:
         """Extract all error messages from results."""
-        errors = []
-        for r in results:
-            if r.get("error"):
-                errors.append(f"{r.get('subtask_id', '?')}: {r['error']}")
-        return errors
+        return [f"{r.get('subtask_id', '?')}: {r['error']}" for r in results if r.get("error")]
 
     def extract_data(self, results: list[dict[str, Any]]) -> list[Any]:
         """Extract result data from successful tasks."""
-        data = []
-        for r in results:
-            if r.get("status") == "success" and "result" in r:
-                data.append(r["result"])
-        return data
+        return [r["result"] for r in results if r.get("status") == "success" and "result" in r]

@@ -124,10 +124,7 @@ def list_voices() -> list[dict[str, str]]:
         import win32com.client  # type: ignore
 
         voice = win32com.client.Dispatch("SAPI.SpVoice")
-        voices = []
-        for v in voice.GetVoices():
-            voices.append({"name": v.GetDescription(), "id": v.Id})
-        return voices
+        return [{"name": v.GetDescription(), "id": v.Id} for v in voice.GetVoices()]
     except Exception as exc:
         logger.warning("list_voices failed: %s", exc)
         return []
