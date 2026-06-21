@@ -53,6 +53,9 @@ def watch_file(
     deadline = start + timeout
     event = event.lower()
 
+    # Small stabilization delay to avoid race condition with recent modifications
+    time.sleep(0.05)
+
     # Get initial state
     initial_exists = p.exists()
     initial_mtime = p.stat().st_mtime if initial_exists else None
