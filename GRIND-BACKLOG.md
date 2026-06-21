@@ -29,14 +29,14 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-- [ ] Phase 4: StealthProfile extension — `core/humanize/profile.py`. Add a
+- [x] Phase 4: StealthProfile extension — `core/humanize/profile.py`. Added a
   frozen `StealthProfile(Profile)` dataclass (subclass — inherits the naturalistic
   fields, overrides with biometric-sampled defaults) + a `STEALTH` preset registered
   in `_PRESETS`. Spec §"profile.py — StealthProfile extension", Deliverable #1.
-  Gate: `tests/test_humanize_stealth_profile.py` passes (instantiation, field
-  validation, preset registry lookup via `get_default_profile()` under
-  `SENTINEL_HUMANIZE_PROFILE=stealth`). ruff + full pytest exit 0. This is the
-  foundation every other stealth phase imports — do it first.
+  Gate: `tests/test_humanize_stealth_profile.py` passes (31/31 tests: instantiation,
+  field validation, preset registry lookup via `get_default_profile()` under
+  `SENTINEL_HUMANIZE_PROFILE=stealth`). ruff clean + full pytest exit 0. This is the
+  foundation every other stealth phase imports — do it first. (commit 67f60ad)
 
 - [ ] Phase 5: Fitts's-Law targeting — `core/humanize/fitts.py` (NEW). Pure
   function `fitts_move_duration(distance_px, target_width_px, *, rng, profile) -> float`
