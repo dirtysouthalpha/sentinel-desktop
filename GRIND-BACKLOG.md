@@ -27,18 +27,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-- [ ] Phase 12: Detector-evasion pipeline — `core/humanize/detector_evasion.py`
-  (`humanized_path` accepts `target_size`, routes through fitts+overshoot when
-  profile is StealthProfile), `core/humanize/typing.py` (`keystroke_delays`
-  accepts `errors: bool`, routes through errors.py),
-  `core/action_executor.py` (`_click`/`_type_text`/`_scroll` pass context:
-  target_size, field_type, action_context), `core/desktop.py` (physical chokepoint
-  uses `fitts_move_duration` for StealthProfile). Spec Deliverables #9-12.
-  Gate: existing humanize tests still green with `SENTINEL_HUMANIZE=0` (the
-  naturalistic path must NOT change); new tests assert the stealth path activates
-  only under StealthProfile. ruff + full pytest exit 0. Do this ONLY after Phases
-  4-10 are done — it's the integration point where a half-wire breaks main.
-
 <!-- Phase 3 BLOCKED 2026-06-21: PyPI publish failed with 403 Forbidden - invalid API
      token. Need to configure Trusted Publishers or refresh PYPI_API_TOKEN.
      GitHub Release succeeded. See run 27888597380. -->
