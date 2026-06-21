@@ -235,6 +235,108 @@ class TestInputAlias:
             assert hasattr(b.input, method), f"get_backend().input missing {method}"
 
 
+# ---------------------------------------------------------------------------
+# BackendProtocol conformance — runtime_checkable isinstance
+# ---------------------------------------------------------------------------
+# Every concrete backend's .input must satisfy the BackendProtocol Protocol
+# (core/platform/backend.py). runtime_checkable makes isinstance work against
+# any object that has the named attributes — this asserts the structural
+# contract holds for all four backends, on any host platform.
+
+
+class TestBackendProtocolConformance:
+    def test_linux_backend_input_satisfies_protocol(self):
+        """LinuxBackend.input is a BackendProtocol instance (runtime_checkable)."""
+        from core.platform.backend import BackendProtocol
+        from core.platform.linux_backend import LinuxBackend
+
+        assert isinstance(LinuxBackend().input, BackendProtocol)
+
+    def test_noop_backend_input_satisfies_protocol(self):
+        """NoOpBackend.input is a BackendProtocol instance."""
+        from core.platform.backend import BackendProtocol
+        from core.platform.base import NoOpBackend
+
+        assert isinstance(NoOpBackend().input, BackendProtocol)
+
+    def test_windows_backend_input_satisfies_protocol(self):
+        """WindowsBackend.input is a BackendProtocol instance.
+
+        WindowsStealthInput now implements all 11 methods (Phase A v23 gap-fill)
+        so it satisfies the Protocol structurally. This test runs on any host
+        because we import the class directly (it imports win32 libs lazily via
+        the backend module's guarded imports).
+        """
+        from core.platform.backend import BackendProtocol
+
+        # WindowsBackend imports win32 libs; on non-Windows the import may fail
+        # at module load (win32gui etc.). Try the import; skip if the host
+        # can't load it — the conformance is still asserted on Windows CI.
+        try:
+            from core.platform.windows_backend import WindowsBackend
+        except Exception:  # noqa: BLE001 — import-time platform deps
+            pytest.skip("WindowsBackend not importable on this host")
+        try:
+            backend = WindowsBackend()
+        except Exception:  # noqa: BLE001 — needs win32 at runtime
+            pytest.skip("WindowsBackend not instantiable on this host")
+        assert isinstance(backend.input, BackendProtocol)
+
+    def test_macos_backend_input_satisfies_protocol(self):
+        """MacOSBackend.input is a BackendProtocol instance."""
+        from core.platform.backend import BackendProtocol
+
+        try:
+            from core.platform.macos_backend import MacOSBackend
+        except Exception:  # noqa: BLE001
+            pytest.skip("MacOSBackend not importable on this host")
+        try:
+            backend = MacOSBackend()
+        except Exception:  # noqa: BLE001
+            pytest.skip("MacOSBackend not instantiable on this host")
+        assert isinstance(backend.input, BackendProtocol)
+
+    def test_get_backend_input_satisfies_protocol_on_current_host(self):
+        """The real get_backend().input on THIS host is a BackendProtocol."""
+        from core.platform import get_backend
+        from core.platform.backend import BackendProtocol
+
+        assert isinstance(get_backend().input, BackendProtocol)
+
+    def test_all_eleven_methods_present_on_each_importable_backend(self):
+        """Beyond isinstance (which only checks method presence, not signatures),
+        explicitly assert every one of the 11 methods is callable on each
+        backend we can import on this host."""
+        candidates = []
+        try:
+            from core.platform.linux_backend import LinuxBackend
+            candidates.append(("Linux", LinuxBackend()))
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from core.platform.base import NoOpBackend
+            candidates.append(("NoOp", NoOpBackend()))
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from core.platform.windows_backend import WindowsBackend
+            candidates.append(("Windows", WindowsBackend()))
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from core.platform.macos_backend import MacOSBackend
+            candidates.append(("MacOS", MacOSBackend()))
+        except Exception:  # noqa: BLE001
+            pass
+
+        assert len(candidates) >= 1, "no backends importable on this host"
+        for name, backend in candidates:
+            for method in _FULL_INPUT_SURFACE:
+                assert callable(getattr(backend.input, method, None)), (
+                    f"{name}Backend.input.{method} not callable"
+                )
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-v"]))

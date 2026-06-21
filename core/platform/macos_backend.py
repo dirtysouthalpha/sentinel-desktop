@@ -412,6 +412,81 @@ class MacOSStealthInput(StealthInputBackend):
         except (OSError, subprocess.TimeoutExpired):
             return False
 
+    # ── Phase A v23 extensions: satisfy BackendProtocol ──────────────────
+    # These delegate to pyautogui (the macOS native input lib via Quartz).
+    # They exist so MacOSStealthInput satisfies core.platform.backend.
+    # BackendProtocol — DesktopController may route through them on macOS.
+
+    def moveTo(self, x: int, y: int, duration: float = 0.0) -> bool:
+        """Move the cursor to (x, y) via pyautogui."""
+        try:
+            import pyautogui
+            pyautogui.moveTo(x, y, duration=duration)
+            return True
+        except Exception as exc:  # noqa: BLE001 — never crash input
+            logger.debug("MacOSStealthInput.moveTo failed: %s", exc)
+            return False
+
+    def position(self) -> tuple[int, int]:
+        """Return current cursor (x, y) via pyautogui."""
+        try:
+            import pyautogui
+            pos = pyautogui.position()
+            return (int(pos.x), int(pos.y))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("MacOSStealthInput.position failed: %s", exc)
+            return (0, 0)
+
+    def drag(
+        self,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        duration: float = 0.5,
+        button: str = "left",
+    ) -> bool:
+        """Drag from (x1, y1) to (x2, y2) via pyautogui."""
+        try:
+            import pyautogui
+            pyautogui.moveTo(x1, y1)
+            pyautogui.dragTo(x2, y2, duration=duration, button=button)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("MacOSStealthInput.drag failed: %s", exc)
+            return False
+
+    def screenshot(self):
+        """Capture the full screen via pyautogui (PIL.Image)."""
+        try:
+            import pyautogui
+            return pyautogui.screenshot()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("MacOSStealthInput.screenshot failed: %s", exc)
+            from PIL import Image
+            return Image.new("RGB", (1920, 1080))
+
+    def rightClick(self, x: int, y: int, clicks: int = 1) -> bool:
+        """Right-click at (x, y) via pyautogui."""
+        try:
+            import pyautogui
+            for _ in range(max(1, clicks)):
+                pyautogui.rightClick(x, y)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("MacOSStealthInput.rightClick failed: %s", exc)
+            return False
+
+    def doubleClick(self, x: int, y: int) -> bool:
+        """Double-click at (x, y) via pyautogui."""
+        try:
+            import pyautogui
+            pyautogui.doubleClick(x, y)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("MacOSStealthInput.doubleClick failed: %s", exc)
+            return False
+
     @staticmethod
     def _to_applescript_key(key: str) -> int:
         """Map key names to macOS key codes."""
