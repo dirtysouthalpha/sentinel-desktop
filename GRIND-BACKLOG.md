@@ -39,14 +39,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
   only under StealthProfile. ruff + full pytest exit 0. Do this ONLY after Phases
   4-10 are done — it's the integration point where a half-wire breaks main.
 
-- [ ] Phase 12: Detector-evasion pipeline — `core/humanize/detector_evasion.py`
-  (NEW). A pluggable `EvasionPipeline` that wraps the stealth modules and applies
-  a configurable ordered list of evasion strategies. Spec §"detector_evasion.py",
-  Deliverable #8. Gate: `tests/test_humanize_stealth_detector_evasion.py` passes
-  (pipeline applies strategies in order; a no-op pipeline is a passthrough;
-  adding a strategy changes output; per-strategy failure degrades gracefully).
-  Last — it wraps everything, so all other stealth phases must be done first.
-
 <!-- Phase 3 BLOCKED 2026-06-21: PyPI publish failed with 403 Forbidden - invalid API
      token. Need to configure Trusted Publishers or refresh PYPI_API_TOKEN.
      GitHub Release succeeded. See run 27888597380. -->
@@ -82,6 +74,19 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 
 ## Done
+
+- [x] Phase 12: Detector-evasion pipeline — `core/humanize/detector_evasion.py` (NEW).
+  Pluggable `DetectorEvasionPipeline` that wraps the stealth modules and applies
+  a configurable ordered list of evasion strategies. Spec §"detector_evasion.py",
+  Deliverable #8. Implements DetectorEvasionStrategy ABC, NoOpStrategy,
+  FittsLawStrategy, OvershootStrategy, ErrorInjectionStrategy, MomentumScrollStrategy,
+  AttentionSimulationStrategy, and DetectorEvasionPipeline with DEFAULT_STEALTH_PIPELINE.
+  Gate: `tests/test_humanize_stealth_detector_evasion.py` passes (33 tests: pipeline
+  applies strategies in order; no-op pipeline is passthrough; adding strategy changes
+  output; per-strategy failure degrades gracefully; each strategy applies to relevant
+  actions only; naturalistic profile bypass; missing context graceful degrade; default
+  pipeline composition). ruff clean (fixed unused math import), all 8,718 tests passing.
+  (commit a1d9e6b)
 
 - [x] Phase 11: Stealth wiring at the chokepoints — modify `core/humanize/motion.py`
   (`humanized_path` accepts `target_size`, routes through fitts+overshoot when
