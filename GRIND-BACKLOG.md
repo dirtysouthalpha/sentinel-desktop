@@ -18,7 +18,28 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Active
 
-<!-- Phase 3 moved to Blocked: PyPI trusted-publishing not configured -->
+<!-- Phase 3 UNBLOCKED 2026-06-21: PYPI_API_TOKEN secret is set (verified via
+     `gh secret list`), PyPI project exists (v22.0.0 uploaded manually). The
+     automated release path is now live end-to-end. -->
+
+- [ ] Phase 3: First clean automated release — verify the release pipeline
+  end-to-end with a NON-COLLIDING patch version. CRITICAL: v22.0.0 is ALREADY on
+  PyPI (manual upload), so do NOT push a v22.0.0 tag (release.yml would re-build
+  22.0.0 and PyPI rejects the duplicate file). Instead:
+    1. Bump `core/__init__.py` `__version__` from "22.0.0" → "22.0.1".
+    2. Commit with message "chore(release): bump to 22.0.1 for pipeline shakedown".
+    3. Tag `v22.0.1` (annotated): `git tag -a v22.0.1 -m "v22.0.1 — release pipeline verification"`.
+    4. Push the commit, then push the tag: `git push origin main && git push origin v22.0.1`.
+    5. The tag triggers `.github/workflows/release.yml` (on: push tags v*) →
+       test → build sdist+wheel → publish to PyPI via PYPI_API_TOKEN → GitHub Release.
+    6. Watch the run: `gh run watch` (or Actions tab). Verify both the PyPI publish
+       job AND the GitHub Release job succeed. Confirm 22.0.1 appears at
+       pypi.org/pypi/sentinel-desktop and in the repo's Releases.
+  Gate: release.yml run is green (all jobs), pypi.org shows 22.0.1, GitHub
+  Release exists for v22.0.1. If publish fails, read the job log, fix, retag
+  v22.0.2 (PyPI doesn't allow re-uploading a failed version either). This phase
+  proves the whole release automation works — after it, every future stealth-tier
+  release (v22.1.0+) is one tag push away.
 
 <!-- STEALTH-TIER IMPLEMENTATION — sourced from the Phase 1 design spec
      (docs/superpowers/specs/2026-06-20-fully-stealth-humanization-tier.md).
@@ -92,14 +113,9 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 <!-- Move a phase here with a [BLOCKED: <one-line reason>] note if it can't proceed. -->
 
-- [BLOCKED: PyPI trusted-publishing not configured] Phase 3: Cut v22.0.0 release tag —
-  push an annotated tag, confirm `.github/workflows/release.yml` runs (test → build →
-  publish), verify the PyPI + GitHub Release succeeds. GATED: before doing this,
-  confirm PyPI trusted-publishing is configured per `RELEASING.md`
-  (owner/repo/workflow/environment). If not set up, move this to ## Blocked with
-  [BLOCKED: PyPI trusted-publishing not configured] rather than attempting a release
-  that will fail mid-publish. Demoted from Phase 1 because firing a PyPI release is
-  high-blast-radius and shouldn't be the loop's first autonomous action.
+<!-- Phase 3 moved back to Active (2026-06-21): PYPI_API_TOKEN secret set + PyPI
+     project exists. Cut as v22.0.1 (not v22.0.0, which is already on PyPI). -->
+
 
 ## Done
 
