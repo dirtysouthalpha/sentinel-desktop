@@ -25,7 +25,7 @@ Quality gates status:
 - Run API: `python main.py --api --port 8091`
 
 ## Architecture
-- **core/platform/** — Cross-platform abstraction layer (v4.0): base interfaces + Windows/Linux/macOS backends
+- **core/platform/** — Cross-platform abstraction layer (v4.0, extended v23): base interfaces + Windows/Linux/macOS backends. The `.input` property (alias of `.stealth`) exposes the full 11-method input surface (click/type/press/hotkey/scroll + moveTo/position/drag/screenshot/rightClick/doubleClick). `DesktopController` routes through `backend.input` when pyautogui is unavailable (headless Linux), keeping pyautogui as the Windows/Mac path.
   - `base.py` — Abstract base classes (Accessibility, StealthInput, Credentials, Shell, Window, Overlay)
   - `windows_backend.py` — UIA, PostMessage, DPAPI, PowerShell, win32gui
   - `linux_backend.py` — AT-SPI, xdotool, libsecret, bash, wnck
