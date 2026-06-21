@@ -2694,7 +2694,7 @@ class ActionExecutor:
         except FileNotFoundError as exc:
             return {"success": False, "error": str(exc)}
 
-        def _exec(action: str, **params: Any):
+        def _exec(action: str, **params: Any) -> dict[str, Any]:
             return self.execute(action, **params)
 
         runner = ScenarioRunner(_exec, stop_on_failure=bool(stop_on_failure))
