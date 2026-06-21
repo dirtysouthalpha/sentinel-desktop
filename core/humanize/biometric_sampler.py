@@ -141,8 +141,7 @@ def analyze_events(events: list[dict[str, Any]]) -> BiometricStatistics | None:
     # Count actual keystrokes (not type events)
     keystroke_delays = _extract_keystroke_delays(types)
     total_keystrokes = len(keystroke_delays) + sum(
-        len(e.get("keystrokes", [])) if isinstance(e.get("keystrokes"), list) else 0
-        for e in types
+        len(e.get("keystrokes", [])) if isinstance(e.get("keystrokes"), list) else 0 for e in types
     )
 
     # Minimum sample thresholds (from spec)
@@ -255,10 +254,7 @@ def _extract_move_duration_by_target_size(click_events: list[dict[str, Any]]) ->
             by_size["large"].append(duration)
 
     # Compute means
-    return {
-        size: (mean(durations) if durations else 0.0)
-        for size, durations in by_size.items()
-    }
+    return {size: (mean(durations) if durations else 0.0) for size, durations in by_size.items()}
 
 
 def _compute_fitts_coefficient(click_events: list[dict[str, Any]]) -> float:
@@ -342,11 +338,7 @@ def _extract_overshoot_rates(click_events: list[dict[str, Any]]) -> dict[str, fl
 
     # Compute rates
     return {
-        size: (
-            (sum(1 for o in overshoots if o) / len(overshoots))
-            if overshoots
-            else 0.0
-        )
+        size: ((sum(1 for o in overshoots if o) / len(overshoots)) if overshoots else 0.0)
         for size, overshoots in by_size.items()
     }
 

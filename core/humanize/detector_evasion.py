@@ -119,9 +119,7 @@ class FittsLawStrategy(DetectorEvasionStrategy):
                 current_total = sum(dwell for _, dwell in trajectory)
                 if current_total > 0:
                     scale_factor = fitts_duration / current_total
-                    scaled_trajectory = [
-                        (pos, dwell * scale_factor) for pos, dwell in trajectory
-                    ]
+                    scaled_trajectory = [(pos, dwell * scale_factor) for pos, dwell in trajectory]
                     return scaled_trajectory
         except (ValueError, ZeroDivisionError):
             # Gracefully degrade on calculation errors
@@ -189,9 +187,7 @@ class OvershootStrategy(DetectorEvasionStrategy):
                 )
 
                 # Combine with tiny dwell at overshoot point (human reorients)
-                combined = segment1 + [
-                    ((overshoot_landing[0], overshoot_landing[1]), 0.02)
-                ]
+                combined = segment1 + [((overshoot_landing[0], overshoot_landing[1]), 0.02)]
                 combined += segment2
 
                 return combined
@@ -335,9 +331,7 @@ class AttentionSimulationStrategy(DetectorEvasionStrategy):
         action_context = context.get("action_context", "")
 
         try:
-            duration = attention_pause(
-                action_context, rng=rng, profile=profile
-            )
+            duration = attention_pause(action_context, rng=rng, profile=profile)
 
             if duration > 0:
                 # Prepend attention pause to trajectory

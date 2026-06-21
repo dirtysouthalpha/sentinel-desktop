@@ -217,8 +217,7 @@ def watch_process(
                 "pid": result_pid,
                 "elapsed_s": round(elapsed, 2),
                 "output": (
-                    f"Process {event!r} event for {name!r} "
-                    f"(PID {result_pid}) after {elapsed:.1f}s"
+                    f"Process {event!r} event for {name!r} (PID {result_pid}) after {elapsed:.1f}s"
                 ),
             }
         time.sleep(poll_interval)

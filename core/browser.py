@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BrowserClickParams:
     """Parameters for browser click actions."""
+
     selector: str | None = None
     text: str | None = None
     role: str | None = None
@@ -43,6 +44,7 @@ class BrowserClickParams:
 @dataclass
 class BrowserTypeParams:
     """Parameters for browser type actions."""
+
     text: str
     selector: str | None = None
     label: str | None = None
@@ -50,6 +52,7 @@ class BrowserTypeParams:
     name: str | None = None
     clear: bool = True
     timeout: float = 10000
+
 
 # Check if Playwright is available
 _HAS_PLAYWRIGHT = False
@@ -304,7 +307,9 @@ class BrowserManager:
         page = self.active_page
 
         try:
-            locator = self._resolve_locator(page, params.selector, params.text, params.role, params.name)
+            locator = self._resolve_locator(
+                page, params.selector, params.text, params.role, params.name
+            )
 
             # Wait for element and scroll into view
             locator.wait_for(state="visible", timeout=params.timeout)
@@ -405,8 +410,10 @@ class BrowserManager:
         except Exception as exc:
             # Handle case where params might not be set if validation failed
             try:
-                if params and hasattr(params, 'selector'):
-                    desc = params.selector or params.label or f"role={params.role}, name={params.name}"
+                if params and hasattr(params, "selector"):
+                    desc = (
+                        params.selector or params.label or f"role={params.role}, name={params.name}"
+                    )
                 else:
                     desc = selector or label or f"role={role}, name={name}"
             except (AttributeError, TypeError):

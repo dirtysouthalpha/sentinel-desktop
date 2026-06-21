@@ -49,7 +49,7 @@ def _is_stealth_profile(profile) -> bool:
 
     Avoids circular import by checking attribute instead of isinstance.
     """
-    return hasattr(profile, 'scroll_momentum')
+    return hasattr(profile, "scroll_momentum")
 
 
 class DesktopController:
@@ -149,7 +149,9 @@ class DesktopController:
         try:
             _ensure_pyautogui()
             if humanize.is_enabled():
-                self._humanized_move_and_click(x, y, button=button, clicks=clicks, target_size=target_size)
+                self._humanized_move_and_click(
+                    x, y, button=button, clicks=clicks, target_size=target_size
+                )
             else:
                 pyautogui.click(x=x, y=y, button=button, clicks=clicks)
         except (_FailSafeException, OSError, RuntimeError) as exc:
@@ -190,7 +192,13 @@ class DesktopController:
             logger.warning("right_click failed: %s", exc)
 
     def _humanized_move_and_click(
-        self, x: int, y: int, *, button: str, clicks: int, target_size: tuple[int, int] | None = None
+        self,
+        x: int,
+        y: int,
+        *,
+        button: str,
+        clicks: int,
+        target_size: tuple[int, int] | None = None,
     ) -> None:
         """Move to (x, y) along a humanized curve, then click.
 

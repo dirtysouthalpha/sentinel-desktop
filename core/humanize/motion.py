@@ -207,18 +207,23 @@ def humanized_path(
 
     if target_size and _is_stealth_profile(profile):
         from core.humanize.overshoot import apply_overshoot_and_correction
+
         overshoot_landing, correction_target = apply_overshoot_and_correction(
-            target, target_size, rng=rng, profile=profile  # type: ignore[arg-type]
+            target,
+            target_size,
+            rng=rng,
+            profile=profile,  # type: ignore[arg-type]
         )
 
     # Build the curve to the landing point (overshoot point if applicable)
-    actual_target = (overshoot_landing if overshoot_landing else (land_x, land_y))
+    actual_target = overshoot_landing if overshoot_landing else (land_x, land_y)
     points, degree = _build_curve((sx_f, sy_f), actual_target, rng, profile.curve_deviation)
     n = _sample_count(length)
 
     # Calculate total duration with Fitts's-Law for StealthProfile if target_size is known
     if target_size and _is_stealth_profile(profile):
         from core.humanize.fitts import fitts_move_duration
+
         total = fitts_move_duration(start, target, target_size, rng=rng, profile=profile)  # type: ignore[arg-type]
     else:
         total = _total_duration(length, profile)
@@ -236,17 +241,26 @@ def humanized_path(
 
         # Segment 2: overshoot → correction_target
         # Re-calculate curve and duration for correction move
-        cor_length = math.hypot(correction_target[0] - actual_target[0],
-                                 correction_target[1] - actual_target[1])
-        cor_points, cor_degree = _build_curve(actual_target, correction_target,
-                                               rng, profile.curve_deviation)
+        cor_length = math.hypot(
+            correction_target[0] - actual_target[0], correction_target[1] - actual_target[1]
+        )
+        cor_points, cor_degree = _build_curve(
+            actual_target, correction_target, rng, profile.curve_deviation
+        )
         cor_n = _sample_count(cor_length)
         # Correction is faster (sweep-back)
         cor_total = total * profile.sweep_back_speed  # type: ignore[attr-defined]
 
         trajectory_segment_2 = _build_trajectory_from_curve(
-            actual_target, correction_target, cor_length, cor_total,
-            cor_points, cor_degree, cor_n, rng, profile
+            actual_target,
+            correction_target,
+            cor_length,
+            cor_total,
+            cor_points,
+            cor_degree,
+            cor_n,
+            rng,
+            profile,
         )
 
         # Combine segments
@@ -265,7 +279,7 @@ def humanized_path(
 def _is_stealth_profile(profile: Profile) -> bool:
     """Check if a profile is a StealthProfile (type-check compatible)."""
     # Avoid circular import by checking attribute instead of isinstance
-    return hasattr(profile, 'fitts_width_scaling')
+    return hasattr(profile, "fitts_width_scaling")
 
 
 def _build_trajectory_from_curve(

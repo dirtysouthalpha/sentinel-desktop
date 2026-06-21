@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CheckpointData:
     """Data for agent checkpoint save/restore."""
+
     goal: str
     step_num: int
     agent_memory: list[Any]
@@ -33,6 +34,7 @@ class CheckpointData:
     config: dict[str, Any]
     status: str = "running"
     messages: list[dict[str, Any]] | None = None
+
 
 # ---------------------------------------------------------------------------
 # Checkpoint directory — resolved via core.paths (supports portable mode)

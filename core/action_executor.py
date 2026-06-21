@@ -24,6 +24,7 @@ from core.screenshot import capture_to_base64, find_template, wait_for_template
 @dataclass
 class ExecutorCallbacks:
     """Callbacks for action executor lifecycle events."""
+
     approval_callback: Callable | None = None
     pre_action_callback: Callable[[dict[str, Any]], None] | None = None
 
@@ -31,6 +32,7 @@ class ExecutorCallbacks:
 @dataclass
 class ExecutorConfig:
     """Configuration for action executor behavior."""
+
     dry_run: bool = False
     stealth: bool = False
     click_offset: tuple = (0, 0)
@@ -40,6 +42,7 @@ class ExecutorConfig:
 @dataclass
 class DragCoordinates:
     """Coordinates for drag operation."""
+
     from_x: int
     from_y: int
     to_x: int
@@ -51,6 +54,7 @@ class DragCoordinates:
 @dataclass
 class WebClickParams:
     """Parameters for web click actions."""
+
     selector: str | None = None
     text: str | None = None
     role: str | None = None
@@ -62,6 +66,7 @@ class WebClickParams:
 @dataclass
 class WebTypeParams:
     """Parameters for web type actions."""
+
     text: str
     selector: str | None = None
     label: str | None = None
@@ -73,6 +78,7 @@ class WebTypeParams:
 @dataclass
 class HttpRequestParams:
     """Parameters for HTTP requests."""
+
     url: str
     json: dict | list | None = None
     body: str | None = None
@@ -85,6 +91,7 @@ class HttpRequestParams:
 @dataclass
 class SkillInstallParams:
     """Parameters for skill installation."""
+
     name: str
     description: str
     script: dict | None = None
@@ -92,6 +99,7 @@ class SkillInstallParams:
     author: str = ""
     category: str = "general"
     tags: list | None = None
+
 
 logger = logging.getLogger(__name__)
 
@@ -487,7 +495,9 @@ class ActionExecutor:
             ),
         }
 
-    def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **kwargs: Any) -> dict:
+    def _click_text(
+        self, *, text: str, button: str = "left", fuzzy: bool = True, **kwargs: Any
+    ) -> dict:
         """OCR-backed click: locate visible text and click its centre.
 
         Self-healing: if OCR fails, tries UIAutomation click by name.
@@ -511,7 +521,9 @@ class ActionExecutor:
                 "error": "click_text_failed",
             }
 
-    def _read_text(self, *, scope: str = "focused", window: str | None = None, **kwargs: Any) -> dict:
+    def _read_text(
+        self, *, scope: str = "focused", window: str | None = None, **kwargs: Any
+    ) -> dict:
         """OCR text from the screen.
 
         Args:
@@ -998,7 +1010,10 @@ class ActionExecutor:
                 return result
         try:
             self._desktop.drag(sx, sy, tx, ty, duration=coords.duration, button=coords.button)
-            return {"success": True, "output": f"Dragged ({coords.from_x},{coords.from_y})→({coords.to_x},{coords.to_y})"}
+            return {
+                "success": True,
+                "output": f"Dragged ({coords.from_x},{coords.from_y})→({coords.to_x},{coords.to_y})",
+            }
         except Exception as exc:
             return {"success": False, "output": f"Drag failed: {exc}", "error": "drag_failed"}
 
@@ -1122,7 +1137,9 @@ class ActionExecutor:
                 "error": "wait_for_image_failed",
             }
 
-    def _smart_wait(self, *, timeout: float = 10, region: list | None = None, **kwargs: Any) -> dict:
+    def _smart_wait(
+        self, *, timeout: float = 10, region: list | None = None, **kwargs: Any
+    ) -> dict:
         """Wait until the screen changes (visual diff)."""
         try:
             from core.smart_wait import SmartWait
@@ -1712,7 +1729,9 @@ class ActionExecutor:
                 "error": "start_process_failed",
             }
 
-    def _kill_process(self, *, pid: int | None = None, name: str | None = None, **kwargs: Any) -> dict:
+    def _kill_process(
+        self, *, pid: int | None = None, name: str | None = None, **kwargs: Any
+    ) -> dict:
         """Terminate a process by PID or name."""
         target = pid or name
         try:
@@ -1810,7 +1829,9 @@ class ActionExecutor:
             clear=params.clear,
         )
 
-    def _web_read(self, *, selector: str | None = None, full_page: bool = False, **kwargs: Any) -> dict:
+    def _web_read(
+        self, *, selector: str | None = None, full_page: bool = False, **kwargs: Any
+    ) -> dict:
         """Read text content from the browser page or element."""
         return self.browser.read(selector=selector, full_page=full_page)
 
@@ -1835,7 +1856,9 @@ class ActionExecutor:
             timeout=timeout * 1000,
         )
 
-    def _web_screenshot(self, *, selector: str | None = None, full_page: bool = False, **kwargs: Any) -> dict:
+    def _web_screenshot(
+        self, *, selector: str | None = None, full_page: bool = False, **kwargs: Any
+    ) -> dict:
         """Capture a screenshot of the browser viewport or element."""
         return self.browser.screenshot(selector=selector, full_page=full_page)
 
@@ -1843,7 +1866,9 @@ class ActionExecutor:
         """Execute JavaScript in the browser context."""
         return self.browser.eval_js(expression=expression)
 
-    def _web_download(self, *, url: str | None = None, save_path: str | None = None, **kwargs: Any) -> dict:
+    def _web_download(
+        self, *, url: str | None = None, save_path: str | None = None, **kwargs: Any
+    ) -> dict:
         """Download a file from the browser."""
         return self.browser.download(url=url, save_path=save_path)
 
@@ -3193,11 +3218,14 @@ def _apply_attention_pause(action_context: str) -> None:
         profile = get_default_profile()
         pause_duration = attention.attention_pause(
             action_context,
-            rng=attention.rng.get_rng() if hasattr(attention, 'rng') else __import__('random').Random(),
+            rng=attention.rng.get_rng()
+            if hasattr(attention, "rng")
+            else __import__("random").Random(),
             profile=profile,
         )
         if pause_duration > 0:
             import time
+
             time.sleep(pause_duration)
     except Exception:  # noqa: BLE001
         # Attention pause is optional; never let it break an action
@@ -3221,11 +3249,14 @@ def _apply_re_read_pause(field_type: str) -> None:
         profile = get_default_profile()
         pause_duration = attention.re_read_pause(
             field_type,
-            rng=attention.rng.get_rng() if hasattr(attention, 'rng') else __import__('random').Random(),
+            rng=attention.rng.get_rng()
+            if hasattr(attention, "rng")
+            else __import__("random").Random(),
             profile=profile,
         )
         if pause_duration > 0:
             import time
+
             time.sleep(pause_duration)
     except Exception:  # noqa: BLE001
         # Re-read pause is optional; never let it break an action

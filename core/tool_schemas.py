@@ -2229,14 +2229,14 @@ TOOLS: list[dict[str, Any]] = [
                     "condition": {
                         "type": "object",
                         "description": (
-                            'Event-specific match criteria '
+                            "Event-specific match criteria "
                             '(e.g. {"keyword": "sentinel"} or {"event_name": "deploy_done"}).'
                         ),
                     },
                     "action": {
                         "type": "object",
                         "description": (
-                            'Executor action payload to fire '
+                            "Executor action payload to fire "
                             '(e.g. {"action": "speak", "text": "Yes?"}).'
                         ),
                     },

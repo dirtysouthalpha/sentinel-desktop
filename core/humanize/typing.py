@@ -87,6 +87,7 @@ def keystroke_delays(
     # Error injection for StealthProfile
     if errors and _is_stealth_profile(profile):
         from core.humanize.errors import inject_errors_and_corrections
+
         error_actions = inject_errors_and_corrections(text, rng=rng, profile=profile)  # type: ignore[arg-type]
         # Convert (typed_text, delay) → flat delay list
         # For each action, extract the delay and append it
@@ -137,4 +138,4 @@ def _is_stealth_profile(profile: Profile) -> bool:
 
     Avoids circular import by checking attribute instead of isinstance.
     """
-    return hasattr(profile, 'error_rate')
+    return hasattr(profile, "error_rate")
