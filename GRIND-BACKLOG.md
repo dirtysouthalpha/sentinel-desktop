@@ -18,29 +18,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Active
 
-<!-- Phase 3 BLOCKED 2026-06-21: PyPI publish failed with 403 Forbidden - invalid API
-     token. Need to configure Trusted Publishers or refresh PYPI_API_TOKEN.
-     GitHub Release succeeded. See run 27888597380. -->
-
-
-  end-to-end with a NON-COLLIDING patch version. CRITICAL: v22.0.0 is ALREADY on
-  PyPI (manual upload), so do NOT push a v22.0.0 tag (release.yml would re-build
-  22.0.0 and PyPI rejects the duplicate file). Instead:
-    1. Bump `core/__init__.py` `__version__` from "22.0.0" → "22.0.1".
-    2. Commit with message "chore(release): bump to 22.0.1 for pipeline shakedown".
-    3. Tag `v22.0.1` (annotated): `git tag -a v22.0.1 -m "v22.0.1 — release pipeline verification"`.
-    4. Push the commit, then push the tag: `git push origin main && git push origin v22.0.1`.
-    5. The tag triggers `.github/workflows/release.yml` (on: push tags v*) →
-       test → build sdist+wheel → publish to PyPI via PYPI_API_TOKEN → GitHub Release.
-    6. Watch the run: `gh run watch` (or Actions tab). Verify both the PyPI publish
-       job AND the GitHub Release job succeed. Confirm 22.0.1 appears at
-       pypi.org/pypi/sentinel-desktop and in the repo's Releases.
-  Gate: release.yml run is green (all jobs), pypi.org shows 22.0.1, GitHub
-  Release exists for v22.0.1. If publish fails, read the job log, fix, retag
-  v22.0.2 (PyPI doesn't allow re-uploading a failed version either). This phase
-  proves the whole release automation works — after it, every future stealth-tier
-  release (v22.1.0+) is one tag push away.
-
 <!-- STEALTH-TIER IMPLEMENTATION — sourced from the Phase 1 design spec
      (docs/superpowers/specs/2026-06-20-fully-stealth-humanization-tier.md).
      One phase per module, TDD, ordered by dependency. The spec's
@@ -49,16 +26,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      ruff clean, full pytest exit 0, committed + pushed. Do NOT wire a module
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
-
-- [ ] Phase 10: Biometric sampler — `core/humanize/biometric_sampler.py` (NEW).
-  `sample_operator(session_log_path) -> BiometricStats` extracting real inter-key
-  + inter-move distributions from a captured session, returning a dataclass the
-  StealthProfile can consume. Spec §"biometric_sampler.py", Deliverable #2.
-  IMPORTANT: the spec forbids inventing synthetic values — if no real samples
-  exist, return None / raise a clear error, don't fake it. Gate:
-  `tests/test_humanize_stealth_biometric.py` passes (parses a fixture session log
-  into correct stats; returns None/raises on empty input; never synthesizes).
-  Last of the leaf modules since it only feeds StealthProfile defaults.
 
 - [ ] Phase 11: Stealth wiring at the chokepoints — modify `core/humanize/motion.py`
   (`humanized_path` accepts `target_size`, routes through fitts+overshoot when
@@ -80,10 +47,9 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
   adding a strategy changes output; per-strategy failure degrades gracefully).
   Last — it wraps everything, so all other stealth phases must be done first.
 
-
-## Blocked
-
-<!-- Move a phase here with a [BLOCKED: <one-line reason>] note if it can't proceed. -->
+<!-- Phase 3 BLOCKED 2026-06-21: PyPI publish failed with 403 Forbidden - invalid API
+     token. Need to configure Trusted Publishers or refresh PYPI_API_TOKEN.
+     GitHub Release succeeded. See run 27888597380. -->
 
 - [BLOCKED: PyPI 403 - invalid API token, need Trusted Publishing or valid PYPI_API_TOKEN refresh] Phase 3: First clean automated release — verify the release pipeline
   end-to-end with a NON-COLLIDING patch version. CRITICAL: v22.0.0 is ALREADY on
@@ -109,8 +75,30 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
   Next attempt must use v22.0.2 (PyPI rejected re-upload of 22.0.1).
 
 
+## Blocked
+
+<!-- Move a phase here with a [BLOCKED: <one-line reason>] note if it can't proceed. -->
+<!-- (Phase 3 is listed under ## Active with the BLOCKED marker instead) -->
+
+
 ## Done
 
+- [x] Phase 10: Biometric sampler — `core/humanize/biometric_sampler.py` (NEW).
+  `sample_operator(session_log_path) -> BiometricStats` extracting real inter-key
+  + inter-move distributions from a captured session, returning a dataclass the
+  StealthProfile can consume. Spec §"biometric_sampler.py", Deliverable #2.
+  IMPORTANT: the spec forbids inventing synthetic values — if no real samples
+  exist, return None / raise a clear error, don't fake it. Gate:
+  `tests/test_humanize_stealth_biometric.py` passes (parses a fixture session log
+  into correct stats; returns None/raises on empty input; never synthesizes).
+  Last of the leaf modules since it only feeds StealthProfile defaults.
+  Implements BiometricStatistics dataclass, sample_operator() with JSONL parsing,
+  analyze_events() extracting keystroke timing, move duration by target size,
+  Fitts coefficient regression, overshoot rates, error rate, correction delays,
+  scroll momentum decay, attention drift probability. 21 comprehensive tests:
+  file not found, empty/insufficient samples, valid parsing, error-correction,
+  attention drift, malformed input, no synthesis guarantee, analyze_events().
+  ruff clean (4 lint fixes), all 8,726+ tests passing. (commit 4dc0813)
 - [x] Phase 9: Attention drift + dwell — `core/humanize/attention.py` (NEW).
   `attention_pause(action_context, *, rng, profile) -> float` returning an
   occasional gaze-like pause, scaled by context (longer on ambiguous UI). Spec
