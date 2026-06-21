@@ -59,6 +59,7 @@ try:
     from playwright.sync_api import (
         Browser,
         BrowserContext,
+        Locator,
         Page,
         Playwright,
     )
@@ -736,7 +737,7 @@ class BrowserManager:
         text: str | None,
         role: str | None,
         name: str | None,
-    ):
+    ) -> Locator:
         """Resolve a Playwright locator from various targeting methods."""
         if selector:
             return page.locator(selector)

@@ -198,7 +198,7 @@ def _listen_sapi(timeout: float, phrase_limit: float) -> str:
         class _EventSink:
             def OnRecognition(  # noqa: N802 — COM event handler, name fixed by SAPI interface
                 self, _stream_n, _audio, _result
-            ):
+            ) -> None:
                 phrase = _result.PhraseInfo.GetText()
                 result_text.append(phrase)
 

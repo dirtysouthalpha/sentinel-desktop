@@ -14,7 +14,7 @@ from typing import Any
 
 from core.control.grounder import ActionGrounder
 from core.control.planner import StepStatus, StepType, TaskPlanner
-from core.control.verifier import ActionVerifier
+from core.control.verifier import ActionVerifier, VerificationReport, VerifyResult
 from core.perception.pipeline import PerceptionPipeline
 from core.perception.types import PerceptionResult
 
@@ -155,7 +155,7 @@ class ControlLoop:
             "results": results,
         }
 
-    def _get_perception(self):
+    def _get_perception(self) -> PerceptionResult:
         """Capture and analyze the current screen."""
         from core.screenshot import capture_screen
 
@@ -178,9 +178,8 @@ class ControlLoop:
 
     def _verify_action(
         self, before_perception: PerceptionResult, after_perception: PerceptionResult
-    ):
+    ) -> VerificationReport:
         """Verify action success using before/after perception."""
-        from core.control.verifier import VerificationReport, VerifyResult
 
         before_img = before_perception.annotated_image
         after_img = after_perception.annotated_image
