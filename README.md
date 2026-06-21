@@ -1,18 +1,18 @@
 <div align="center">
 
-# ⬡ Sentinel Desktop v18.0
+# ⬡ Sentinel Desktop v22.0 "Aria"
 
 **AI-powered desktop automation agent — cross-platform, cyberpunk HUD edition.**
 
 Give it a goal in plain English. It sees your screen, moves the mouse, types, and interacts with any application — autonomously.
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
-[![Version](https://img.shields.io/badge/version-18.0.0-orange)](https://github.com/dirtysouthalpha/sentinel-desktop/releases)
-[![Tests](https://img.shields.io/badge/tests-7882%20passing-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
+[![Version](https://img.shields.io/badge/version-22.0.0-orange)](https://github.com/dirtysouthalpha/sentinel-desktop/releases)
+[![Tests](https://img.shields.io/badge/tests-8685%20passing-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
 [![Lint](https://img.shields.io/badge/lint-0%20errors-brightgreen)](https://github.com/dirtysouthalpha/sentinel-desktop/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-105+ action types · 7,882 tests · 35+ API endpoints · 20+ LLM providers · MCP server · Fleet/daemon mode
+105+ action types · 8,685 tests · 35+ API endpoints · 20+ LLM providers · Voice Engine + Event Triggers · MCP server · Fleet/daemon mode
 
 </div>
 
@@ -31,9 +31,9 @@ Sentinel doesn't just automate — **it learns.** Every task it runs, every fix 
 - 🔁 **Cross-agent memory** — Sentinel Desktop, Claude Code, opencode, and every other tool in the fleet share one brain. A fix Sentinel finds on a server at 2am is knowledge Claude Code can recall at noon.
 - 📈 **Gets smarter over time** — the more tasks it runs, the more context the brain holds. Hard-won solutions to advanced technical issues (server configs, stubborn drivers, network edge cases) are never solved twice.
 - 🖥️ **Built for the field** — engineered for IT work on servers and workstations. Sentinel captures the *goal → actions → outcome* of each engagement and feeds the durable lessons back in.
-- 🔌 **Direct bridge** — Sentinel speaks to the brain over HTTP (`NEURALIS_BRAIN_URL`), no extra processes. Seven operations: `think`, `recall`, `search`, `context`, `opinions`, `fire`, `stats`.
+- 🔌 **Direct bridge** — Sentinel speaks to the brain over HTTP (`NEURALIS_BRAIN_URL`), no extra processes. Five operations: `think`, `recall`, `search`, `fire`, `stats`.
 
-> **Status:** arriving in **v18.0**. The bridge is the foundation — automatic recall-at-task-start and a full consolidation loop land in the phases that follow. Track progress in [CLAUDE.md](CLAUDE.md).
+> **Status:** ✅ **Complete in v18.0-v22.0**. The bridge is fully integrated with automatic recall-at-task-start and complete consolidation loop. Track progress in [CLAUDE.md](CLAUDE.md).
 
 ---
 
@@ -56,6 +56,8 @@ Sentinel doesn't just automate — **it learns.** Every task it runs, every fix 
 - 🥷 **Stealth input** — PostMessage / UIAInvoke for non-interrupting actions (no mouse/keyboard hijack)
 - 📡 **WebSocket live feed** — every step broadcast to connected clients
 - 🧠 **Neuralis Brain integration** *(v18.0)* — shared, fleet-wide memory: Sentinel writes what it learns and recalls what every other agent has learned, so it gets smarter with every task
+- 🎤 **Voice Engine** *(v22.0)* — wake-word detection, ambient monitoring, IDLE/LISTENING/SPEAKING/AMBIENT mode state machine, speech synthesis (TTS) and recognition (STT)
+- ⚡ **Event Trigger System** *(v22.0)* — react to spoken keywords, file changes, process start/stop, schedules, and custom events with automatic background dispatch
 
 ## Quick Start
 
@@ -86,7 +88,7 @@ Press **Esc three times within 1.5 seconds** to immediately stop the agent. This
 
 ```bash
 pip install -e ".[dev]"
-pytest tests/ -q          # 7,882 tests
+pytest tests/ -q          # 8,685 tests passing, 152 skipped
 ruff check core/ gui/ api/ tests/   # zero lint errors
 ```
 
@@ -191,6 +193,8 @@ sentinel-desktop/
 │   ├── clipboard.py     # Clipboard read/write
 │   ├── file_ops.py      # Safe file operations
 │   ├── system_info.py   # System information
+│   ├── voice.py         # Voice Engine (TTS/STT, wake-word detection, ambient monitoring)
+│   ├── triggers.py      # Event Trigger System (spoken_keyword, file_change, process, schedule)
 │   ├── control/         # Plan → Ground → Execute → Verify control loop
 │   ├── perception/      # Multi-modal perception pipeline (accessibility + OCR + vision)
 │   ├── platform/        # Cross-platform abstraction (Windows / Linux / macOS)
@@ -209,7 +213,7 @@ sentinel-desktop/
 │   ├── overlay.py       # Action overlay + animated cursor
 │   └── tabs/            # Settings, scripts, workflows, history tabs
 ├── scripts/it_support/  # 19 pre-built IT support script templates
-├── tests/               # 7,882 tests, 99% coverage
+├── tests/               # 8,685 tests passing, 152 skipped
 └── requirements.txt
 ```
 
