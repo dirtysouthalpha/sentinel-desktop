@@ -692,7 +692,10 @@ def pytest_sessionstart():
     pytest_tmp = Path(__file__).resolve().parent.parent / ".pytest_tmp"
     if pytest_tmp.exists():
         try:
-            shutil.rmtree(pytest_tmp)
+            # Use ignore_errors to handle symlinks and locked files gracefully
+            shutil.rmtree(pytest_tmp, ignore_errors=True)
         except OSError as e:
             # If cleanup fails (permission issues, etc.), warn but don't block tests
             warnings.warn(f"Failed to clean up .pytest_tmp: {e}", stacklevel=2)
+    # Recreate the directory so pytest can use it for tmp_path fixtures
+    pytest_tmp.mkdir(parents=True, exist_ok=True)
