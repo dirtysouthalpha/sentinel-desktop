@@ -57,16 +57,27 @@ class TestWatchFile:
         from core.file_watcher import watch_file
 
         target = tmp_path / "new_file.txt"
+        target_str = str(target)  # Capture path before potential tmp_path cleanup
         # File does not exist yet
+
+        created = threading.Event()
 
         def create_after_delay():
             time.sleep(0.2)
-            target.write_text("created")
+            try:
+                Path(target_str).write_text("created")
+                created.set()
+            except (FileNotFoundError, OSError):
+                # If tmp_path was cleaned up, silently fail - test will timeout
+                pass
 
-        threading.Thread(target=create_after_delay, daemon=True).start()
-        result = watch_file(str(target), timeout=3, poll_interval=0.05, event="create")
+        thread = threading.Thread(target=create_after_delay, daemon=True)
+        thread.start()
+        result = watch_file(target_str, timeout=3, poll_interval=0.05, event="create")
         assert result["event"] == "create"
         assert result["success"] is True
+        # Wait for the creation thread to complete before allowing tmp_path cleanup
+        created.wait(timeout=1.0)
 
     def test_timeout_returns_failure(self, tmp_path):
         from core.file_watcher import watch_file
