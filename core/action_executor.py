@@ -374,13 +374,27 @@ class ActionExecutor:
         y: int,
         button: str = "left",
         clicks: int = 1,
+        target_size: tuple[int, int] | None = None,
         **_,
     ) -> dict[str, Any]:
-        """Click at screen coordinates with optional stealth mode via PostMessage."""
+        """Click at screen coordinates with optional stealth mode via PostMessage.
+
+        Args:
+            x: X coordinate in pixels.
+            y: Y coordinate in pixels.
+            button: Mouse button to click ("left", "right", "middle").
+            clicks: Number of times to click (1 for single, 2 for double-click).
+            target_size: Optional target dimensions (width, height) for stealth-tier
+                Fitts's-Law timing and overshoot/correction.
+        """
         # Translate from captured-image coords to absolute screen coords for
         # multi-monitor virtual-desktop capture.
         sx = int(x) + self.click_offset[0]
         sy = int(y) + self.click_offset[1]
+
+        # Stealth-tier: attention pause before click
+        _apply_attention_pause(f"clicking_at_{sx}_{sy}")
+
         try:
             # In stealth mode, try the no-cursor-move path first.
             if (
@@ -396,7 +410,7 @@ class ActionExecutor:
                     desc = "Clicked"
                 return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
             # PostMessage failed; fall through to physical click.
-            self._desktop.click(sx, sy, button=button, clicks=clicks)
+            self._desktop.click(sx, sy, button=button, clicks=clicks, target_size=target_size)
             desc = (
                 "Double-clicked"
                 if clicks == DOUBLE_CLICK_COUNT
@@ -868,8 +882,14 @@ class ActionExecutor:
                 "error": "click_image_failed",
             }
 
-    def _type_text(self, *, text: str, **_) -> dict:
-        """Type text via keyboard input, falling back to clipboard paste if needed."""
+    def _type_text(self, *, text: str, field_type: str = "unknown", **_) -> dict:
+        """Type text via keyboard input, falling back to clipboard paste if needed.
+
+        Args:
+            text: The text to type.
+            field_type: Type of field being typed into (e.g., "email", "password",
+                "username"). Used for stealth-tier re-read pause simulation.
+        """
         # Sensitive field check
         if _contains_sensitive(text):
             return {
@@ -877,6 +897,10 @@ class ActionExecutor:
                 "output": "Blocked: text appears to contain sensitive data",
                 "error": "sensitive_field",
             }
+
+        # Stealth-tier: re-read pause before typing into sensitive fields
+        _apply_re_read_pause(field_type)
+
         if self.stealth and stealth_input.is_available() and stealth_input.post_text(text):
             return {"success": True, "output": f"Typed {len(text)} chars — stealth"}
         try:
@@ -3151,3 +3175,60 @@ def _sanitize_params(params: dict) -> dict:
         else:
             sanitized[k] = v
     return sanitized
+
+
+def _apply_attention_pause(action_context: str) -> None:
+    """Apply attention pause for StealthProfile before an action.
+
+    This is called before clicks, typing, and other actions to simulate
+    human-like gaze patterns and hesitation. Only active for StealthProfile.
+
+    Args:
+        action_context: Human-readable description of the action (e.g.,
+            "clicking_submit_button", "typing_password"). Used for context-aware
+            pause probability.
+    """
+    try:
+        from core.humanize import attention
+        from core.humanize.profile import get_default_profile
+
+        profile = get_default_profile()
+        pause_duration = attention.attention_pause(
+            action_context,
+            rng=attention.rng.get_rng() if hasattr(attention, 'rng') else __import__('random').Random(),
+            profile=profile,
+        )
+        if pause_duration > 0:
+            import time
+            time.sleep(pause_duration)
+    except Exception:  # noqa: BLE001
+        # Attention pause is optional; never let it break an action
+        pass
+
+
+def _apply_re_read_pause(field_type: str) -> None:
+    """Apply re-read pause for StealthProfile before typing.
+
+    This is called before typing into sensitive fields to simulate
+    operators double-checking their input. Only active for StealthProfile.
+
+    Args:
+        field_type: Type of field being typed into (e.g., "email", "password",
+            "username"). Used for context-aware pause probability.
+    """
+    try:
+        from core.humanize import attention
+        from core.humanize.profile import get_default_profile
+
+        profile = get_default_profile()
+        pause_duration = attention.re_read_pause(
+            field_type,
+            rng=attention.rng.get_rng() if hasattr(attention, 'rng') else __import__('random').Random(),
+            profile=profile,
+        )
+        if pause_duration > 0:
+            import time
+            time.sleep(pause_duration)
+    except Exception:  # noqa: BLE001
+        # Re-read pause is optional; never let it break an action
+        pass

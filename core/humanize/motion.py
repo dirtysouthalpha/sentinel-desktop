@@ -26,8 +26,12 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from core.humanize.profile import Profile
+
+if TYPE_CHECKING:
+    from core.humanize.profile import StealthProfile  # noqa: F401
 
 # Distance (in pixels) above which we switch quadratic → cubic.
 _CUBIC_THRESHOLD_PX = 400.0
@@ -155,6 +159,7 @@ def _total_duration(length: float, profile: Profile) -> float:
 def humanized_path(
     start: tuple[int, int],
     target: tuple[int, int],
+    target_size: tuple[int, int] | None = None,
     *,
     rng: random.Random,
     profile: Profile,
@@ -168,6 +173,8 @@ def humanized_path(
     Args:
         start:  Current cursor position (x, y).
         target: Intended target (x, y).
+        target_size: Optional target dimensions (width, height) in pixels for
+                stealth-tier Fitts's-Law timing and overshoot/correction.
         rng:    Seeded random.Random (use core.humanize.rng.get_rng for the
                 shared default; pass a seeded one for replay).
         profile: Tempo profile (see core.humanize.profile).
@@ -193,11 +200,101 @@ def humanized_path(
             return []
         return [((land_x, land_y), 0.0)]
 
-    # Build the curve to the (jittered) landing point.
-    points, degree = _build_curve((sx_f, sy_f), (land_x, land_y), rng, profile.curve_deviation)
-    n = _sample_count(length)
-    total = _total_duration(length, profile)
+    # Check for overshoot + correction trajectory for StealthProfile
+    # This must happen BEFORE building the curve so we can generate a two-segment path
+    overshoot_landing = None
+    correction_target = None
 
+    if target_size and _is_stealth_profile(profile):
+        from core.humanize.overshoot import apply_overshoot_and_correction
+        overshoot_landing, correction_target = apply_overshoot_and_correction(
+            target, target_size, rng=rng, profile=profile  # type: ignore[arg-type]
+        )
+
+    # Build the curve to the landing point (overshoot point if applicable)
+    actual_target = (overshoot_landing if overshoot_landing else (land_x, land_y))
+    points, degree = _build_curve((sx_f, sy_f), actual_target, rng, profile.curve_deviation)
+    n = _sample_count(length)
+
+    # Calculate total duration with Fitts's-Law for StealthProfile if target_size is known
+    if target_size and _is_stealth_profile(profile):
+        from core.humanize.fitts import fitts_move_duration
+        total = fitts_move_duration(start, target, target_size, rng=rng, profile=profile)  # type: ignore[arg-type]
+    else:
+        total = _total_duration(length, profile)
+
+    # Build trajectory (single-segment or two-segment for overshoot + correction)
+    if correction_target is not None:
+        # TWO movements: start → overshoot → correction
+        # Segment 1: start → overshoot_landing
+        trajectory_segment_1 = _build_trajectory_from_curve(
+            start, actual_target, length, total, points, degree, n, rng, profile
+        )
+
+        # Tiny dwell at overshoot point (human reorients)
+        trajectory_segment_1.append(((actual_target[0], actual_target[1]), 0.02))
+
+        # Segment 2: overshoot → correction_target
+        # Re-calculate curve and duration for correction move
+        cor_length = math.hypot(correction_target[0] - actual_target[0],
+                                 correction_target[1] - actual_target[1])
+        cor_points, cor_degree = _build_curve(actual_target, correction_target,
+                                               rng, profile.curve_deviation)
+        cor_n = _sample_count(cor_length)
+        # Correction is faster (sweep-back)
+        cor_total = total * profile.sweep_back_speed  # type: ignore[attr-defined]
+
+        trajectory_segment_2 = _build_trajectory_from_curve(
+            actual_target, correction_target, cor_length, cor_total,
+            cor_points, cor_degree, cor_n, rng, profile
+        )
+
+        # Combine segments
+        trajectory = trajectory_segment_1 + trajectory_segment_2
+    else:
+        # Single-segment trajectory
+        trajectory = _build_trajectory_from_curve(
+            start, actual_target, length, total, points, degree, n, rng, profile
+        )
+
+    # Final dwell (after the last waypoint) is intentionally 0 — the click
+    # handler inserts its own hold duration via humanize.timing.
+    return trajectory
+
+
+def _is_stealth_profile(profile: Profile) -> bool:
+    """Check if a profile is a StealthProfile (type-check compatible)."""
+    # Avoid circular import by checking attribute instead of isinstance
+    return hasattr(profile, 'fitts_width_scaling')
+
+
+def _build_trajectory_from_curve(
+    start: tuple[int, int],
+    target: tuple[float, float],
+    length: float,
+    total: float,
+    points: Sequence[tuple[float, float]],
+    degree: int,
+    n: int,
+    rng: random.Random,
+    profile: Profile,
+) -> list[tuple[tuple[float, float], float]]:
+    """Build a single trajectory segment from curve parameters.
+
+    Args:
+        start: Current cursor position (x, y).
+        target: Target position (x, y).
+        length: Distance in pixels.
+        total: Total duration for the move.
+        points: Control points for the curve.
+        degree: Curve degree (2 for quadratic, 3 for cubic).
+        n: Number of samples.
+        rng: Seeded random.Random.
+        profile: Tempo profile.
+
+    Returns:
+        List of ((x, y), dwell_seconds) trajectory points.
+    """
     trajectory: list[tuple[tuple[float, float], float]] = []
     # Bell-curve velocity via INVERSE-easing: with N spatially-uniform samples,
     # the time spent dwelling at each sample is inversely proportional to the
@@ -218,6 +315,4 @@ def humanized_path(
         pt = _curve_point(points, degree, t_param)
         dwell = (weights[i] / weight_sum) * total if weight_sum > 0 else 0.0
         trajectory.append((pt, dwell))
-    # Final dwell (after the last waypoint) is intentionally 0 — the click
-    # handler inserts its own hold duration via humanize.timing.
     return trajectory

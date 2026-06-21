@@ -44,6 +44,14 @@ def _ensure_pyautogui():
     return pyautogui
 
 
+def _is_stealth_profile(profile) -> bool:
+    """Check if a profile is a StealthProfile (type-check compatible).
+
+    Avoids circular import by checking attribute instead of isinstance.
+    """
+    return hasattr(profile, 'scroll_momentum')
+
+
 class DesktopController:
     """Controls mouse, keyboard, and screen capture."""
 
@@ -119,7 +127,14 @@ class DesktopController:
         """
         return self._screen_size
 
-    def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> None:
+    def click(
+        self,
+        x: int,
+        y: int,
+        button: str = "left",
+        clicks: int = 1,
+        target_size: tuple[int, int] | None = None,
+    ) -> None:
         """Click at the specified screen coordinates.
 
         Args:
@@ -127,12 +142,14 @@ class DesktopController:
             y: Y coordinate in pixels.
             button: Mouse button to click (``"left"``, ``"right"``, ``"middle"``).
             clicks: Number of times to click (1 for single, 2 for double-click).
+            target_size: Optional target dimensions (width, height) for stealth-tier
+                Fitts's-Law timing and overshoot/correction.
 
         """
         try:
             _ensure_pyautogui()
             if humanize.is_enabled():
-                self._humanized_move_and_click(x, y, button=button, clicks=clicks)
+                self._humanized_move_and_click(x, y, button=button, clicks=clicks, target_size=target_size)
             else:
                 pyautogui.click(x=x, y=y, button=button, clicks=clicks)
         except (_FailSafeException, OSError, RuntimeError) as exc:
@@ -172,13 +189,23 @@ class DesktopController:
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("right_click failed: %s", exc)
 
-    def _humanized_move_and_click(self, x: int, y: int, *, button: str, clicks: int) -> None:
+    def _humanized_move_and_click(
+        self, x: int, y: int, *, button: str, clicks: int, target_size: tuple[int, int] | None = None
+    ) -> None:
         """Move to (x, y) along a humanized curve, then click.
+
+        Args:
+            x: X coordinate in pixels.
+            y: Y coordinate in pixels.
+            button: Mouse button to click.
+            clicks: Number of times to click (1 for single, 2 for double-click).
+            target_size: Optional target dimensions for stealth-tier Fitts's-Law
+                timing and overshoot/correction.
 
         Falls back to a plain moveTo+click if the humanized path raises.
         """
         try:
-            self._humanized_move_to(x, y)
+            self._humanized_move_to(x, y, target_size=target_size)
         except Exception as exc:  # noqa: BLE001 — never let humanization block input
             logger.debug("humanized move fell back to linear: %s", exc)
             try:
@@ -198,12 +225,22 @@ class DesktopController:
             if hold and i < clicks - 1:
                 time.sleep(hold)
 
-    def _humanized_move_to(self, x: int, y: int) -> None:
-        """Replay a humanized trajectory as a sequence of micro moveTo calls."""
+    def _humanized_move_to(
+        self, x: int, y: int, target_size: tuple[int, int] | None = None
+    ) -> None:
+        """Replay a humanized trajectory as a sequence of micro moveTo calls.
+
+        Args:
+            x: X coordinate in pixels.
+            y: Y coordinate in pixels.
+            target_size: Optional target dimensions for stealth-tier Fitts's-Law
+                timing and overshoot/correction.
+        """
         start = self.get_mouse_position()
         trajectory = _humanize_motion.humanized_path(
             start,
             (int(x), int(y)),
+            target_size=target_size,
             rng=_humanize_rng.get_rng(),
             profile=_humanize_profile.get_default_profile(),
         )
@@ -270,6 +307,13 @@ class DesktopController:
         """
         try:
             _ensure_pyautogui()
+            # Stealth-tier: momentum scroll trajectory for StealthProfile
+            if humanize.is_enabled():
+                profile = _humanize_profile.get_default_profile()
+                if _is_stealth_profile(profile):
+                    self._momentum_scroll(amount, x=x, y=y, profile=profile)  # type: ignore[arg-type]
+                    return
+
             pyautogui.scroll(amount, x=x, y=y)
         except (_FailSafeException, OSError, RuntimeError) as exc:
             logger.warning("scroll failed: %s", exc)
@@ -325,6 +369,34 @@ class DesktopController:
             pyautogui.press(ch)
             if i < len(delays):
                 time.sleep(delays[i])
+
+    def _momentum_scroll(self, amount: int, x: int | None, y: int | None, profile) -> None:
+        """Scroll with inertial momentum for StealthProfile.
+
+        Args:
+            amount: Number of scroll clicks (positive = up, negative = down).
+            x: X coordinate to position cursor before scrolling.
+            y: Y coordinate to position cursor before scrolling.
+            profile: Tempo profile (must be StealthProfile).
+
+        Falls back to discrete scroll if momentum trajectory fails.
+        """
+        try:
+            from core.humanize.scroll import momentum_scroll_trajectory
+
+            trajectory = momentum_scroll_trajectory(
+                amount,
+                rng=_humanize_rng.get_rng(),
+                profile=profile,
+            )
+            total_scrolled = 0
+            for frame_delta, dwell in trajectory:
+                pyautogui.scroll(frame_delta, x=x, y=y)
+                total_scrolled += frame_delta
+                if dwell > 0:
+                    time.sleep(dwell)
+        except Exception:  # noqa: BLE001 — never let momentum block scrolling
+            pyautogui.scroll(amount, x=x, y=y)
 
     def press_key(self, key: str) -> None:
         """Press and release a single key by name.

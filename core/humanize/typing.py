@@ -16,8 +16,12 @@ from __future__ import annotations
 
 import math
 import random
+from typing import TYPE_CHECKING
 
 from core.humanize.profile import Profile
+
+if TYPE_CHECKING:
+    from core.humanize.profile import StealthProfile  # noqa: F401
 
 # Believable human typing band (seconds). Delays are clamped into this range
 # so no pathological RNG draw produces something unphysical.
@@ -57,6 +61,7 @@ def keystroke_delays(
     *,
     rng: random.Random,
     profile: Profile,
+    errors: bool = False,
 ) -> list[float]:
     """Return per-keystroke inter-key delays sampled from a human distribution.
 
@@ -65,13 +70,30 @@ def keystroke_delays(
         rng:     Seeded random.Random.
         profile: Tempo profile (mean_keystroke_s, keystroke_jitter,
                  burst_probability).
+        errors:  If True, inject errors for StealthProfile (naturalistic tier
+                 ignores this flag). When errors are injected, the returned list
+                 includes delays for backspaces and corrections, so its length
+                 may not match len(text) - 1.
 
     Returns:
-        list[float] of length max(0, len(text) - 1): the delay (seconds)
-        between each consecutive pair of characters. Empty for len <= 1.
+        list[float] of delays (seconds). When errors=False, length is
+        max(0, len(text) - 1): the delay between each consecutive pair of
+        characters. When errors=True and profile is StealthProfile, length
+        includes backspaces and corrections. Empty for len <= 1.
     """
     if len(text) <= 1:
         return []
+
+    # Error injection for StealthProfile
+    if errors and _is_stealth_profile(profile):
+        from core.humanize.errors import inject_errors_and_corrections
+        error_actions = inject_errors_and_corrections(text, rng=rng, profile=profile)  # type: ignore[arg-type]
+        # Convert (typed_text, delay) → flat delay list
+        # For each action, extract the delay and append it
+        delays: list[float] = []
+        for _, delay in error_actions:
+            delays.append(delay)
+        return delays
 
     delays: list[float] = []
     burst_prob = max(0.0, min(1.0, profile.burst_probability))
@@ -108,3 +130,11 @@ def keystroke_delays(
         delays.append(max(_MIN_DELAY_S, min(_MAX_DELAY_S, d)))
 
     return delays
+
+
+def _is_stealth_profile(profile: Profile) -> bool:
+    """Check if a profile is a StealthProfile (type-check compatible).
+
+    Avoids circular import by checking attribute instead of isinstance.
+    """
+    return hasattr(profile, 'error_rate')
