@@ -1,11 +1,19 @@
 # Roadmap — v18 → v22
 
+> **Status: ✅ COMPLETE** — All phases (v19-v22) delivered and verified. See [CLAUDE.md](../CLAUDE.md) for current status.
+
 v18 ("Foundation") reconciled the project with its own claims: synced versions and docs,
 unified the dependency manifest, removed deprecated public surface, introduced action/
 endpoint registries, and cut the first real release tag. The themes below were deferred
 from the original `ROADMAP-v4-to-v13.md` plan and are now scheduled as v19–v22. Each
 returns as a **real, tested** feature (the v13–v17 phantom-feature claims were removed from
 docs in v18 so these can be built properly).
+
+**Completion summary:**
+- ✅ v19 "Fortress" — Enterprise security (JWT, OIDC, policy guardrails, audit chain, secrets vault, MDM)
+- ✅ v20 "Penguin" — Linux desktop parity (cross-platform input, AT-SPI backend, Wayland support)
+- ✅ v21 "Operator" — Eval harness + cost tracker + skill marketplace
+- ✅ v22 "Aria" — Voice Engine + Event Trigger System (wake-word detection, ambient monitoring, triggers)
 
 ## v19 — Fortress (enterprise security)
 
