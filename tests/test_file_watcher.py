@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # ── watch_file ────────────────────────────────────────────────────────────────
@@ -15,16 +16,27 @@ class TestWatchFile:
 
         target = tmp_path / "watched.txt"
         target.write_text("initial")
+        target_str = str(target)  # Capture path before potential tmp_path cleanup
+
+        modified = threading.Event()
 
         def modify_after_delay():
-            time.sleep(0.2)
-            target.write_text("modified")
+            time.sleep(0.3)  # Slightly longer delay for robustness
+            try:
+                Path(target_str).write_text("modified")
+                modified.set()
+            except (FileNotFoundError, OSError):
+                # If tmp_path was cleaned up, silently fail - test will timeout
+                pass
 
-        threading.Thread(target=modify_after_delay, daemon=True).start()
-        result = watch_file(str(target), timeout=3, poll_interval=0.05, event="modify")
+        thread = threading.Thread(target=modify_after_delay, daemon=True)
+        thread.start()
+        result = watch_file(target_str, timeout=3, poll_interval=0.05, event="modify")
         assert result["event"] == "modify"
         assert result["success"] is True
         assert "path" in result
+        # Wait for the modification thread to complete before allowing tmp_path cleanup
+        modified.wait(timeout=1.0)
 
     def test_detect_delete(self, tmp_path):
         from core.file_watcher import watch_file
