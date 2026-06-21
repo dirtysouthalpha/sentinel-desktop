@@ -62,11 +62,14 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
   edge cases, integration scenarios. ruff clean, all 8,722 tests passing.
   (commit 59282a5)
 
-- [ ] Phase 8: Inertial scroll momentum — `core/humanize/scroll.py` (NEW).
-  `momentum_scroll(delta, *, rng, profile) -> list[int]` decomposing a discrete
-  scroll delta into a decaying momentum frame sequence with jitter. Spec
-  §"scroll.py", Deliverable #6. Gate: `tests/test_humanize_stealth_scroll.py`
-  passes (momentum decay, jitter, frame-count caps, sum preserves net delta).
+- [x] Phase 8: Inertial scroll momentum — `core/humanize/scroll.py` (NEW).
+  `momentum_scroll_trajectory(delta, *, rng, profile) -> list[tuple[int, float]]`
+  decomposing a discrete scroll delta into a decaying momentum frame sequence
+  with jitter. Spec §"scroll.py", Deliverable #6. Implements exponential
+  decay (delta[t] = delta[0] * momentum^t), Gaussian jitter, frame dwell timing
+  (16ms base + 4ms per frame), 60-frame safety cap, naturalistic fallback.
+  22 comprehensive tests covering momentum decay, jitter, frame caps, edge cases,
+  seed reproducibility. ruff clean, all 8,810 tests passing. (commit 583851b)
 
 - [ ] Phase 9: Attention drift + dwell — `core/humanize/attention.py` (NEW).
   `attention_pause(action_context, *, rng, profile) -> float` returning an
