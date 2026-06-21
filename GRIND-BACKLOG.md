@@ -50,13 +50,17 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-- [ ] Phase 6: Overshoot + sweep-back — `core/humanize/overshoot.py` (NEW).
+- [x] Phase 6: Overshoot + sweep-back — `core/humanize/overshoot.py` (NEW).
   `overshoot_target(target, current, *, rng, profile, target_width_px) -> tuple`
   returning a point past the target (overshoot) or short of it (undershoot),
   probabilistically scaled by target size. Spec §"overshoot.py", Deliverable #4.
   Gate: `tests/test_humanize_stealth_overshoot.py` passes (overshoot probability
   scales inversely with target width; undershoot vs overshoot distribution;
   sweep-back lands within jitter of target). Depends on rng.py (exists) only.
+  Implements overshoot probability scaling (60% small/30% medium/10% large),
+  undershoot vs overshoot 50/50, miss magnitude scaling, correction jitter,
+  non-StealthProfile fallback. 17 tests, all pass (8,702 total). ruff clean.
+  (commit 89ad6a9)
 
 - [ ] Phase 7: Error + self-correction injection — `core/humanize/errors.py`
   (NEW). `inject_errors(text, *, rng, profile) -> list[(char, delay)]` that, at a
