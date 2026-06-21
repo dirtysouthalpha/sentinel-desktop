@@ -14,6 +14,39 @@ import pytest
 from core import stealth_input
 
 # ---------------------------------------------------------------------------
+# Test doubles
+# ---------------------------------------------------------------------------
+
+
+class _NoInputBackend:
+    """Test double: a backend whose .input methods all return False / no-op.
+
+    v23 cross-platform wiring means LinuxBackend handles click/text/etc on
+    Linux. The 'no win32' tests need to also neutralize the platform backend
+    to assert the genuine 'no input subsystem' path on any host.
+    """
+
+    class _Input:
+        def click(self, *a, **kw):
+            return False
+
+        def type_text(self, *a, **kw):
+            return False
+
+        def press_key(self, *a, **kw):
+            return False
+
+        def hotkey(self, *a, **kw):
+            return False
+
+        def scroll(self, *a, **kw):
+            return False
+
+    def __init__(self):
+        self.input = self._Input()
+
+
+# ---------------------------------------------------------------------------
 # Helpers — inject mock win32 modules into the stealth_input module namespace
 # ---------------------------------------------------------------------------
 
@@ -130,7 +163,11 @@ class TestPostClick:
         assert result is False
 
     def test_no_win32_returns_false(self):
-        with patch.object(stealth_input, "_HAS_WIN32", False):
+        # v23: LinuxBackend now handles click, so 'no win32' alone isn't enough
+        # to expect False. Neutralize the platform backend to test the genuine
+        # 'no input subsystem' path on any host.
+        with patch.object(stealth_input, "_HAS_WIN32", False), \
+             patch.object(stealth_input, "get_backend", return_value=_NoInputBackend()):
             assert stealth_input.post_click(1, 2) is False
 
 
@@ -201,7 +238,11 @@ class TestPostText:
         assert result is False
 
     def test_no_win32_returns_false(self):
-        with patch.object(stealth_input, "_HAS_WIN32", False):
+        # v23: LinuxBackend now handles text, so 'no win32' alone isn't enough
+        # to expect False. Neutralize the platform backend to test the genuine
+        # 'no input subsystem' path on any host.
+        with patch.object(stealth_input, "_HAS_WIN32", False), \
+             patch.object(stealth_input, "get_backend", return_value=_NoInputBackend()):
             assert stealth_input.post_text("hello") is False
 
 

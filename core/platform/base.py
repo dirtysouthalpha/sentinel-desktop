@@ -226,6 +226,59 @@ class StealthInputBackend(ABC):
         """
         ...
 
+    # ── Extended input surface (v23 cross-platform) ──────────────────────
+    # These are NOT @abstractmethod — they have default NotImplementedError /
+    # no-op implementations so existing backends (Windows, macOS) that don't
+    # yet override them keep working. Backends that support them (Linux) override.
+    # This avoids forcing a Windows/Mac regression when extending the contract.
+
+    def moveTo(self, x: int, y: int, duration: float = 0.0) -> bool:
+        """Move the cursor to ``(x, y)``. If *duration* > 0, animate the move.
+
+        Returns ``True`` if the move succeeded. Default: not supported.
+        """
+        raise NotImplementedError
+
+    def position(self) -> tuple[int, int]:
+        """Return the current cursor position ``(x, y)``.
+
+        Returns ``(0, 0)`` if the position cannot be determined. Default: ``(0, 0)``.
+        """
+        return (0, 0)
+
+    def drag(
+        self,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        duration: float = 0.5,
+        button: str = "left",
+    ) -> bool:
+        """Drag from ``(x1, y1)`` to ``(x2, y2)`` holding *button*.
+
+        Returns ``True`` if the drag completed. Default: not supported.
+        """
+        raise NotImplementedError
+
+    def screenshot(self):
+        """Capture the full screen as a PIL.Image.
+
+        Returns a blank placeholder image if capture is unavailable — never raises.
+        Default: 1×1 blank image.
+        """
+        from PIL import Image
+
+        return Image.new("RGB", (1, 1))
+
+    def rightClick(self, x: int, y: int, clicks: int = 1) -> bool:
+        """Right-click at ``(x, y)``. Returns ``True`` on success. Default: False."""
+        return False
+
+    def doubleClick(self, x: int, y: int) -> bool:
+        """Double-click at ``(x, y)``. Returns ``True`` on success. Default: False."""
+        return False
+
 
 class CredentialBackend(ABC):
     """Secure credential storage."""
@@ -396,6 +449,34 @@ class NoOpStealthInput(StealthInputBackend):
     def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> bool:
         return False
 
+    def moveTo(self, x: int, y: int, duration: float = 0.0) -> bool:
+        return False
+
+    def position(self) -> tuple[int, int]:
+        return (0, 0)
+
+    def drag(
+        self,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        duration: float = 0.5,
+        button: str = "left",
+    ) -> bool:
+        return False
+
+    def screenshot(self):
+        from PIL import Image
+
+        return Image.new("RGB", (1, 1))
+
+    def rightClick(self, x: int, y: int, clicks: int = 1) -> bool:
+        return False
+
+    def doubleClick(self, x: int, y: int) -> bool:
+        return False
+
 
 class NoOpCredential(CredentialBackend):
     """No-op credential backend — stores nothing, returns nothing."""
@@ -491,6 +572,16 @@ class NoOpBackend:
         self.shell = NoOpShell()
         self.window = NoOpWindow()
         self.overlay = NoOpOverlay()
+
+    @property
+    def input(self) -> NoOpStealthInput:
+        """Alias for ``.stealth`` — the physical/stealth input surface.
+
+        Callers (core.stealth_input, core.desktop) use ``backend.input.*`` so
+        the code reads naturally; the underlying object is the same stealth
+        input subsystem.
+        """
+        return self.stealth
 
     @property
     def default_shell(self) -> str:

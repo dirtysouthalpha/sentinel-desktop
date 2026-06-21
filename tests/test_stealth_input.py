@@ -119,13 +119,51 @@ def test_is_available_false_without_win32(monkeypatch):
 
 
 def test_post_click_returns_false_without_win32(monkeypatch):
+    # v23: LinuxBackend now handles click, so 'no win32' alone isn't enough to
+    # expect False. Neutralize the platform backend to test the genuine
+    # 'no input subsystem' path on any host.
     monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
+    monkeypatch.setattr(stealth_input, "get_backend", lambda: _NoInputBackend())
     assert stealth_input.post_click(100, 200) is False
 
 
 def test_post_text_returns_false_without_win32(monkeypatch):
+    """No Win32 AND no platform backend input → False.
+
+    On Linux the platform backend now handles text (v23 cross-platform wiring),
+    so 'no win32' alone isn't enough to expect False — we also neutralize the
+    backend input to test the genuine 'no input subsystem available' path.
+    """
     monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
+    monkeypatch.setattr(stealth_input, "get_backend", lambda: _NoInputBackend())
     assert stealth_input.post_text("hello") is False
+
+
+class _NoInputBackend:
+    """Test double: a backend whose .input methods all return False / no-op.
+
+    Lets the 'without win32' tests assert the False path on any platform
+    regardless of whether a real LinuxBackend is present.
+    """
+
+    class _Input:
+        def click(self, *a, **kw):
+            return False
+
+        def type_text(self, *a, **kw):
+            return False
+
+        def press_key(self, *a, **kw):
+            return False
+
+        def hotkey(self, *a, **kw):
+            return False
+
+        def scroll(self, *a, **kw):
+            return False
+
+    def __init__(self):
+        self.input = self._Input()
 
 
 def test_post_key_returns_false_without_win32(monkeypatch):
@@ -169,7 +207,11 @@ def test_post_named_key_single_char_falls_back_to_post_text(monkeypatch):
     from core.stealth_input import VK_NAMES
 
     assert "a" not in VK_NAMES  # single chars aren't in the lookup table
-    # post_named_key("a") will try post_text, which returns False on Linux
+    # Neutralize the platform backend so the test asserts the genuine no-input
+    # path on any host (v23 cross-platform wiring means LinuxBackend now handles
+    # text, so without this stub the test would get True instead of False).
+    monkeypatch.setattr(stealth_input, "get_backend", lambda: _NoInputBackend())
+    # post_named_key("a") will try post_text, which returns False with no backend
     result = stealth_input.post_named_key("a")
     assert result is False
 

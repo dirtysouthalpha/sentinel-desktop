@@ -889,6 +889,16 @@ class MacOSBackend(PlatformBackend):
         return self._stealth
 
     @property
+    def input(self) -> MacOSStealthInput:
+        """Alias for ``.stealth`` — the physical/stealth input surface.
+
+        Callers (core.stealth_input, core.desktop) use ``backend.input.*`` so
+        the code reads naturally; the underlying object is the same stealth
+        input subsystem.
+        """
+        return self._stealth
+
+    @property
     def credentials(self) -> MacOSCredentialBackend:
         return self._credentials
 

@@ -394,6 +394,122 @@ class LinuxStealthInput(StealthInputBackend):
             logger.debug("xdotool scroll failed: %s", exc)
             return False
 
+    def moveTo(self, x: int, y: int, duration: float = 0.0) -> bool:
+        """Move the cursor to (x, y) via xdotool.
+
+        duration > 0 requests an animated move (xdotool --delay between steps);
+        duration == 0 is an instant teleport.
+        """
+        if not self._available:
+            return False
+        try:
+            args = ["xdotool", "mousemove", "--sync", str(x), str(y)]
+            if duration > 0:
+                # ~step ms; xdotool doesn't take a total-duration, so approximate.
+                args = [
+                    "xdotool", "mousemove", "--sync",
+                    "--delay", str(max(1, int(duration * 1000 / 20))),
+                    str(x), str(y),
+                ]
+            subprocess.run(args, capture_output=True, timeout=10)
+            return True
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            logger.debug("xdotool moveTo failed: %s", exc)
+            return False
+
+    def position(self) -> tuple[int, int]:
+        """Return current cursor (x, y) via xdotool getmouselocation."""
+        if not self._available:
+            return (0, 0)
+        try:
+            r = subprocess.run(
+                ["xdotool", "getmouselocation"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if r.returncode != 0 or not r.stdout.strip():
+                return (0, 0)
+            # Output: "x:123 y:456 screen:0 window:42"
+            parts = {}
+            for tok in r.stdout.split():
+                if ":" in tok:
+                    k, _, v = tok.partition(":")
+                    parts[k] = v
+            return (int(parts.get("x", 0)), int(parts.get("y", 0)))
+        except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
+            logger.debug("xdotool position failed: %s", exc)
+            return (0, 0)
+
+    def drag(
+        self,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        duration: float = 0.5,
+        button: str = "left",
+    ) -> bool:
+        """Drag from (x1, y1) to (x2, y2) via xdotool mousedown+mousemove+mouseup."""
+        if not self._available:
+            return False
+        btn_map = {"left": "1", "middle": "2", "right": "3"}
+        btn = btn_map.get(button, "1")
+        try:
+            # Move to start, press, move to end, release.
+            subprocess.run(
+                ["xdotool", "mousemove", "--sync", str(x1), str(y1)],
+                capture_output=True, timeout=5,
+            )
+            subprocess.run(
+                ["xdotool", "mousedown", btn],
+                capture_output=True, timeout=5,
+            )
+            if duration > 0:
+                subprocess.run(
+                    ["xdotool", "mousemove", "--sync",
+                     "--delay", str(max(1, int(duration * 1000 / 20))),
+                     str(x2), str(y2)],
+                    capture_output=True, timeout=10,
+                )
+            else:
+                subprocess.run(
+                    ["xdotool", "mousemove", "--sync", str(x2), str(y2)],
+                    capture_output=True, timeout=5,
+                )
+            subprocess.run(
+                ["xdotool", "mouseup", btn],
+                capture_output=True, timeout=5,
+            )
+            return True
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            logger.debug("xdotool drag failed: %s", exc)
+            return False
+
+    def screenshot(self):
+        """Capture the full screen via mss; fall back to a blank PIL image."""
+        try:
+            import mss
+            from PIL import Image
+        except ImportError:
+            from PIL import Image
+            return Image.new("RGB", (1920, 1080))
+        try:
+            with mss.mss() as sct:
+                mon = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
+                shot = sct.grab(mon)
+                return Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+        except Exception as exc:  # pragma: no cover - environment dependent
+            logger.debug("mss screenshot failed: %s", exc)
+            from PIL import Image
+            return Image.new("RGB", (1920, 1080))
+
+    def rightClick(self, x: int, y: int, clicks: int = 1) -> bool:
+        """Right-click at (x, y) via xdotool."""
+        return self.click(x, y, button="right", clicks=clicks)
+
+    def doubleClick(self, x: int, y: int) -> bool:
+        """Double-click at (x, y) via xdotool."""
+        return self.click(x, y, button="left", clicks=2)
+
     @staticmethod
     def _to_xdotool_key(key: str) -> str:
         """Map common key names to xdotool key names."""
@@ -938,6 +1054,16 @@ class LinuxBackend(PlatformBackend):
 
     @property
     def stealth(self) -> LinuxStealthInput:
+        return self._stealth
+
+    @property
+    def input(self) -> LinuxStealthInput:
+        """Alias for ``.stealth`` — the physical/stealth input surface.
+
+        Callers (core.stealth_input, core.desktop) use ``backend.input.*`` so
+        the code reads naturally; the underlying object is the same stealth
+        input subsystem.
+        """
         return self._stealth
 
     @property
