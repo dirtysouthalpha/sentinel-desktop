@@ -50,12 +50,17 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-- [ ] Phase 7: Error + self-correction injection — `core/humanize/errors.py`
-  (NEW). `inject_errors(text, *, rng, profile) -> list[(char, delay)]` that, at a
-  profile-driven rate, inserts a wrong char + backspace + correct char with human
-  correction delays. Spec §"errors.py", Deliverable #5. Gate:
-  `tests/test_humanize_stealth_errors.py` passes (error rate within bounds;
-  backspace handling; correction delay distribution; seed reproducibility).
+- [x] Phase 7: Error + self-correction injection — `core/humanize/errors.py`
+  (NEW). `inject_errors_and_corrections(text, *, rng, profile) -> list[(char, delay)]`
+  that, at a profile-driven rate, inserts a wrong char + backspace + correct char
+  with human correction delays. Spec §"errors.py", Deliverable #5.
+  Implements error injection (3% default rate), 4 error types (adjacent 40%,
+  shifted 30%, skip 20%, random 10%), backspace handling, realistic correction
+  delays (error_delay_s, correction_delay_s), StealthProfile-only activation,
+  no errors on first char. 20 comprehensive tests covering rate bounds, backspace
+  handling, correction delays, seed reproducibility, adjacent key mistypes,
+  edge cases, integration scenarios. ruff clean, all 8,722 tests passing.
+  (commit 59282a5)
 
 - [ ] Phase 8: Inertial scroll momentum — `core/humanize/scroll.py` (NEW).
   `momentum_scroll(delta, *, rng, profile) -> list[int]` decomposing a discrete
