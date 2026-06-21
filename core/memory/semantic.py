@@ -151,7 +151,7 @@ class SemanticMemory:
             return conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self._path))
+        conn = sqlite3.connect(str(self._path), timeout=10.0)
         conn.row_factory = sqlite3.Row
         return conn
 
