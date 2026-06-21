@@ -375,7 +375,7 @@ class ActionExecutor:
         button: str = "left",
         clicks: int = 1,
         target_size: tuple[int, int] | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Click at screen coordinates with optional stealth mode via PostMessage.
 
@@ -487,7 +487,7 @@ class ActionExecutor:
             ),
         }
 
-    def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **_) -> dict:
+    def _click_text(self, *, text: str, button: str = "left", fuzzy: bool = True, **kwargs: Any) -> dict:
         """OCR-backed click: locate visible text and click its centre.
 
         Self-healing: if OCR fails, tries UIAutomation click by name.
@@ -511,7 +511,7 @@ class ActionExecutor:
                 "error": "click_text_failed",
             }
 
-    def _read_text(self, *, scope: str = "focused", window: str | None = None, **_) -> dict:
+    def _read_text(self, *, scope: str = "focused", window: str | None = None, **kwargs: Any) -> dict:
         """OCR text from the screen.
 
         Args:
@@ -562,7 +562,7 @@ class ActionExecutor:
                 "error": "read_text_failed",
             }
 
-    def _read_window(self, *, title: str, **_) -> dict:
+    def _read_window(self, *, title: str, **kwargs: Any) -> dict:
         """OCR a specific window by partial title match — convenience for the LLM."""
         try:
             text = ocr.read_window_text(title)
@@ -597,7 +597,7 @@ class ActionExecutor:
         control_type: str | None = None,
         window_title: str | None = None,
         button: str = "left",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Click a native Windows control by its accessibility name/id/type.
 
@@ -666,7 +666,7 @@ class ActionExecutor:
         *,
         window_title: str | None = None,
         max_results: int = 60,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """List accessible controls in a window for the LLM to choose from."""
         try:
@@ -704,7 +704,7 @@ class ActionExecutor:
         *,
         element_id: int,
         button: str = "left",
-        **_,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Click a perception element by its numeric ID.
 
@@ -735,7 +735,7 @@ class ActionExecutor:
         *,
         mark_id: int,
         button: str = "left",
-        **_,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Click a Set-of-Marks target by its numbered mark ID.
 
@@ -745,7 +745,7 @@ class ActionExecutor:
         """
         return self._click_element(element_id=mark_id, button=button)
 
-    def _list_elements(self, **_) -> dict[str, Any]:
+    def _list_elements(self, **kwargs: Any) -> dict[str, Any]:
         """Return the current perception element list for the LLM.
 
         Provides a compact summary of all detected elements with their IDs,
@@ -777,7 +777,7 @@ class ActionExecutor:
         name: str | None = None,
         automation_id: str | None = None,
         window_title: str | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Set the value of a named edit/textbox control deterministically.
 
@@ -855,7 +855,7 @@ class ActionExecutor:
             "hint": "Try click_text() on the field label, then type_text()",
         }
 
-    def _click_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
+    def _click_image(self, *, template_path: str, confidence: float = 0.8, **kwargs: Any) -> dict:
         """Find a template image on screen and click it, using stealth if available."""
         # Find the template position; click via stealth if enabled so the
         # cursor stays put.
@@ -882,7 +882,7 @@ class ActionExecutor:
                 "error": "click_image_failed",
             }
 
-    def _type_text(self, *, text: str, field_type: str = "unknown", **_) -> dict:
+    def _type_text(self, *, text: str, field_type: str = "unknown", **kwargs: Any) -> dict:
         """Type text via keyboard input, falling back to clipboard paste if needed.
 
         Args:
@@ -921,7 +921,7 @@ class ActionExecutor:
             except Exception as exc2:
                 return {"success": False, "output": f"Type failed: {exc2}", "error": "type_failed"}
 
-    def _press_key(self, *, key: str, **_) -> dict:
+    def _press_key(self, *, key: str, **kwargs: Any) -> dict:
         """Press a single named key (e.g. 'enter', 'tab', 'escape')."""
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_named_key(key):
@@ -936,7 +936,7 @@ class ActionExecutor:
                 "error": "press_key_failed",
             }
 
-    def _hotkey(self, *, keys: list, **_) -> dict:
+    def _hotkey(self, *, keys: list, **kwargs: Any) -> dict:
         """Press a keyboard shortcut combination (e.g. ['ctrl', 'c'])."""
         try:
             if self.stealth and stealth_input.is_available() and stealth_input.post_hotkey(keys):
@@ -952,7 +952,7 @@ class ActionExecutor:
         *,
         x: int,
         y: int,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Move the mouse cursor to screen coordinates without clicking."""
         sx = int(x) + self.click_offset[0]
@@ -977,7 +977,7 @@ class ActionExecutor:
         to_y: int = 0,
         duration: float = 0.5,
         button: str = "left",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Drag from one screen position to another with stealth PostMessage support."""
         if coords is None:
@@ -1047,7 +1047,7 @@ class ActionExecutor:
             logger.debug("Stealth drag failed, falling back: %s", exc)
             return None
 
-    def _scroll(self, *, amount: int, **_) -> dict:
+    def _scroll(self, *, amount: int, **kwargs: Any) -> dict:
         """Scroll the mouse wheel by the given amount (positive = up, negative = down)."""
         try:
             self._desktop.scroll(amount)
@@ -1055,7 +1055,7 @@ class ActionExecutor:
         except Exception as exc:
             return {"success": False, "output": f"Scroll failed: {exc}", "error": "scroll_failed"}
 
-    def _screenshot(self, **_) -> dict:
+    def _screenshot(self, **kwargs: Any) -> dict:
         """Capture a screenshot and return it as a base64-encoded string."""
         try:
             b64 = capture_to_base64(monitor=self.monitor)
@@ -1071,7 +1071,7 @@ class ActionExecutor:
                 "error": "capture_failed",
             }
 
-    def _find_image(self, *, template_path: str, confidence: float = 0.8, **_) -> dict:
+    def _find_image(self, *, template_path: str, confidence: float = 0.8, **kwargs: Any) -> dict:
         """Locate a template image on screen and return its position."""
         try:
             pos = find_template(template_path, confidence)
@@ -1093,7 +1093,7 @@ class ActionExecutor:
                 "error": "find_image_failed",
             }
 
-    def _wait(self, *, seconds: float = 1.0, **_) -> dict:
+    def _wait(self, *, seconds: float = 1.0, **kwargs: Any) -> dict:
         """Sleep for the given duration, capped at 60s to prevent runaway waits."""
         import time as _time
 
@@ -1106,7 +1106,7 @@ class ActionExecutor:
         except Exception as exc:
             return {"success": False, "output": f"Wait failed: {exc}", "error": "wait_failed"}
 
-    def _wait_for_image(self, *, template_path: str, timeout: int = 30, **_) -> dict:
+    def _wait_for_image(self, *, template_path: str, timeout: int = 30, **kwargs: Any) -> dict:
         """Poll until a template image appears on screen or timeout elapses."""
         try:
             pos = wait_for_template(template_path, float(timeout))
@@ -1124,7 +1124,7 @@ class ActionExecutor:
                 "error": "wait_for_image_failed",
             }
 
-    def _smart_wait(self, *, timeout: float = 10, region: list | None = None, **_) -> dict:
+    def _smart_wait(self, *, timeout: float = 10, region: list | None = None, **kwargs: Any) -> dict:
         """Wait until the screen changes (visual diff)."""
         try:
             from core.smart_wait import SmartWait
@@ -1158,7 +1158,7 @@ class ActionExecutor:
         timeout: float = 10,
         stable_time: float = 1.5,
         region: list | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Wait until the screen stops changing."""
         try:
@@ -1194,7 +1194,7 @@ class ActionExecutor:
         text: str,
         timeout: float = 10,
         region: list | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Wait until specific text appears on screen via OCR."""
         try:
@@ -1217,7 +1217,7 @@ class ActionExecutor:
                 "error": "wait_for_text_failed",
             }
 
-    def _open_app(self, *, path: str, args: list | None = None, **_) -> dict:
+    def _open_app(self, *, path: str, args: list | None = None, **kwargs: Any) -> dict:
         """Launch an application by executable path with optional arguments."""
         try:
             pid = pm.start_process(path, args)
@@ -1231,7 +1231,7 @@ class ActionExecutor:
                 "error": "open_app_failed",
             }
 
-    def _smart_open(self, *, name: str, **_) -> dict:
+    def _smart_open(self, *, name: str, **kwargs: Any) -> dict:
         """Focus an existing window if the app is already running, else launch.
 
         Self-healing: if normal launch fails, tries PowerShell Start-Process.
@@ -1267,7 +1267,7 @@ class ActionExecutor:
         result["hint"] = "Try open_app() with the full executable path"
         return result
 
-    def _close_app(self, *, name: str | None = None, pid: int | None = None, **_) -> dict:
+    def _close_app(self, *, name: str | None = None, pid: int | None = None, **kwargs: Any) -> dict:
         """Kill a running process by name or PID."""
         target = pid or name
         if target is None:
@@ -1289,7 +1289,7 @@ class ActionExecutor:
                 "error": "close_app_failed",
             }
 
-    def _focus_window(self, *, title: str, **_) -> dict:
+    def _focus_window(self, *, title: str, **kwargs: Any) -> dict:
         """Focus a window by partial title match.
 
         Self-healing: if exact focus fails, scans visible windows for
@@ -1331,7 +1331,7 @@ class ActionExecutor:
                 "error": "focus_window_failed",
             }
 
-    def _close_window(self, *, title: str, **_) -> dict:
+    def _close_window(self, *, title: str, **kwargs: Any) -> dict:
         """Close a window by partial title match."""
         try:
             ok = wm.close_window(title)
@@ -1343,7 +1343,7 @@ class ActionExecutor:
                 "error": "close_window_failed",
             }
 
-    def _list_windows(self, **_) -> dict:
+    def _list_windows(self, **kwargs: Any) -> dict:
         """List all visible windows with titles and positions."""
         try:
             windows = wm.list_windows()
@@ -1355,7 +1355,7 @@ class ActionExecutor:
                 "error": "list_windows_failed",
             }
 
-    def _read_file(self, *, path: str, **_) -> dict:
+    def _read_file(self, *, path: str, **kwargs: Any) -> dict:
         """Read a file's contents and return up to 5000 chars as a preview."""
         try:
             content = file_ops.read_file(path)
@@ -1374,7 +1374,7 @@ class ActionExecutor:
                 "error": "read_file_failed",
             }
 
-    def _write_file(self, *, path: str, content: str, **_) -> dict:
+    def _write_file(self, *, path: str, content: str, **kwargs: Any) -> dict:
         """Write content to a file on disk."""
         try:
             ok = file_ops.write_file(path, content)
@@ -1386,7 +1386,7 @@ class ActionExecutor:
                 "error": "write_file_failed",
             }
 
-    def _list_directory(self, *, path: str = ".", **_) -> dict:
+    def _list_directory(self, *, path: str = ".", **kwargs: Any) -> dict:
         """List files and subdirectories in the given directory path."""
         try:
             entries = file_ops.list_directory(path)
@@ -1404,35 +1404,35 @@ class ActionExecutor:
     # File Operations Plus (v13.0 — extended file management)
     # -------------------------------------------------------------------
 
-    def _delete_file(self, *, path: str, force: bool = False, **_) -> dict:
+    def _delete_file(self, *, path: str, force: bool = False, **kwargs: Any) -> dict:
         """Delete a file or directory."""
         ok = file_ops.delete_file(path, force=force)
         if ok:
             return {"success": True, "output": f"Deleted {path}"}
         return {"success": False, "output": f"Failed to delete {path}"}
 
-    def _move_file(self, *, src: str, dst: str, **_) -> dict:
+    def _move_file(self, *, src: str, dst: str, **kwargs: Any) -> dict:
         """Move or rename a file."""
         ok = file_ops.move_file(src, dst)
         if ok:
             return {"success": True, "output": f"Moved {src} → {dst}"}
         return {"success": False, "output": f"Failed to move {src} → {dst}"}
 
-    def _copy_file(self, *, src: str, dst: str, **_) -> dict:
+    def _copy_file(self, *, src: str, dst: str, **kwargs: Any) -> dict:
         """Copy a file to a new location."""
         ok = file_ops.copy_file(src, dst)
         if ok:
             return {"success": True, "output": f"Copied {src} → {dst}"}
         return {"success": False, "output": f"Failed to copy {src} → {dst}"}
 
-    def _mkdir(self, *, path: str, parents: bool = True, **_) -> dict:
+    def _mkdir(self, *, path: str, parents: bool = True, **kwargs: Any) -> dict:
         """Create a directory."""
         ok = file_ops.mkdir(path, parents=parents)
         if ok:
             return {"success": True, "output": f"Created directory {path}"}
         return {"success": False, "output": f"Failed to create {path}"}
 
-    def _stat_file(self, *, path: str, **_) -> dict:
+    def _stat_file(self, *, path: str, **kwargs: Any) -> dict:
         """Get file metadata."""
         info = file_ops.stat_file(path)
         if info is not None:
@@ -1449,7 +1449,7 @@ class ActionExecutor:
         pattern: str,
         root: str = ".",
         max_results: int = 100,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Search for files matching a glob pattern."""
         results = file_ops.find_files(
@@ -1475,7 +1475,7 @@ class ActionExecutor:
         archive_path: str,
         files: list[str],
         base_dir: str = ".",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Create a zip archive."""
         ok = file_ops.archive_create(
@@ -1498,7 +1498,7 @@ class ActionExecutor:
         *,
         archive_path: str,
         dest_dir: str = ".",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Extract a zip archive."""
         ok = file_ops.archive_extract(archive_path, dest_dir=dest_dir)
@@ -1516,7 +1516,7 @@ class ActionExecutor:
     # Process & Service Control (v13.0)
     # -------------------------------------------------------------------
 
-    def _set_priority(self, *, pid: int, priority: str, **_) -> dict:
+    def _set_priority(self, *, pid: int, priority: str, **kwargs: Any) -> dict:
         """Set process priority."""
         from core.process_manager import set_priority
 
@@ -1526,7 +1526,7 @@ class ActionExecutor:
             "output": f"Priority {'set' if ok else 'failed'} for PID {pid}",
         }
 
-    def _get_env(self, *, name: str, **_) -> dict:
+    def _get_env(self, *, name: str, **kwargs: Any) -> dict:
         """Read an environment variable."""
         from core.process_manager import get_env
 
@@ -1545,7 +1545,7 @@ class ActionExecutor:
         name: str,
         value: str,
         permanent: bool = False,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Set an environment variable."""
         from core.process_manager import set_env
@@ -1561,7 +1561,7 @@ class ActionExecutor:
         *,
         name: str,
         control_action: str,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Control a Windows service."""
         from core.process_manager import service_control
@@ -1572,7 +1572,7 @@ class ActionExecutor:
     # Credential Vault (v13.0)
     # -------------------------------------------------------------------
 
-    def _cred_store(self, *, key: str, value: str, **_) -> dict:
+    def _cred_store(self, *, key: str, value: str, **kwargs: Any) -> dict:
         """Store a credential in the vault."""
         from core.encryption import CredentialVault
 
@@ -1583,7 +1583,7 @@ class ActionExecutor:
             "output": f"{'Stored' if ok else 'Failed'} {key}",
         }
 
-    def _cred_read(self, *, key: str, **_) -> dict:
+    def _cred_read(self, *, key: str, **kwargs: Any) -> dict:
         """Read a credential from the vault."""
         from core.encryption import CredentialVault
 
@@ -1606,7 +1606,7 @@ class ActionExecutor:
         *,
         path: str,
         value_name: str = "",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Read a registry value."""
         from core.registry import registry_read
@@ -1627,7 +1627,7 @@ class ActionExecutor:
         value_name: str,
         data: str,
         reg_type: str = "REG_SZ",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Write a registry value."""
         from core.registry import registry_write
@@ -1643,7 +1643,7 @@ class ActionExecutor:
         *,
         path: str,
         value_name: str | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Delete a registry key or value."""
         from core.registry import registry_delete
@@ -1654,7 +1654,7 @@ class ActionExecutor:
             "output": f"{'Deleted' if ok else 'Failed'} {path}",
         }
 
-    def _clipboard_read(self, **_) -> dict:
+    def _clipboard_read(self, **kwargs: Any) -> dict:
         """Read the current contents of the system clipboard."""
         try:
             text = clip.clipboard_read()
@@ -1666,7 +1666,7 @@ class ActionExecutor:
                 "error": "clipboard_failed",
             }
 
-    def _clipboard_write(self, *, text: str, **_) -> dict:
+    def _clipboard_write(self, *, text: str, **kwargs: Any) -> dict:
         """Write text to the system clipboard."""
         try:
             ok = clip.clipboard_write(text)
@@ -1678,7 +1678,7 @@ class ActionExecutor:
                 "error": "clipboard_failed",
             }
 
-    def _system_info(self, **_) -> dict:
+    def _system_info(self, **kwargs: Any) -> dict:
         """Return OS, CPU, memory, and disk information."""
         try:
             info = sysinfo.system_info()
@@ -1690,7 +1690,7 @@ class ActionExecutor:
                 "error": "system_info_failed",
             }
 
-    def _list_processes(self, **_) -> dict:
+    def _list_processes(self, **kwargs: Any) -> dict:
         """List running processes (up to 100 entries)."""
         try:
             procs = pm.list_processes()
@@ -1702,7 +1702,7 @@ class ActionExecutor:
                 "error": "list_processes_failed",
             }
 
-    def _start_process(self, *, path: str, args: list | None = None, **_) -> dict:
+    def _start_process(self, *, path: str, args: list | None = None, **kwargs: Any) -> dict:
         """Start a new process by executable path and return its PID."""
         try:
             pid = pm.start_process(path, args)
@@ -1714,7 +1714,7 @@ class ActionExecutor:
                 "error": "start_process_failed",
             }
 
-    def _kill_process(self, *, pid: int | None = None, name: str | None = None, **_) -> dict:
+    def _kill_process(self, *, pid: int | None = None, name: str | None = None, **kwargs: Any) -> dict:
         """Terminate a process by PID or name."""
         target = pid or name
         try:
@@ -1730,7 +1730,7 @@ class ActionExecutor:
                 "error": "kill_process_failed",
             }
 
-    def _note(self, *, text: str, **_) -> dict:
+    def _note(self, *, text: str, **kwargs: Any) -> dict:
         """Agent makes a note to itself — no-op for execution, logged."""
         logger.info("Agent note: %s", text)
         return {"success": True, "output": text}
@@ -1746,7 +1746,7 @@ class ActionExecutor:
             self._browser_manager = BrowserManager(headless=True, ignore_https_errors=True)
         return self._browser_manager
 
-    def _web_open(self, *, url: str, wait_until: str = "load", **_) -> dict:
+    def _web_open(self, *, url: str, wait_until: str = "load", **kwargs: Any) -> dict:
         """Navigate to a URL in the managed browser."""
         return self.browser.open(url, wait_until=wait_until)
 
@@ -1760,7 +1760,7 @@ class ActionExecutor:
         name: str | None = None,
         button: str = "left",
         click_count: int = 1,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Click an element in the browser by selector, text, or ARIA role."""
         if params is None:
@@ -1791,7 +1791,7 @@ class ActionExecutor:
         role: str | None = None,
         name: str | None = None,
         clear: bool = True,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Type text into a browser form field."""
         if params is None:
@@ -1812,11 +1812,11 @@ class ActionExecutor:
             clear=params.clear,
         )
 
-    def _web_read(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
+    def _web_read(self, *, selector: str | None = None, full_page: bool = False, **kwargs: Any) -> dict:
         """Read text content from the browser page or element."""
         return self.browser.read(selector=selector, full_page=full_page)
 
-    def _web_extract(self, *, selector: str = "table", format: str = "json", **_) -> dict:
+    def _web_extract(self, *, selector: str = "table", format: str = "json", **kwargs: Any) -> dict:
         """Extract structured data from the browser page."""
         return self.browser.extract(selector=selector, format=format)
 
@@ -1827,7 +1827,7 @@ class ActionExecutor:
         text: str | None = None,
         state: str = "visible",
         timeout: float = 30.0,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Wait for an element or condition in the browser."""
         return self.browser.wait_for(
@@ -1837,19 +1837,19 @@ class ActionExecutor:
             timeout=timeout * 1000,
         )
 
-    def _web_screenshot(self, *, selector: str | None = None, full_page: bool = False, **_) -> dict:
+    def _web_screenshot(self, *, selector: str | None = None, full_page: bool = False, **kwargs: Any) -> dict:
         """Capture a screenshot of the browser viewport or element."""
         return self.browser.screenshot(selector=selector, full_page=full_page)
 
-    def _web_eval_js(self, *, expression: str, **_) -> dict:
+    def _web_eval_js(self, *, expression: str, **kwargs: Any) -> dict:
         """Execute JavaScript in the browser context."""
         return self.browser.eval_js(expression=expression)
 
-    def _web_download(self, *, url: str | None = None, save_path: str | None = None, **_) -> dict:
+    def _web_download(self, *, url: str | None = None, save_path: str | None = None, **kwargs: Any) -> dict:
         """Download a file from the browser."""
         return self.browser.download(url=url, save_path=save_path)
 
-    def _web_upload(self, *, selector: str, file_paths: list[str], **_) -> dict:
+    def _web_upload(self, *, selector: str, file_paths: list[str], **kwargs: Any) -> dict:
         """Upload files to a web form."""
         return self.browser.upload(selector=selector, file_paths=file_paths)
 
@@ -1859,16 +1859,16 @@ class ActionExecutor:
         action: str = "list",
         index: int | None = None,
         url: str | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Manage browser tabs."""
         return self.browser.tabs(action=action, index=index, url=url)
 
-    def _finish(self, *, summary: str = "", **_) -> dict:
+    def _finish(self, *, summary: str = "", **kwargs: Any) -> dict:
         """Signal that the agent is done."""
         return {"success": True, "output": summary, "done": True}
 
-    def _powershell(self, *, command: str, **_) -> dict:
+    def _powershell(self, *, command: str, **kwargs: Any) -> dict:
         """Run a PowerShell command and return output."""
         try:
             from core.powershell import get_default_runner
@@ -1888,7 +1888,7 @@ class ActionExecutor:
                 "error": "powershell_failed",
             }
 
-    def _run_script(self, *, path: str, params: dict | None = None, **_) -> dict:
+    def _run_script(self, *, path: str, params: dict | None = None, **kwargs: Any) -> dict:
         """Replay a recorded script from a JSON file."""
         try:
             from core.script_engine import ScriptEngine
@@ -1917,7 +1917,7 @@ class ActionExecutor:
         password: str = "",
         port: int = 22,
         key_filename: str | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Connect to a network device via SSH."""
         try:
@@ -1940,7 +1940,7 @@ class ActionExecutor:
                 "error": "ssh_connect_failed",
             }
 
-    def _ssh_disconnect(self, *, hostname: str, **_) -> dict:
+    def _ssh_disconnect(self, *, hostname: str, **kwargs: Any) -> dict:
         """Disconnect from an SSH device."""
         client = self._ssh_clients.pop(hostname, None)
         if client is None:
@@ -1954,7 +1954,7 @@ class ActionExecutor:
         hostname: str,
         command: str,
         timeout: float | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Run a command on a connected SSH device."""
         client = self._ssh_clients.get(hostname)
@@ -1978,7 +1978,7 @@ class ActionExecutor:
         hostname: str,
         what: str,
         device_type: str = "generic",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Run a device-aware show command on an SSH device."""
         from core.netops.command_runner import CommandRunner
@@ -2032,7 +2032,7 @@ class ActionExecutor:
         target: str,
         count: int = 4,
         device_type: str = "generic",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Ping a target from a connected SSH device."""
         from core.netops.command_runner import CommandRunner
@@ -2057,7 +2057,7 @@ class ActionExecutor:
         hostname: str,
         target: str,
         device_type: str = "generic",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Traceroute to a target from a connected SSH device."""
         from core.netops.command_runner import CommandRunner
@@ -2091,7 +2091,7 @@ class ActionExecutor:
         value: str,
         category: str = "",
         tags: list[str] | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Store a fact in semantic memory."""
         try:
@@ -2105,7 +2105,7 @@ class ActionExecutor:
                 "error": "memory_store_failed",
             }
 
-    def _memory_recall(self, *, key: str, **_) -> dict:
+    def _memory_recall(self, *, key: str, **kwargs: Any) -> dict:
         """Recall a fact from semantic memory by key."""
         try:
             mem = self._get_semantic_memory()
@@ -2120,7 +2120,7 @@ class ActionExecutor:
                 "error": "memory_recall_failed",
             }
 
-    def _memory_search(self, *, query: str, limit: int = 10, **_) -> dict:
+    def _memory_search(self, *, query: str, limit: int = 10, **kwargs: Any) -> dict:
         """Search semantic memory by keyword."""
         try:
             mem = self._get_semantic_memory()
@@ -2133,7 +2133,7 @@ class ActionExecutor:
                 "error": "memory_search_failed",
             }
 
-    def _memory_forget(self, *, key: str, **_) -> dict:
+    def _memory_forget(self, *, key: str, **kwargs: Any) -> dict:
         """Delete a fact from semantic memory."""
         try:
             mem = self._get_semantic_memory()
@@ -2165,7 +2165,7 @@ class ActionExecutor:
         *,
         goal: str,
         timeout: float = 120.0,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Decompose and execute a complex goal via conductor."""
         try:
@@ -2188,7 +2188,7 @@ class ActionExecutor:
         *,
         goal: str,
         timeout: float = 120.0,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Synchronous wrapper for conductor_run."""
         import concurrent.futures
@@ -2204,7 +2204,7 @@ class ActionExecutor:
     # Resilience actions (v14.0)
     # -------------------------------------------------------------------
 
-    def _retry_last(self, **_) -> dict:
+    def _retry_last(self, **kwargs: Any) -> dict:
         """Retry the last failed action in the execution log."""
         for entry in reversed(self._log):
             if not entry.get("success", True):
@@ -2214,7 +2214,7 @@ class ActionExecutor:
                 return self.execute_sync({"action": action_type, **params})
         return {"success": False, "output": "No failed action in log to retry"}
 
-    def _get_circuit_breakers(self, **_) -> dict:
+    def _get_circuit_breakers(self, **kwargs: Any) -> dict:
         """Return state of all circuit breakers."""
         from core.resilience import get_all_breaker_stats
 
@@ -2225,14 +2225,14 @@ class ActionExecutor:
     # Config actions (v15.0)
     # -------------------------------------------------------------------
 
-    def _config_get(self, *, key: str, default: Any = None, **_) -> dict:
+    def _config_get(self, *, key: str, default: Any = None, **kwargs: Any) -> dict:
         """Read a persisted config value."""
         from core.config_store import get_default_store
 
         val = get_default_store().get(key, default)
         return {"success": True, "key": key, "value": val, "output": str(val)}
 
-    def _config_set(self, *, key: str, value: Any, **_) -> dict:
+    def _config_set(self, *, key: str, value: Any, **kwargs: Any) -> dict:
         """Persist a config value."""
         from core.config_store import get_default_store
 
@@ -2249,7 +2249,7 @@ class ActionExecutor:
         hostname: str,
         record_type: str = "A",
         server: str | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Resolve a hostname via DNS."""
         from core.net_tools import dns_lookup
@@ -2265,7 +2265,7 @@ class ActionExecutor:
         host: str,
         count: int = 4,
         timeout: int = 3,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Ping a host."""
         from core.net_tools import ping_host
@@ -2280,7 +2280,7 @@ class ActionExecutor:
         host: str,
         ports: list[int],
         timeout: float = 2.0,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Scan TCP ports on a host."""
         from core.net_tools import scan_ports
@@ -2299,43 +2299,43 @@ class ActionExecutor:
     # Window management actions (v16.0)
     # -------------------------------------------------------------------
 
-    def _resize_window(self, *, title: str, width: int, height: int, **_) -> dict:
+    def _resize_window(self, *, title: str, width: int, height: int, **kwargs: Any) -> dict:
         """Resize a window by title."""
         from core.window_control import resize_window
 
         return resize_window(title, width, height)
 
-    def _move_window(self, *, title: str, x: int, y: int, **_) -> dict:
+    def _move_window(self, *, title: str, x: int, y: int, **kwargs: Any) -> dict:
         """Move a window by title."""
         from core.window_control import move_window
 
         return move_window(title, x, y)
 
-    def _minimize_window(self, *, title: str, **_) -> dict:
+    def _minimize_window(self, *, title: str, **kwargs: Any) -> dict:
         """Minimize a window by title."""
         from core.window_control import minimize_window
 
         return minimize_window(title)
 
-    def _maximize_window(self, *, title: str, **_) -> dict:
+    def _maximize_window(self, *, title: str, **kwargs: Any) -> dict:
         """Maximize a window by title."""
         from core.window_control import maximize_window
 
         return maximize_window(title)
 
-    def _restore_window(self, *, title: str, **_) -> dict:
+    def _restore_window(self, *, title: str, **kwargs: Any) -> dict:
         """Restore a window by title."""
         from core.window_control import restore_window
 
         return restore_window(title)
 
-    def _get_window_state(self, *, title: str, **_) -> dict:
+    def _get_window_state(self, *, title: str, **kwargs: Any) -> dict:
         """Get window geometry and state."""
         from core.window_control import get_window_state
 
         return get_window_state(title)
 
-    def _get_monitors(self, **_) -> dict:
+    def _get_monitors(self, **kwargs: Any) -> dict:
         """Return all connected monitor info."""
         from core.window_control import get_monitors
 
@@ -2354,7 +2354,7 @@ class ActionExecutor:
         params: dict | None = None,
         timeout: float = 30.0,
         verify_ssl: bool = True,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """HTTP GET request."""
         from core.http_client import http_get
@@ -2371,7 +2371,7 @@ class ActionExecutor:
         headers: dict | None = None,
         timeout: float = 30.0,
         verify_ssl: bool = True,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """HTTP POST request."""
         from core.http_client import http_post
@@ -2403,7 +2403,7 @@ class ActionExecutor:
         headers: dict | None = None,
         timeout: float = 120.0,
         verify_ssl: bool = True,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Download file via HTTP."""
         from core.http_client import http_download
@@ -2423,7 +2423,7 @@ class ActionExecutor:
         event: str = "modify",
         timeout: float = 60.0,
         poll_interval: float = 0.5,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Wait for a file event (modify/create/delete)."""
         from core.file_watcher import watch_file
@@ -2436,7 +2436,7 @@ class ActionExecutor:
         path: str,
         contains: str,
         timeout: float = 60.0,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Wait until a file contains a specific string."""
         from core.file_watcher import watch_file_content
@@ -2450,7 +2450,7 @@ class ActionExecutor:
         event: str = "start",
         pid: int | None = None,
         timeout: float = 60.0,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Wait for a process event (start/stop/cpu_spike)."""
         from core.file_watcher import watch_process
@@ -2468,7 +2468,7 @@ class ActionExecutor:
         blocking: bool = True,
         rate: int = 0,
         volume: int = 100,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Speak text via Windows TTS."""
         from core.audio import speak
@@ -2481,7 +2481,7 @@ class ActionExecutor:
         *,
         timeout: float = 5.0,
         phrase_limit: float = 10.0,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Capture microphone input and return transcription."""
         from core.audio import listen
@@ -2491,7 +2491,7 @@ class ActionExecutor:
             return {"success": True, "text": text, "output": text}
         return {"success": False, "text": "", "output": "No speech detected"}
 
-    def _volume_get(self, **_) -> dict:
+    def _volume_get(self, **kwargs: Any) -> dict:
         """Get system master volume."""
         from core.audio import volume_get
 
@@ -2500,7 +2500,7 @@ class ActionExecutor:
             return {"success": False, "output": "Volume unavailable on this platform"}
         return {"success": True, "level": level, "output": f"Volume: {level}%"}
 
-    def _volume_set(self, *, level: int, **_) -> dict:
+    def _volume_set(self, *, level: int, **kwargs: Any) -> dict:
         """Set system master volume."""
         from core.audio import volume_set
 
@@ -2511,14 +2511,14 @@ class ActionExecutor:
             "output": f"Set volume to {level}%" if ok else "Volume set failed",
         }
 
-    def _mute_toggle(self, **_) -> dict:
+    def _mute_toggle(self, **kwargs: Any) -> dict:
         """Toggle system mute."""
         from core.audio import mute_toggle
 
         muted = mute_toggle()
         return {"success": True, "muted": muted, "output": "Muted" if muted else "Unmuted"}
 
-    def _list_voices(self, **_) -> dict:
+    def _list_voices(self, **kwargs: Any) -> dict:
         """List available TTS voices."""
         from core.audio import list_voices
 
@@ -2529,7 +2529,7 @@ class ActionExecutor:
     # Neuralis Brain actions (v18.0 — fleet-wide shared memory)
     # -------------------------------------------------------------------
 
-    def _brain_think(self, *, content: str, region: str = "knowledge", **_) -> dict:
+    def _brain_think(self, *, content: str, region: str = "knowledge", **kwargs: Any) -> dict:
         """Persist a thought to the Neuralis Brain (auto-write, no gate)."""
         from core import brain
 
@@ -2551,7 +2551,7 @@ class ActionExecutor:
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
-    def _brain_recall(self, *, context: str, **_) -> dict:
+    def _brain_recall(self, *, context: str, **kwargs: Any) -> dict:
         """Retrieve the most relevant thoughts from the fleet brain."""
         from core import brain
 
@@ -2575,7 +2575,7 @@ class ActionExecutor:
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
-    def _brain_search(self, *, q: str, **_) -> dict:
+    def _brain_search(self, *, q: str, **kwargs: Any) -> dict:
         """Free-text search across all neurons in the fleet brain."""
         from core import brain
 
@@ -2597,7 +2597,7 @@ class ActionExecutor:
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
-    def _brain_stats(self, **_) -> dict:
+    def _brain_stats(self, **kwargs: Any) -> dict:
         """Return fleet brain health stats."""
         from core import brain
 
@@ -2620,7 +2620,7 @@ class ActionExecutor:
         except brain.BrainError as exc:
             return {"success": False, "error": "brain_error", "output": str(exc)}
 
-    def _brain_fire(self, *, neuron_id: int, **_) -> dict:
+    def _brain_fire(self, *, neuron_id: int, **kwargs: Any) -> dict:
         """Fire (reinforce) a neuron by ID."""
         from core import brain
 
@@ -2645,21 +2645,21 @@ class ActionExecutor:
     # Cost tracker (v21.0)
     # ------------------------------------------------------------------
 
-    def _cost_summary(self, **_) -> dict:
+    def _cost_summary(self, **kwargs: Any) -> dict:
         """Return LLM token and dollar usage for the current session."""
         from core.cost_tracker import get_cost_tracker
 
         summary = get_cost_tracker().session_summary()
         return {"success": True, "output": summary, **summary}
 
-    def _cost_history(self, *, limit: int = 50, **_) -> dict:
+    def _cost_history(self, *, limit: int = 50, **kwargs: Any) -> dict:
         """Return recent LLM usage records from persisted history."""
         from core.cost_tracker import get_cost_tracker
 
         records = get_cost_tracker().history(limit=int(limit))
         return {"success": True, "output": records, "count": len(records)}
 
-    def _cost_reset(self, **_) -> dict:
+    def _cost_reset(self, **kwargs: Any) -> dict:
         """Clear in-memory session cost counters."""
         from core.cost_tracker import get_cost_tracker
 
@@ -2670,7 +2670,7 @@ class ActionExecutor:
     # Eval harness (v21.0)
     # ------------------------------------------------------------------
 
-    def _eval_list(self, **_) -> dict:
+    def _eval_list(self, **kwargs: Any) -> dict:
         """List available evaluation scenarios."""
         from eval.registry import EvalRegistry
 
@@ -2678,7 +2678,7 @@ class ActionExecutor:
         names = registry.list_scenarios()
         return {"success": True, "output": names, "count": len(names)}
 
-    def _eval_run(self, *, name: str, stop_on_failure: bool = False, **_) -> dict:
+    def _eval_run(self, *, name: str, stop_on_failure: bool = False, **kwargs: Any) -> dict:
         """Run an evaluation scenario by name and return the result.
 
         Args:
@@ -2694,7 +2694,7 @@ class ActionExecutor:
         except FileNotFoundError as exc:
             return {"success": False, "error": str(exc)}
 
-        def _exec(action: str, **params):
+        def _exec(action: str, **params: Any):
             return self.execute(action, **params)
 
         runner = ScenarioRunner(_exec, stop_on_failure=bool(stop_on_failure))
@@ -2712,7 +2712,7 @@ class ActionExecutor:
             "score_delta": comparison.get("score_delta"),
         }
 
-    def _eval_results(self, *, name: str, limit: int = 10, **_) -> dict:
+    def _eval_results(self, *, name: str, limit: int = 10, **kwargs: Any) -> dict:
         """Return recent run results for a scenario."""
         from eval.registry import EvalRegistry
 
@@ -2724,7 +2724,7 @@ class ActionExecutor:
     # Skill marketplace (v21.0)
     # ------------------------------------------------------------------
 
-    def _skill_list(self, *, category: str | None = None, **_) -> dict:
+    def _skill_list(self, *, category: str | None = None, **kwargs: Any) -> dict:
         """List installed skills, optionally filtered by category."""
         from core.skill_marketplace import get_marketplace
 
@@ -2735,7 +2735,7 @@ class ActionExecutor:
             "count": len(skills),
         }
 
-    def _skill_search(self, *, query: str, **_) -> dict:
+    def _skill_search(self, *, query: str, **kwargs: Any) -> dict:
         """Search installed skills by name, description, or tags."""
         from core.skill_marketplace import get_marketplace
 
@@ -2750,7 +2750,7 @@ class ActionExecutor:
         self,
         *,
         params: SkillInstallParams | None = None,
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Install a skill into the local marketplace.
 
@@ -2786,7 +2786,7 @@ class ActionExecutor:
             "skill_dir": str(skill_dir),
         }
 
-    def _skill_get(self, *, name: str, **_) -> dict:
+    def _skill_get(self, *, name: str, **kwargs: Any) -> dict:
         """Retrieve a skill's manifest and script by name."""
         from core.skill_marketplace import get_marketplace
 
@@ -2800,7 +2800,7 @@ class ActionExecutor:
         except FileNotFoundError as exc:
             return {"success": False, "error": str(exc)}
 
-    def _skill_export(self, *, name: str, **_) -> dict:
+    def _skill_export(self, *, name: str, **kwargs: Any) -> dict:
         """Export a skill as a portable dict (manifest + script)."""
         from core.skill_marketplace import get_marketplace
 
@@ -2810,7 +2810,7 @@ class ActionExecutor:
         except FileNotFoundError as exc:
             return {"success": False, "error": str(exc)}
 
-    def _skill_uninstall(self, *, name: str, **_) -> dict:
+    def _skill_uninstall(self, *, name: str, **kwargs: Any) -> dict:
         """Remove an installed skill by name."""
         from core.skill_marketplace import get_marketplace
 
@@ -2819,7 +2819,7 @@ class ActionExecutor:
             return {"success": True, "output": f"Skill '{name}' uninstalled."}
         return {"success": False, "error": f"Skill '{name}' not found."}
 
-    def _skill_run(self, *, name: str, params: dict | None = None, **_) -> dict:
+    def _skill_run(self, *, name: str, params: dict | None = None, **kwargs: Any) -> dict:
         """Run an installed skill through the ScriptEngine.
 
         Args:
@@ -2858,7 +2858,7 @@ class ActionExecutor:
         condition: dict | None = None,
         action: dict | None = None,
         description: str = "",
-        **_,
+        **kwargs: Any,
     ) -> dict:
         """Register a new event trigger.
 
@@ -2888,7 +2888,7 @@ class ActionExecutor:
         get_trigger_registry().add(t)
         return {"success": True, "output": t.to_dict(), "id": t.id}
 
-    def _trigger_remove(self, *, id: str, **_) -> dict:  # noqa: A002
+    def _trigger_remove(self, *, id: str, **kwargs: Any) -> dict:  # noqa: A002
         """Remove a trigger by ID."""
         from core.triggers import get_trigger_registry
 
@@ -2897,7 +2897,7 @@ class ActionExecutor:
             return {"success": True, "output": f"Trigger '{id}' removed."}
         return {"success": False, "error": f"Trigger '{id}' not found."}
 
-    def _trigger_list(self, **_) -> dict:
+    def _trigger_list(self, **kwargs: Any) -> dict:
         """List all registered triggers."""
         from core.triggers import get_trigger_registry
 
@@ -2908,7 +2908,7 @@ class ActionExecutor:
             "count": len(triggers),
         }
 
-    def _trigger_enable(self, *, id: str, **_) -> dict:  # noqa: A002
+    def _trigger_enable(self, *, id: str, **kwargs: Any) -> dict:  # noqa: A002
         """Enable a trigger by ID."""
         from core.triggers import get_trigger_registry
 
@@ -2917,7 +2917,7 @@ class ActionExecutor:
             return {"success": True, "output": f"Trigger '{id}' enabled."}
         return {"success": False, "error": f"Trigger '{id}' not found."}
 
-    def _trigger_disable(self, *, id: str, **_) -> dict:  # noqa: A002
+    def _trigger_disable(self, *, id: str, **kwargs: Any) -> dict:  # noqa: A002
         """Disable a trigger by ID."""
         from core.triggers import get_trigger_registry
 
@@ -2926,7 +2926,7 @@ class ActionExecutor:
             return {"success": True, "output": f"Trigger '{id}' disabled."}
         return {"success": False, "error": f"Trigger '{id}' not found."}
 
-    def _trigger_fire_custom(self, *, event_name: str, **_) -> dict:
+    def _trigger_fire_custom(self, *, event_name: str, **kwargs: Any) -> dict:
         """Queue a named custom event in the TriggerEngine."""
         from core.triggers import get_trigger_engine
 
@@ -2940,7 +2940,7 @@ class ActionExecutor:
     # Voice engine (v22.0)
     # ------------------------------------------------------------------
 
-    def _voice_start_ambient(self, *, wake_word: str = "sentinel", **_) -> dict:
+    def _voice_start_ambient(self, *, wake_word: str = "sentinel", **kwargs: Any) -> dict:
         """Start background wake-word listening.
 
         Args:
@@ -2958,7 +2958,7 @@ class ActionExecutor:
             }
         return {"success": False, "output": "Ambient mode already running."}
 
-    def _voice_stop_ambient(self, **_) -> dict:
+    def _voice_stop_ambient(self, **kwargs: Any) -> dict:
         """Stop background wake-word listening."""
         from core.voice import get_voice_engine
 
@@ -2967,7 +2967,7 @@ class ActionExecutor:
             return {"success": True, "output": "Ambient listening stopped."}
         return {"success": False, "output": "Ambient mode was not running."}
 
-    def _voice_status(self, **_) -> dict:
+    def _voice_status(self, **kwargs: Any) -> dict:
         """Return current voice engine state."""
         from core.voice import get_voice_engine
 
