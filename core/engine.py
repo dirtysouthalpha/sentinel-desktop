@@ -50,6 +50,9 @@ if TYPE_CHECKING:
     from core.recorder import ActionRecorder
     from core.scheduler import TaskScheduler
     from core.script_engine import ScriptEngine
+    from core.web.dual_mode import InteractionMode
+    from core.web.session_vault import SessionVault
+    from core.web.web_recorder import WebRecorder
     from core.workflow import WorkflowEngine
 
 logger = logging.getLogger(__name__)
@@ -537,7 +540,7 @@ class AgentEngine:
     # ── Web subsystems (v8.0) ──────────────────────────────────────────
 
     @property
-    def web_recorder(self):
+    def web_recorder(self) -> WebRecorder:
         """Lazily create and return the WebRecorder instance."""
         if self._web_recorder is None:
             from core.web.web_recorder import WebRecorder
@@ -546,7 +549,7 @@ class AgentEngine:
         return self._web_recorder
 
     @property
-    def session_vault(self):
+    def session_vault(self) -> SessionVault:
         """Lazily create and return the SessionVault instance."""
         if self._session_vault is None:
             from core.web.session_vault import SessionVault
@@ -555,7 +558,7 @@ class AgentEngine:
         return self._session_vault
 
     @property
-    def interaction_mode(self):
+    def interaction_mode(self) -> InteractionMode:
         """Current interaction mode (native or web), auto-detected from goal."""
         if self._interaction_mode is None:
             from core.web.dual_mode import InteractionMode
