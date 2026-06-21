@@ -27,9 +27,8 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-<!-- Phase 3 BLOCKED 2026-06-21: PyPI publish failed with 403 Forbidden - invalid API
-     token. Need to configure Trusted Publishers or refresh PYPI_API_TOKEN.
-     GitHub Release succeeded. See run 27888597380. -->
+
+## Blocked
 
 - [BLOCKED: PyPI 403 - invalid API token, need Trusted Publishing or valid PYPI_API_TOKEN refresh] Phase 3: First clean automated release — verify the release pipeline
   end-to-end with a NON-COLLIDING patch version. CRITICAL: v22.0.0 is ALREADY on
@@ -53,12 +52,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
   created successfully, but PyPI publish failed with 403 Forbidden - invalid token.
   Need to either configure Trusted Publishers or refresh the PYPI_API_TOKEN secret.
   Next attempt must use v22.0.2 (PyPI rejected re-upload of 22.0.1).
-
-
-## Blocked
-
-<!-- Move a phase here with a [BLOCKED: <one-line reason>] note if it can't proceed. -->
-<!-- (Phase 3 is listed under ## Active with the BLOCKED marker instead) -->
 
 
 ## Done
