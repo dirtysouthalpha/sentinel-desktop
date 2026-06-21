@@ -32,15 +32,32 @@ _FailSafeException: type[Exception] = _FailSafeSentinelError
 
 
 def _ensure_pyautogui():
-    """Import pyautogui on first use to avoid headless system failures."""
+    """Import pyautogui on first use to avoid headless system failures.
+
+    Returns None (rather than raising) when pyautogui cannot be imported —
+    e.g. on a headless Linux box with no DISPLAY, pyautogui's import eagerly
+    reads ``os.environ['DISPLAY']`` via mouseinfo and raises ``KeyError``.
+    Callers must tolerate a None return by degrading gracefully (the
+    DesktopController falls back to default screen size + blank screenshots).
+    """
     global pyautogui, _FailSafeException
     if pyautogui is None:
-        import pyautogui as _pyautogui
+        try:
+            import pyautogui as _pyautogui
 
-        pyautogui = _pyautogui
-        _FailSafeException = pyautogui.FailSafeException
-        pyautogui.PAUSE = 0.1
-        pyautogui.FAILSAFE = True
+            pyautogui = _pyautogui
+            _FailSafeException = pyautogui.FailSafeException
+            pyautogui.PAUSE = 0.1
+            pyautogui.FAILSAFE = True
+        except (KeyError, ImportError, OSError, RuntimeError, AttributeError) as exc:
+            # KeyError: 'DISPLAY' on headless Linux (mouseinfo reads os.environ at import).
+            # ImportError: pyautogui not installed.
+            # The rest are defensive. We log + leave pyautogui as None; callers degrade.
+            logger.warning(
+                "pyautogui unavailable (%s: %s); input/capture will degrade.",
+                type(exc).__name__, exc,
+            )
+            return None
     return pyautogui
 
 
@@ -58,9 +75,11 @@ class DesktopController:
     def __init__(self) -> None:
         """Initialize the controller and detect the current screen resolution."""
         try:
-            _ensure_pyautogui()
-            self._screen_size: tuple[int, int] = pyautogui.size()
-        except (OSError, RuntimeError, ValueError):
+            pg = _ensure_pyautogui()
+            self._screen_size: tuple[int, int] = (
+                pg.size() if pg is not None else (1920, 1080)
+            )
+        except (OSError, RuntimeError, AttributeError, ValueError, KeyError):
             logger.warning("Could not detect screen size, defaulting to 1920x1080")
             self._screen_size = (1920, 1080)
 
@@ -75,7 +94,7 @@ class DesktopController:
         try:
             _ensure_pyautogui()
             return pyautogui.screenshot()
-        except (OSError, RuntimeError) as exc:
+        except (OSError, RuntimeError, AttributeError) as exc:
             logger.warning("screenshot failed: %s", exc)
             return Image.new("RGB", self._screen_size)
 
@@ -114,7 +133,7 @@ class DesktopController:
         try:
             _ensure_pyautogui()
             return pyautogui.screenshot(region=(x, y, w, h))
-        except (OSError, RuntimeError) as exc:
+        except (OSError, RuntimeError, AttributeError) as exc:
             logger.warning("screenshot_region failed: %s", exc)
             return Image.new("RGB", (w, h))
 
@@ -154,7 +173,7 @@ class DesktopController:
                 )
             else:
                 pyautogui.click(x=x, y=y, button=button, clicks=clicks)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("click failed: %s", exc)
 
     def double_click(self, x: int, y: int) -> None:
@@ -171,7 +190,7 @@ class DesktopController:
                 self._humanized_move_and_click(x, y, button="left", clicks=2)
             else:
                 pyautogui.doubleClick(x=x, y=y)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("double_click failed: %s", exc)
 
     def right_click(self, x: int, y: int) -> None:
@@ -188,7 +207,7 @@ class DesktopController:
                 self._humanized_move_and_click(x, y, button="right", clicks=1)
             else:
                 pyautogui.rightClick(x=x, y=y)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("right_click failed: %s", exc)
 
     def _humanized_move_and_click(
@@ -218,7 +237,7 @@ class DesktopController:
             logger.debug("humanized move fell back to linear: %s", exc)
             try:
                 pyautogui.moveTo(x=x, y=y)
-            except (_FailSafeException, OSError, RuntimeError):
+            except (_FailSafeException, OSError, RuntimeError, AttributeError):
                 pass
         # Click with a humanized down→up hold between repeated clicks.
         hold = None
@@ -274,7 +293,7 @@ class DesktopController:
                 self._humanized_move_to(x, y)
             else:
                 pyautogui.moveTo(x=x, y=y, duration=duration)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("move_to failed: %s", exc)
 
     def drag(
@@ -301,7 +320,7 @@ class DesktopController:
             _ensure_pyautogui()
             pyautogui.moveTo(from_x, from_y)
             pyautogui.drag(to_x - from_x, to_y - from_y, duration=duration, button=button)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("drag failed: %s", exc)
 
     def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> None:
@@ -323,7 +342,7 @@ class DesktopController:
                     return
 
             pyautogui.scroll(amount, x=x, y=y)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("scroll failed: %s", exc)
 
     def get_mouse_position(self) -> tuple[int, int]:
@@ -336,7 +355,7 @@ class DesktopController:
         try:
             _ensure_pyautogui()
             return pyautogui.position()
-        except (OSError, RuntimeError) as exc:
+        except (OSError, RuntimeError, AttributeError) as exc:
             logger.warning("get_mouse_position failed: %s", exc)
             return (0, 0)
 
@@ -356,7 +375,7 @@ class DesktopController:
                 self._humanized_type(text)
             else:
                 pyautogui.write(text, interval=interval)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("type_text failed: %s", exc)
 
     def _humanized_type(self, text: str) -> None:
@@ -416,7 +435,7 @@ class DesktopController:
         try:
             _ensure_pyautogui()
             pyautogui.press(key)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("press_key failed: %s", exc)
 
     def hotkey(self, *keys: str) -> None:
@@ -424,7 +443,7 @@ class DesktopController:
         try:
             _ensure_pyautogui()
             pyautogui.hotkey(*keys)
-        except (_FailSafeException, OSError, RuntimeError) as exc:
+        except (_FailSafeException, OSError, RuntimeError, AttributeError) as exc:
             logger.warning("hotkey failed: %s", exc)
 
     def find_on_screen(self, template_path: str, confidence: float = 0.8) -> tuple[int, int] | None:
@@ -458,7 +477,7 @@ class DesktopController:
             if max_val >= confidence:
                 h, w = template.shape
                 return (max_loc[0] + w // 2, max_loc[1] + h // 2)
-        except (OSError, RuntimeError, ValueError) as exc:
+        except (OSError, RuntimeError, AttributeError, ValueError) as exc:
             logger.warning("find_on_screen failed: %s", exc)
         return None
 
@@ -488,7 +507,7 @@ class DesktopController:
                 pos = self.find_on_screen(template_path, confidence)
                 if pos:
                     return pos
-            except (OSError, RuntimeError, ValueError) as exc:
+            except (OSError, RuntimeError, AttributeError, ValueError) as exc:
                 logger.warning("wait_for_image scan failed: %s", exc)
             time.sleep(interval)
         return None

@@ -218,7 +218,9 @@ def detect_monitors() -> list[MonitorInfo]:
             import pyautogui
 
             w, h = pyautogui.size()
-        except OSError:
+        except (OSError, KeyError, ImportError, RuntimeError):
+            # KeyError: 'DISPLAY' on headless Linux (mouseinfo reads os.environ at import).
+            # ImportError: pyautogui not installed.
             w, h = 1920, 1080
 
         return [
