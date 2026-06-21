@@ -19,6 +19,7 @@ Endpoints:
 """
 
 import asyncio
+import contextlib
 import hmac
 import json
 import logging
@@ -865,18 +866,12 @@ class SentinelServer:
         if not hasattr(os, "WNOHANG"):
             # Windows has no PTY/waitpid support; nothing to clean up.
             return
-        try:
+        with contextlib.suppress(ProcessLookupError, OSError):
             os.kill(child_pid, signal.SIGTERM)
-        except (ProcessLookupError, OSError):
-            pass
-        try:
+        with contextlib.suppress(OSError):
             os.close(master_fd)
-        except OSError:
-            pass
-        try:
+        with contextlib.suppress(ChildProcessError, OSError):
             os.waitpid(child_pid, os.WNOHANG)
-        except (ChildProcessError, OSError):
-            pass
 
     async def _handle_terminal_ws(self, ws: WebSocket) -> None:
         """Spawn a PTY shell and proxy I/O over WebSocket.

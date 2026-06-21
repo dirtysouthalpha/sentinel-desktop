@@ -758,9 +758,7 @@ class ActionExecutor:
                 "error": "no_perception",
             }
 
-        elements = []
-        for elem in self.perception_result.elements:
-            elements.append(elem.to_dict())
+        elements = [elem.to_dict() for elem in self.perception_result.elements]
 
         return {
             "success": True,
