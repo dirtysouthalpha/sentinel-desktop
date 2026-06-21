@@ -29,14 +29,6 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      into the chokepoints until its own phase is complete — wiring is its own
      dedicated phase (Phase 11) so a broken half-wire never lands on main. -->
 
-- [ ] Phase 5: Fitts's-Law targeting — `core/humanize/fitts.py` (NEW). Pure
-  function `fitts_move_duration(distance_px, target_width_px, *, rng, profile) -> float`
-  computing ID = log2(distance/width + 1) and scaling duration via the profile's
-  Fitts coefficients. Spec §"fitts.py", Deliverable #3. Gate:
-  `tests/test_humanize_fitts.py` passes (ID computation, duration scaling,
-  edge cases: tiny target, zero distance, clamp bounds). No deps on other stealth
-  modules — standalone math.
-
 - [ ] Phase 6: Overshoot + sweep-back — `core/humanize/overshoot.py` (NEW).
   `overshoot_target(target, current, *, rng, profile, target_width_px) -> tuple`
   returning a point past the target (overshoot) or short of it (undershoot),
@@ -111,6 +103,15 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Done
 
+- [x] Phase 5: Fitts's-Law targeting — `core/humanize/fitts.py`. Pure function
+  `fitts_move_duration(start, target, target_size, *, rng, profile) -> float`
+  computing Fitts's Law: time = a + b * log2(2 * distance / target_width).
+  Implements ID computation, duration scaling with fitts_width_scaling,
+  fallback to distance-only timing for NATURALISTIC profile, edge cases
+  (tiny target < 5px clamped, zero-distance returns base intercept 0.05s,
+  non-negative duration guarantee). 16 tests covering ID computation,
+  duration scaling, edge cases, profile fallback, determinism. ruff clean,
+  all humanize tests green (138 passing). (commit a9237cf)
 - [x] Phase 4: StealthProfile extension — `core/humanize/profile.py`. Added a
   frozen `StealthProfile(Profile)` dataclass (subclass — inherits the naturalistic
   fields, overrides with biometric-sampled defaults) + a `STEALTH` preset registered
