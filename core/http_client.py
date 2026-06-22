@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 # Max response body returned to agent (prevent huge payloads flooding context)
 MAX_BODY_LENGTH = 50_000
+# Cap a single download to bound disk usage and block large-data exfiltration.
+MAX_DOWNLOAD_BYTES = 256 * 1024 * 1024
 
 # Default timeout for all requests
 DEFAULT_TIMEOUT = 30.0
@@ -137,8 +139,19 @@ def http_download(
             size = 0
             with dest.open("wb") as f:
                 for chunk in response.iter_bytes(chunk_size=8192):
-                    f.write(chunk)
                     size += len(chunk)
+                    if size > MAX_DOWNLOAD_BYTES:
+                        f.close()
+                        dest.unlink(missing_ok=True)
+                        return {
+                            "success": False,
+                            "output": (
+                                f"Download aborted: exceeded {MAX_DOWNLOAD_BYTES:,} "
+                                "byte cap."
+                            ),
+                            "error": "download_too_large",
+                        }
+                    f.write(chunk)
 
         return {
             "success": True,

@@ -168,6 +168,26 @@ class TestHttpDownload:
         assert result["success"] is True
         assert dest.parent.exists()
 
+    def test_download_caps_size_and_removes_partial(self, tmp_path, monkeypatch):
+        import core.http_client as hc
+
+        monkeypatch.setattr(hc, "MAX_DOWNLOAD_BYTES", 10)
+        dest = tmp_path / "big.bin"
+        chunks = [b"x" * 8, b"y" * 8]  # 16 bytes exceeds the 10-byte cap
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_bytes.return_value = chunks
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch("httpx.stream", return_value=mock_response):
+            result = http_download("https://example.com/big.bin", str(dest))
+
+        assert result["success"] is False
+        assert result["error"] == "download_too_large"
+        assert not dest.exists()
+
 
 # ── Executor integration ──────────────────────────────────────────────────────
 
