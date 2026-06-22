@@ -21,6 +21,8 @@ Thread safety: All public methods are guarded by a reentrant lock.
 import base64
 import json
 import logging
+import os
+import stat
 import threading
 from pathlib import Path
 from typing import Any
@@ -28,6 +30,23 @@ from typing import Any
 from core.utils import is_windows, iso_now
 
 logger = logging.getLogger(__name__)
+
+
+def _restrict_file_perms(path: Path) -> None:
+    """Tighten a credential file to owner-only (0600) on POSIX.
+
+    The vault holds encrypted API keys/tokens/passwords; leaving it at the
+    umask default (0644/0664) exposes ciphertext to other local users. On
+    Windows the file ACL governs access and the mode bits are a no-op, so
+    this is a POSIX-only hardening. Best-effort: a chmod failure is logged,
+    not raised, so a read-only mount never blocks a vault read.
+    """
+    if is_windows():
+        return
+    try:
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        logger.warning("Could not restrict permissions on %s", path)
 
 # ---------------------------------------------------------------------------
 # Windows DPAPI ctypes bindings
@@ -390,6 +409,9 @@ class CredentialVault:
         if not self._path.exists():
             return {"version": _VAULT_VERSION, "keys": {}}
 
+        # Heal permissions on an existing vault left world-readable by an
+        # older version, before exposing its contents any further.
+        _restrict_file_perms(self._path)
         try:
             text = self._path.read_text(encoding="utf-8")
             data = json.loads(text)
@@ -408,6 +430,9 @@ class CredentialVault:
                 json.dumps(self._data, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
+            # Restrict the temp file before the atomic replace so the renamed
+            # inode (which becomes vault.json) is owner-only on POSIX.
+            _restrict_file_perms(tmp)
             tmp.replace(self._path)
             return True
         except OSError:

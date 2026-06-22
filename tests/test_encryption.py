@@ -1,6 +1,9 @@
 """Tests for core/encryption.py — DPAPI credential vault."""
 
 import json
+import os
+import stat
+import sys
 from pathlib import Path
 
 import pytest
@@ -122,3 +125,27 @@ class TestExportSafeConfig:
         safe = vault.export_safe_config(config)
         safe["nested"]["a"] = 999
         assert config["nested"]["a"] == 1
+
+
+class TestVaultFilePermissions:
+    """The vault file holds encrypted API keys / tokens / passwords. On POSIX
+    it must be owner-only (0600) so other local users can't read it."""
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_new_vault_file_is_owner_only(self, tmp_path):
+        path = tmp_path / "vault.json"
+        vault = CredentialVault(vault_path=str(path))
+        assert vault.store("api_key", "sk-secret") is True
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert (mode & 0o077) == 0, f"vault.json exposed to group/other: {oct(mode)}"
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_existing_world_readable_vault_is_tightened_on_load(self, tmp_path):
+        # A vault created by an older version (0644) must be tightened to 0600
+        # the next time it is opened, not left world-readable.
+        path = tmp_path / "vault.json"
+        path.write_text('{"keys": {}}', encoding="utf-8")
+        os.chmod(path, 0o644)
+        CredentialVault(vault_path=str(path))  # opening it should heal perms
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert (mode & 0o077) == 0, f"vault.json not healed: {oct(mode)}"
