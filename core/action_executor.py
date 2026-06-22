@@ -1045,8 +1045,13 @@ class ActionExecutor:
             cx2, cy2 = win32gui.ScreenToClient(hwnd, (tx, ty))
             lparam_down = ((cy & 0xFFFF) << 16) | (cx & 0xFFFF)
             lparam_up = ((cy2 & 0xFFFF) << 16) | (cx2 & 0xFFFF)
-            mk = win32con.MK_LBUTTON if drag_params.button == "left" else win32con.MK_RBUTTON
-            win32api.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, mk, lparam_down)
+            if drag_params.button == "right":
+                msg_down, msg_up, mk = win32con.WM_RBUTTONDOWN, win32con.WM_RBUTTONUP, win32con.MK_RBUTTON
+            elif drag_params.button == "middle":
+                msg_down, msg_up, mk = win32con.WM_MBUTTONDOWN, win32con.WM_MBUTTONUP, win32con.MK_MBUTTON
+            else:
+                msg_down, msg_up, mk = win32con.WM_LBUTTONDOWN, win32con.WM_LBUTTONUP, win32con.MK_LBUTTON
+            win32api.PostMessage(hwnd, msg_down, mk, lparam_down)
             steps = max(1, int(drag_params.duration / 0.01))
             for i in range(1, steps + 1):
                 mx = int(cx + (cx2 - cx) * i / steps)
@@ -1054,7 +1059,7 @@ class ActionExecutor:
                 lparam_move = ((my & 0xFFFF) << 16) | (mx & 0xFFFF)
                 win32api.PostMessage(hwnd, win32con.WM_MOUSEMOVE, mk, lparam_move)
                 _t.sleep(drag_params.duration / steps)
-            win32api.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lparam_up)
+            win32api.PostMessage(hwnd, msg_up, 0, lparam_up)
             return {"success": True, "output": f"Dragged ({sx},{sy})→({tx},{ty}) — stealth"}
         except Exception as exc:
             logger.debug("Stealth drag failed, falling back: %s", exc)
@@ -1266,8 +1271,13 @@ class ActionExecutor:
             return result
 
         try:
+            # Escape single quotes for PowerShell's single-quoted string literal
+            # (PS doubling rule) so a name containing ' cannot break out and
+            # inject arbitrary commands. The argv list form is also used so the
+            # shell itself is never invoked.
+            safe_name = name.replace("'", "''")
             subprocess.Popen(  # noqa: S603 - Intentional process execution for desktop automation
-                [ps_exe, "-Command", f"Start-Process '{name}'"],
+                [ps_exe, "-Command", f"Start-Process '{safe_name}'"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -2718,7 +2728,7 @@ class ActionExecutor:
             return {"success": False, "error": str(exc)}
 
         def _exec(action: str, **params: Any) -> dict[str, Any]:
-            return self.execute(action, **params)
+            return self.execute_sync({"action": action, **params})
 
         runner = ScenarioRunner(_exec, stop_on_failure=bool(stop_on_failure))
         result = runner.run(scenario)
@@ -2953,7 +2963,7 @@ class ActionExecutor:
         """Queue a named custom event in the TriggerEngine."""
         from core.triggers import get_trigger_engine
 
-        engine = get_trigger_engine(executor_fn=lambda a: self.execute(**a))
+        engine = get_trigger_engine(executor_fn=lambda a: self.execute_sync(a))
         if not engine.running:
             engine.start()
         engine.fire_custom(event_name)
