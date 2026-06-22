@@ -75,8 +75,9 @@ def _make_fake_repo(tmp_path: Path, with_venv_bins: bool = True) -> Path:
         venv_bin.mkdir(parents=True)
         project_root = Path(__file__).resolve().parent.parent
         # Symlink the real project's python + ruff so the gate finds them.
-        (venv_bin / "python").symlink_to(project_root / ".venv" / "bin" / "python")
-        (venv_bin / "ruff").symlink_to(project_root / ".venv" / "bin" / "ruff")
+        # Use absolute symlinks because the real .venv/bin/python is itself a relative symlink.
+        (venv_bin / "python").symlink_to((project_root / ".venv" / "bin" / "python").resolve())
+        (venv_bin / "ruff").symlink_to((project_root / ".venv" / "bin" / "ruff").resolve())
     return repo
 
 
