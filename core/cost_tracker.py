@@ -72,11 +72,13 @@ def estimate_cost(provider: str, model: str, prompt_tokens: int, completion_toke
     provider_prices = _PRICING.get(provider, {})
     price_pair = provider_prices.get(model)
     if price_pair is None:
-        # Fuzzy match: prefer the longest matching key so that e.g.
+        # Fuzzy match: prefer the longest matching PREFIX so that e.g.
         # "gpt-4o-mini-2024-07-18" matches "gpt-4o-mini" ($0.15) rather than
-        # the shorter "gpt-4o" ($2.50) prefix.
+        # the shorter "gpt-4o" ($2.50). Prefix-only on purpose — a substring
+        # match let short keys collide with unrelated models (e.g. "o3" inside
+        # "video3"), billing the wrong tier by ~66x.
         for key, val in sorted(provider_prices.items(), key=lambda kv: len(kv[0]), reverse=True):
-            if model.startswith(key) or key in model:
+            if model.startswith(key):
                 price_pair = val
                 break
     if price_pair is None:
