@@ -34,7 +34,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, NoReturn
 
-from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -303,6 +303,22 @@ class SentinelServer:
                 return
         raise HTTPException(401, "Missing or invalid Authorization header")
 
+    def _dashboard_auth_guard(
+        self,
+        request: Request,
+        authorization: str | None = Header(default=None),
+    ) -> None:
+        """Auth gate applied to the mounted ``/dashboard`` router.
+
+        ``/dashboard/health`` is an intentionally public liveness probe (see
+        its docstring); every other dashboard route routes through
+        :meth:`_check_auth` so the separately-mounted router is covered by the
+        same ``SENTINEL_API_TOKEN`` / JWT gate as the rest of the API.
+        """
+        if request.url.path == "/dashboard/health":
+            return
+        self._check_auth(authorization)
+
     def create_app(self) -> FastAPI:
         """Build and return the configured FastAPI application instance."""
         # Rate-limiting state for login attempts: IP → [timestamp, ...]
@@ -410,7 +426,7 @@ class SentinelServer:
 
     def _register_v31_routes(self, app: FastAPI) -> None:
         """Register v3.1 dashboard router and workflow builder endpoints."""
-        app.include_router(dashboard_router)
+        app.include_router(dashboard_router, dependencies=[Depends(self._dashboard_auth_guard)])
         self._workflow_store = workflow_store
         self._workflow_templates = TEMPLATES
         self._route(app, "GET", "/workflows/builder/list", self._handle_workflow_builder_list)
