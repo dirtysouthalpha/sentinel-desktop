@@ -1758,7 +1758,7 @@ class SentinelServer:
             auth_data = json.loads(auth_msg)
             auth_token = auth_data.get("token", "")
             api_token = os.environ.get(API_TOKEN_ENV)
-            if api_token and auth_token != api_token:
+            if api_token and not hmac.compare_digest(str(auth_token), api_token):
                 await asyncio.wait_for(
                     ws.send_json({"type": "auth_error", "message": "Invalid token"}),
                     timeout=5.0,
