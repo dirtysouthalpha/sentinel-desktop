@@ -146,6 +146,38 @@ def test_kill_process_by_name_no_match():
     assert result is False
 
 
+def test_kill_process_by_name_not_substring():
+    """kill_process must NOT kill unrelated processes whose names merely contain
+    the target as a substring — 'win' must not kill 'winlogon.exe'."""
+    victim = MagicMock(info={"name": "winlogon.exe", "pid": 1})
+    with patch("core.process_manager.psutil.process_iter", return_value=[victim]):
+        result = process_manager.kill_process("win")
+    assert result is False
+    victim.kill.assert_not_called()
+
+
+def test_kill_process_substring_does_not_hit_neighbors():
+    """Among several processes, a short target must kill none via substring."""
+    a = MagicMock(info={"name": "winlogon.exe", "pid": 1})
+    b = MagicMock(info={"name": "wininit.exe", "pid": 2})
+    c = MagicMock(info={"name": "msedge.exe", "pid": 3})
+    with patch("core.process_manager.psutil.process_iter", return_value=[a, b, c]):
+        result = process_manager.kill_process("win")
+    assert result is False
+    a.kill.assert_not_called()
+    b.kill.assert_not_called()
+    c.kill.assert_not_called()
+
+
+def test_kill_process_target_with_exe_suffix_matches():
+    """A target given with '.exe' should still match the process exactly."""
+    victim = MagicMock(info={"name": "notepad.exe", "pid": 9})
+    with patch("core.process_manager.psutil.process_iter", return_value=[victim]):
+        result = process_manager.kill_process("notepad.exe")
+    assert result is True
+    victim.kill.assert_called_once()
+
+
 def test_kill_process_no_such_pid():
     """kill_process with a dead PID should return False."""
     import psutil

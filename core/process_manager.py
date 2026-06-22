@@ -89,14 +89,20 @@ def kill_process(target: int | str | None) -> bool:
             p = psutil.Process(target)
             p.kill()
             return True
-        # Kill by name (string match)
+        # Kill by name. Match the full process name OR its base (Windows
+        # ".exe" stripped), case-insensitively — never by substring. A
+        # substring match let a short target ("win", "ed") kill unrelated
+        # system processes (winlogon.exe, msedge.exe).
         name = str(target).lower()
         if not name:
             return False
         killed = False
         for p in psutil.process_iter(["name", "pid"]):
             proc_name = (p.info.get("name") or "").lower()
-            if name in proc_name:
+            if not proc_name:
+                continue
+            proc_base = proc_name.removesuffix(".exe")
+            if proc_name == name or proc_base == name:
                 try:
                     p.kill()
                     killed = True
