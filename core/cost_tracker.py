@@ -69,8 +69,14 @@ def estimate_cost(provider: str, model: str, prompt_tokens: int, completion_toke
 
     Returns 0.0 for unknown provider/model combinations.
     """
-    provider_prices = _PRICING.get(provider, {})
-    price_pair = provider_prices.get(model)
+    # Case-insensitive lookup: the pricing table is authoritative-lowercase,
+    # but providers market models with mixed case ("Claude-Sonnet-4-6") and
+    # configs often carry mixed-case provider names. Normalizing avoids a
+    # silent $0.00 for valid models — the same wrong-tier failure mode as the
+    # old substring/prefix bugs.
+    provider_prices = _PRICING.get(provider.lower(), {})
+    model_lc = model.lower()
+    price_pair = provider_prices.get(model_lc)
     if price_pair is None:
         # Fuzzy match: prefer the longest matching PREFIX so that e.g.
         # "gpt-4o-mini-2024-07-18" matches "gpt-4o-mini" ($0.15) rather than
@@ -78,7 +84,7 @@ def estimate_cost(provider: str, model: str, prompt_tokens: int, completion_toke
         # match let short keys collide with unrelated models (e.g. "o3" inside
         # "video3"), billing the wrong tier by ~66x.
         for key, val in sorted(provider_prices.items(), key=lambda kv: len(kv[0]), reverse=True):
-            if model.startswith(key):
+            if model_lc.startswith(key):
                 price_pair = val
                 break
     if price_pair is None:

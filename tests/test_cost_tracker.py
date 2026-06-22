@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from core.cost_tracker import CostTracker, UsageRecord, get_cost_tracker
+from core.cost_tracker import CostTracker, UsageRecord, estimate_cost, get_cost_tracker
 
 
 @pytest.fixture()
@@ -142,3 +142,36 @@ class TestGetCostTracker:
 
     def test_singleton_is_cost_tracker(self):
         assert isinstance(get_cost_tracker(), CostTracker)
+
+
+class TestEstimateCostCaseInsensitive:
+    """Provider/model lookups must be case-insensitive.
+
+    Providers market models with mixed case (e.g. ``"Claude-Sonnet-4-6"``)
+    and config files often carry mixed-case provider names. A case-sensitive
+    lookup silently returned ``$0.00`` for those, billing the wrong tier the
+    same way the old substring/prefix bugs did.
+    """
+
+    def test_mixed_case_model_matches_lowercase(self):
+        assert estimate_cost("openai", "GPT-4o", 1_000_000, 0) == pytest.approx(2.50)
+
+    def test_mixed_case_provider_matches_lowercase(self):
+        assert estimate_cost("OpenAI", "gpt-4o", 1_000_000, 0) == pytest.approx(2.50)
+
+    def test_marketed_anthropic_casing(self):
+        # "Claude-Sonnet-4-6" is how Anthropic markets the model.
+        assert estimate_cost("anthropic", "Claude-Sonnet-4-6", 1_000_000, 0) == pytest.approx(3.00)
+
+    def test_uppercase_both_matches(self):
+        assert estimate_cost("ANTHROPIC", "CLAUDE-SONNET-4-6", 1_000_000, 0) == pytest.approx(3.00)
+
+    def test_case_insensitive_through_record(self, tracker):
+        usage = {"prompt_tokens": 1_000_000, "completion_tokens": 0}
+        rec = tracker.record("anthropic", "Claude-Sonnet-4-6", usage)
+        assert rec.cost_usd == pytest.approx(3.00)
+
+    def test_genuinely_unknown_still_zero(self):
+        # Case-insensitivity must not turn unknown models into false matches.
+        assert estimate_cost("openai", "gpt-99-future", 1_000_000, 0) == 0.0
+        assert estimate_cost("unknownprovider", "gpt-4o", 1_000_000, 0) == 0.0
