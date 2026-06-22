@@ -687,15 +687,25 @@ def pytest_sessionstart():
     causing FileExistsError on subsequent runs. Clean it up proactively.
     """
     import shutil
+    import time
     import warnings
 
     pytest_tmp = Path(__file__).resolve().parent.parent / ".pytest_tmp"
     if pytest_tmp.exists():
-        try:
-            # Use ignore_errors to handle symlinks and locked files gracefully
-            shutil.rmtree(pytest_tmp, ignore_errors=True)
-        except OSError as e:
-            # If cleanup fails (permission issues, etc.), warn but don't block tests
-            warnings.warn(f"Failed to clean up .pytest_tmp: {e}", stacklevel=2)
+        # Try aggressive cleanup with retries for stubborn files
+        for attempt in range(3):
+            try:
+                shutil.rmtree(pytest_tmp)
+                break
+            except OSError as e:
+                if attempt == 2:
+                    # Final attempt failed - warn but don't block tests
+                    warnings.warn(
+                        f"Failed to clean up .pytest_tmp after 3 attempts: {e}",
+                        stacklevel=2
+                    )
+                else:
+                    # Brief pause before retry (helps with file handle releases)
+                    time.sleep(0.1)
     # Recreate the directory so pytest can use it for tmp_path fixtures
     pytest_tmp.mkdir(parents=True, exist_ok=True)
