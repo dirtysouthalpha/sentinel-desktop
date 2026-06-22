@@ -232,6 +232,63 @@ class TestMetadataSsrfGuard:
         assert result["error"] == "blocked_metadata"
 
 
+class TestMetadataSsrfBypass:
+    """SSRF-guard bypass vectors that must also be blocked.
+
+    These encode 169.254.169.254 (AWS IMDS) using integer / hex IP-literal
+    forms that the OS resolver still accepts, and the redirect-followed case
+    where a benign URL 302s to a metadata endpoint.
+    """
+
+    def test_get_blocks_integer_encoded_metadata(self):
+        # 2852039166 == 169.254.169.254 in single-integer form.
+        result = http_get("http://2852039166/latest/meta-data/iam/security-credentials/")
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+
+    def test_get_blocks_hex_encoded_metadata(self):
+        # 0xa9fea9fe == 169.254.169.254 in hex form.
+        result = http_get("http://0xa9fea9fe/latest/meta-data/")
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+
+    def test_get_blocks_metadata_reached_via_redirect(self):
+        # Request URL is benign, but httpx followed a redirect to IMDS.
+        # _request must re-check the final (post-redirect) URL.
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.is_success = True
+        resp.text = "AKIA-credentials-leaked"
+        resp.json.return_value = {}
+        resp.headers = {"content-type": "application/json"}
+        resp.url = "http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+
+        with patch("httpx.request", return_value=resp):
+            result = http_get("https://attacker.example/redirect-here")
+
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+
+    def test_download_blocks_metadata_reached_via_redirect(self, tmp_path):
+        # Streamed download whose final URL (after redirect) is IMDS must be
+        # blocked BEFORE any bytes are written to disk.
+        dest = tmp_path / "creds.bin"
+
+        mock_response = MagicMock()
+        mock_response.url = "http://169.254.169.254/latest/meta-data/"
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_bytes.return_value = [b"AKIA-leaked"]
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch("httpx.stream", return_value=mock_response):
+            result = http_download("https://attacker.example/redirect", str(dest))
+
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+        assert not dest.exists()
+
+
 # ── Executor integration ──────────────────────────────────────────────────────
 
 

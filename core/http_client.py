@@ -15,6 +15,7 @@ Usage::
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import urllib.parse
 from pathlib import Path
@@ -33,16 +34,39 @@ MAX_DOWNLOAD_BYTES = 256 * 1024 * 1024
 # core use case (routers, firewalls, APs).
 _METADATA_HOSTS = frozenset(
     {
-        "169.254.169.254",  # AWS / Azure / GCP IPv4 IMDS
-        "169.254.170.2",  # AWS ECS task metadata
-        "169.254.170.23",  # AWS ECS task metadata (alternate)
-        "169.254.169.253",  # AWS IMDS (alternate)
-        "metadata.google.internal",  # GCP metadata
-        "metadata.azure.com",  # Azure metadata
-        "fd00:ec2::254",  # AWS IPv6 IMDS
+        "metadata.google.internal",  # GCP metadata (DNS name)
+        "metadata.azure.com",  # Azure metadata (DNS name)
     }
 )
-_LINK_LOCAL_PREFIX = "169.254."
+# IPv4 link-local covers AWS/Azure/GCP IMDS (169.254.169.254) and the ECS task
+# metadata alternates (169.254.170.2 / .23, 169.254.169.253).
+_LINK_LOCAL_NETWORK = ipaddress.ip_network("169.254.0.0/16")
+# AWS IPv6 IMDS.
+_METADATA_IPS = frozenset({ipaddress.ip_address("fd00:ec2::254")})
+
+
+def _host_to_ip(host: str) -> ipaddress._BaseAddress | None:
+    """Return the IP for an IP-literal host, decoding int/hex encodings.
+
+    Handles dotted-decimal IPv4, IPv6 literals, and the single-number integer
+    (``2852039166``) / hex (``0xa9fea9fe``) encodings of IPv4 that the OS
+    resolver still accepts but the string-prefix guard misses. DNS names are
+    NOT resolved here — DNS-rebinding is a separate, harder problem.
+    """
+    if not host:
+        return None
+    h = host.strip("[]")
+    try:
+        return ipaddress.ip_address(h)
+    except ValueError:
+        pass
+    try:
+        n = int(h, 0)  # base 0: accepts 0x.. hex and decimal; rejects DNS names
+    except ValueError:
+        return None
+    if 0 <= n <= 0xFFFFFFFF:
+        return ipaddress.IPv4Address(n)
+    return None
 
 
 def _is_metadata_endpoint(url: str) -> bool:
@@ -54,7 +78,14 @@ def _is_metadata_endpoint(url: str) -> bool:
     if not host:
         return False
     host = host.lower().strip("[]")
-    return host.startswith(_LINK_LOCAL_PREFIX) or host in _METADATA_HOSTS
+    if host in _METADATA_HOSTS:
+        return True
+    ip = _host_to_ip(host)
+    if ip is None:
+        return False
+    if isinstance(ip, ipaddress.IPv4Address):
+        return ip in _LINK_LOCAL_NETWORK
+    return ip in _METADATA_IPS
 
 # Default timeout for all requests
 DEFAULT_TIMEOUT = 30.0
@@ -172,6 +203,14 @@ def http_download(
             follow_redirects=True,
         ) as response:
             response.raise_for_status()
+            # Re-check the final (post-redirect) URL BEFORE writing any bytes.
+            if _is_metadata_endpoint(str(getattr(response, "url", ""))):
+                return {
+                    "success": False,
+                    "output": "Refusing cloud metadata endpoint reached via "
+                    "redirect (SSRF guard).",
+                    "error": "blocked_metadata",
+                }
             size = 0
             with dest.open("wb") as f:
                 for chunk in response.iter_bytes(chunk_size=8192):
@@ -244,6 +283,18 @@ def _request(
             kwargs["content"] = body.encode("utf-8")
 
         response = httpx.request(method, url, **kwargs)
+
+        # Re-check the final (post-redirect) URL: an external server can return
+        # a 30x to a metadata endpoint, bypassing the request-URL guard above.
+        # httpx top-level request() has no event_hooks hook, so we verify after.
+        final_url = str(getattr(response, "url", ""))
+        if _is_metadata_endpoint(final_url):
+            return {
+                "success": False,
+                "output": "Refusing cloud metadata endpoint reached via redirect "
+                "(SSRF guard).",
+                "error": "blocked_metadata",
+            }
 
         # Parse JSON body if content-type indicates it
         content_type = response.headers.get("content-type", "")
