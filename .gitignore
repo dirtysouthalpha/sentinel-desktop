@@ -34,8 +34,6 @@ desktop.ini
 
 # Test / coverage
 .pytest_cache/
-.pytest_tmp/
-.pytest_tmp-gate/
 .coverage
 .coverage.*
 coverage.json

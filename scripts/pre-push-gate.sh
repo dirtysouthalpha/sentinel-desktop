@@ -58,18 +58,12 @@ echo "[gate] import smoke (pytest --collect-only) ..." >&2
 # connect to a display on headless hosts and false-positive on every push.
 # This catches the regression class we care about (broken imports/signatures
 # surface as collection errors) while respecting the test env's stubs.
-#
-# Isolate the inner pytest's basetemp (--basetemp=.pytest_tmp-gate) so it
-# cannot collide with a concurrently-running outer pytest that owns
-# .pytest_tmp. Without this, the inner pytest's tmp_path factory races the
-# outer one on the shared basetemp directory, surfacing as sporadic
-# FileNotFoundError at setup for unrelated tests.
-"$PY" -m pytest tests/ --collect-only -q -p no:cacheprovider --basetemp=.pytest_tmp-gate >/dev/null 2>&1
+"$PY" -m pytest tests/ --collect-only -q -p no:cacheprovider >/dev/null 2>&1
 collect_rc=$?
 if [ "$collect_rc" -ne 0 ]; then
     echo "[gate] test collection failed (broken import/signature). Re-run for detail:" >&2
     echo "[gate]   .venv/bin/python -m pytest tests/ --collect-only -q" >&2
-    "$PY" -m pytest tests/ --collect-only -q -p no:cacheprovider --basetemp=.pytest_tmp-gate 2>&1 | tail -15 >&2
+    "$PY" -m pytest tests/ --collect-only -q -p no:cacheprovider 2>&1 | tail -15 >&2
     fail
 fi
 
