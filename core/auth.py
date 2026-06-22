@@ -270,6 +270,8 @@ class AuthManager:
             "users": [u.to_dict() for u in self._users.values()],
         }
         try:
+            # Ensure parent directory exists (handles tmp_path cleanup race conditions)
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.config_path, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, ensure_ascii=False)
             logger.debug("Saved %d user(s) to %s", len(self._users), self.config_path)
