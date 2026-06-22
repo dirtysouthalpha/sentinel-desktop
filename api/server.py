@@ -465,8 +465,9 @@ class SentinelServer:
 
     # ── v10.0 — Sentinel Server handlers ────────────────────────────────
 
-    async def _handle_daemon_status(self) -> dict:
+    async def _handle_daemon_status(self, authorization: str | None = Header(default=None)) -> dict:
         """GET /daemon/status — Get daemon service status."""
+        self._check_auth(authorization)
         try:
             from core.server.daemon import SentinelDaemon
 
@@ -475,8 +476,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_daemon_start(self) -> dict:
+    async def _handle_daemon_start(self, authorization: str | None = Header(default=None)) -> dict:
         """POST /daemon/start — Start the daemon service."""
+        self._check_auth(authorization)
         try:
             from core.server.daemon import SentinelDaemon
 
@@ -486,8 +488,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_daemon_stop(self) -> dict:
+    async def _handle_daemon_stop(self, authorization: str | None = Header(default=None)) -> dict:
         """POST /daemon/stop — Stop the daemon service."""
+        self._check_auth(authorization)
         try:
             from core.server.daemon import SentinelDaemon
 
@@ -497,8 +500,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_fleet_nodes(self) -> dict:
+    async def _handle_fleet_nodes(self, authorization: str | None = Header(default=None)) -> dict:
         """GET /fleet/nodes — List all fleet nodes."""
+        self._check_auth(authorization)
         try:
             from core.server.fleet import FleetManager
 
@@ -507,8 +511,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_fleet_register(self, data: dict) -> dict:
+    async def _handle_fleet_register(self, data: dict, authorization: str | None = Header(default=None)) -> dict:
         """POST /fleet/register — Register a fleet node."""
+        self._check_auth(authorization)
         try:
             from core.server.fleet import FleetManager
 
@@ -524,8 +529,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_fleet_unregister(self, data: dict) -> dict:
+    async def _handle_fleet_unregister(self, data: dict, authorization: str | None = Header(default=None)) -> dict:
         """POST /fleet/unregister — Unregister a fleet node."""
+        self._check_auth(authorization)
         try:
             from core.server.fleet import FleetManager
 
@@ -534,8 +540,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_jobs_list(self, status: str | None = None) -> dict:
+    async def _handle_jobs_list(self, status: str | None = None, authorization: str | None = Header(default=None)) -> dict:
         """GET /jobs — List jobs."""
+        self._check_auth(authorization)
         try:
             from core.server.job_queue import JobQueue
 
@@ -544,8 +551,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_jobs_submit(self, data: dict) -> dict:
+    async def _handle_jobs_submit(self, data: dict, authorization: str | None = Header(default=None)) -> dict:
         """POST /jobs/submit — Submit a new job."""
+        self._check_auth(authorization)
         try:
             from core.server.job_queue import JobQueue
 
@@ -559,8 +567,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_job_status(self, job_id: str) -> dict:
+    async def _handle_job_status(self, job_id: str, authorization: str | None = Header(default=None)) -> dict:
         """GET /jobs/{job_id} — Get job status."""
+        self._check_auth(authorization)
         try:
             from core.server.job_queue import JobQueue
 
@@ -572,8 +581,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_job_cancel(self, job_id: str) -> dict:
+    async def _handle_job_cancel(self, job_id: str, authorization: str | None = Header(default=None)) -> dict:
         """POST /jobs/{job_id}/cancel — Cancel a job."""
+        self._check_auth(authorization)
         try:
             from core.server.job_queue import JobQueue
 
@@ -585,8 +595,9 @@ class SentinelServer:
 
     # ── v11.0 — Memory handlers ──────────────────────────────────────────
 
-    async def _handle_memory_list(self, category: str = "") -> dict:
+    async def _handle_memory_list(self, category: str = "", authorization: str | None = Header(default=None)) -> dict:
         """GET /memory/facts — List all memory facts."""
+        self._check_auth(authorization)
         try:
             from core.memory.semantic import SemanticMemory
 
@@ -596,8 +607,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_memory_get(self, key: str) -> dict:
+    async def _handle_memory_get(self, key: str, authorization: str | None = Header(default=None)) -> dict:
         """GET /memory/facts/{key} — Get a specific fact."""
+        self._check_auth(authorization)
         try:
             from core.memory.semantic import SemanticMemory
 
@@ -609,8 +621,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_memory_store(self, data: dict) -> dict:
+    async def _handle_memory_store(self, data: dict, authorization: str | None = Header(default=None)) -> dict:
         """POST /memory/facts — Store a new fact."""
+        self._check_auth(authorization)
         try:
             from core.memory.semantic import SemanticMemory
 
@@ -626,8 +639,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_memory_delete(self, key: str) -> dict:
+    async def _handle_memory_delete(self, key: str, authorization: str | None = Header(default=None)) -> dict:
         """DELETE /memory/facts/{key} — Delete a fact."""
+        self._check_auth(authorization)
         try:
             from core.memory.semantic import SemanticMemory
 
@@ -641,8 +655,10 @@ class SentinelServer:
         self,
         query: str = "",
         limit: int = 20,
+        authorization: str | None = Header(default=None),
     ) -> dict:
         """GET /memory/search?query=... — Search memory facts."""
+        self._check_auth(authorization)
         try:
             from core.memory.semantic import SemanticMemory
 
@@ -652,8 +668,9 @@ class SentinelServer:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
-    async def _handle_episodes_list(self, limit: int = 20) -> dict:
+    async def _handle_episodes_list(self, limit: int = 20, authorization: str | None = Header(default=None)) -> dict:
         """GET /memory/episodes — List recent episodes."""
+        self._check_auth(authorization)
         try:
             from core.memory.episodic import EpisodicMemory
 
@@ -667,8 +684,10 @@ class SentinelServer:
         self,
         query: str = "",
         limit: int = 10,
+        authorization: str | None = Header(default=None),
     ) -> dict:
         """GET /memory/episodes/search?query=... — Search episodes."""
+        self._check_auth(authorization)
         try:
             from core.memory.episodic import EpisodicMemory
 
@@ -680,8 +699,9 @@ class SentinelServer:
 
     # ── v12.0 — Conductor handler ─────────────────────────────────────────
 
-    async def _handle_conductor_run(self, data: dict) -> dict:
+    async def _handle_conductor_run(self, data: dict, authorization: str | None = Header(default=None)) -> dict:
         """POST /conductor/run — Decompose and execute a complex goal."""
+        self._check_auth(authorization)
         try:
             from core.conductor.coordinator import Conductor
 
