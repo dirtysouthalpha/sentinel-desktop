@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import stat
 import sys
@@ -174,3 +175,46 @@ class TestPersistence:
         SessionVault(path=path)  # opening it should heal perms
         mode = stat.S_IMODE(path.stat().st_mode)
         assert (mode & 0o077) == 0, f"sessions.json not healed: {oct(mode)}"
+
+
+class TestAtRestEncryption:
+    """CLAUDE.md v8.0 advertises encrypted cookie persistence; the file must
+    not contain plaintext cookie values."""
+
+    def test_saved_session_file_has_no_plaintext_cookie_value(self, tmp_path: Path):
+        path = tmp_path / "sessions.json"
+        vault = SessionVault(path=path)
+        vault.save_session("192.168.1.1", [{"name": "session", "value": "SUPERSECRET-TOKEN"}])
+        raw = path.read_text(encoding="utf-8")
+        assert "SUPERSECRET-TOKEN" not in raw
+
+    def test_roundtrip_across_instances(self, tmp_path: Path):
+        path = tmp_path / "sessions.json"
+        SessionVault(path=path).save_session(
+            "fw.local", [{"name": "sid", "value": "abc"}]
+        )
+        # A fresh instance reading the same file must recover the session.
+        loaded = SessionVault(path=path).load_session("fw.local")
+        assert loaded is not None
+        assert loaded["cookies"][0]["value"] == "abc"
+
+    def test_legacy_plaintext_file_is_migrated_to_encrypted(self, tmp_path: Path):
+        path = tmp_path / "sessions.json"
+        legacy = {
+            "old.local": {
+                "cookies": [{"name": "c", "value": "v"}],
+                "local_storage": {},
+                "saved_at": "2026-01-01T00:00:00",
+                "domain": "old.local",
+            }
+        }
+        path.write_text(json.dumps(legacy), encoding="utf-8")
+
+        vault = SessionVault(path=path)
+        # Legacy plaintext is still readable.
+        assert vault.load_session("old.local") is not None
+        # A save re-writes the whole store encrypted.
+        vault.save_session("new.local", [])
+        raw = path.read_text(encoding="utf-8")
+        assert "old.local" not in raw
+        assert "new.local" not in raw

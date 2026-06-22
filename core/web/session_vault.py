@@ -10,12 +10,14 @@ Each entry contains: cookies list, localStorage snapshot, timestamp.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from core.encryption import CredentialVault
 from core.utils import restrict_file_perms
 
 logger = logging.getLogger(__name__)
@@ -185,19 +187,54 @@ class SessionVault:
         restrict_file_perms(self._path)
         try:
             text = self._path.read_text(encoding="utf-8")
-            return json.loads(text)
+            data = json.loads(text)
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning("Failed to load session vault: %s", exc)
             return {}
 
+        # Encrypted-at-rest format: {"version": 2, "encrypted": "<b64 blob>"}.
+        if isinstance(data, dict) and data.get("version") == 2 and "encrypted" in data:
+            try:
+                raw = base64.b64decode(data["encrypted"])
+                plain = CredentialVault._decrypt(raw)
+            except (ValueError, TypeError) as exc:
+                logger.warning("Session vault decrypt error: %s", exc)
+                return {}
+            if plain is None:
+                logger.warning("Session vault decrypt failed — treating as empty")
+                return {}
+            try:
+                return json.loads(plain.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                logger.warning("Session vault payload parse error: %s", exc)
+                return {}
+
+        # Legacy plaintext format: {"<domain>": {entry}, ...}. Still readable
+        # for migration; the next _save() re-writes it encrypted.
+        if isinstance(data, dict):
+            return data
+        return {}
+
     def _save(self) -> None:
-        """Persist session data to disk."""
+        """Persist session data to disk, encrypted at rest."""
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._path.write_text(
-                json.dumps(self._data, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
+            plaintext = json.dumps(self._data, ensure_ascii=False).encode("utf-8")
+            encrypted = CredentialVault._encrypt(plaintext)
+            if encrypted is None:
+                # DPAPI unavailable / failed — fall back to plaintext (still
+                # owner-only via restrict_file_perms) so sessions are never lost.
+                logger.warning("Session vault encryption unavailable — writing plaintext")
+                self._path.write_text(
+                    json.dumps(self._data, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+            else:
+                blob = {
+                    "version": 2,
+                    "encrypted": base64.b64encode(encrypted).decode("ascii"),
+                }
+                self._path.write_text(json.dumps(blob), encoding="utf-8")
             # Session cookies authenticate to IT appliances — restrict the
             # file to owner-only on POSIX even though it is the umask default.
             restrict_file_perms(self._path)
