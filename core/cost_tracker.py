@@ -72,8 +72,10 @@ def estimate_cost(provider: str, model: str, prompt_tokens: int, completion_toke
     provider_prices = _PRICING.get(provider, {})
     price_pair = provider_prices.get(model)
     if price_pair is None:
-        # Fuzzy match: model contains a known key as prefix or substring
-        for key, val in provider_prices.items():
+        # Fuzzy match: prefer the longest matching key so that e.g.
+        # "gpt-4o-mini-2024-07-18" matches "gpt-4o-mini" ($0.15) rather than
+        # the shorter "gpt-4o" ($2.50) prefix.
+        for key, val in sorted(provider_prices.items(), key=lambda kv: len(kv[0]), reverse=True):
             if model.startswith(key) or key in model:
                 price_pair = val
                 break
