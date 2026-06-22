@@ -105,17 +105,27 @@ class TestWatchFileContent:
         from core.file_watcher import watch_file_content
 
         target = tmp_path / "log.txt"
+        target_str = str(target)  # Capture path before potential tmp_path cleanup
         target.write_text("")
+
+        appended = threading.Event()
 
         def append_after_delay():
             time.sleep(0.2)
-            with open(target, "a") as f:
-                f.write("ERROR: something failed\n")
+            try:
+                with open(target_str, "a") as f:
+                    f.write("ERROR: something failed\n")
+                appended.set()
+            except (FileNotFoundError, OSError):
+                # If tmp_path was cleaned up, silently fail - test will timeout
+                pass
 
         threading.Thread(target=append_after_delay, daemon=True).start()
-        result = watch_file_content(str(target), contains="ERROR", timeout=3, poll_interval=0.05)
+        result = watch_file_content(target_str, contains="ERROR", timeout=3, poll_interval=0.05)
         assert result["success"] is True
         assert "found" in result
+        # Wait for the append thread to complete before allowing tmp_path cleanup
+        appended.wait(timeout=1.0)
 
     def test_timeout_when_content_never_appears(self, tmp_path):
         from core.file_watcher import watch_file_content
