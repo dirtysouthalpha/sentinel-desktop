@@ -16,6 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from core.utils import restrict_file_perms
+
 logger = logging.getLogger(__name__)
 
 # Default session storage location
@@ -179,6 +181,8 @@ class SessionVault:
         if not self._path.exists():
             return {}
 
+        # Heal permissions on a file left world-readable by an older version.
+        restrict_file_perms(self._path)
         try:
             text = self._path.read_text(encoding="utf-8")
             return json.loads(text)
@@ -194,5 +198,8 @@ class SessionVault:
                 json.dumps(self._data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
+            # Session cookies authenticate to IT appliances — restrict the
+            # file to owner-only on POSIX even though it is the umask default.
+            restrict_file_perms(self._path)
         except OSError as exc:
             logger.error("Failed to save session vault: %s", exc)

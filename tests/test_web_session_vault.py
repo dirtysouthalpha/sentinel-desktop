@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import stat
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -150,3 +153,24 @@ class TestPersistence:
         vault = SessionVault(path=path)
         vault.save_session("x.com", [])
         assert path.exists()
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_session_file_is_owner_only_after_save(self, tmp_path: Path):
+        # Session cookies authenticate to routers/firewalls/APs — the file
+        # must not be readable by other local users.
+        path = tmp_path / "sessions.json"
+        vault = SessionVault(path=path)
+        vault.save_session("192.168.1.1", [{"name": "sess", "value": "secret"}])
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert (mode & 0o077) == 0, f"sessions.json group/other bits: {oct(mode)}"
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_existing_world_readable_session_file_is_tightened_on_load(
+        self, tmp_path: Path
+    ):
+        path = tmp_path / "sessions.json"
+        path.write_text("{}", encoding="utf-8")
+        os.chmod(path, 0o644)
+        SessionVault(path=path)  # opening it should heal perms
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert (mode & 0o077) == 0, f"sessions.json not healed: {oct(mode)}"

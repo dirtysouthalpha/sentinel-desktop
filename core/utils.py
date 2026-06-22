@@ -3,6 +3,7 @@
 import logging
 import os
 import platform
+import stat
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,23 @@ def iso_now() -> str:
 def is_windows() -> bool:
     """Return True when running on Microsoft Windows."""
     return platform.system() == "Windows"
+
+
+def restrict_file_perms(path: Path) -> None:
+    """Tighten a credential-bearing file to owner-only (0600) on POSIX.
+
+    Used for the secrets vault, the browser-session vault, and any other file
+    holding tokens/cookies/credentials. The umask default (0644/0664) leaves
+    such files readable by any local user. On Windows the file ACL governs
+    access and the mode bits are a no-op. Best-effort: a chmod failure is
+    logged, not raised, so a read-only mount never blocks a read.
+    """
+    if is_windows():
+        return
+    try:
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        logger.warning("Could not restrict permissions on %s", path)
 
 
 # ---------------------------------------------------------------------------
