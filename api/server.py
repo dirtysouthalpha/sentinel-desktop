@@ -185,6 +185,19 @@ class WorkflowRunRequest(BaseModel):
     path: str
     variables: dict[str, Any] | None = None
 
+    def validate_path(self) -> str:
+        """Validate and sanitize the workflow path to prevent traversal.
+
+        Mirrors :meth:`ScriptRunRequest.validate_path` — strips ``..``/``~``
+        and confines the path to the ``workflows/`` directory so an
+        authenticated caller can't ``open()`` an arbitrary file (e.g.
+        ``../../etc/passwd``) as a workflow.
+        """
+        clean_path = self.path.replace("..", "").replace("~", "").strip()
+        if not clean_path.startswith("workflows/"):
+            clean_path = f"workflows/{clean_path}"
+        return clean_path
+
 
 class ScheduleAddRequest(BaseModel):
     """Request body for POST /schedule/add — create a scheduled task."""
@@ -1370,10 +1383,11 @@ class SentinelServer:
         from core.workflow import WorkflowEngine
 
         wf = WorkflowEngine(self.engine.executor, self.engine.script_engine)
+        safe_path = req.validate_path()
         try:
             # run_workflow() replays multi-step workflows with delays; offload to thread.
             result = await asyncio.wait_for(
-                asyncio.to_thread(wf.run_workflow, req.path, req.variables),
+                asyncio.to_thread(wf.run_workflow, safe_path, req.variables),
                 timeout=LONG_OPERATION_TIMEOUT,
             )
         except asyncio.TimeoutError:
