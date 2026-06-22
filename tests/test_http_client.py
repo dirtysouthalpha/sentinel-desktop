@@ -189,6 +189,49 @@ class TestHttpDownload:
         assert not dest.exists()
 
 
+# ── cloud-metadata SSRF guard ────────────────────────────────────────────────
+
+
+class TestMetadataSsrfGuard:
+    @staticmethod
+    def _mock_response(status=200, text="ok"):
+        resp = MagicMock()
+        resp.status_code = status
+        resp.is_success = 200 <= status < 300
+        resp.text = text
+        resp.json.return_value = {"ok": True}
+        resp.headers = {"content-type": "application/json"}
+        return resp
+
+    def test_get_blocks_aws_metadata(self):
+        result = http_get("http://169.254.169.254/latest/meta-data/iam/security-credentials/")
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+
+    def test_get_blocks_gcp_metadata_hostname(self):
+        result = http_get("http://metadata.google.internal/computeMetadata/v1/")
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+
+    def test_get_blocks_ecs_task_metadata(self):
+        result = http_get("http://169.254.170.2/v3/task")
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+
+    def test_get_allows_private_it_appliance(self):
+        # Internal RFC1918 appliances (routers/firewalls/APs) are this tool's
+        # core use case and must NOT be blocked.
+        with patch("httpx.request", return_value=self._mock_response()) as mock_req:
+            result = http_get("http://192.168.1.1/admin")
+        assert result["success"] is True
+        mock_req.assert_called_once()
+
+    def test_download_blocks_metadata(self, tmp_path):
+        result = http_download("http://169.254.169.254/latest/meta-data/", str(tmp_path / "x"))
+        assert result["success"] is False
+        assert result["error"] == "blocked_metadata"
+
+
 # ── Executor integration ──────────────────────────────────────────────────────
 
 

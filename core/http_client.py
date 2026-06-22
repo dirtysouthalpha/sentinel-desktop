@@ -16,6 +16,7 @@ Usage::
 from __future__ import annotations
 
 import logging
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,35 @@ logger = logging.getLogger(__name__)
 MAX_BODY_LENGTH = 50_000
 # Cap a single download to bound disk usage and block large-data exfiltration.
 MAX_DOWNLOAD_BYTES = 256 * 1024 * 1024
+
+# Cloud instance-metadata endpoints. Reaching these returns cloud credentials,
+# so they are blocked regardless of caller. Internal IT appliances (RFC1918
+# private space) are intentionally NOT blocked — reaching them is this tool's
+# core use case (routers, firewalls, APs).
+_METADATA_HOSTS = frozenset(
+    {
+        "169.254.169.254",  # AWS / Azure / GCP IPv4 IMDS
+        "169.254.170.2",  # AWS ECS task metadata
+        "169.254.170.23",  # AWS ECS task metadata (alternate)
+        "169.254.169.253",  # AWS IMDS (alternate)
+        "metadata.google.internal",  # GCP metadata
+        "metadata.azure.com",  # Azure metadata
+        "fd00:ec2::254",  # AWS IPv6 IMDS
+    }
+)
+_LINK_LOCAL_PREFIX = "169.254."
+
+
+def _is_metadata_endpoint(url: str) -> bool:
+    """Return True if *url* targets a known cloud instance-metadata endpoint."""
+    try:
+        host = urllib.parse.urlparse(url).hostname
+    except ValueError:
+        return False
+    if not host:
+        return False
+    host = host.lower().strip("[]")
+    return host.startswith(_LINK_LOCAL_PREFIX) or host in _METADATA_HOSTS
 
 # Default timeout for all requests
 DEFAULT_TIMEOUT = 30.0
@@ -121,6 +151,12 @@ def http_download(
     Returns:
         Dict with ``success``, ``path``, ``size_bytes``.
     """
+    if _is_metadata_endpoint(url):
+        return {
+            "success": False,
+            "output": f"Refusing cloud metadata endpoint (SSRF guard): {url!r}",
+            "error": "blocked_metadata",
+        }
     try:
         import httpx  # type: ignore
 
@@ -182,6 +218,13 @@ def _request(
             "success": False,
             "output": f"Refusing non-http(s) URL: {url!r}",
             "error": "invalid_url",
+        }
+    # Block cloud instance-metadata endpoints (SSRF → cloud-cred exfiltration).
+    if _is_metadata_endpoint(url):
+        return {
+            "success": False,
+            "output": f"Refusing cloud metadata endpoint (SSRF guard): {url!r}",
+            "error": "blocked_metadata",
         }
 
     try:
