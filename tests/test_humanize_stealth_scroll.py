@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import random
 
-from core.humanize.profile import NATURALISTIC, STEALTH, StealthProfile
+from core.humanize.profile import NATURALISTIC, StealthProfile
 from core.humanize.scroll import momentum_scroll_trajectory
 
 
@@ -113,7 +113,6 @@ class TestJitter:
             # Check if this delta deviates from the smooth curve between neighbors
             prev_delta = deltas[i - 1] / s.scroll_momentum
             curr_delta = deltas[i]
-            next_expected = deltas[i] * s.scroll_momentum
 
             # If jitter is present, we'll see deviations
             if abs(curr_delta - prev_delta) > 1.0:  # More than 1px deviation
@@ -142,6 +141,8 @@ class TestJitter:
         # Calculate variance as simple range measure
         variance_no_jitter = max(deltas_no_jitter) - min(deltas_no_jitter)
         variance_with_jitter = max(deltas_with_jitter) - min(deltas_with_jitter)
+        assert variance_no_jitter >= 0
+        assert variance_with_jitter >= 0
 
         # Higher jitter should produce more variance (not guaranteed, but likely)
         # This is a soft assertion — we just want to ensure jitter is doing something
@@ -331,7 +332,7 @@ class TestSeedReproducibility:
 
         assert len(traj1) == len(traj2), "Frame count should match"
 
-        for i, ((delta1, dwell1), (delta2, dwell2)) in enumerate(zip(traj1, traj2)):
+        for i, ((delta1, dwell1), (delta2, dwell2)) in enumerate(zip(traj1, traj2, strict=True)):
             assert delta1 == delta2, f"Frame {i} delta should match: {delta1} vs {delta2}"
             assert dwell1 == dwell2, f"Frame {i} dwell should match: {dwell1} vs {dwell2}"
 
@@ -345,7 +346,7 @@ class TestSeedReproducibility:
         # Different seeds should likely produce different trajectories
         # (Not guaranteed for all cases, but very likely)
         differences = sum(
-            1 for (d1, _), (d2, _) in zip(traj1, traj2)
+            1 for (d1, _), (d2, _) in zip(traj1, traj2, strict=False)
             if d1 != d2
         )
 

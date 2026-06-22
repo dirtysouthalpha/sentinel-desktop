@@ -8,12 +8,12 @@ Tests the pluggable detector-evasion pipeline including:
 """
 
 import random
-
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.humanize.detector_evasion import (
+    DEFAULT_STEALTH_PIPELINE,
     AttentionSimulationStrategy,
     DetectorEvasionPipeline,
     DetectorEvasionStrategy,
@@ -22,7 +22,6 @@ from core.humanize.detector_evasion import (
     MomentumScrollStrategy,
     NoOpStrategy,
     OvershootStrategy,
-    DEFAULT_STEALTH_PIPELINE,
 )
 from core.humanize.profile import Profile, StealthProfile
 
