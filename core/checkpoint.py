@@ -220,6 +220,8 @@ class CheckpointManager:
         dest = self._dir / f"{checkpoint_id}.json"
         with self._lock:
             try:
+                # Ensure parent directory exists (handles race conditions from cleanup)
+                dest.parent.mkdir(parents=True, exist_ok=True)
                 with dest.open("w", encoding="utf-8") as fh:
                     json.dump(record, fh, indent=2, default=str, ensure_ascii=False)
                 logger.info(
