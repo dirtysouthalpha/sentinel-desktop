@@ -27,6 +27,32 @@ logger = logging.getLogger(__name__)
 
 _IS_WINDOWS = sys.platform == "win32"
 
+# Hostname/IP literal charset. Leading dashes are rejected separately (they
+# are argument-injection into ping/traceroute, which parse a leading-dash
+# token as a flag). Whitespace and shell metacharacters are excluded.
+_VALID_HOST_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._:-]*[A-Za-z0-9])?$")
+
+
+def _validate_host(host: str) -> str | None:
+    """Return *host* if it is a safe hostname/IP literal, else None.
+
+    Rejects empty/non-strings, leading dashes (ping/traceroute flag
+    injection), values over 253 chars, and any character outside the DNS/IPv6
+    set. IPv6 and IPv4 literals are accepted via ipaddress first.
+    """
+    if not isinstance(host, str) or not host:
+        return None
+    if host.startswith("-"):
+        return None
+    try:
+        ipaddress.ip_address(host)
+        return host
+    except ValueError:
+        pass
+    if len(host) > 253:
+        return None
+    return host if _VALID_HOST_RE.match(host) else None
+
 
 # ── DNS ──────────────────────────────────────────────────────────────────────
 
@@ -123,10 +149,16 @@ def ping_host(host: str, count: int = 4, timeout: int = 3) -> dict[str, Any]:
         ``packets_received``, ``avg_ms``, and ``output``.
     """
     count = max(1, min(10, count))
+    safe = _validate_host(host)
+    if safe is None:
+        return {"success": False, "host": host, "error": "invalid_host", "output": ""}
+    host = safe
     if _IS_WINDOWS:
         cmd = ["ping", "-n", str(count), "-w", str(timeout * 1000), host]
     else:
-        cmd = ["ping", "-c", str(count), "-W", str(timeout), host]
+        # "--" terminates option parsing so a (validated) host can never be
+        # re-interpreted as a ping flag.
+        cmd = ["ping", "-c", str(count), "-W", str(timeout), "--", host]
 
     try:
         result = subprocess.run(
@@ -212,10 +244,14 @@ def traceroute(host: str, max_hops: int = 30) -> dict[str, Any]:
     Returns:
         Dict with ``host``, ``hops`` (list of dicts), and ``output``.
     """
+    safe = _validate_host(host)
+    if safe is None:
+        return {"host": host, "hops": [], "error": "invalid_host", "output": ""}
+    host = safe
     if _IS_WINDOWS:
         cmd = ["tracert", "-d", "-h", str(max_hops), host]
     else:
-        cmd = ["traceroute", "-n", "-m", str(max_hops), host]
+        cmd = ["traceroute", "-n", "-m", str(max_hops), "--", host]
 
     try:
         result = subprocess.run(

@@ -334,3 +334,74 @@ class TestTracerouteFunction:
         assert result["host"] == "8.8.8.8"
         assert "traceroute not found" in result["error"]
         assert result["hops"] == []
+
+
+# ── argument-injection / host validation ────────────────────────────────────
+
+
+class TestHostValidation:
+    """A leading-dash host is parsed by ping/traceroute as a flag, not a
+    hostname (verified: `ping -c1 -W1 -O 127.0.0.1` treats -O as a flag).
+    Reject invalid hosts and terminate option parsing on Unix with --."""
+
+    def test_ping_rejects_leading_dash_host(self):
+        # "-O" is a real ping flag (outstanding-ICMP report); without a guard
+        # it is consumed as a flag rather than the ping target.
+        with patch("subprocess.run") as mock_run:
+            result = ping_host("-O", count=1, timeout=1)
+        assert result["success"] is False
+        assert result["error"] == "invalid_host"
+        mock_run.assert_not_called()
+
+    def test_traceroute_rejects_leading_dash_host(self):
+        with patch("subprocess.run") as mock_run:
+            result = traceroute("-g")
+        assert result["host"] == "-g"
+        assert result["error"] == "invalid_host"
+        mock_run.assert_not_called()
+
+    def test_ping_rejects_empty_host(self):
+        with patch("subprocess.run") as mock_run:
+            result = ping_host("", count=1, timeout=1)
+        assert result["error"] == "invalid_host"
+        mock_run.assert_not_called()
+
+    def test_ping_rejects_host_with_whitespace(self):
+        with patch("subprocess.run") as mock_run:
+            result = ping_host("8.8.8.8 evil.com", count=1, timeout=1)
+        assert result["error"] == "invalid_host"
+        mock_run.assert_not_called()
+
+    def test_ping_accepts_valid_hostname_and_ipv6(self):
+        # Sanity: validation must not reject legitimate targets.
+        mock_result = MagicMock()
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        for ok in ("8.8.8.8", "google.com", "::1", "2001:4860:4860::8888"):
+            with patch("subprocess.run", return_value=mock_result) as mock_run:
+                ping_host(ok, count=1, timeout=1)
+            assert mock_run.called, f"{ok} should be accepted"
+
+    def test_ping_unix_cmd_inserts_dash_dash_terminator(self):
+        mock_result = MagicMock()
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        with patch("core.net_tools._IS_WINDOWS", False):
+            with patch("subprocess.run", return_value=mock_result) as mock_run:
+                ping_host("8.8.8.8", count=1, timeout=1)
+        cmd = mock_run.call_args[0][0]
+        # Host must be the final token, preceded by the -- terminator so a
+        # leading-dash host can never be re-interpreted as a flag.
+        assert cmd[-1] == "8.8.8.8"
+        assert cmd[-2] == "--"
+
+    def test_traceroute_unix_cmd_inserts_dash_dash_terminator(self):
+        mock_result = MagicMock()
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        with patch("core.net_tools._IS_WINDOWS", False):
+            with patch("subprocess.run", return_value=mock_result) as mock_run:
+                traceroute("8.8.8.8")
+        cmd = mock_run.call_args[0][0]
+        assert cmd[-1] == "8.8.8.8"
+        assert cmd[-2] == "--"
