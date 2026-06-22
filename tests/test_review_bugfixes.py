@@ -7,9 +7,10 @@ covers a concrete defect that was live in main (see commit message).
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -307,4 +308,170 @@ def test_smart_open_powershell_fallback_clean_name_unchanged(monkeypatch):
     ex._smart_open(name="notepad.exe")
     cmd_arg = popen.call_args[0][0][-1]
     assert cmd_arg == "Start-Process 'notepad.exe'"
+
+
+# ---------------------------------------------------------------------------
+# Bug: estimate_cost's fuzzy lookup had an `or key in model` substring branch,
+# so a short pricing key matched as a substring of an UNRELATED model name —
+# "video3" matched "o3" ($10/M input), billing a non-existent model at the
+# premium reasoning tier. Same class as the gpt-4o / gpt-4o-mini prefix bug.
+# Fix: prefix-only match (startswith). The longest-first sort still resolves
+# the legitimate versioned-name prefix collisions.
+# ---------------------------------------------------------------------------
+
+
+def test_cost_estimate_substring_branch_no_longer_false_matches():
+    from core.cost_tracker import estimate_cost
+
+    # "video3" / "promo3" contain the substring "o3" ($10/M). Before the fix
+    # these returned $10.00 for 1M input tokens; now they are unknown → $0.0.
+    assert estimate_cost("openai", "video3", 1_000_000, 0) == 0.0
+    assert estimate_cost("openai", "promo3", 1_000_000, 0) == 0.0
+    # Prefix matching still resolves the real versioned name to the mini tier.
+    assert estimate_cost("openai", "gpt-4o-mini-2024-07-18", 1_000_000, 0) == pytest.approx(0.15)
+
+
+# ---------------------------------------------------------------------------
+# Bug: POST /recorder/stop built the save path from req.name with only
+# .replace(' ', '_').lower() — path separators passed through, so a name like
+# "../../etc/cron.d/backdoor" wrote outside the scripts/ directory.
+# Fix: os.path.basename the normalized name; fall back to "untitled" when the
+# result is empty / "." / "..".
+# ---------------------------------------------------------------------------
+
+
+def _stub_recorder_save() -> tuple[MagicMock, dict]:
+    """Wire a fake engine+recorder onto a server; return (server, saved-path sink)."""
+    server = _make_server()
+    saved: dict = {}
+    fake_script = MagicMock()
+    fake_script.save = lambda path: saved.__setitem__("path", path)
+    fake_script.steps = []
+    engine = MagicMock()
+    engine.recorder.stop_recording.return_value = fake_script
+    server.engine = engine
+    return server, saved
+
+
+def test_recorder_stop_contains_traversal_name_inside_scripts_dir():
+    import asyncio
+
+    from api.server import RecorderStopRequest
+
+    server, saved = _stub_recorder_save()
+    req = RecorderStopRequest(name="../../etc/cron.d/backdoor", description="x")
+    asyncio.run(server._handle_recorder_stop(req, authorization=None))
+
+    path = saved["path"]
+    # Must land directly inside scripts/ — basename applied, no parent escape.
+    assert path.endswith(os.path.join("scripts", "backdoor.json"))
+    assert ".." not in path
+
+
+def test_recorder_stop_clean_name_passes_through():
+    import asyncio
+
+    from api.server import RecorderStopRequest
+
+    server, saved = _stub_recorder_save()
+    req = RecorderStopRequest(name="My Cool Script", description="x")
+    asyncio.run(server._handle_recorder_stop(req, authorization=None))
+
+    assert saved["path"].endswith(os.path.join("scripts", "my_cool_script.json"))
+
+
+# ---------------------------------------------------------------------------
+# Bug: the /ws/terminal WebSocket endpoint called ws.accept() and forked a PTY
+# shell with NO auth check — so with SENTINEL_API_TOKEN configured, anyone who
+# could reach the port got an unauthenticated interactive shell. Every other
+# mutating handler gates on _check_auth; this one (the most powerful — arbitrary
+# command execution) was wide open.
+# Fix: when SENTINEL_API_TOKEN is set, require ?token=<token> (constant-time
+# compare) before spawning the shell; close on mismatch. No-op when unset.
+# ---------------------------------------------------------------------------
+
+
+def test_terminal_ws_rejects_missing_token_when_configured():
+    import asyncio
+
+    import api.server as server_mod
+
+    server = _make_server()
+    ws = MagicMock()
+    ws.accept = AsyncMock()
+    ws.send_json = AsyncMock()
+    ws.close = AsyncMock()
+    ws.query_params = {}  # no token presented
+
+    mock_pty = MagicMock()
+    with _TokenGuard("super-secret"):
+        # Force _HAS_PTY True and patch os.fork so a regression (auth skipped)
+        # fails loudly instead of forking the test process.
+        orig = server_mod._HAS_PTY
+        server_mod._HAS_PTY = True
+        try:
+            with patch("api.server.pty", mock_pty), patch(
+                "os.fork", side_effect=AssertionError("shell must not spawn without auth")
+            ):
+                asyncio.run(server._handle_terminal_ws(ws))
+        finally:
+            server_mod._HAS_PTY = orig
+
+    sent = ws.send_json.call_args[0][0]
+    assert sent["type"] == "auth_error"
+    ws.close.assert_called_once()
+    mock_pty.openpty.assert_not_called()
+
+
+def test_terminal_ws_accepts_correct_token_then_proceeds():
+    import asyncio
+
+    import api.server as server_mod
+
+    server = _make_server()
+    ws = MagicMock()
+    ws.accept = AsyncMock()
+    ws.send_json = AsyncMock()
+    ws.close = AsyncMock()
+    ws.query_params = {"token": "super-secret"}
+
+    with _TokenGuard("super-secret"):
+        # _HAS_PTY False so that, after auth passes, the handler hits the
+        # "not available" branch and closes cleanly — proving auth passed.
+        orig = server_mod._HAS_PTY
+        server_mod._HAS_PTY = False
+        try:
+            asyncio.run(server._handle_terminal_ws(ws))
+        finally:
+            server_mod._HAS_PTY = orig
+
+    sent = ws.send_json.call_args[0][0]
+    assert sent["type"] != "auth_error"  # auth passed
+    assert sent["type"] == "error"  # reached the no-PTY branch
+    ws.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Bug: service_control passed `action` straight into the `net` subprocess argv
+# with no validation. The tool schema's enum is LLM-side only, so a caller
+# bypassing it could re-route `net` — action="user" runs `net user ...`.
+# Fix: allow-list {start, stop, restart, query} before the subprocess call.
+# ---------------------------------------------------------------------------
+
+
+def test_service_control_rejects_unknown_action():
+    import core.process_manager as pm
+
+    mock_ctypes = MagicMock()
+    run = MagicMock()
+    with (
+        patch("sys.platform", "win32"),
+        patch("core.process_manager.ctypes", mock_ctypes, create=True),
+        patch.dict("sys.modules", {"ctypes": mock_ctypes}),
+        patch("core.process_manager.subprocess.run", run),
+    ):
+        result = pm.service_control("Spooler", "user admin password")
+    assert result["success"] is False
+    assert "Invalid service action" in result["error"]
+    run.assert_not_called()  # `net user ...` never reached
 
