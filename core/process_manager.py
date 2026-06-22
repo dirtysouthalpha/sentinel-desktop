@@ -190,6 +190,13 @@ def service_control(
     if sys.platform != "win32":
         return {"success": False, "error": "Windows services not available on this platform"}
 
+    # Allow-list the verb before it reaches the `net` subprocess. The tool
+    # schema's enum is advisory (LLM-side); an API caller bypassing it could
+    # otherwise re-route `net` — e.g. action="user" runs `net user ...`,
+    # invoking an unintended net subcommand.
+    if action not in {"start", "stop", "restart", "query"}:
+        return {"success": False, "error": f"Invalid service action: {action!r}"}
+
     import ctypes
 
     if action == "query":
