@@ -303,6 +303,30 @@ class SentinelServer:
                 return
         raise HTTPException(401, "Missing or invalid Authorization header")
 
+    def _require_admin(self, authorization: str | None) -> None:
+        """Gate an endpoint to the ADMIN role. Call after ``_check_auth``.
+
+        The static ``SENTINEL_API_TOKEN`` is trusted as admin. A JWT bearer
+        must resolve to a user whose role is ADMIN. In legacy localhost mode
+        (no token configured and no JWT presented) access is permitted,
+        matching ``_check_auth``'s allow-all — callers still strip secrets.
+        """
+        static_token = os.environ.get(API_TOKEN_ENV)
+        if (
+            static_token
+            and authorization
+            and hmac.compare_digest(authorization, f"Bearer {static_token}")
+        ):
+            return  # static bootstrap/admin token
+        if self.engine and authorization:
+            user = self.engine.auth_manager.validate_jwt_token(authorization)
+            if user is not None:
+                role = str(getattr(user.role, "value", user.role)).lower()
+                if role == "admin":
+                    return
+                raise HTTPException(403, "Admin access required")
+        # Legacy localhost mode (no static token, no JWT) → permit.
+
     def _dashboard_auth_guard(
         self,
         request: Request,
@@ -1624,15 +1648,33 @@ class SentinelServer:
         self,
         authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
-        """List users (admin only)."""
+        """List users (admin only).
+
+        Returns each user's public profile only — ``password_hash``,
+        ``salt``, and ``api_key`` are never serialized over the wire. Access
+        is gated to the ADMIN role (the static ``SENTINEL_API_TOKEN`` counts
+        as admin).
+        """
         self._check_auth(authorization)
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
+        self._require_admin(authorization)
         try:
-            return {"users": self.engine.auth_manager.list_users()}
+            users = self.engine.auth_manager.list_users()
         except (OSError, ValueError) as exc:
             logger.exception("Failed to list users")
             raise HTTPException(500, f"Failed to list users: {exc}") from exc
+        return {
+            "users": [
+                {
+                    "username": u.username,
+                    "role": getattr(u.role, "value", u.role),
+                    "created": getattr(u, "created", None),
+                    "last_login": getattr(u, "last_login", None),
+                }
+                for u in users
+            ]
+        }
 
     async def _handle_auth_oidc_token(
         self,
