@@ -1,8 +1,9 @@
 """Sentinel Desktop v3.0 — DPAPI Credential Vault.
 
 Provides encrypted storage of sensitive credentials (API keys, tokens, etc.)
-using Windows DPAPI (Data Protection API) with automatic fallback to
-base64 encoding on non-Windows platforms.
+using Windows DPAPI (Data Protection API) on Windows, and a per-entry-nonce
+HMAC-CTR stream cipher with an integrity tag on non-Windows platforms
+(see the ``_stream_encrypt`` / ``_stream_decrypt`` helpers).
 
 Vault file format (JSON):
 {
@@ -19,8 +20,12 @@ Thread safety: All public methods are guarded by a reentrant lock.
 """
 
 import base64
+import hashlib
+import hmac
 import json
 import logging
+import os
+import platform
 import threading
 from pathlib import Path
 from typing import Any
@@ -89,39 +94,107 @@ if _IS_WINDOWS:
     CRYPTPROTECT_UI_FORBIDDEN = 0x01
 
 # ---------------------------------------------------------------------------
-# Cross-platform XOR encryption fallback (non-Windows)
+# Non-Windows credential encryption
 # ---------------------------------------------------------------------------
+#
+# Current format (v2): a self-describing framed blob
+#     MAGIC(5) || nonce(16) || ciphertext || tag(32)
+# where the keystream is HMAC-SHA256(enc_key, nonce || counter) in counter
+# mode (XORed against the plaintext) and `tag` is HMAC-SHA256(mac_key,
+# nonce || ciphertext) (encrypt-then-MAC). `enc_key` and `mac_key` are
+# domain-separated derivations of the machine identity.
+#
+# This is a genuine encryption layer — not the obfuscation the legacy
+# fixed-keystream XOR provided: a fresh random nonce per entry means
+# identical plaintexts no longer share a keystream, and the MAC detects
+# tampering/corruption on read (the XOR scheme silently returned garbage).
+#
+# Threat-model honesty: the keys are derived from hostname + uid, so a
+# local attacker who can read the vault AND knows the machine identity
+# can still derive them. That residual is only fully closed by OS-managed
+# key binding (DPAPI on Windows, which is always preferred; libsecret /
+# Keychain on Linux/macOS — a separate design decision, not done here).
+# The v2 upgrade's job is to remove the trivial weaknesses (fixed
+# keystream, no integrity) without adding a dependency.
+
+_MAGIC_V2 = b"SENT2"
+_MAGIC_LEN = len(_MAGIC_V2)
+_NONCE_LEN = 16
+_TAG_LEN = 32  # HMAC-SHA256
+
+
+def _machine_identity() -> str:
+    """Return the machine+user identity string used to derive vault keys."""
+    uid = os.getuid() if hasattr(os, "getuid") else os.getenv("USERNAME", "user")
+    return f"{platform.node()}-{uid}"
+
+
+def _vault_keys() -> tuple[bytes, bytes]:
+    """Derive domain-separated (keystream_key, mac_key) from the machine identity."""
+    master = hashlib.sha256(_machine_identity().encode("utf-8")).digest()
+    enc_key = hmac.new(master, b"sentinel-vault-encryption-key", hashlib.sha256).digest()
+    mac_key = hmac.new(master, b"sentinel-vault-integrity-key", hashlib.sha256).digest()
+    return enc_key, mac_key
+
+
+def _keystream(key: bytes, nonce: bytes, length: int) -> bytes:
+    """Generate `length` bytes of HMAC-SHA256 counter-mode keystream."""
+    out = bytearray()
+    counter = 0
+    while len(out) < length:
+        out.extend(hmac.new(key, nonce + counter.to_bytes(8, "little"), hashlib.sha256).digest())
+        counter += 1
+    return bytes(out[:length])
+
+
+def _stream_encrypt(plaintext: bytes) -> bytes:
+    """Encrypt with a per-entry random nonce + HMAC-CTR keystream + integrity tag."""
+    enc_key, mac_key = _vault_keys()
+    nonce = os.urandom(_NONCE_LEN)
+    ks = _keystream(enc_key, nonce, len(plaintext))
+    ciphertext = bytes(p ^ k for p, k in zip(plaintext, ks, strict=True))
+    tag = hmac.new(mac_key, nonce + ciphertext, hashlib.sha256).digest()
+    return _MAGIC_V2 + nonce + ciphertext + tag
+
+
+def _stream_decrypt(blob: bytes) -> bytes | None:
+    """Reverse of :func:`_stream_encrypt`. Returns ``None`` on any integrity failure."""
+    if len(blob) < _MAGIC_LEN + _NONCE_LEN + _TAG_LEN:
+        logger.error("vault entry too short for v2 frame — treating as corrupt")
+        return None
+    nonce = blob[_MAGIC_LEN:_MAGIC_LEN + _NONCE_LEN]
+    tag = blob[-_TAG_LEN:]
+    ciphertext = blob[_MAGIC_LEN + _NONCE_LEN : -_TAG_LEN]
+    enc_key, mac_key = _vault_keys()
+    expected = hmac.new(mac_key, nonce + ciphertext, hashlib.sha256).digest()
+    if not hmac.compare_digest(tag, expected):
+        logger.error("vault entry failed integrity check (tampering or corruption)")
+        return None
+    ks = _keystream(enc_key, nonce, len(ciphertext))
+    return bytes(c ^ k for c, k in zip(ciphertext, ks, strict=True))
+
+
+# --- Legacy v1 path (read-only, for migrating existing vaults) --------------
 
 
 def _get_machine_key() -> bytes:
-    """Derive a machine-specific key from hostname + username.
-
-    This is a simple obfuscation layer — not cryptographically strong,
-    but prevents credentials from being stored as plaintext on non-Windows.
-    DPAPI on Windows is always preferred.
-    """
-    import hashlib
-    import os
-    import platform
-
-    uid = os.getuid() if hasattr(os, "getuid") else os.getenv("USERNAME", "user")
-    identity = f"{platform.node()}-{uid}"
-    return hashlib.sha256(identity.encode()).digest()
+    """Legacy v1 key derivation — kept only to read pre-v2 vault entries."""
+    return hashlib.sha256(_machine_identity().encode()).digest()
 
 
 def _xor_encrypt(plaintext: bytes) -> bytes:
-    """XOR plaintext with a repeating machine-specific key, then base64-encode."""
+    """Legacy v1: XOR with a repeating machine key, then base64-encode."""
     key = _get_machine_key()
     xored = bytes(plaintext[i] ^ key[i % len(key)] for i in range(len(plaintext)))
     return base64.b64encode(xored)
 
 
 def _xor_decrypt(ciphertext: bytes) -> bytes | None:
-    """Reverse of _xor_encrypt: base64-decode then XOR with machine key."""
+    """Legacy v1 reverse: base64-decode then XOR with the machine key."""
     try:
         xored = base64.b64decode(ciphertext)
     except ValueError:
-        logger.exception("base64 decode failed for non-Windows vault entry")
+        logger.exception("base64 decode failed for legacy v1 vault entry")
         return None
     key = _get_machine_key()
     return bytes(xored[i] ^ key[i % len(key)] for i in range(len(xored)))
@@ -306,9 +379,9 @@ class CredentialVault:
     def _encrypt(plaintext: bytes) -> bytes | None:
         """Encrypt *plaintext* using DPAPI (CurrentUser scope).
 
-        On non-Windows platforms, uses a machine-specific XOR key derived
-        from the hostname and username. This is NOT as strong as DPAPI but
-        prevents credentials from being stored as plaintext.
+        On non-Windows platforms, uses a per-entry-nonce HMAC-CTR stream
+        cipher with an integrity tag (see ``_stream_encrypt``). DPAPI is
+        always preferred where available.
         """
         if _IS_WINDOWS:
             blob_in = _DATA_BLOB()
@@ -339,8 +412,8 @@ class CredentialVault:
 
             return result
 
-        # Non-Windows fallback: XOR with machine-specific key
-        return _xor_encrypt(plaintext)
+        # Non-Windows: v2 stream cipher (per-entry nonce + integrity tag).
+        return _stream_encrypt(plaintext)
 
     @staticmethod
     def _decrypt(ciphertext: bytes) -> bytes | None:
@@ -373,7 +446,10 @@ class CredentialVault:
 
             return result
 
-        # Non-Windows fallback
+        # Non-Windows: v2 framed blob if the magic prefix is present, else
+        # fall through to the legacy v1 XOR path to read existing vaults.
+        if ciphertext[:_MAGIC_LEN] == _MAGIC_V2:
+            return _stream_decrypt(ciphertext)
         return _xor_decrypt(ciphertext)
 
     # ------------------------------------------------------------------

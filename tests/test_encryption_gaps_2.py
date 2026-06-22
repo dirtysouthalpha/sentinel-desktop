@@ -4,7 +4,6 @@ import_from_config edge cases, and export_safe_config.
 Focuses on lines 156-158, 264-290, 306-331.
 """
 
-import base64
 import json
 import platform
 from pathlib import Path
@@ -12,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from core.encryption import CredentialVault
+from core.encryption import _MAGIC_V2, CredentialVault
 
 
 class TestCorruptVaultEntry:
@@ -52,12 +51,12 @@ class TestNonWindowsEncryptDecrypt:
     """Lines 264-290, 306-331: _encrypt/_decrypt non-Windows fallback."""
 
     @patch("core.encryption._IS_WINDOWS", False)
-    def test_encrypt_returns_valid_base64(self) -> None:
-        """Non-Windows encrypt produces valid base64 output."""
+    def test_encrypt_returns_v2_framed_blob(self) -> None:
+        """Non-Windows encrypt produces a v2 framed blob, not bare base64."""
         data = b"secret data"
         result = CredentialVault._encrypt(data)
         assert result is not None
-        base64.b64decode(result)  # Should not raise
+        assert result[: len(_MAGIC_V2)] == _MAGIC_V2
 
     @patch("core.encryption._IS_WINDOWS", False)
     def test_encrypt_decrypt_roundtrip(self) -> None:
@@ -70,7 +69,7 @@ class TestNonWindowsEncryptDecrypt:
 
     @patch("core.encryption._IS_WINDOWS", False)
     def test_decrypt_xor_roundtrip(self) -> None:
-        """Non-Windows decrypt reverses the XOR+base64 encryption."""
+        """Non-Windows decrypt reverses the v2 stream encryption."""
         original = b"hello world"
         encrypted = CredentialVault._encrypt(original)
         assert encrypted is not None

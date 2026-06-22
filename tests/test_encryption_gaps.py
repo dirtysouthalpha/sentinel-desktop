@@ -1,6 +1,5 @@
 """Tests for encryption.py — covering DPAPI failure, non-Windows fallback, load/save errors."""
 
-import base64
 import json
 import platform
 from pathlib import Path
@@ -8,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.encryption import CredentialVault
+from core.encryption import _MAGIC_V2, CredentialVault
 
 
 class TestEncryptReturnsNone:
@@ -41,15 +40,14 @@ class TestImportStoreFailure:
 
 
 class TestNonWindowsEncryptFallback:
-    """_encrypt falls back to XOR+base64 on non-Windows."""
+    """_encrypt uses the v2 framed stream cipher on non-Windows."""
 
     @patch("core.encryption._IS_WINDOWS", False)
     def test_non_windows_encrypt_returns_bytes(self) -> None:
         data = b"hello world"
         result = CredentialVault._encrypt(data)
         assert result is not None
-        # Should be base64-encoded (valid b64 characters)
-        base64.b64decode(result)  # Should not raise
+        assert result[: len(_MAGIC_V2)] == _MAGIC_V2  # v2 framed blob
 
     @patch("core.encryption._IS_WINDOWS", False)
     def test_non_windows_encrypt_decrypt_roundtrip(self) -> None:
