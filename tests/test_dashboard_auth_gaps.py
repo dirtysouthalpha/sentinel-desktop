@@ -43,6 +43,29 @@ def with_token(monkeypatch):
     yield
 
 
+@pytest.fixture
+def fast_dashboard(monkeypatch):
+    """Stub the dashboard's I/O helpers so handler-exercising tests are fast
+    and host-independent — real disk/GPU enumeration can flirt with the
+    endpoint's own 10s timeout on loaded or snap/btrfs-heavy hosts."""
+    import core.dashboard as dash
+
+    monkeypatch.setattr(dash, "_get_cpu_info", lambda: {"percent": 10.0, "count_logical": 4})
+    monkeypatch.setattr(
+        dash,
+        "_get_memory_info",
+        lambda: {"percent": 20.0, "used_gb": 4.0, "total_gb": 16.0, "available_gb": 12.0},
+    )
+    monkeypatch.setattr(
+        dash,
+        "_get_disk_info",
+        lambda: [{"mount": "/", "percent": 30.0, "total_gb": 100.0, "used_gb": 30.0, "free_gb": 70.0}],
+    )
+    monkeypatch.setattr(dash, "_get_gpu_info", lambda: [])
+    monkeypatch.setattr(dash, "_count_log_entries", lambda: {"total_logs": 0})
+    yield
+
+
 class TestDashboardRouterRequiresAuth:
     """With ``SENTINEL_API_TOKEN`` configured, sensitive dashboard routes 401
     without a bearer token."""
@@ -62,7 +85,7 @@ class TestDashboardRouterRequiresAuth:
             resp = client.post("/dashboard/chat/sentinel-ai", json={"message": "hi"})
         assert resp.status_code == 401
 
-    def test_health_stays_public(self, with_token):
+    def test_health_stays_public(self, with_token, fast_dashboard):
         """Regression guard: /dashboard/health is an intentionally public
         liveness probe and must NOT be gated, even with a token configured."""
         with _client() as client:
@@ -70,9 +93,9 @@ class TestDashboardRouterRequiresAuth:
         assert resp.status_code == 200
         assert resp.json()["status"] in {"healthy", "warning"}
 
-    def test_overview_accepts_correct_bearer(self, with_token):
+    def test_overview_accepts_correct_bearer(self, with_token, fast_dashboard):
         """With the correct bearer token, _check_auth passes and overview
-        returns 200 with whatever the host's psutil provides."""
+        returns 200 with the (stubbed) system data."""
         with _client() as client:
             resp = client.get(
                 "/dashboard/overview", headers={"Authorization": f"Bearer {_TOKEN}"}
@@ -85,7 +108,7 @@ class TestDashboardRouterOpenInLocalhostMode:
     """With no ``SENTINEL_API_TOKEN`` configured (legacy localhost mode), the
     dashboard routes remain open — preserving existing local-automation UX."""
 
-    def test_overview_open_without_token_configured(self, monkeypatch):
+    def test_overview_open_without_token_configured(self, monkeypatch, fast_dashboard):
         monkeypatch.delenv(mod.API_TOKEN_ENV, raising=False)
         with _client() as client:
             resp = client.get("/dashboard/overview")
