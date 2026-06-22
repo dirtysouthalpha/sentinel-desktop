@@ -901,6 +901,23 @@ class SentinelServer:
         """
         await ws.accept()
 
+        # Require the shared secret when one is configured, mirroring _check_auth.
+        # The terminal endpoint grants an interactive shell, so it must not be
+        # reachable without auth when SENTINEL_API_TOKEN is set — every other
+        # mutating handler gates on _check_auth; this one used to accept blindly.
+        # PTY clients pass ?token=<SENTINEL_API_TOKEN> (standard terminal-WS
+        # convention; avoids forcing a pre-shell handshake message). No-op when
+        # no token is configured (legacy localhost mode).
+        api_token = os.environ.get(API_TOKEN_ENV)
+        if api_token:
+            client_token = ws.query_params.get("token") if ws.query_params else None
+            if not client_token or not hmac.compare_digest(str(client_token), api_token):
+                await ws.send_json(
+                    {"type": "auth_error", "message": "Invalid or missing token"}
+                )
+                await ws.close()
+                return
+
         if not _HAS_PTY:
             await ws.send_json(
                 {
@@ -1271,7 +1288,13 @@ class SentinelServer:
         try:
             scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
             os.makedirs(scripts_dir, exist_ok=True)
-            path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
+            # Contain the file inside scripts_dir: basename strips any "../"
+            # traversal in the user-supplied name (only spaces were normalized
+            # before, so "../../etc/x" wrote outside the directory).
+            safe_name = os.path.basename(name.replace(" ", "_").lower())
+            if safe_name in ("", ".", ".."):
+                safe_name = "untitled"
+            path = os.path.join(scripts_dir, f"{safe_name}.json")
             script.save(path)
             return {"status": "saved", "path": path, "steps": len(script.steps)}
         except OSError as exc:
