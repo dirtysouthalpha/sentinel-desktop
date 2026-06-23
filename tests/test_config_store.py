@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import os
+import stat
+import sys
 import tempfile
 from pathlib import Path
+
+import pytest
 
 from core.config_store import ConfigStore
 
@@ -151,3 +156,29 @@ class TestConfigActionsInExecutor:
         )
         assert get_result["success"] is True
         assert get_result["value"] == "test_value"
+
+
+class TestConfigStoreFilePermissions:
+    """config.json holds LLM API keys and the JWT signing secret. On POSIX it
+    must be owner-only (0600) so other local users on a shared IT host can't
+    read it."""
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_new_config_file_is_owner_only(self, tmp_path):
+        path = tmp_path / "config.json"
+        cfg = ConfigStore(path=path)
+        cfg.set("llm.api_key", "sk-secret")
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert (mode & 0o077) == 0, f"config.json exposed to group/other: {oct(mode)}"
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_existing_world_readable_config_is_tightened_on_load(self, tmp_path):
+        # A config written by an older version (0644) must be tightened to 0600
+        # the next time it is opened, not left world-readable.
+        path = tmp_path / "config.json"
+        path.write_text('{"llm": {"api_key": "sk-leaked"}}', encoding="utf-8")
+        os.chmod(path, 0o644)
+        assert (stat.S_IMODE(path.stat().st_mode) & 0o077) != 0
+        ConfigStore(path=path)  # opening it should heal perms
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert (mode & 0o077) == 0, f"config.json not healed: {oct(mode)}"

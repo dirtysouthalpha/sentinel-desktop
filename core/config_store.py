@@ -21,6 +21,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from core.utils import restrict_file_perms
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_PATH = Path.home() / ".sentinel" / "config.json"
@@ -50,6 +52,9 @@ class ConfigStore:
         if self._path.exists():
             try:
                 self._data = json.loads(self._path.read_text(encoding="utf-8"))
+                # Tighten perms on legacy files written before the 0600 fix;
+                # this file holds LLM API keys and the JWT signing secret.
+                restrict_file_perms(self._path)
                 logger.debug("Config loaded from %s", self._path)
             except (json.JSONDecodeError, OSError) as exc:
                 logger.warning("Config load failed (%s) — starting empty", exc)
@@ -63,6 +68,10 @@ class ConfigStore:
                 json.dumps(self._data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
+            # Owner-only on POSIX: this file holds LLM API keys and the JWT
+            # signing secret. write_text respects the umask (0644/0664) which
+            # leaves the file readable by any local user on shared IT hosts.
+            restrict_file_perms(self._path)
             return True
         except OSError as exc:
             logger.error("Config save failed: %s", exc)
