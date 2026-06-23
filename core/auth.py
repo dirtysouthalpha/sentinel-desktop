@@ -8,14 +8,18 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import secrets
 import time
+import uuid
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 import bcrypt
+
+from core.utils import restrict_file_perms
 
 logger = logging.getLogger(__name__)
 
@@ -247,22 +251,53 @@ class AuthManager:
             logger.debug("Config file %s does not exist yet", self.config_path)
             return
 
+        # users.json stores bcrypt hashes + API keys; heal perms on a file left
+        # world-readable by an older version before exposing its contents.
+        restrict_file_perms(self.config_path)
         try:
             with open(self.config_path, encoding="utf-8") as fh:
                 data = json.load(fh)
         except (json.JSONDecodeError, OSError) as exc:
+            # A truncated/garbled file is unrecoverable; quarantine it so the
+            # default-admin bootstrap below can't silently overwrite the
+            # operator's real users (mirrors triggers.py / fleet.py).
             logger.error("Failed to read user config: %s", exc)
+            self._quarantine_corrupt_file()
             return
 
+        # Load each record individually so one malformed user (e.g. missing
+        # "role") is skipped rather than crashing AuthManager construction and
+        # discarding every other valid user in the same file.
         for user_dict in data.get("users", []):
-            user = User.from_dict(user_dict)
+            try:
+                user = User.from_dict(user_dict)
+            except (KeyError, ValueError, TypeError) as exc:
+                logger.warning("Skipping malformed user record: %s", exc)
+                continue
             self._users[user.username] = user
             self._api_key_index[user.api_key] = user.username
 
         logger.info("Loaded %d user(s) from %s", len(self._users), self.config_path)
 
+    def _quarantine_corrupt_file(self) -> None:
+        """Move an unreadable users.json aside to ``users.json.corrupt``.
+
+        Preserves the corrupt payload for manual recovery so the next mutation
+        (e.g. the default-admin bootstrap) cannot silently destroy it.
+        """
+        backup = self.config_path.parent / (self.config_path.name + ".corrupt")
+        try:
+            self.config_path.replace(backup)
+            logger.warning("Corrupt user config moved to %s", backup)
+        except OSError as move_exc:
+            logger.warning("Could not quarantine corrupt user config: %s", move_exc)
+
     def _save(self) -> bool:
         """Persist all users to the JSON config file.
+
+        Writes atomically (temp file + ``os.replace``) so a crash mid-write
+        cannot leave an empty/truncated file, and restricts the result to
+        owner-only — the file holds bcrypt hashes and API keys.
 
         Returns ``True`` on success, ``False`` on failure.
         """
@@ -272,8 +307,18 @@ class AuthManager:
         try:
             # Ensure parent directory exists (handles tmp_path cleanup race conditions)
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.config_path, "w", encoding="utf-8") as fh:
+            # Unique temp name per write: GUI + API can share the config dir,
+            # and a fixed users.tmp would let two concurrent saves clobber
+            # each other's payload on the final rename.
+            tmp = self.config_path.parent / f".users-{uuid.uuid4().hex}.tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, ensure_ascii=False)
+                fh.flush()
+                os.fsync(fh.fileno())
+            # Restrict the temp inode before the atomic replace so the renamed
+            # users.json is owner-only on POSIX.
+            restrict_file_perms(tmp)
+            os.replace(tmp, self.config_path)
             logger.debug("Saved %d user(s) to %s", len(self._users), self.config_path)
             return True
         except OSError as exc:

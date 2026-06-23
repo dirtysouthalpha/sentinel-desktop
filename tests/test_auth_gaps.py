@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from unittest.mock import patch
 
 from core import auth as auth_module
@@ -95,3 +96,60 @@ def test_validate_expired_session_count_decreases(tmp_path):
     manager.validate_session(token)
 
     assert manager.active_session_count() == 0
+
+
+# ---------------------------------------------------------------------------
+# Persistence tolerance: one malformed user record must not brick AuthManager,
+# and a corrupt file must be quarantined rather than silently overwritten.
+# Mirrors the triggers.py / fleet.py load/quarantine idiom.
+# ---------------------------------------------------------------------------
+
+
+def _valid_user(username: str, api_key: str) -> dict:
+    return {
+        "username": username,
+        "password_hash": "$2b$12$placeholderhashplaceholderhashplaceholderhash",
+        "salt": "",
+        "role": "viewer",
+        "api_key": api_key,
+        "created": "2026-01-01T00:00:00",
+    }
+
+
+def test_load_skips_malformed_user_record(tmp_path):
+    """One record missing a required field must not crash AuthManager."""
+    config = tmp_path / "users.json"
+    config.write_text(
+        json.dumps(
+            {
+                "users": [
+                    _valid_user("alice", "key-alice"),
+                    {"username": "bob"},  # malformed: no role/api_key/hash
+                    _valid_user("carol", "key-carol"),
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manager = AuthManager(config_path=str(config))
+
+    # The two valid users loaded; the malformed one was skipped, not fatal.
+    assert "alice" in manager._users
+    assert "carol" in manager._users
+    assert "bob" not in manager._users
+
+
+def test_load_quarantines_corrupt_json_and_preserves_backup(tmp_path):
+    """A truncated/garbled users.json must be quarantined, not overwritten."""
+    config = tmp_path / "users.json"
+    original = "{not valid json"
+    config.write_text(original, encoding="utf-8")
+
+    AuthManager(config_path=str(config))
+
+    # The corrupt payload is preserved at <name>.corrupt so it is recoverable.
+    backup = config.with_name(config.name + ".corrupt")
+    assert backup.exists()
+    assert backup.read_text(encoding="utf-8") == original
+

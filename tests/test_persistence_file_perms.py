@@ -15,6 +15,7 @@ import sys
 import pytest
 
 from core.audit_chain import AuditChain
+from core.auth import AuthManager, Role
 from core.cost_tracker import CostTracker
 from core.memory.episodic import EpisodicMemory
 from core.memory.semantic import SemanticMemory
@@ -108,3 +109,22 @@ class TestCostTrackerPerms:
         tracker = CostTracker(history_path=path)
         tracker.record("openai", "gpt-4o", {"prompt_tokens": 10, "completion_tokens": 5})
         assert _group_other_bits(path) == 0
+
+
+class TestAuthUsersPerms:
+    def test_save_creates_owner_only(self, tmp_path):
+        # users.json stores bcrypt password hashes + API keys — must be 0600.
+        path = tmp_path / "users.json"
+        manager = AuthManager(config_path=str(path))
+        manager.create_user("ops", "s3cret", role=Role.OPERATOR)
+        assert _group_other_bits(path) == 0
+
+    def test_legacy_world_readable_healed_on_load(self, tmp_path):
+        path = tmp_path / "users.json"
+        manager = AuthManager(config_path=str(path))  # bootstraps default admin
+        manager._save()
+        os.chmod(path, 0o644)
+        assert _group_other_bits(path) != 0
+        AuthManager(config_path=str(path))  # reopening heals perms
+        assert _group_other_bits(path) == 0
+
