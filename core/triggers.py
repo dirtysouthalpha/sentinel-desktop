@@ -101,15 +101,22 @@ class TriggerRegistry:
         restrict_file_perms(self._file)
         try:
             data = json.loads(self._file.read_text(encoding="utf-8"))
-            for item in data:
-                t = Trigger.from_dict(item)
-                self._triggers[t.id] = t
-        except Exception as exc:
-            # A corrupt/truncated file must not be left in place to be silently
-            # overwritten by the next mutation, which would permanently destroy
-            # every saved trigger. Quarantine it so the operator can recover.
-            logger.warning("TriggerRegistry load failed: %s", exc)
+        except (json.JSONDecodeError, OSError) as exc:
+            # A truncated/garbled file is unrecoverable as a whole; quarantine it
+            # so the next mutation can't silently overwrite the operator's data.
+            logger.warning("TriggerRegistry parse failed: %s", exc)
             self._quarantine_corrupt_file()
+            return
+        # The JSON parsed — load each record individually so one malformed entry
+        # (e.g. a trigger missing "name") is skipped rather than discarding every
+        # other valid trigger in the same file.
+        for item in data:
+            try:
+                t = Trigger.from_dict(item)
+            except (KeyError, ValueError, TypeError) as exc:
+                logger.warning("Skipping malformed trigger record: %s", exc)
+                continue
+            self._triggers[t.id] = t
 
     def _quarantine_corrupt_file(self) -> None:
         backup = self._file.parent / (self._file.name + ".corrupt")

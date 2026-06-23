@@ -170,6 +170,30 @@ def test_registry_save_after_corrupt_load_preserves_quarantine(tmp_path: Path):
     assert [t.name for t in reloaded.list_all()] == ["new"]
 
 
+def test_registry_skips_single_bad_record_keeps_good_ones(tmp_path: Path):
+    # Valid JSON array, but ONE record is malformed (missing required "name").
+    # The good records must survive — a single bad entry must not quarantine
+    # the whole file and destroy every other saved trigger.
+    storage = tmp_path / "trig"
+    storage.mkdir(parents=True)
+    triggers_file = storage / "triggers.json"
+    good = Trigger("good_one", EventType.CUSTOM, {"event_name": "x"}, {})
+    also_good = Trigger("good_two", EventType.CUSTOM, {"event_name": "y"}, {})
+    bad_record = {"event_type": "custom", "condition": {}, "action": {}}  # no "name"
+    import json as _json
+    triggers_file.write_text(
+        _json.dumps([good.to_dict(), bad_record, also_good.to_dict()]),
+        encoding="utf-8",
+    )
+
+    reg = TriggerRegistry(storage_dir=storage)
+    names = sorted(t.name for t in reg.list_all())
+    assert names == ["good_one", "good_two"]
+    # The file is NOT quarantined — only a truly unparseable file is.
+    assert triggers_file.exists()
+    assert not (storage / "triggers.json.corrupt").exists()
+
+
 # ---------------------------------------------------------------------------
 # TriggerEngine
 # ---------------------------------------------------------------------------
