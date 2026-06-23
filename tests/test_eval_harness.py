@@ -296,6 +296,29 @@ class TestEvalRegistry:
         assert comparison["regression"] is True
         assert comparison["score_delta"] == pytest.approx(-1.0)
 
+    def test_compare_to_baseline_after_save_with_equal_score(self, tmp_path):
+        """In the real eval_run flow (action_executor.py:2735-2736) save_result
+        appends the current result BEFORE compare_to_baseline reads the file.
+        The old score-based exclusion (``r.get("score") != result.score``)
+        then discarded the genuine prior run too whenever it shared the
+        current score, returning baseline_score=None (or picking an older,
+        wrong run). The prior run must remain the baseline."""
+        registry = EvalRegistry(scenarios_dir=tmp_path / "s", results_dir=tmp_path / "r")
+        prior = ScenarioResult(
+            scenario_name="x", passed=True, steps_passed=1, steps_failed=0,
+            steps_total=1, score=0.9, duration_ms=1.0, step_results=[],
+        )
+        registry.save_result(prior)
+        current = ScenarioResult(
+            scenario_name="x", passed=True, steps_passed=1, steps_failed=0,
+            steps_total=1, score=0.9, duration_ms=2.0, step_results=[],
+        )
+        registry.save_result(current)  # mimics eval_run: save THEN compare
+        comparison = registry.compare_to_baseline(current)
+        assert comparison["baseline_score"] == pytest.approx(0.9)
+        assert comparison["score_delta"] == pytest.approx(0.0)
+        assert comparison["regression"] is False
+
 
 # ---------------------------------------------------------------------------
 # EvalReport

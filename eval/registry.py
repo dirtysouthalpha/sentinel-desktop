@@ -122,16 +122,22 @@ class EvalRegistry:
           ``current_score``: Score from *result*.
         """
         history = self.list_results(result.scenario_name, limit=10)
-        # Filter out the current result (matched by score+steps as a heuristic)
-        prior = [r for r in history if r.get("score") != result.score]
-        if not prior:
+        # The eval_run flow appends the current result via save_result
+        # immediately before this call, so it is the trailing record. Drop it
+        # by identity. The old score-based heuristic (``score != result.score``)
+        # also discarded any genuine prior run that happened to share the
+        # score, yielding the wrong baseline or None.
+        current_dict = result.to_dict()
+        if history and history[-1] == current_dict:
+            history = history[:-1]
+        if not history:
             return {
                 "baseline_score": None,
                 "current_score": result.score,
                 "score_delta": None,
                 "regression": False,
             }
-        baseline_score = prior[-1].get("score", 0.0)
+        baseline_score = history[-1].get("score", 0.0)
         delta = round(result.score - baseline_score, 4)
         return {
             "baseline_score": baseline_score,
