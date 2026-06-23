@@ -224,7 +224,7 @@ class SentinelDesktopApp:
             else:
                 self.app.after(0, lambda: self._add_message(result.message, "error"))
         except Exception as e:
-            self.app.after(0, lambda: self._add_message(f"Error: {e}", "error"))
+            self.app.after(0, lambda err=str(e): self._add_message(f"Error: {err}", "error"))
         finally:
             self.app.after(0, lambda: self.send_btn.configure(state="normal", text="Send"))
 
