@@ -129,6 +129,55 @@ class TestFleetLoadException:
         assert any("fleet" in r.message.lower() for r in caplog.records)
 
 
+class TestFleetLoadCorruptFilePreservation:
+    """A corrupt fleet file must be quarantined, not silently overwritten with
+    empty by the next mutation (mirrors the TriggerRegistry fix)."""
+
+    def test_corrupt_file_quarantined_before_save_clobbers_it(self, tmp_path):
+        fleet_file = tmp_path / "fleet.json"
+        original_bytes = '{not valid json at all'
+        fleet_file.write_text(original_bytes, encoding="utf-8")
+
+        fleet = FleetManager(path=fleet_file)
+        # A mutation triggers _save(); without quarantine this overwrites the
+        # corrupt file with an empty-ish fleet, destroying the operator's data.
+        fleet.register_node("n1", hostname="box1")
+
+        backup = tmp_path / "fleet.json.corrupt"
+        assert backup.exists(), "corrupt fleet file should be quarantined, not clobbered"
+        assert backup.read_text(encoding="utf-8") == original_bytes
+
+    def test_malformed_node_record_does_not_crash_load(self, tmp_path):
+        """One node missing required 'node_id' must be skipped, not crash __init__."""
+        fleet_file = tmp_path / "fleet.json"
+        fleet_file.write_text(
+            json.dumps({"nodes": [{"hostname": "no-id-here"}]}),
+            encoding="utf-8",
+        )
+        fleet = FleetManager(path=fleet_file)  # must not raise
+        assert fleet.count() == 0
+
+    def test_malformed_node_skipped_valid_nodes_preserved(self, tmp_path):
+        """A bad record skips only itself; valid siblings are still loaded."""
+        fleet_file = tmp_path / "fleet.json"
+        fleet_file.write_text(
+            json.dumps(
+                {
+                    "nodes": [
+                        {"node_id": "good-1", "hostname": "box1"},
+                        {"hostname": "missing-id"},  # malformed
+                        {"node_id": "good-2", "hostname": "box2"},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        fleet = FleetManager(path=fleet_file)
+        assert fleet.count() == 2
+        assert fleet.get_node("good-1") is not None
+        assert fleet.get_node("good-2") is not None
+
+
 class TestFleetSaveOSError:
     """Lines 182-183 — OSError in _save() is swallowed."""
 

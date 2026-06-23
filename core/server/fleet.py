@@ -171,11 +171,31 @@ class FleetManager:
             return
         try:
             data = json.loads(self._path.read_text(encoding="utf-8"))
-            for node_data in data.get("nodes", []):
-                node = FleetNode.from_dict(node_data)
-                self._nodes[node.node_id] = node
         except (json.JSONDecodeError, OSError) as exc:
+            # A truncated/garbled file is unrecoverable as a whole; quarantine it
+            # so the next mutation can't silently overwrite the operator's fleet
+            # data with an empty file.
             logger.warning("Failed to load fleet data: %s", exc)
+            self._quarantine_corrupt_file()
+            return
+        # The JSON parsed — load each node individually so one malformed record
+        # (e.g. a node missing "node_id") is skipped rather than crashing the
+        # whole manager and discarding every other valid node in the file.
+        for node_data in data.get("nodes", []):
+            try:
+                node = FleetNode.from_dict(node_data)
+            except (KeyError, ValueError, TypeError) as exc:
+                logger.warning("Skipping malformed fleet node record: %s", exc)
+                continue
+            self._nodes[node.node_id] = node
+
+    def _quarantine_corrupt_file(self) -> None:
+        backup = self._path.parent / (self._path.name + ".corrupt")
+        try:
+            self._path.replace(backup)
+            logger.warning("Corrupt fleet file moved to %s", backup)
+        except OSError as move_exc:
+            logger.warning("Could not quarantine corrupt fleet file: %s", move_exc)
 
     def _save(self) -> None:
         try:
