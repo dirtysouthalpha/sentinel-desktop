@@ -100,19 +100,36 @@ class TriggerRegistry:
         # for automated flows; heal perms on legacy world-readable files.
         restrict_file_perms(self._file)
         try:
-            data = json.loads(self._file.read_text())
+            data = json.loads(self._file.read_text(encoding="utf-8"))
             for item in data:
                 t = Trigger.from_dict(item)
                 self._triggers[t.id] = t
         except Exception as exc:
+            # A corrupt/truncated file must not be left in place to be silently
+            # overwritten by the next mutation, which would permanently destroy
+            # every saved trigger. Quarantine it so the operator can recover.
             logger.warning("TriggerRegistry load failed: %s", exc)
+            self._quarantine_corrupt_file()
+
+    def _quarantine_corrupt_file(self) -> None:
+        backup = self._file.parent / (self._file.name + ".corrupt")
+        try:
+            self._file.replace(backup)
+            logger.warning("Corrupt triggers file moved to %s", backup)
+        except OSError as move_exc:
+            logger.warning("Could not quarantine corrupt triggers file: %s", move_exc)
 
     def _save(self) -> None:
         try:
-            self._file.write_text(
-                json.dumps([t.to_dict() for t in self._triggers.values()], indent=2)
+            tmp = self._file.with_suffix(".tmp")
+            tmp.write_text(
+                json.dumps([t.to_dict() for t in self._triggers.values()], indent=2),
+                encoding="utf-8",
             )
-            restrict_file_perms(self._file)
+            # Restrict the temp inode before the atomic replace so the renamed
+            # triggers.json is owner-only on POSIX.
+            restrict_file_perms(tmp)
+            tmp.replace(self._file)
         except Exception as exc:
             logger.warning("TriggerRegistry save failed: %s", exc)
 

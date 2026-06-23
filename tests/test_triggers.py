@@ -129,6 +129,47 @@ def test_registry_persists_to_disk(tmp_path: Path):
     assert loaded.event_type == EventType.SCHEDULE
 
 
+def test_registry_save_leaves_no_tmp_leftover(registry: TriggerRegistry):
+    registry.add(Trigger("t", EventType.CUSTOM, {}, {}))
+    assert (registry._dir / "triggers.json").exists()
+    assert not (registry._dir / "triggers.tmp").exists()
+
+
+def test_registry_corrupt_file_is_quarantined(tmp_path: Path):
+    storage = tmp_path / "trig"
+    storage.mkdir(parents=True)
+    triggers_file = storage / "triggers.json"
+    # A crash mid-save can leave a truncated/garbled file.
+    triggers_file.write_text("{this is not valid json", encoding="utf-8")
+
+    reg = TriggerRegistry(storage_dir=storage)
+    # Registry starts empty …
+    assert reg.list_all() == []
+    # … but the corrupt data is preserved for recovery, not destroyed.
+    assert not triggers_file.exists()
+    backup = storage / "triggers.json.corrupt"
+    assert backup.exists()
+    assert backup.read_text(encoding="utf-8") == "{this is not valid json"
+
+
+def test_registry_save_after_corrupt_load_preserves_quarantine(tmp_path: Path):
+    # The destructive half of the bug: after a corrupt load the next mutation
+    # must not overwrite the recoverable data (it's quarantined, not lost).
+    storage = tmp_path / "trig"
+    storage.mkdir(parents=True)
+    triggers_file = storage / "triggers.json"
+    triggers_file.write_text("{garbage", encoding="utf-8")
+
+    reg = TriggerRegistry(storage_dir=storage)
+    reg.add(Trigger("new", EventType.CUSTOM, {}, {}))
+
+    backup = storage / "triggers.json.corrupt"
+    assert backup.read_text(encoding="utf-8") == "{garbage"
+    # Fresh registry loads only the newly-added trigger from the rewritten file.
+    reloaded = TriggerRegistry(storage_dir=storage)
+    assert [t.name for t in reloaded.list_all()] == ["new"]
+
+
 # ---------------------------------------------------------------------------
 # TriggerEngine
 # ---------------------------------------------------------------------------
