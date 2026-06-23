@@ -21,6 +21,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from core.utils import restrict_file_perms
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = Path("memory/semantic.db")
@@ -42,6 +44,7 @@ class SemanticMemory:
         self._path = Path(path) if path else DEFAULT_DB_PATH
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
+        restrict_file_perms(self._path)
 
     def _init_db(self) -> None:
         with self._connect() as conn:
