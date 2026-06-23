@@ -17,6 +17,7 @@ import pytest
 from core.audit_chain import AuditChain
 from core.cost_tracker import CostTracker
 from core.memory.episodic import EpisodicMemory
+from core.memory.semantic import SemanticMemory
 from core.triggers import EventType, Trigger, TriggerRegistry
 
 pytestmark = pytest.mark.skipif(
@@ -78,6 +79,26 @@ class TestEpisodicMemoryPerms:
             actions=[{"action": "ssh_run"}],
             outcome="ok",
         )
+        assert _group_other_bits(path) == 0
+
+
+class TestSemanticMemoryPerms:
+    def test_store_creates_owner_only(self, tmp_path):
+        path = tmp_path / "semantic.db"
+        mem = SemanticMemory(path=path)
+        mem.store(
+            "firewall_default_creds",
+            "SonicWall default: admin/password",
+            category="credentials",
+        )
+        assert _group_other_bits(path) == 0
+
+    def test_legacy_world_readable_healed_on_open(self, tmp_path):
+        path = tmp_path / "semantic.db"
+        SemanticMemory(path=path)  # creates a valid SQLite db at 0600
+        os.chmod(path, 0o644)
+        assert _group_other_bits(path) != 0
+        SemanticMemory(path=path)  # reopening heals perms
         assert _group_other_bits(path) == 0
 
 
