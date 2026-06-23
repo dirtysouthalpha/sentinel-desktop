@@ -115,6 +115,28 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
   19 comprehensive tests covering pause probability, context-aware scaling,
   re-read pauses, zero when disabled, determinism, duration bounds.
   ruff clean, all 8,810 tests passing. (commit bdd2c96)
+- [x] Phase 8: Inertial scroll momentum — `core/humanize/scroll.py` (NEW).
+  `momentum_scroll_trajectory()` producing exponential decay
+  (`delta[t] = delta[0] * momentum^t`) with per-frame Gaussian jitter, 16ms base
+  + 4ms/frame dwell timing, a 60-frame safety cap (~1s of momentum), a <1px
+  stopping threshold, momentum clamped 0.0–1.0, and a single-discrete-scroll
+  fallback for non-StealthProfile. Spec §"scroll.py", Deliverable #6. Gate:
+  `tests/test_humanize_stealth_scroll.py` passes (22 tests: decay patterns for
+  positive/negative deltas, jitter application, 60-frame cap, stopping threshold,
+  naturalistic fallback, edge cases, momentum clamping, seed reproducibility).
+  ruff clean, 8,810 tests passing. (commit 583851b)
+- [x] Phase 7: Error + self-correction injection — `core/humanize/errors.py`
+  (NEW). `inject_errors_and_corrections(text, *, rng, profile) -> list[(str,float)]`
+  emitting mistype + backspace + correction sequences (40% adjacent-key, 30%
+  shifted-case, 20% skip, 10% random), StealthProfile-only (naturalistic returns
+  the text unchanged), no error on the first character. Spec §"errors.py",
+  Deliverable #5. NOTE: built + unit-tested here, but NOT yet wired into the live
+  type path — `desktop._humanized_type` calls `keystroke_delays(..., errors=False)`,
+  so typing errors are dormant at runtime even under StealthProfile (see
+  docs/superpowers/guides/stealth-mode-activation.md). Wiring is future work.
+  Gate: `tests/test_humanize_stealth_errors.py` passes (20 tests: error-rate
+  bounds, backspace handling, correction delays, seed reproducibility, adjacent-key
+  mistypes, integration scenarios). ruff clean. (commit 59282a5)
 - [x] Phase 6: Overshoot + sweep-back — `core/humanize/overshoot.py` (NEW).
   `overshoot_target(target, current, *, rng, profile, target_width_px) -> tuple`
   returning a point past the target (overshoot) or short of it (undershoot),
