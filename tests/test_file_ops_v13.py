@@ -149,6 +149,24 @@ class TestArchive:
     def test_extract_nonexistent(self, tmp):
         assert archive_extract(str(tmp / "nope.zip")) is False
 
+    def test_extract_rejects_zip_slip(self, tmp):
+        """A member whose path escapes dest_dir must be refused, not written."""
+        import zipfile
+
+        escape_target = tmp / "evil.txt"  # lives outside the dest dir
+        assert not escape_target.exists()
+
+        archive = tmp / "slip.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("../../../evil.txt", "pwned")
+
+        dest = tmp / "extracted"
+        result = archive_extract(str(archive), dest_dir=str(dest))
+
+        assert result is False
+        assert not dest.exists() or not escape_target.exists()
+        assert not escape_target.exists()
+
 
 # ── Action schema tests ─────────────────────────────────────────────
 

@@ -277,7 +277,20 @@ def archive_extract(
         return False
     try:
         safe_dest.mkdir(parents=True, exist_ok=True)
+        dest_root = safe_dest.resolve()
         with zipfile.ZipFile(safe_archive, "r") as zf:
+            # Zip-slip guard: validate every member resolves inside dest_root
+            # before extracting. A member like "../../etc/cron.d/x" or an
+            # absolute "/etc/passwd" would otherwise escape the destination.
+            for info in zf.infolist():
+                target = (dest_root / info.filename).resolve()
+                if target != dest_root and dest_root not in target.parents:
+                    logger.warning(
+                        "archive_extract(%s): refusing unsafe member %r (escapes dest)",
+                        archive_path,
+                        info.filename,
+                    )
+                    return False
             zf.extractall(safe_dest)
         return True
     except (OSError, zipfile.BadZipFile):
