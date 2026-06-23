@@ -185,6 +185,20 @@ class TestCircuitBreaker:
         assert stats["state"] == "closed"
         assert stats["consecutive_failures"] == 1
 
+    def test_failure_timestamps_are_windowed_not_unbounded(self):
+        """record_failure evicts timestamps older than recovery_timeout so the
+        _failures deque can't grow without bound over a long-running daemon."""
+        import time as _time
+
+        cb = CircuitBreaker("leak", failure_threshold=100, recovery_timeout=0.05)
+        for _ in range(50):
+            cb.record_failure()
+        assert len(cb._failures) == 50
+        # After the window elapses, the next failure drops the stale entries.
+        _time.sleep(0.06)
+        cb.record_failure()
+        assert len(cb._failures) == 1
+
     def test_success_resets_consecutive_failures(self):
         self.cb.record_failure()
         self.cb.record_failure()

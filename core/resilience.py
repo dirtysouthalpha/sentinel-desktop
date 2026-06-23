@@ -203,7 +203,15 @@ class CircuitBreaker:
         """Record a failed call — may open a closed circuit."""
         with self._lock:
             self._consecutive_failures += 1
-            self._failures.append(time.monotonic())
+            now = time.monotonic()
+            self._failures.append(now)
+            # Evict timestamps older than the recovery horizon so the deque
+            # (used for the total_failures stat) can't grow without bound over
+            # a long-running daemon process — the timestamps exist for a rolling
+            # window, so trim it rather than retaining every failure forever.
+            cutoff = now - self.recovery_timeout
+            while self._failures and self._failures[0] < cutoff:
+                self._failures.popleft()
             if self._state == self.HALF_OPEN:
                 # Probe failed — back to open
                 self._half_open_successes = 0
