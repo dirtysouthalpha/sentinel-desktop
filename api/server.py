@@ -1882,18 +1882,29 @@ class SentinelServer:
     def _get_client_ip(request: Request) -> str:
         """Extract client IP from a FastAPI Request object.
 
-        Checks X-Forwarded-For and X-Real-IP headers first (for proxied
-        setups), then falls back to ``request.client.host``.
+        By default returns ``request.client.host`` directly. Forwarded
+        headers (X-Forwarded-For, X-Real-IP) are caller-SPOOFABLE, so
+        honoring them blindly lets a single host rotate fake IPs and
+        defeat the per-IP rate limiter on ``/auth/login`` /
+        ``/auth/oidc/token``. Set ``SENTINEL_TRUST_PROXY=1`` when Sentinel
+        runs behind a trusted reverse proxy that *overwrites* those
+        headers — then the leftmost X-Forwarded-For entry is returned.
+
+        (Even with the flag set, the leftmost XFF entry is attacker-
+        controllable unless the proxy strips client-supplied XFF; for a
+        multi-hop setup prefer fixing the count at the proxy edge.)
         """
-        # Check X-Forwarded-For (may contain multiple IPs; first is the client)
-        xff = request.headers.get("x-forwarded-for", "")
-        if xff:
-            return xff.split(",")[0].strip()
-        # Check X-Real-IP (set by nginx and similar proxies)
-        xri = request.headers.get("x-real-ip", "")
-        if xri:
-            return xri.strip()
-        # Direct connection
+        if os.environ.get("SENTINEL_TRUST_PROXY", "").lower() in ("1", "true", "yes"):
+            # Check X-Forwarded-For (may contain multiple IPs; first is the client)
+            xff = request.headers.get("x-forwarded-for", "")
+            if xff:
+                return xff.split(",")[0].strip()
+            # Check X-Real-IP (set by nginx and similar proxies)
+            xri = request.headers.get("x-real-ip", "")
+            if xri:
+                return xri.strip()
+        # Direct connection (or untrusted proxy) — the TCP peer is the
+        # only address we can rely on.
         if request.client and request.client.host:
             return request.client.host
         return "unknown"

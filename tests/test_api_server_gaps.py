@@ -193,25 +193,54 @@ class _FakeEngine:
 
 
 class TestGetClientIP:
-    """Tests for SentinelServer._get_client_ip static method."""
+    """Tests for SentinelServer._get_client_ip static method.
 
-    def test_x_forwarded_for_first_ip(self):
+    Forwarded headers (X-Forwarded-For / X-Real-IP) are SPOOFABLE by the
+    caller, so by default they are ignored and ``request.client.host`` is
+    returned directly. Set ``SENTINEL_TRUST_PROXY=1`` when Sentinel runs
+    behind a trusted reverse proxy that overwrites those headers.
+    """
+
+    def test_forwarded_headers_ignored_by_default(self, monkeypatch):
+        monkeypatch.delenv("SENTINEL_TRUST_PROXY", raising=False)
+        # XFF present but no opt-in → must fall back to the socket peer so a
+        # single host can't rotate fake IPs to dodge the per-IP rate limiter.
+        req = _FakeRequest(headers={"x-forwarded-for": "1.2.3.4, 5.6.7.8"})
+        assert SentinelServer._get_client_ip(req) == "10.0.0.5"
+
+    def test_real_ip_ignored_by_default(self, monkeypatch):
+        monkeypatch.delenv("SENTINEL_TRUST_PROXY", raising=False)
+        req = _FakeRequest(headers={"x-real-ip": "192.168.1.1"})
+        assert SentinelServer._get_client_ip(req) == "10.0.0.5"
+
+    def test_trust_proxy_enables_xff_first_ip(self, monkeypatch):
+        monkeypatch.setenv("SENTINEL_TRUST_PROXY", "1")
         req = _FakeRequest(headers={"x-forwarded-for": "1.2.3.4, 5.6.7.8"})
         assert SentinelServer._get_client_ip(req) == "1.2.3.4"
 
-    def test_x_forwarded_for_single_ip(self):
+    def test_trust_proxy_enables_single_xff(self, monkeypatch):
+        monkeypatch.setenv("SENTINEL_TRUST_PROXY", "1")
         req = _FakeRequest(headers={"x-forwarded-for": "9.8.7.6"})
         assert SentinelServer._get_client_ip(req) == "9.8.7.6"
 
-    def test_x_real_ip(self):
+    def test_trust_proxy_enables_x_real_ip(self, monkeypatch):
+        monkeypatch.setenv("SENTINEL_TRUST_PROXY", "1")
         req = _FakeRequest(headers={"x-real-ip": "192.168.1.1"})
         assert SentinelServer._get_client_ip(req) == "192.168.1.1"
 
-    def test_fallback_to_client_host(self):
+    def test_trust_proxy_xff_takes_priority_over_real_ip(self, monkeypatch):
+        monkeypatch.setenv("SENTINEL_TRUST_PROXY", "1")
+        req = _FakeRequest(headers={"x-forwarded-for": "1.1.1.1", "x-real-ip": "2.2.2.2"})
+        assert SentinelServer._get_client_ip(req) == "1.1.1.1"
+
+    def test_fallback_to_client_host(self, monkeypatch):
+        monkeypatch.delenv("SENTINEL_TRUST_PROXY", raising=False)
         req = _FakeRequest(headers={})
         assert SentinelServer._get_client_ip(req) == "10.0.0.5"
 
-    def test_unknown_when_no_client(self):
+    def test_unknown_when_no_client(self, monkeypatch):
+        monkeypatch.delenv("SENTINEL_TRUST_PROXY", raising=False)
+
         class NoClientReq:
             @property
             def headers(self):
@@ -222,10 +251,6 @@ class TestGetClientIP:
                 return None
 
         assert SentinelServer._get_client_ip(NoClientReq()) == "unknown"
-
-    def test_x_forwarded_for_takes_priority_over_real_ip(self):
-        req = _FakeRequest(headers={"x-forwarded-for": "1.1.1.1", "x-real-ip": "2.2.2.2"})
-        assert SentinelServer._get_client_ip(req) == "1.1.1.1"
 
 
 # ---------------------------------------------------------------------------
