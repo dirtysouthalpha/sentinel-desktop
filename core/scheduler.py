@@ -14,12 +14,15 @@ Task types delegate to the appropriate subsystem:
 
 import json
 import logging
+import os
 import threading
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+from core.utils import restrict_file_perms
 
 logger = logging.getLogger(__name__)
 
@@ -349,7 +352,14 @@ class TaskScheduler:
     # ── Persistence ─────────────────────────────────────────────────────
 
     def save(self) -> None:
-        """Persist all tasks to the JSON file."""
+        """Persist all tasks to the JSON file atomically.
+
+        Writes to a uniquely-named temp, fsyncs it, restricts it to owner-only,
+        then ``os.replace``s it into place — a crash mid-save leaves the live
+        tasks file untouched instead of truncating it to empty. A unique temp
+        name means concurrent saves (GUI + API share the storage dir) can't
+        clobber each other on the final rename.
+        """
         try:
             self._tasks_path.parent.mkdir(parents=True, exist_ok=True)
         except OSError:
@@ -358,22 +368,52 @@ class TaskScheduler:
         with self._lock:
             data = list(self._tasks.values())
         try:
-            self._tasks_path.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
+            tmp = self._tasks_path.parent / f".tasks-{uuid.uuid4().hex}.tmp"
+            with tmp.open("w", encoding="utf-8") as fh:
+                fh.write(json.dumps(data, indent=2, ensure_ascii=False))
+                fh.flush()
+                os.fsync(fh.fileno())
+            # Restrict the temp inode before the atomic replace so the renamed
+            # tasks file is owner-only on POSIX (PowerShell commands + params
+            # can embed credentials for automated flows).
+            restrict_file_perms(tmp)
+            os.replace(tmp, self._tasks_path)
         except OSError:
             logger.exception("Failed to save tasks to %s", self._tasks_path)
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def _quarantine_corrupt_file(self) -> None:
+        """Move an unparseable tasks file aside so the next save can't silently
+        overwrite the operator's data (mirrors triggers/fleet/auth)."""
+        backup = self._tasks_path.parent / (self._tasks_path.name + ".corrupt")
+        try:
+            os.replace(self._tasks_path, backup)
+            logger.warning("Corrupt tasks file moved to %s", backup)
+        except OSError as move_exc:
+            logger.warning("Could not quarantine corrupt tasks file: %s", move_exc)
 
     def load(self) -> None:
         """Load tasks from the JSON file (replaces in-memory state)."""
         if not self._tasks_path.exists():
             self._tasks.clear()
             return
+        # Heal legacy world-readable files on open; the file can carry
+        # credential-bearing PowerShell commands + params.
+        restrict_file_perms(self._tasks_path)
         try:
             raw = self._tasks_path.read_text(encoding="utf-8")
             items = json.loads(raw)
-        except (OSError, json.JSONDecodeError):
+        except json.JSONDecodeError:
+            # A truncated/garbled file is unrecoverable as a whole; quarantine
+            # it so the next mutation can't silently overwrite the operator's
+            # data (mirrors triggers.py / fleet.py / auth.py).
+            logger.warning("Task file %s is corrupt; quarantining.", self._tasks_path)
+            self._quarantine_corrupt_file()
+            return
+        except OSError:
             logger.exception("Failed to load tasks from %s", self._tasks_path)
             return
 

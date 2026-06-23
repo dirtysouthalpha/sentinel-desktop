@@ -19,6 +19,7 @@ from core.auth import AuthManager, Role
 from core.cost_tracker import CostTracker
 from core.memory.episodic import EpisodicMemory
 from core.memory.semantic import SemanticMemory
+from core.scheduler import TaskScheduler
 from core.triggers import EventType, Trigger, TriggerRegistry
 
 pytestmark = pytest.mark.skipif(
@@ -126,5 +127,25 @@ class TestAuthUsersPerms:
         os.chmod(path, 0o644)
         assert _group_other_bits(path) != 0
         AuthManager(config_path=str(path))  # reopening heals perms
+        assert _group_other_bits(path) == 0
+
+
+class TestTaskSchedulerPerms:
+    def test_save_creates_owner_only(self, tmp_path):
+        # scheduled_tasks.json carries PowerShell commands + params that can
+        # embed credentials for automated flows — must be owner-only (0600).
+        path = tmp_path / "scheduled_tasks.json"
+        ts = TaskScheduler(engine=None, tasks_path=str(path))
+        ts.add_task("Patch", "powershell", "0 2 * * *", command="Invoke-Web ...")
+        ts.stop()
+        assert _group_other_bits(path) == 0
+
+    def test_legacy_world_readable_healed_on_load(self, tmp_path):
+        path = tmp_path / "scheduled_tasks.json"
+        path.write_text("[]", encoding="utf-8")
+        os.chmod(path, 0o644)
+        assert _group_other_bits(path) != 0
+        ts = TaskScheduler(engine=None, tasks_path=str(path))  # opening heals
+        ts.stop()
         assert _group_other_bits(path) == 0
 

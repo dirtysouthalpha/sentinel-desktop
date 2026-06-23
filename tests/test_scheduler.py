@@ -266,6 +266,52 @@ class TestTaskSchedulerPersistence:
         assert task["cron_expr"] == "*/5 * * * *"
         ts.stop()
 
+    def test_save_is_atomic_write_failure_preserves_existing_file(
+        self, tmp_path, monkeypatch
+    ):
+        # A crash/failure partway through save() must NOT truncate the live
+        # tasks file — the new payload is staged in a temp and only renamed
+        # into place on success. The atomic path fsyncs the temp before the
+        # rename; inject the failure there so the pre-existing tasks survive
+        # untouched (old code wrote the live file directly and had no fsync).
+        path = tmp_path / "tasks.json"
+        seed = TaskScheduler(engine=None, tasks_path=str(path))
+        existing_id = seed.add_task("Existing", "script", "*/5 * * * *", path="a.py")["id"]
+        seed.stop()
+        assert Path(path).exists()
+
+        ts = TaskScheduler(engine=None, tasks_path=str(path))
+
+        def _boom(*args, **kwargs):
+            raise OSError("simulated fsync failure")
+
+        monkeypatch.setattr("os.fsync", _boom)
+        # add_task persists immediately; its save() must fail atomically and
+        # leave the live file holding only the pre-existing task.
+        ts.add_task("New", "script", "*/5 * * * *", path="b.py")
+        ts.stop()
+
+        # The live file must still contain only the pre-existing task.
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        ids = {t["id"] for t in data}
+        assert existing_id in ids
+        assert not any(t.get("name") == "New" for t in data), (
+            "save() overwrote the live file before atomically replacing it"
+        )
+
+    def test_load_quarantines_corrupt_json(self, tmp_path):
+        # A truncated/garbled tasks file must be quarantined to .corrupt so the
+        # next mutation can't silently overwrite the operator's data, mirroring
+        # triggers.py / fleet.py / auth.py.
+        path = tmp_path / "tasks.json"
+        path.write_text("{not valid json", encoding="utf-8")
+        ts = TaskScheduler(engine=None, tasks_path=str(path))
+        assert ts.list_tasks() == []
+        ts.stop()
+        assert not path.exists(), "corrupt file was left in place"
+        quarantined = tmp_path / "tasks.json.corrupt"
+        assert quarantined.exists(), "corrupt file was not quarantined"
+
 
 # ---------------------------------------------------------------------------
 # TaskScheduler — run_task_now (no engine)
