@@ -362,3 +362,30 @@ class TestCommandRunner:
         runner, mock_client = self._make_runner(mock_paramiko, "linux")
         runner.show_cpu()
         mock_client.exec_command.assert_called_with("top -bn1 | head -5", timeout=30.0)
+
+    def test_init_rejects_unknown_device_type(self):
+        """An unknown device_type must fail fast instead of silently sending
+        Linux commands to a vendor device. ``device_type`` is LLM-supplied via
+        executor kwargs, so a typo like ``"cisco"`` (for ``cisco_ios``) or a
+        hallucinated value must raise — the executor catch-all turns the
+        ValueError into a structured error the model can self-correct from.
+        Same silent-fallthrough class as the (deferred) sonicwall command gap.
+        """
+        from core.netops.command_runner import CommandRunner
+
+        client = MagicMock()
+        with pytest.raises(ValueError) as exc_info:
+            CommandRunner(client, device_type="cisco")
+        msg = str(exc_info.value)
+        assert "cisco" in msg
+        assert "cisco_ios" in msg  # lists a valid option to self-correct
+
+    def test_init_accepts_every_advertised_device_type(self):
+        """Every key in DEVICE_TYPES must construct without error — including
+        ``sonicwall`` (advertised but command mappings are a separate,
+        Brandon-owned gap; validation is only about unknown strings)."""
+        from core.netops.command_runner import DEVICE_TYPES, CommandRunner
+
+        client = MagicMock()
+        for device_type in DEVICE_TYPES:
+            CommandRunner(client, device_type=device_type)  # must not raise

@@ -46,6 +46,11 @@ class CommandRunner:
         ssh_client: SSHClient,
         device_type: str = "generic",
     ) -> None:
+        if device_type not in DEVICE_TYPES:
+            raise ValueError(
+                f"unknown device_type {device_type!r}; valid options: "
+                f"{sorted(DEVICE_TYPES)}"
+            )
         self.client = ssh_client
         self.device_type = device_type
 
