@@ -685,6 +685,59 @@ class TestHandleAuthLogin:
         assert exc_info.value.status_code == 429
 
 
+class TestHandleAuthOidcTokenRateLimit:
+    """POST /auth/oidc/token must share /auth/login's per-IP rate limit.
+
+    Without it, an attacker can hammer the endpoint with crafted id_tokens
+    indefinitely (no throttle) — and because each call does JWKS fetch +
+    signature verification, it is also a mild DoS vector.
+    """
+
+    def _make_oidc_server(self):
+        server = _make_server()
+        server.create_app()  # initializes _login_attempts
+        server.engine = _FakeEngine()
+        return server
+
+    def test_oidc_token_rate_limited(self):
+        from fastapi import HTTPException
+
+        server = self._make_oidc_server()
+        # Pre-populate the shared rate-limiter bucket for "127.0.0.1".
+        server._login_attempts["127.0.0.1"] = [time.monotonic()] * server._login_limit
+        req = mod.OIDCTokenRequest(id_token="unused.because.ratelimited")
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_auth_oidc_token(req, _FakeRequest()))
+        assert exc_info.value.status_code == 429
+
+    def test_oidc_token_counts_against_login_bucket(self):
+        """OIDC and login share one per-IP budget so the two endpoints
+        can't be used to multiply the effective attempt ceiling."""
+        from fastapi import HTTPException
+
+        server = self._make_oidc_server()
+
+        class FakeUser:
+            role = type("R", (), {"value": "admin"})()
+            username = "admin"
+
+        # Burn all but one attempt via the login path, then exhaust the last
+        # one via the OIDC path; the next login call must be throttled.
+        server._login_attempts["127.0.0.1"] = [
+            time.monotonic()
+        ] * (server._login_limit - 1)
+        server.engine.auth_manager.provision_from_oidc = lambda token: FakeUser()
+        server.engine.auth_manager.create_session = lambda user: "tok"
+        oidc_req = mod.OIDCTokenRequest(id_token="anything")
+        _run(server._handle_auth_oidc_token(oidc_req, _FakeRequest()))
+        # Now the bucket is full — a subsequent login must be rejected.
+        server.engine.auth_manager.authenticate = lambda u, p: FakeUser()
+        login_req = mod.AuthLoginRequest(username="x", password="y")
+        with pytest.raises(HTTPException) as exc_info:
+            _run(server._handle_auth_login(login_req, _FakeRequest(), authorization=None))
+        assert exc_info.value.status_code == 429
+
+
 class TestHandleAuthLogout:
     def test_logout(self):
         server = _make_server()

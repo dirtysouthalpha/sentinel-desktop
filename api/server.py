@@ -1693,6 +1693,7 @@ class SentinelServer:
     async def _handle_auth_oidc_token(
         self,
         req: OIDCTokenRequest,
+        request: Request,
     ) -> dict[str, str]:
         """Exchange an OIDC id_token for a Sentinel session token.
 
@@ -1703,6 +1704,17 @@ class SentinelServer:
 
         if not self.engine:
             raise HTTPException(500, "Engine not initialized")
+        # Rate-limit token exchanges per client IP — parity with /auth/login.
+        # Without this the endpoint (JWKS fetch + signature verify per call)
+        # can be hammered indefinitely; sharing _login_attempts couples the
+        # two auth endpoints to one per-IP budget so neither multiplies it.
+        client_id = self._get_client_ip(request)
+        now = time.monotonic()
+        attempts = self._login_attempts[client_id]
+        attempts[:] = [t for t in attempts if now - t < self._login_window]
+        if len(attempts) >= self._login_limit:
+            raise HTTPException(429, "Too many login attempts — try again later")
+        attempts.append(now)
         try:
             user = await asyncio.to_thread(
                 self.engine.auth_manager.provision_from_oidc,
