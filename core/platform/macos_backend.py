@@ -306,7 +306,7 @@ class MacOSStealthInput(StealthInputBackend):
         if not self._has_osascript:
             return False
         try:
-            btn = "" if button == "left" else " using {button button}"
+            btn = "" if button == "left" else f" using {{{button} button}}"
             click_str = "click" if clicks == 1 else "double click"
             script = (
                 f'tell application "System Events"\n    {click_str} at {{{x}, {y}}}{btn}\nend tell'

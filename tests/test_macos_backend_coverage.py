@@ -329,8 +329,23 @@ class TestMacOSStealthInput:
         inp = self._make(True)
         with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
             inp.click(10, 20, button="right")
-        call_args = mock_run.call_args[0][0]
-        assert "button" in call_args[2]
+        script = mock_run.call_args[0][0][2]
+        assert "right button" in script
+        assert "{button button}" not in script
+
+    def test_click_middle_button(self):
+        inp = self._make(True)
+        with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
+            inp.click(10, 20, button="middle")
+        script = mock_run.call_args[0][0][2]
+        assert "middle button" in script
+
+    def test_click_left_button_has_no_using_clause(self):
+        inp = self._make(True)
+        with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
+            inp.click(10, 20, button="left")
+        script = mock_run.call_args[0][0][2]
+        assert " using " not in script
 
     def test_click_oserror(self):
         inp = self._make(True)
