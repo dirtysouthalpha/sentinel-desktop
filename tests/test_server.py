@@ -80,6 +80,26 @@ class TestSentinelDaemon:
         assert data["status"] == "running"
         assert data["jobs_completed"] == 1
 
+    def test_state_restores_job_counts_across_restart(self, tmp_path: Path):
+        # Without restore the persisted state was write-only: a new instance on
+        # the same path reset cumulative counts to 0 despite the on-disk file.
+        path = tmp_path / "daemon.json"
+        first = SentinelDaemon(state_path=path)
+        first.start()
+        first.record_job(success=True)
+        first.record_job(success=True)
+        first.record_job(success=False)
+        first.stop()
+
+        restarted = SentinelDaemon(state_path=path)
+        status = restarted.get_status()
+        assert status["jobs_completed"] == 2
+        assert status["jobs_failed"] == 1
+        # Per-process fields must reset, not restore, on a fresh object.
+        assert restarted.status == DaemonStatus.STOPPED
+        assert status["pid"] is None
+        assert status["started_at"] is None
+
 
 # ===========================================================================
 # Fleet tests

@@ -51,6 +51,11 @@ class SentinelDaemon:
         self._jobs_failed: int = 0
         self._last_heartbeat: str | None = None
         self._running: bool = False
+        # Restore cumulative job counters from a prior process; without this the
+        # persisted state was write-only and counts reset to 0 on every restart.
+        prior = self._load_state()
+        self._jobs_completed = int(prior.get("jobs_completed", 0))
+        self._jobs_failed = int(prior.get("jobs_failed", 0))
 
     @property
     def status(self) -> DaemonStatus:
