@@ -10,8 +10,10 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 import subprocess
 import threading
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,7 @@ from core.platform.base import (
     WindowBackend,
     WindowInfo,
 )
+from core.utils import restrict_file_perms
 
 logger = logging.getLogger(__name__)
 
@@ -649,10 +652,17 @@ class MacOSCredentialBackend(CredentialBackend):
     def _save_file(self) -> bool:
         try:
             self._file_path.parent.mkdir(parents=True, exist_ok=True)
-            self._file_path.write_text(
-                json.dumps(self._file_data, indent=2) + "\n",
-                encoding="utf-8",
-            )
+            # Atomic + owner-only write: the fallback vault stores credential
+            # values, so a crash mid-save must not truncate it (lose every
+            # stored cred) and it must not be world-readable (base64 values are
+            # trivially decoded). The old code honored the umask (0644/0664).
+            tmp = self._file_path.parent / f".vault-{uuid.uuid4().hex}.tmp"
+            with tmp.open("w", encoding="utf-8") as fh:
+                fh.write(json.dumps(self._file_data, indent=2) + "\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+            restrict_file_perms(tmp)
+            tmp.replace(self._file_path)
             return True
         except OSError:
             return False

@@ -654,7 +654,9 @@ class TestMacOSCredentialBackend:
 
     def test_save_file_oserror(self, tmp_path):
         cred = self._make_file_only(tmp_path)
-        with patch.object(Path, "write_text", side_effect=OSError("no space")):
+        # _save_file now writes atomically (temp + fsync + os.replace); inject
+        # the OSError at the fsync step since the write_text path is gone.
+        with patch("os.fsync", side_effect=OSError("no space")):
             assert cred._save_file() is False
 
     def test_iso_now(self, tmp_path):

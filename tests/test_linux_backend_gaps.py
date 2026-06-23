@@ -714,7 +714,9 @@ class TestLinuxCredentialBackendFile:
         backend._lock = threading.RLock()
         backend._file_data = {"version": 1, "keys": {}}
 
-        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+        # _save_file now writes atomically (temp + fsync + os.replace); inject
+        # the OSError at the fsync step since the write_text path is gone.
+        with patch("os.fsync", side_effect=OSError("disk full")):
             result = backend._save_file()
         assert result is False
 
