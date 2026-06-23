@@ -44,6 +44,7 @@ class CommandEngine:
         from src.commands.notify import NotifyCommands
         from src.commands.scheduler import SchedulerCommands
         from src.commands.macros import MacroCommands
+        from src.commands.voice import VoiceCommands
         from src.core.plugins import PluginManager
 
         self.sys = SystemCommands()
@@ -58,6 +59,7 @@ class CommandEngine:
         self.notify = NotifyCommands()
         self.scheduler = SchedulerCommands()
         self.macros = MacroCommands()
+        self.voice = VoiceCommands()
         self.plugins = PluginManager()
 
     def parse_command(self, text: str) -> Optional[tuple]:
@@ -89,6 +91,10 @@ class CommandEngine:
         # Power management
         if any(w in text_lower for w in ["shutdown", "restart", "reboot", "sleep", "suspend", "lock screen", "lock computer", "power off", "cancel shutdown"]):
             return ("power", text)
+
+        # Voice
+        if any(w in text_lower for w in ["speak ", "say ", "listen", "voice status", "voice info"]):
+            return ("voice", text)
 
         # Macros
         if any(w in text_lower for w in ["record macro", "start recording", "stop recording", "save macro", "load macro", "list macro", "delete macro", "macros"]):
@@ -194,6 +200,8 @@ class CommandEngine:
                 return self._run_files(args)
             elif category == "power":
                 return self._run_power(args)
+            elif category == "voice":
+                return self._run_voice(args)
             elif category == "macros":
                 return self._run_macros(args)
             elif category == "plugins":
@@ -271,6 +279,9 @@ class CommandEngine:
 
     def _run_power(self, args) -> CommandResult:
         return self.power.execute(args)
+
+    def _run_voice(self, args) -> CommandResult:
+        return self.voice.execute(args)
 
     def _run_macros(self, args) -> CommandResult:
         return self.macros.execute(args)
