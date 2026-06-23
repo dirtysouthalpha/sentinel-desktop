@@ -78,6 +78,10 @@ class CommandEngine:
         if any(w in text_lower for w in ["notify", "alert", "remind"]):
             return ("notify", text)
 
+        # Scheduler
+        if any(w in text_lower for w in ["timer", "set timer", "list timers", "cancel timer"]):
+            return ("scheduler", text)
+
         # Media controls
         if any(w in text_lower for w in ["volume", "mute", "unmute"]):
             return ("media", text)
@@ -166,6 +170,8 @@ class CommandEngine:
                 return self._run_files(args)
             elif category == "power":
                 return self._run_power(args)
+            elif category == "scheduler":
+                return self._run_scheduler(args)
             elif category == "notify":
                 return self._run_notify(args)
             elif category == "media":
@@ -237,6 +243,9 @@ class CommandEngine:
 
     def _run_power(self, args) -> CommandResult:
         return self.power.execute(args)
+
+    def _run_scheduler(self, args) -> CommandResult:
+        return self.scheduler.execute(args)
 
     def _run_notify(self, args) -> CommandResult:
         return self.notify.execute(args)
