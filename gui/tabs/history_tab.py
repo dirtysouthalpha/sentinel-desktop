@@ -365,10 +365,10 @@ class HistoryTab(ctk.CTkFrame):
             return
         session = self.sessions[self.selected_index]
         goal = session.get("goal", "")
-        if goal and hasattr(self.app, "_on_run"):
+        if goal and hasattr(self.app, "_on_submit"):
             self.app.goal_entry.delete("1.0", "end")
             self.app.goal_entry.insert("1.0", goal)
-            self.app._on_run()
+            self.app._on_submit()
 
     def _export_log(self) -> None:
         """Export forensic log as text file."""

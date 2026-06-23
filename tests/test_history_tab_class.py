@@ -283,9 +283,9 @@ class TestReplaySession:
         tab, app = _make_tab(with_engine=False)
         tab.selected_index = -1
         tab._replay_session()
-        app._on_run.assert_not_called()
+        app._on_submit.assert_not_called()
 
-    def test_valid_replay_invokes_on_run(self):
+    def test_valid_replay_invokes_on_submit(self):
         tab, app = _make_tab(with_engine=False)
         tab.selected_index = 0
         tab.sessions = [{"goal": "replay this"}]
@@ -293,13 +293,13 @@ class TestReplaySession:
         tab._replay_session()
         app.goal_entry.delete.assert_called_once_with("1.0", "end")
         app.goal_entry.insert.assert_called_once_with("1.0", "replay this")
-        app._on_run.assert_called_once()
+        app._on_submit.assert_called_once()
 
-    def test_replay_without_on_run_attr(self):
+    def test_replay_without_on_submit_attr(self):
         tab, _ = _make_tab(with_engine=False)
         tab.selected_index = 0
         tab.sessions = [{"goal": "g"}]
-        # app lacking _on_run -> hasattr False, no crash. Use a plain object.
+        # app lacking _on_submit -> hasattr False, no crash. Use a plain object.
         tab.app = type("A", (), {})()
         tab._replay_session()
 
@@ -309,7 +309,7 @@ class TestReplaySession:
         tab.sessions = [{"goal": ""}]
         app.goal_entry = MagicMock()
         tab._replay_session()
-        app._on_run.assert_not_called()
+        app._on_submit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

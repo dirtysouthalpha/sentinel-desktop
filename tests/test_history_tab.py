@@ -173,11 +173,11 @@ class TestHistoryTabReplay:
     def test_replay_no_selection(self, history_tab):
         history_tab.selected_index = -1
         history_tab._replay_session()
-        history_tab.app._on_run.assert_not_called()
+        history_tab.app._on_submit.assert_not_called()
 
     def test_replay_valid_session(self, history_tab):
         history_tab.selected_index = 0
         history_tab.sessions = [{"goal": "replay me"}]
         history_tab.app.goal_entry = MagicMock()
         history_tab._replay_session()
-        history_tab.app._on_run.assert_called_once()
+        history_tab.app._on_submit.assert_called_once()
