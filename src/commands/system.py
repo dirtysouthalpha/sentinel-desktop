@@ -151,6 +151,14 @@ class SystemCommands:
             "  brain status - Check brain health",
             "  recall topic - Recall knowledge",
             "  think topic content - Store knowledge",
+            "",
+            "Clipboard:",
+            "  copy text - Copy to clipboard",
+            "  paste - Read from clipboard",
+            "",
+            "Windows:",
+            "  list windows - Show open windows",
+
         ]
         return CommandResult(True, "\n".join(lines))
 
