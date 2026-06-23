@@ -187,18 +187,19 @@ class JobQueue:
         status: str | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """List jobs, optionally filtered by status."""
-        jobs = []
-        for job_file in sorted(self._path.glob("*.json"), reverse=True):
+        """List jobs, most-recent-first, optionally filtered by status."""
+        jobs: list[Job] = []
+        for job_file in self._path.glob("*.json"):
             job = self._load_job_file(job_file)
             if job is None:
                 continue
             if status and job.status.value != status:
                 continue
-            jobs.append(job.to_dict())
-            if len(jobs) >= limit:
-                break
-        return jobs
+            jobs.append(job)
+        # Sort by created_at descending — filenames are random UUID prefixes, so
+        # a glob-name sort yields meaningless order. Matches claim_next's ordering.
+        jobs.sort(key=lambda j: j.created_at, reverse=True)
+        return [j.to_dict() for j in jobs[:limit]]
 
     def count_pending(self) -> int:
         """Count pending jobs."""

@@ -243,6 +243,26 @@ class TestJobQueue:
         jobs = queue.list_jobs()
         assert len(jobs) == 3
 
+    def test_list_jobs_ordered_most_recent_first(self, tmp_path: Path):
+        # Filenames are random UUID prefixes, so ordering must come from
+        # created_at, not the glob. Newest submitted job must come first.
+        queue = JobQueue(path=tmp_path / "jobs")
+        queue.submit("Job 1")
+        queue.submit("Job 2")
+        queue.submit("Job 3")
+        jobs = queue.list_jobs()
+        assert [j["goal"] for j in jobs] == ["Job 3", "Job 2", "Job 1"]
+        timestamps = [j["created_at"] for j in jobs]
+        assert timestamps == sorted(timestamps, reverse=True)
+
+    def test_list_jobs_respects_limit_after_sort(self, tmp_path: Path):
+        queue = JobQueue(path=tmp_path / "jobs")
+        queue.submit("Job 1")
+        queue.submit("Job 2")
+        queue.submit("Job 3")
+        jobs = queue.list_jobs(limit=2)
+        assert [j["goal"] for j in jobs] == ["Job 3", "Job 2"]
+
     def test_list_jobs_filter_by_status(self, tmp_path: Path):
         queue = JobQueue(path=tmp_path / "jobs")
         queue.submit("Pending 1")
