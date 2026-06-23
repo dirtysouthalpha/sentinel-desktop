@@ -198,11 +198,13 @@ class EpisodicMemory:
         return len(old_eps)
 
     def _append(self, episode: Episode) -> None:
+        # Append-mode write is atomic on POSIX for sub-PIPE_BUF writes and does
+        # not read the existing file. A read-modify-write here would lose lines
+        # under concurrent finalize runs (the conductor stores episodes to this
+        # shared file from parallel agent threads).
         line = json.dumps(episode.to_dict(), ensure_ascii=False) + "\n"
-        self._path.write_text(
-            self._path.read_text(encoding="utf-8") + line if self._path.exists() else line,
-            encoding="utf-8",
-        )
+        with self._path.open("a", encoding="utf-8") as fh:
+            fh.write(line)
         # Episodes capture the user's verbatim goals (which routinely include
         # hostnames, credentials, and IT context) — owner-only on POSIX.
         restrict_file_perms(self._path)
@@ -222,5 +224,12 @@ class EpisodicMemory:
         return episodes
 
     def _write_all(self, episodes: list[Episode]) -> None:
+        # Write a temp file then atomically rename: truncate-then-write on the
+        # live episodes.jsonl would leave it empty on a crash mid-write and
+        # lose every episode. The temp lives in the same dir for an atomic
+        # os.replace on POSIX.
         lines = [json.dumps(ep.to_dict(), ensure_ascii=False) for ep in episodes]
-        self._path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        tmp = self._path.with_suffix(".jsonl.tmp")
+        tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        restrict_file_perms(tmp)
+        tmp.replace(self._path)

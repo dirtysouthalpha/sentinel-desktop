@@ -284,6 +284,58 @@ class TestEpisodicMemory:
         # All successful, so summary should be successful
         assert summary_eps[0]["success"] is True
 
+    def test_concurrent_appends_do_not_lose_episodes(self, tmp_path: Path):
+        # The conductor runs agent subtasks concurrently, each finalizing a run
+        # that stores an episode to the SAME shared episodes.jsonl. A
+        # read-modify-write append loses whichever thread writes second. Append
+        # must be atomic so concurrent writers don't drop each other's lines.
+        import threading
+
+        path = tmp_path / "episodes.jsonl"
+        mem = EpisodicMemory(path=path)
+        n_per_thread = 60
+
+        def store_batch(prefix: str) -> None:
+            m = EpisodicMemory(path=path)
+            for i in range(n_per_thread):
+                m.store(f"{prefix}-{i}")
+
+        t1 = threading.Thread(target=store_batch, args=("A",))
+        t2 = threading.Thread(target=store_batch, args=("B",))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        assert mem.count() == 2 * n_per_thread  # before fix: loses many lines
+
+    def test_write_all_is_atomic_does_not_truncate_target(self, tmp_path, monkeypatch):
+        # _write_all (used by delete/compress_old) must write a temp file then
+        # rename — never truncate the live episodes.jsonl directly. A crash
+        # mid-write otherwise leaves the file empty and every episode is lost.
+        from pathlib import Path
+
+        mem = EpisodicMemory(path=tmp_path / "episodes.jsonl")
+        mem.store("one")
+        mem.store("two")
+        target = tmp_path / "episodes.jsonl"
+        assert target.read_text(encoding="utf-8").count("\n") == 2
+
+        written = []
+        orig_write_text = Path.write_text
+
+        def spy(self_path, data, encoding=None, **kw):  # noqa: ANN001
+            written.append(self_path.name)
+            return orig_write_text(self_path, data, encoding=encoding)
+
+        monkeypatch.setattr(Path, "write_text", spy)
+
+        mem.delete(mem.recall(limit=1)[0]["episode_id"])  # triggers _write_all
+
+        assert "episodes.jsonl" not in written, (
+            f"_write_all truncated the live file directly: {written}"
+        )
+
 
 class TestEpisode:
     def test_to_dict_roundtrip(self):
