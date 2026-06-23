@@ -154,7 +154,7 @@ class SentinelDesktopApp:
   - Automation: click X,Y | type text | press ctrl+c | move X,Y
   - Network: ping host | ipconfig | network diagnostics
   - Process: open chrome | close notepad
-  - Files: list C:\ | find report | read file.txt
+  - Files: list C:/ | find report | read file.txt
   - AI: recall topic | think topic content | brain status
   - Type 'help' for full command list
 
