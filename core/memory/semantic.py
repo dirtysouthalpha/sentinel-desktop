@@ -47,7 +47,14 @@ class SemanticMemory:
         restrict_file_perms(self._path)
 
     def _init_db(self) -> None:
-        with self._connect() as conn:
+        # Explicit commit + close (rather than ``with conn:``): a Connection used
+        # as a context manager commits but is NOT closed, so the handle leaks
+        # until GC. Reopening the same db while that leaked handle finalizes can
+        # transiently read a partial header under load (sqlite3 "file is not a
+        # database"). Closing here makes construction — and the reopen a fresh
+        # process / reload performs — deterministic.
+        conn = self._connect()
+        try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS facts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +70,9 @@ class SemanticMemory:
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_key ON facts(key)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_category ON facts(category)")
+            conn.commit()
+        finally:
+            conn.close()
 
     def store(
         self,
