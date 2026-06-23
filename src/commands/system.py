@@ -111,54 +111,5 @@ class SystemCommands:
 
     def help(self) -> CommandResult:
         """Show available commands."""
-        lines = [
-            "Available Commands:",
-            "",
-            "System:",
-            "  cpu - Show CPU usage",
-            "  memory - Show RAM usage",
-            "  disk - Show disk usage",
-            "  processes - List top processes",
-            "  battery - Show battery status",
-            "  temp - Show temperature sensors",
-            "  uptime - Show system uptime",
-            "",
-            "Automation:",
-            "  click X,Y - Click at coordinates",
-            "  click right X,Y - Right-click",
-            "  type text - Type text",
-            "  press ctrl+c - Press key combo",
-            "  move X,Y - Move mouse",
-            "  scroll N - Scroll up/down",
-            "  screenshot - Take screenshot",
-            "",
-            "Network:",
-            "  ping host - Ping a host",
-            "  ipconfig - Show IP config",
-            "  network diagnostics - Full network check",
-            "  speedtest - Run speed test",
-            "",
-            "Process:",
-            "  open appname - Launch application",
-            "  close processname - Kill process",
-            "",
-            "Files:",
-            "  list path - List directory",
-            "  find pattern - Search files",
-            "  read filepath - Read file",
-            "",
-            "AI (Neuralis Brain):",
-            "  brain status - Check brain health",
-            "  recall topic - Recall knowledge",
-            "  think topic content - Store knowledge",
-            "",
-            "Clipboard:",
-            "  copy text - Copy to clipboard",
-            "  paste - Read from clipboard",
-            "",
-            "Windows:",
-            "  list windows - Show open windows",
-
-        ]
-        return CommandResult(True, "\n".join(lines))
-
+        from src.commands.help_data import HELP_TEXT
+        return CommandResult(True, HELP_TEXT)

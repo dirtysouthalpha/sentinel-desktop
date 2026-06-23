@@ -1,29 +1,42 @@
-# Sentinel Desktop v2.3
+# Sentinel Desktop v5.0.0
 
-> AI-powered Windows desktop automation assistant with Neuralis Brain integration.
-
-[![CI](https://github.com/dirtysouthalpha/sentinel-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/dirtysouthalpha/sentinel-desktop/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 61](https://img.shields.io/badge/Tests-61%20passing-brightgreen.svg)](tests/)
-[![Python: 3.9-3.12](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://python.org)
+AI-powered desktop automation assistant with natural language commands, system monitoring, and Neuralis Brain integration.
 
 ## Features
 
-- **System Diagnostics**: CPU, memory, disk, processes, battery, temperature, uptime
-- **Mouse & Keyboard Automation**: Click, type, press keys, scroll, drag
-- **Network Tools**: Ping, IP config, full diagnostics, speedtest
-- **Process Management**: Open/close applications
-- **File Operations**: List, search, read files
-- **Neuralis Brain AI**: Claude-like reasoning via Neuralis Brain REST API
-- **Professional UI**: Dark-themed chat interface with real-time system monitoring
+### 13 Command Modules
+
+| Module | Commands | Description |
+|--------|----------|-------------|
+| **System** | cpu, memory, disk, processes, battery, temperature, uptime, sysinfo | Real-time system monitoring |
+| **Automation** | click, type, press, move, scroll, drag, screenshot | Mouse & keyboard control |
+| **Network** | ping, ipconfig, diagnostics, speedtest | Network troubleshooting |
+| **Process** | open, kill, close | Application management |
+| **Files** | list, find, read | File operations |
+| **Clipboard** | copy, paste, read | Clipboard management |
+| **Windows** | list windows | Window enumeration |
+| **Media** | volume up/down/mute, play/pause, next/prev track | Media playback control |
+| **Power** | shutdown, restart, sleep, lock, cancel | Power management |
+| **Notify** | notify, alert, remind | System notifications |
+| **Scheduler** | timer, list timers, cancel timer | Countdown timers |
+| **Voice** | speak, listen, status | Text-to-speech & speech-to-text |
+| **Macros** | record, save, load, list, delete | Automation recording |
+| **Plugins** | list, load | Extensible plugin system |
+
+### Additional Features
+
+- **Neuralis Brain AI** integration for natural language queries
+- **5 Built-in Themes** (dark, midnight, forest, sunset, ocean)
+- **Plugin System** for custom command extensions
+- **Macro Recording** for automating repetitive tasks
+- **Voice Commands** with TTS/STT support
+- **System Tray** integration
+- **Keyboard Shortcuts**: Ctrl+L (clear), Ctrl+Enter (send)
+- **Command History** navigation (Up/Down arrows)
 
 ## Installation
 
-### Quick Install (Windows)
-
-Download and run `install_and_run.bat` from the latest release.
-
-### Manual Install
+### From Source
 
 ```bash
 git clone https://github.com/dirtysouthalpha/sentinel-desktop.git
@@ -32,118 +45,90 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### From Release
+
+Download the latest Windows EXE from [Releases](https://github.com/dirtysouthalpha/sentinel-desktop/releases).
+
 ### CLI Mode
 
 ```bash
-python main.py --cli
+python -m src.cli "cpu"
+python -m src.cli "screenshot"
+python -m src.cli "ping google.com"
 ```
-
-## Usage
-
-Type natural language commands in the chat interface:
-
-### System
-| Command | Description |
-|---------|-------------|
-| `cpu` | Show CPU usage |
-| `memory` | Show RAM usage |
-| `disk` | Show disk usage |
-| `processes` | List top processes |
-| `battery` | Show battery status |
-| `uptime` | Show system uptime |
-
-### Automation
-| Command | Description |
-|---------|-------------|
-| `click 500,300` | Click at coordinates |
-| `click right 500,300` | Right-click |
-| `type hello world` | Type text |
-| `press ctrl+c` | Press key combo |
-| `move 100,200` | Move mouse |
-| `scroll 3` | Scroll up/down |
-| `drag 100,200 to 300,400` | Drag mouse |
-| `screenshot` | Take screenshot |
-
-### Network
-| Command | Description |
-|---------|-------------|
-| `ping google.com` | Ping a host |
-| `ipconfig` | Show IP config |
-| `network diagnostics` | Full network check |
-| `speedtest` | Run speed test |
-
-### Process
-| Command | Description |
-|---------|-------------|
-| `open chrome` | Launch app |
-| `close notepad` | Kill process |
-
-### AI (Neuralis Brain)
-| Command | Description |
-|---------|-------------|
-| `brain status` | Check brain health |
-| `recall <topic>` | Recall knowledge |
-| `think <topic> <content>` | Store knowledge |
-
-### Clipboard
-| Command | Description |
-|---------|-------------|
-| `copy <text>` | Copy text to clipboard |
-| `paste` | Read from clipboard |
-
-### Windows
-| Command | Description |
-|---------|-------------|
-| `list windows` | Show all open windows |
-| `windows` | Alias for list windows |
 
 ## Architecture
 
-```'
-Sentinel Desktop v2.3
-├── main.py              # Entry point (GUI + CLI modes)
+```
+sentinel-desktop/
 ├── src/
-│   ├── config.py        # Central configuration
-│   ├── cli.py           # CLI mode
 │   ├── core/
-│   │   ├── engine.py    # Command router & NLP parser
-│   │   └── brain.py     # Neuralis Brain API client
+│   │   ├── engine.py      # Command router & dispatcher
+│   │   ├── brain.py       # Neuralis Brain REST client
+│   │   └── plugins.py     # Plugin manager
 │   ├── commands/
-│   │   ├── system.py    # System diagnostics
-│   │   ├── automation.py # Mouse & keyboard
-│   │   ├── network.py   # Network tools
-│   │   ├── process.py   # Process management
-│   │   └── files.py     # File operations
+│   │   ├── system.py      # System monitoring
+│   │   ├── automation.py   # Mouse/keyboard automation
+│   │   ├── network.py      # Network tools
+│   │   ├── process.py      # Process management
+│   │   ├── files.py        # File operations
+│   │   ├── clipboard.py    # Clipboard tools
+│   │   ├── windows.py      # Window management
+│   │   ├── media.py        # Media controls
+│   │   ├── power.py        # Power management
+│   │   ├── notify.py       # Notifications
+│   │   ├── scheduler.py    # Timers & scheduling
+│   │   ├── voice.py        # Voice TTS/STT
+│   │   └── macros.py       # Macro recording
+│   ├── utils/
+│   │   └── themes.py       # Theme system (5 themes)
 │   ├── ui/
-│   │   └── app.py       # CustomTkinter GUI
-│   └── utils/
-│       ├── logger.py    # Logging
-│       └── helpers.py   # Helpers
-├── tests/               # Pytest test suite
-├── .github/workflows/   # CI/CD pipelines
-└── setup.py             # Package config
+│   │   └── app.py          # CustomTkinter GUI
+│   ├── agent/
+│   │   └── agent.py        # AI agent mode
+│   ├── config.py           # Configuration
+│   └── cli.py              # CLI interface
+├── tests/                  # 168 tests
+├── plugins/                # Plugin directory
+├── macros/                 # Saved macros
+├── docs/                   # Documentation
+└── main.py                 # Entry point
 ```
 
-## Configuration
+## Testing
 
-Config stored at `~/.sentinel-desktop/config.json`:
-
-```json
-{
-  "brain_url": "http://100.70.240.55:8001",
-  "brain_enabled": true,
-  "appearance": "dark",
-  "screenshot_format": "png",
-  "mouse_speed": 0.3
-}
+```bash
+python -m pytest tests/ -v
 ```
+
+168 tests covering all modules, edge cases, and integration paths.
+
+## CI/CD
+
+- **CI**: flake8 lint + pytest on Ubuntu & Windows (Python 3.9-3.12)
+- **Build**: Windows EXE via PyInstaller
+- **Release**: Auto-published tar.gz + zip + EXE on tag push
+
+## Plugin Development
+
+Create a file in `plugins/plugin_myplugin.py`:
+
+```python
+def run():
+    print("Hello from my plugin!")
+```
+
+Then load it: `load plugin plugin_myplugin`
 
 ## Requirements
 
-- Python 3.8+
-- Windows OS (optimized for Windows, works on Linux)
-- Dependencies: customtkinter, pyautogui, psutil, requests
+- Python 3.9+
+- psutil, pyautogui, customtkinter, Pillow
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
+MIT License
+
+## Author
+
+Brandon (dirtysouthalpha)

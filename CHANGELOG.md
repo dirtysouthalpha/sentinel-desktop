@@ -1,42 +1,59 @@
 # Changelog
 
-## [v2.3.0] - 2026-06-23
+## v5.0.0 (2026-06-23)
+- Final release with comprehensive documentation
+- 168 tests across all modules
+- 13 command modules with full coverage
+- 5 themes, plugin system, macro recording
+- Voice TTS/STT integration
 
-### Added
-- Settings panel UI (Brain URL, mouse speed, screenshot format)
-- 7 new engine routing tests (clipboard, windows, help, ?)
-- Settings gear button in header
+## v4.2.0 (2026-06-23)
+- Edge case hardening (empty input, unicode, long strings)
+- Integration tests for all 13 modules
+- 168 tests
 
-### Changed
-- Version bumped to 2.3.0
+## v4.1.0 (2026-06-23)
+- Voice commands module (TTS/STT)
+- Engine detection of espeak, flite, say, SAPI
+- 143 tests
 
-## [v2.2.0] - 2026-06-23
+## v4.0.0 (2026-06-23)
+- Macro recording and playback
+- Plugin system for extensible commands
+- Engine rewritten with all 13 modules registered
+- 134 tests
 
-### Added
-- Clipboard commands (copy text, read clipboard)
-- Window management (list open windows)
-- 11 new tests (clipboard + windows)
-- Help system updated with all command categories
+## v3.2.0 (2026-06-23)
+- Scheduler module (timers, reminders)
+- Countdown timer with background threading
+- 111 tests
 
-## [v2.1.0] - 2026-06-23
+## v3.1.0 (2026-06-23)
+- Theme system (dark, midnight, forest, sunset, ocean)
+- System notifications module
+- 100 tests
 
-### Added
-- Help command with full command reference
-- Keyboard shortcuts (Ctrl+L clear, Ctrl+Enter send)
-- Command history navigation (Up/Down arrows)
+## v3.0.0 (2026-06-23)
+- Power management (shutdown, restart, sleep, lock, cancel)
+- Complete engine rewrite with proper routing
+- 89 tests
 
-## [v2.0.0] - 2026-06-23
+## v2.4.0
+- Media controls (volume, playback)
+- 71 tests
 
-### Complete Rewrite
-- Modular architecture: src/ with core/, commands/, ui/, utils/
-- Neuralis Brain AI integration (recall, think, search)
-- System diagnostics: CPU, memory, disk, processes, battery, temp, uptime
-- Mouse & keyboard automation: click, type, press, move, scroll, drag, screenshot
-- Network tools: ping, ipconfig, diagnostics, speedtest
-- Process management: open/close applications
-- File operations: list, search, read
-- Professional dark-themed CustomTkinter UI with system monitor
-- CLI mode and GUI mode
-- 43 tests across 8 test files
-- Full CI/CD pipeline (lint + test matrix + Windows EXE build + release)
-- Cross-platform: Ubuntu + Windows, Python 3.9-3.12
+## v2.3.0
+- Settings panel UI
+- 61 tests
+
+## v2.2.0
+- Clipboard tools, window management
+- 54 tests
+
+## v2.0.0
+- Complete modular rewrite from single-file app
+- 43 tests, CI/CD pipeline, Windows EXE builds
+- Neuralis Brain AI integration
+
+## v1.0.0
+- Original single-file 222-line application
