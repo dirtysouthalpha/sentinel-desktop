@@ -37,12 +37,28 @@ class CommandEngine:
         from src.commands.network import NetworkCommands
         from src.commands.process import ProcessCommands
         from src.commands.files import FileCommands
+        from src.commands.clipboard import ClipboardCommands
+        from src.commands.windows import WindowCommands
+        from src.commands.media import MediaCommands
+        from src.commands.power import PowerCommands
+        from src.commands.notify import NotifyCommands
+        from src.commands.scheduler import SchedulerCommands
+        from src.commands.macros import MacroCommands
+        from src.core.plugins import PluginManager
 
         self.sys = SystemCommands()
         self.auto = AutomationCommands()
         self.net = NetworkCommands()
         self.proc = ProcessCommands()
         self.files = FileCommands()
+        self.clip = ClipboardCommands()
+        self.win_mgr = WindowCommands()
+        self.media = MediaCommands()
+        self.power = PowerCommands()
+        self.notify = NotifyCommands()
+        self.scheduler = SchedulerCommands()
+        self.macros = MacroCommands()
+        self.plugins = PluginManager()
 
     def parse_command(self, text: str) -> Optional[tuple]:
         """Parse natural language into (handler, args)."""
@@ -73,6 +89,14 @@ class CommandEngine:
         # Power management
         if any(w in text_lower for w in ["shutdown", "restart", "reboot", "sleep", "suspend", "lock screen", "lock computer", "power off", "cancel shutdown"]):
             return ("power", text)
+
+        # Macros
+        if any(w in text_lower for w in ["record macro", "start recording", "stop recording", "save macro", "load macro", "list macro", "delete macro", "macros"]):
+            return ("macros", text)
+
+        # Plugins
+        if any(w in text_lower for w in ["list plugins", "plugins", "load plugin"]):
+            return ("plugins", text)
 
         # Notifications
         if any(w in text_lower for w in ["notify", "alert", "remind"]):
@@ -170,6 +194,10 @@ class CommandEngine:
                 return self._run_files(args)
             elif category == "power":
                 return self._run_power(args)
+            elif category == "macros":
+                return self._run_macros(args)
+            elif category == "plugins":
+                return self._run_plugins(args)
             elif category == "scheduler":
                 return self._run_scheduler(args)
             elif category == "notify":
@@ -243,6 +271,12 @@ class CommandEngine:
 
     def _run_power(self, args) -> CommandResult:
         return self.power.execute(args)
+
+    def _run_macros(self, args) -> CommandResult:
+        return self.macros.execute(args)
+
+    def _run_plugins(self, args) -> CommandResult:
+        return self.plugins.execute(args)
 
     def _run_scheduler(self, args) -> CommandResult:
         return self.scheduler.execute(args)
