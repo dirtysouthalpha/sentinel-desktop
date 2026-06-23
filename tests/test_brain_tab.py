@@ -310,6 +310,33 @@ class TestBrainTabInit:
         tab = _make_tab()
         assert tab._busy_recall is False
         assert tab._busy_think is False
+        assert tab._busy_search is False
+
+
+class TestSearchRecallIndependence:
+    """Search and Recall must use independent busy flags.
+
+    Regression: _do_search previously guarded on _busy_recall, so an in-flight
+    recall silently swallowed every search (and vice-versa).
+    """
+
+    def test_pending_recall_does_not_block_search(self) -> None:
+        tab = _make_tab()
+        # Patch Thread inert so no background brain call runs during the test.
+        with patch("gui.tabs.brain_tab.threading.Thread"):
+            tab._busy_recall = True  # a recall is in flight
+            tab._do_search()
+            # Search must still launch under its own flag.
+            assert tab._busy_search is True
+
+    def test_search_in_flight_blocks_repeat_search(self) -> None:
+        tab = _make_tab()
+        with patch("gui.tabs.brain_tab.threading.Thread") as mock_thread:
+            mock_thread.return_value.start = MagicMock()
+            tab._busy_search = True  # a search is already running
+            tab._do_search()
+            # Must not launch a second concurrent search.
+            mock_thread.return_value.start.assert_not_called()
 
 
 class TestStatsRendering:

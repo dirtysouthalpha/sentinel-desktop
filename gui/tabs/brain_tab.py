@@ -49,6 +49,7 @@ class BrainTab(ctk.CTkFrame):
         self._advanced_visible: bool = False
         self._busy_recall: bool = False
         self._busy_think: bool = False
+        self._busy_search: bool = False
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -767,9 +768,9 @@ class BrainTab(ctk.CTkFrame):
 
     def _do_search(self) -> None:
         query = self._search_entry.get().strip()
-        if self._busy_recall:
+        if self._busy_search:
             return
-        self._busy_recall = True
+        self._busy_search = True
         label = f'Searching "{query}"…' if query else "Loading feed…"
         self._set_results(label)
         threading.Thread(
@@ -789,7 +790,7 @@ class BrainTab(ctk.CTkFrame):
             self.after(0, lambda: self._render_search_results(data))
 
     def _render_search_results(self, data: dict[str, Any]) -> None:
-        self._busy_recall = False
+        self._busy_search = False
         if "error" in data:
             self._set_results(f"Error: {data['error']}")
             return
