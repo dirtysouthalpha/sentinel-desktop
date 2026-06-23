@@ -1,72 +1,135 @@
-# Sentinel Desktop - PC Assistant
+# Sentinel Desktop v2.0
 
-A Claude-like AI assistant for Windows desktop automation with accurate mouse/keyboard control.
+> AI-powered Windows desktop automation assistant with Neuralis Brain integration.
+
+[![CI](https://github.com/dirtysouthalpha/sentinel-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/dirtysouthalpha/sentinel-desktop/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
 
-- **Mouse Control**: Click at coordinates, move mouse, take screenshots
-- **Keyboard Automation**: Type text, press keys, special commands
-- **System Monitoring**: CPU, memory, disk usage, process list
-- **Application Control**: Open/close applications by name
-- **Networking Tools**: Ping, IP config, network diagnostics
-- **MSP Troubleshooting**: Services, connectivity checks
+- **System Diagnostics**: CPU, memory, disk, processes, battery, temperature, uptime
+- **Mouse & Keyboard Automation**: Click, type, press keys, scroll, drag
+- **Network Tools**: Ping, IP config, full diagnostics, speedtest
+- **Process Management**: Open/close applications
+- **File Operations**: List, search, read files
+- **Neuralis Brain AI**: Claude-like reasoning via Neuralis Brain REST API
+- **Professional UI**: Dark-themed chat interface with real-time system monitoring
 
 ## Installation
 
-### Windows
-```bash
-# Run the installer
-install_and_run.bat
-```
+### Quick Install (Windows)
 
-### Manual Installation
+Download and run `install_and_run.bat` from the latest release.
+
+### Manual Install
+
 ```bash
+git clone https://github.com/dirtysouthalpha/sentinel-desktop.git
+cd sentinel-desktop
 pip install -r requirements.txt
 python main.py
 ```
 
-## Requirements
-- Python 3.8+
-- Windows OS (designed for Windows)
+### CLI Mode
+
+```bash
+python main.py --cli
+```
 
 ## Usage
 
-Type commands in the chat interface:
+Type natural language commands in the chat interface:
 
-### Mouse Control
-- `click at 500,300` - Click at specific coordinates
-- `move to 100,200` - Move mouse to position
-- `position` - Show current mouse position
-- `screenshot` - Take a screenshot
+### System
+| Command | Description |
+|---------|-------------|
+| `cpu` | Show CPU usage |
+| `memory` | Show RAM usage |
+| `disk` | Show disk usage |
+| `processes` | List top processes |
+| `battery` | Show battery status |
+| `uptime` | Show system uptime |
 
-### Keyboard
-- `type hello world` - Type text
-- `press enter` - Press Enter key
-- `press ctrl+c` - Press key combination
+### Automation
+| Command | Description |
+|---------|-------------|
+| `click 500,300` | Click at coordinates |
+| `click right 500,300` | Right-click |
+| `type hello world` | Type text |
+| `press ctrl+c` | Press key combo |
+| `move 100,200` | Move mouse |
+| `scroll 3` | Scroll up/down |
+| `drag 100,200 to 300,400` | Drag mouse |
+| `screenshot` | Take screenshot |
 
-### System Info
-- `cpu` - Show CPU usage
-- `memory` - Show RAM usage
-- `disk` - Show disk usage
-- `processes` - List top processes
+### Network
+| Command | Description |
+|---------|-------------|
+| `ping google.com` | Ping a host |
+| `ipconfig` | Show IP config |
+| `network diagnostics` | Full network check |
+| `speedtest` | Run speed test |
 
-### Applications
-- `open chrome` - Launch application
-- `close notepad` - Close application
+### Process
+| Command | Description |
+|---------|-------------|
+| `open chrome` | Launch app |
+| `close notepad` | Kill process |
 
-### Networking
-- `ping google.com` - Ping a host
-- `ip` - Show IP configuration
-- `network` - Run network diagnostics
+### AI (Neuralis Brain)
+| Command | Description |
+|---------|-------------|
+| `brain status` | Check brain health |
+| `recall <topic>` | Recall knowledge |
+| `think <topic> <content>` | Store knowledge |
 
-## Project Structure
+## Architecture
+
+```'
+Sentinel Desktop v2.0
+├── main.py              # Entry point (GUI + CLI modes)
+├── src/
+│   ├── config.py        # Central configuration
+│   ├── cli.py           # CLI mode
+│   ├── core/
+│   │   ├── engine.py    # Command router & NLP parser
+│   │   └── brain.py     # Neuralis Brain API client
+│   ├── commands/
+│   │   ├── system.py    # System diagnostics
+│   │   ├── automation.py # Mouse & keyboard
+│   │   ├── network.py   # Network tools
+│   │   ├── process.py   # Process management
+│   │   └── files.py     # File operations
+│   ├── ui/
+│   │   └── app.py       # CustomTkinter GUI
+│   └── utils/
+│       ├── logger.py    # Logging
+│       └── helpers.py   # Helpers
+├── tests/               # Pytest test suite
+├── .github/workflows/   # CI/CD pipelines
+└── setup.py             # Package config
 ```
-sentinel-desktop/
-├── main.py              # Main application
-├── requirements.txt     # Python dependencies
-├── install_and_run.bat  # Windows installer
-└── README.md           # This file
+
+## Configuration
+
+Config stored at `~/.sentinel-desktop/config.json`:
+
+```json
+{
+  "brain_url": "http://100.70.240.55:8001",
+  "brain_enabled": true,
+  "appearance": "dark",
+  "screenshot_format": "png",
+  "mouse_speed": 0.3
+}
 ```
+
+## Requirements
+
+- Python 3.8+
+- Windows OS (optimized for Windows, works on Linux)
+- Dependencies: customtkinter, pyautogui, psutil, requests
 
 ## License
-MIT License
+
+MIT License - see [LICENSE](LICENSE)

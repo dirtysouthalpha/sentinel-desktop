@@ -1,3 +1,7 @@
+# Sentinel Desktop v2.0 - Dependencies
 customtkinter>=5.0.0
 pyautogui>=0.9.54
 psutil>=5.9.0
+requests>=2.28.0
+Pillow>=9.0.0
+speedtest-cli>=2.1.0
