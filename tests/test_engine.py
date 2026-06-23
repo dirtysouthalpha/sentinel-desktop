@@ -79,3 +79,39 @@ class TestCommandParsing:
         result = self.engine.parse_command("kill chrome")
         assert result is not None
         assert result[0] == "process"
+    def test_parse_copy(self):
+        result = self.engine.parse_command("copy hello world")
+        assert result is not None
+        assert result[0] == "clipboard"
+
+    def test_parse_paste(self):
+        result = self.engine.parse_command("paste")
+        assert result is not None
+        assert result[0] == "clipboard"
+
+    def test_parse_clipboard(self):
+        result = self.engine.parse_command("clipboard")
+        assert result is not None
+        assert result[0] == "clipboard"
+
+    def test_parse_list_windows(self):
+        result = self.engine.parse_command("list windows")
+        assert result is not None
+        assert result[0] == "windows"
+
+    def test_parse_windows(self):
+        result = self.engine.parse_command("show windows")
+        assert result is not None
+        assert result[0] == "windows"
+
+    def test_parse_help(self):
+        result = self.engine.parse_command("help")
+        assert result is not None
+        assert result[0] == "system"
+        assert result[1] == "help"
+
+    def test_parse_question_mark(self):
+        result = self.engine.parse_command("?")
+        assert result is not None
+        assert result[0] == "system"
+

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 # Version
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 APP_NAME = "Sentinel Desktop"
 APP_TITLE = f"{APP_NAME} v{VERSION}"
 

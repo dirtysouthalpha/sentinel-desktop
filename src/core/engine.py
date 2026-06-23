@@ -109,6 +109,16 @@ class CommandEngine:
         if text_lower.startswith("open ") or text_lower.startswith("launch"):
             return ("process", text)
 
+        # Clipboard
+        if text_lower.startswith("copy "):
+            return ("clipboard", text)
+        if text_lower in ["paste", "clipboard"]:
+            return ("clipboard", "read")
+
+        # Window management (before file ops to catch "list windows")
+        if ("window" in text_lower and ("list" in text_lower or "show" in text_lower)) or text_lower == "windows":
+            return ("windows", "list")
+
         # File operations
         if text_lower.startswith("list ") or text_lower.startswith("dir") or text_lower.startswith("ls"):
             return ("files", text)

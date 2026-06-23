@@ -90,7 +90,74 @@ class SentinelDesktopApp:
             header, text="BRAIN: ...", font=self.font_small,
             text_color=COLORS["warning"]
         )
-        self.brain_label.grid(row=0, column=3, padx=(0, 16))
+        self.brain_label.grid(row=0, column=3, padx=(0, 8))
+
+        # Settings button
+        self.settings_btn = ctk.CTkButton(
+            header, text="⚙", width=36, height=36,
+            font=("Segoe UI", 16),
+            command=self._open_settings,
+            fg_color=COLORS["bg_tertiary"],
+            hover_color=COLORS["accent_hover"],
+            text_color=COLORS["text_secondary"]
+        )
+        self.settings_btn.grid(row=0, column=4, padx=(0, 16))
+
+
+    def _open_settings(self):
+        """Open settings dialog."""
+        dialog = ctk.CTkToplevel(self.app)
+        dialog.title("Settings")
+        dialog.geometry("450x400")
+        dialog.configure(fg_color=COLORS["bg_secondary"])
+        dialog.transient(self.app)
+        dialog.grab_set()
+
+        # Title
+        ctk.CTkLabel(
+            dialog, text="Settings", font=self.font_header,
+            text_color=COLORS["accent"]
+        ).pack(pady=(16, 8))
+
+        # Brain URL
+        url_frame = ctk.CTkFrame(dialog, fg_color=COLORS["bg_tertiary"])
+        url_frame.pack(fill="x", padx=20, pady=4)
+        ctk.CTkLabel(url_frame, text="Neuralis Brain URL:", font=self.font_small).pack(anchor="w", padx=12, pady=(8, 0))
+        url_entry = ctk.CTkEntry(url_frame, value=self.config.get("brain_url", ""), width=380)
+        url_entry.pack(fill="x", padx=12, pady=(0, 8))
+
+        # Mouse speed
+        speed_frame = ctk.CTkFrame(dialog, fg_color=COLORS["bg_tertiary"])
+        speed_frame.pack(fill="x", padx=20, pady=4)
+        ctk.CTkLabel(speed_frame, text="Mouse Speed:", font=self.font_small).pack(anchor="w", padx=12, pady=(8, 0))
+        speed_slider = ctk.CTkSlider(speed_frame, from_=0.1, to=1.0, width=350)
+        speed_slider.set(self.config.get("mouse_speed", 0.3))
+        speed_slider.pack(fill="x", padx=12, pady=(0, 8))
+
+        # Screenshot format
+        fmt_frame = ctk.CTkFrame(dialog, fg_color=COLORS["bg_tertiary"])
+        fmt_frame.pack(fill="x", padx=20, pady=4)
+        ctk.CTkLabel(fmt_frame, text="Screenshot Format:", font=self.font_small).pack(anchor="w", padx=12, pady=(8, 0))
+        fmt_var = ctk.StringVar(value=self.config.get("screenshot_format", "png"))
+        ctk.CTkSegmentedButton(fmt_frame, values=["png", "jpg"], variable=fmt_var).pack(fill="x", padx=12, pady=(0, 8))
+
+        # Save button
+        def save_settings():
+            self.config["brain_url"] = url_entry.get()
+            self.config["mouse_speed"] = speed_slider.get()
+            self.config["screenshot_format"] = fmt_var.get()
+            save_config(self.config)
+            self.brain = BrainClient(self.config.get("brain_url", BRAIN_URL))
+            self.engine.brain = self.brain
+            self._add_message("Settings saved.", "success")
+            self._check_brain()
+            dialog.destroy()
+
+        ctk.CTkButton(
+            dialog, text="Save", command=save_settings,
+            fg_color=COLORS["accent"], hover_color=COLORS["accent_hover"],
+            text_color=COLORS["bg_primary"], height=36
+        ).pack(pady=16)
 
     def _build_chat(self):
         chat_frame = ctk.CTkFrame(self.app, fg_color=COLORS["bg_primary"])
