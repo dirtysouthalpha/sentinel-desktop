@@ -162,6 +162,62 @@ class TestSkillMarketplaceUninstall:
         assert marketplace.uninstall_skill("ghost") is False
 
 
+class TestSkillNameValidation:
+    """Path-traversal hardening: install/uninstall/get/export must reject
+    names that could escape the marketplace root."""
+
+    @pytest.mark.parametrize(
+        "bad_name",
+        [
+            "../../etc/evil",
+            "..",
+            "../../../",
+            "/etc/passwd",
+            "sub/../../escape",
+            "lead/slash",
+            "trailing/slash/",
+            ".hidden",
+            "-flag",
+            "",
+            "has space",
+            "shell;rm",
+        ],
+    )
+    def test_install_rejects_bad_name(self, marketplace, bad_name):
+        with pytest.raises(ValueError):
+            marketplace.install_skill(
+                SkillManifest(name=bad_name, description="x"), script=_script()
+            )
+
+    @pytest.mark.parametrize("bad_name", ["../../", "..", "/etc/p", "-x", "a/b"])
+    def test_uninstall_rejects_bad_name(self, marketplace, bad_name):
+        with pytest.raises(ValueError):
+            marketplace.uninstall_skill(bad_name)
+
+    @pytest.mark.parametrize("bad_name", ["../../", "..", "/etc/p", "-x", "a/b"])
+    def test_get_rejects_bad_name(self, marketplace, bad_name):
+        with pytest.raises(ValueError):
+            marketplace.get_skill(bad_name)
+
+    def test_uninstall_traversal_does_not_touch_filesystem(self, marketplace, tmp_path):
+        """The worst case: a traversal name reaching shutil.rmtree must fail
+        before any filesystem deletion happens."""
+        sentinel = tmp_path / "canary"
+        sentinel.write_text("alive", encoding="utf-8")
+        # Build a name that, unguarded, would resolve above the marketplace root.
+        evil = "../" * 10
+        with pytest.raises(ValueError):
+            marketplace.uninstall_skill(evil)
+        assert sentinel.read_text(encoding="utf-8") == "alive"
+
+    @pytest.mark.parametrize("good_name", ["a", "open_notepad", "web.v2", "skill-1", "v2_0"])
+    def test_valid_names_accepted(self, marketplace, good_name):
+        skill_dir = marketplace.install_skill(
+            SkillManifest(name=good_name, description="x"), script=_script()
+        )
+        assert skill_dir.exists()
+
+
 class TestGetMarketplaceSingleton:
     def test_returns_same_instance(self):
         m1 = get_marketplace()

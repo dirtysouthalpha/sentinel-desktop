@@ -2812,7 +2812,10 @@ class ActionExecutor:
             category=params.category,
             tags=params.tags or [],
         )
-        skill_dir = get_marketplace().install_skill(manifest, script=params.script)
+        try:
+            skill_dir = get_marketplace().install_skill(manifest, script=params.script)
+        except ValueError as exc:
+            return {"success": False, "error": str(exc)}
         return {
             "success": True,
             "output": f"Skill '{params.name}' installed → {skill_dir}",
@@ -2830,7 +2833,7 @@ class ActionExecutor:
                 "output": {"manifest": manifest.to_dict(), "script": script},
                 "manifest": manifest.to_dict(),
             }
-        except FileNotFoundError as exc:
+        except (FileNotFoundError, ValueError) as exc:
             return {"success": False, "error": str(exc)}
 
     def _skill_export(self, *, name: str, **kwargs: Any) -> dict:
@@ -2840,14 +2843,17 @@ class ActionExecutor:
         try:
             bundle = get_marketplace().export_skill(name)
             return {"success": True, "output": bundle}
-        except FileNotFoundError as exc:
+        except (FileNotFoundError, ValueError) as exc:
             return {"success": False, "error": str(exc)}
 
     def _skill_uninstall(self, *, name: str, **kwargs: Any) -> dict:
         """Remove an installed skill by name."""
         from core.skill_marketplace import get_marketplace
 
-        removed = get_marketplace().uninstall_skill(name)
+        try:
+            removed = get_marketplace().uninstall_skill(name)
+        except ValueError as exc:
+            return {"success": False, "error": str(exc)}
         if removed:
             return {"success": True, "output": f"Skill '{name}' uninstalled."}
         return {"success": False, "error": f"Skill '{name}' not found."}

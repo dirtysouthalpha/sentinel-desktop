@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,6 +31,12 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MARKETPLACE = Path.home() / ".sentinel" / "marketplace"
+
+# Skill names are filesystem directory names under the marketplace root.
+# Restrict to a safe charset and require an alphanumeric start so traversal
+# tokens (``..``, ``/``, leading dash, absolute paths) can never form a valid
+# name. Containment is still re-checked at resolve time as defense-in-depth.
+_SKILL_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 # ---------------------------------------------------------------------------
@@ -94,6 +101,24 @@ class SkillMarketplace:
     def __init__(self, marketplace_dir: Path | None = None) -> None:
         self._root = Path(marketplace_dir or _DEFAULT_MARKETPLACE)
         self._root.mkdir(parents=True, exist_ok=True)
+
+    def _resolve_skill_dir(self, name: str) -> Path:
+        """Validate *name* and return its resolved path under the root.
+
+        Raises:
+            ValueError: if *name* is empty, contains path separators or
+                ``..``, or resolves outside the marketplace root. Guards
+                install/uninstall/get/export against path traversal — an
+                unsanitized ``"../../"`` name reached ``shutil.rmtree`` and
+                ``write_text`` on the unhardened path.
+        """
+        if not isinstance(name, str) or ".." in name or not _SKILL_NAME_RE.match(name):
+            raise ValueError(f"invalid skill name: {name!r}")
+        root = self._root.resolve()
+        skill_dir = (root / name).resolve()
+        if skill_dir != root and root not in skill_dir.parents:
+            raise ValueError(f"skill name escapes marketplace root: {name!r}")
+        return skill_dir
 
     # ------------------------------------------------------------------
     # Discovery
@@ -164,7 +189,7 @@ class SkillMarketplace:
         if not manifest.created:
             manifest.created = datetime.now(timezone.utc).isoformat()
 
-        skill_dir = self._root / manifest.name
+        skill_dir = self._resolve_skill_dir(manifest.name)
         skill_dir.mkdir(parents=True, exist_ok=True)
 
         # Write manifest
@@ -198,7 +223,7 @@ class SkillMarketplace:
         """
         import shutil
 
-        skill_dir = self._root / name
+        skill_dir = self._resolve_skill_dir(name)
         if not skill_dir.exists():
             return False
         shutil.rmtree(skill_dir)
@@ -218,7 +243,7 @@ class SkillMarketplace:
         Raises:
             FileNotFoundError: If the skill is not installed.
         """
-        skill_dir = self._root / name
+        skill_dir = self._resolve_skill_dir(name)
         manifest_path = skill_dir / "manifest.json"
         if not manifest_path.exists():
             raise FileNotFoundError(f"Skill not found: {name!r}")
