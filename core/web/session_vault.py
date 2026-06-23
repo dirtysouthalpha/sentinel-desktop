@@ -13,6 +13,8 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -225,18 +227,24 @@ class SessionVault:
                 # DPAPI unavailable / failed — fall back to plaintext (still
                 # owner-only via restrict_file_perms) so sessions are never lost.
                 logger.warning("Session vault encryption unavailable — writing plaintext")
-                self._path.write_text(
-                    json.dumps(self._data, indent=2, ensure_ascii=False),
-                    encoding="utf-8",
-                )
+                payload = json.dumps(self._data, indent=2, ensure_ascii=False)
             else:
                 blob = {
                     "version": 2,
                     "encrypted": base64.b64encode(encrypted).decode("ascii"),
                 }
-                self._path.write_text(json.dumps(blob), encoding="utf-8")
-            # Session cookies authenticate to IT appliances — restrict the
-            # file to owner-only on POSIX even though it is the umask default.
-            restrict_file_perms(self._path)
+                payload = json.dumps(blob)
+            # Atomic write: stage the payload in a uniquely-named temp, fsync
+            # it, lock perms, then os.replace into place. A crash mid-write
+            # leaves the live vault (IT-appliance session cookies) intact —
+            # the old code wrote the live file directly with no fsync and a
+            # truncated write silently destroyed every saved session.
+            tmp = self._path.parent / f".sessions-{uuid.uuid4().hex}.tmp"
+            with tmp.open("w", encoding="utf-8") as fh:
+                fh.write(payload)
+                fh.flush()
+                os.fsync(fh.fileno())
+            restrict_file_perms(tmp)
+            tmp.replace(self._path)
         except OSError as exc:
             logger.error("Failed to save session vault: %s", exc)

@@ -218,3 +218,36 @@ class TestAtRestEncryption:
         raw = path.read_text(encoding="utf-8")
         assert "old.local" not in raw
         assert "new.local" not in raw
+
+
+class TestAtomicSave:
+    def test_save_failure_preserves_existing_sessions(self, tmp_path, monkeypatch):
+        # The vault stores IT-appliance session cookies (credentials). A crash
+        # partway through _save must NOT truncate the live file — the new
+        # payload is staged in a temp and only renamed into place on success.
+        # Inject an fsync failure: against the atomic path the temp is abandoned
+        # before the rename so the pre-existing session survives; the old code
+        # wrote the live file directly with no fsync and would lose it.
+        path = tmp_path / "sessions.json"
+        seed = SessionVault(path=path)
+        assert seed.save_session("192.168.1.1", [{"name": "k", "value": "v"}])
+        assert "192.168.1.1" in seed.list_domains()
+        assert path.exists()
+
+        vault = SessionVault(path=path)
+
+        def _boom(*args, **kwargs):
+            raise OSError("simulated fsync failure")
+
+        monkeypatch.setattr("os.fsync", _boom)
+        # save_session mutates in-memory state then calls _save(); the on-disk
+        # state is what matters, so re-read from disk via a fresh instance.
+        vault.save_session("10.0.0.1", [{"name": "k2", "value": "v2"}])
+
+        reloaded = SessionVault(path=path)
+        assert "192.168.1.1" in reloaded.list_domains(), (
+            "pre-existing session was lost when the new save failed"
+        )
+        assert "10.0.0.1" not in reloaded.list_domains(), (
+            "save() overwrote the live file before atomically replacing it"
+        )

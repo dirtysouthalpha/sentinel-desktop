@@ -171,7 +171,7 @@ class TestSessionVaultSaveException:
 
 
 class TestSessionVaultSaveOSError:
-    """Lines 197-198: _save catches OSError from write_text and does not raise."""
+    """_save catches OSError from the atomic write and does not raise."""
 
     def test_save_oserror_does_not_propagate(self, tmp_path) -> None:
         vault = SessionVault(tmp_path / "vault.json")
@@ -183,14 +183,10 @@ class TestSessionVaultSaveOSError:
                 "domain": "example.com",
             }
         }
-        # Replace _path with a mock whose write_text raises OSError
-        mock_path = MagicMock()
-        mock_path.parent.mkdir.return_value = None
-        mock_path.write_text.side_effect = OSError("no space left")
-        vault._path = mock_path
-        # Should not raise
-        vault._save()
-        mock_path.write_text.assert_called_once()
+        # _save now writes atomically (temp + fsync + os.replace). Inject an
+        # OSError at the fsync step and confirm it is swallowed, not raised.
+        with patch("os.fsync", side_effect=OSError("no space left")):
+            vault._save()  # should not raise
 
 
 # ── Platform __init__ ──────────────────────────────────────────────────────────
