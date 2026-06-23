@@ -65,7 +65,11 @@ def _parse_cron_field(field: str, value: int, ranges: tuple[int, int]) -> bool:
                 step = int(part[2:])
                 if step <= 0:
                     continue
-                return value % step == 0
+                # Range-relative: */N means "every Nth value starting from the
+                # field minimum". value % step is only right for 0-based fields
+                # (minute/hour); for 1-based fields (day-of-month, month) it
+                # matches the wrong values (e.g. */2 = 2,4,6 instead of 1,3,5).
+                return (value - lo) % step == 0
             if "-" in part:
                 a, b = part.split("-", 1)
                 if int(a) <= value <= int(b):

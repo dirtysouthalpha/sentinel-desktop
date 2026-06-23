@@ -32,6 +32,23 @@ class TestParseCronField:
         assert _parse_cron_field("*/5", 10, (0, 59)) is True
         assert _parse_cron_field("*/5", 3, (0, 59)) is False
 
+    def test_step_on_one_based_field_starts_at_minimum(self):
+        # day-of-month is 1-based: standard cron */N means "every Nth value
+        # starting from the field minimum", so */2 = days 1,3,5,... not 2,4,6,...
+        assert _parse_cron_field("*/2", 1, (1, 31)) is True
+        assert _parse_cron_field("*/2", 2, (1, 31)) is False
+        assert _parse_cron_field("*/2", 3, (1, 31)) is True
+        # month is 1-based: */3 = months 1,4,7,10
+        assert _parse_cron_field("*/3", 1, (1, 12)) is True
+        assert _parse_cron_field("*/3", 3, (1, 12)) is False
+        assert _parse_cron_field("*/3", 4, (1, 12)) is True
+
+    def test_step_on_zero_based_field_unchanged(self):
+        # minute/hour are 0-based: */2 still means 0,2,4,...
+        assert _parse_cron_field("*/2", 0, (0, 59)) is True
+        assert _parse_cron_field("*/2", 1, (0, 59)) is False
+        assert _parse_cron_field("*/2", 2, (0, 59)) is True
+
     def test_exact_value(self):
         assert _parse_cron_field("15", 15, (0, 59)) is True
         assert _parse_cron_field("15", 14, (0, 59)) is False
@@ -88,6 +105,14 @@ class TestCronMatches:
         assert cron_matches("*/5 * * * *", datetime(2025, 1, 1, 12, 0)) is True
         assert cron_matches("*/5 * * * *", datetime(2025, 1, 1, 12, 5)) is True
         assert cron_matches("*/5 * * * *", datetime(2025, 1, 1, 12, 3)) is False
+
+    def test_step_every_other_day_matches_from_first(self):
+        # "0 0 */2 * *" = midnight every other day. */2 in day-of-month is
+        # 1-based, so it matches the 1st, 3rd, 5th... of the month, not the
+        # 2nd, 4th, 6th...
+        assert cron_matches("0 0 */2 * *", datetime(2025, 1, 1, 0, 0)) is True
+        assert cron_matches("0 0 */2 * *", datetime(2025, 1, 2, 0, 0)) is False
+        assert cron_matches("0 0 */2 * *", datetime(2025, 1, 3, 0, 0)) is True
 
     def test_invalid_cron_raises(self):
         with pytest.raises(ValueError, match="expected 5 fields"):
