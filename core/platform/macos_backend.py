@@ -341,11 +341,21 @@ class MacOSStealthInput(StealthInputBackend):
 
     def press_key(self, key: str) -> bool:
         """Press a key via AppleScript."""
-        if not self._has_osascript:
+        if not self._has_osascript or not key:
             return False
         try:
-            key_code = self._to_applescript_key(key)
-            script = f'tell application "System Events"\n    key code {key_code}\nend tell'
+            if len(key) == 1:
+                # Single char: keystroke the literal character. macOS virtual
+                # key codes are non-sequential/layout-dependent (A=0, B=11…),
+                # so they can't be derived by formula; keystroke is
+                # layout-independent and unambiguous.
+                escaped = key.replace("\\", "\\\\").replace('"', '\\"')
+                script = f'tell application "System Events"\n    keystroke "{escaped}"\nend tell'
+            else:
+                key_code = self._to_applescript_key(key)
+                if key_code is None:
+                    return False
+                script = f'tell application "System Events"\n    key code {key_code}\nend tell'
             result = subprocess.run(
                 ["osascript", "-e", script],
                 capture_output=True,
@@ -491,8 +501,16 @@ class MacOSStealthInput(StealthInputBackend):
             return False
 
     @staticmethod
-    def _to_applescript_key(key: str) -> int:
-        """Map key names to macOS key codes."""
+    def _to_applescript_key(key: str) -> int | None:
+        """Map a named key to its macOS virtual key code.
+
+        Returns the key code for known named keys (enter, tab, arrows, F-keys…)
+        or ``None`` for single characters and unknown names. Single-char keys
+        are deliberately NOT mapped here: macOS virtual key codes are
+        non-sequential and layout-dependent (e.g. A=0, B=11, C=8) and cannot be
+        derived by formula, so ``press_key`` sends them via ``keystroke``
+        instead.
+        """
         key_codes = {
             "enter": 36,
             "return": 36,
@@ -524,11 +542,7 @@ class MacOSStealthInput(StealthInputBackend):
             "f12": 111,
         }
         k = (key or "").lower()
-        if k in key_codes:
-            return key_codes[k]
-        if len(key) == 1:
-            return ord(key.upper()) - 32  # rough ASCII→key code
-        return 0
+        return key_codes.get(k)
 
 
 # ---------------------------------------------------------------------------

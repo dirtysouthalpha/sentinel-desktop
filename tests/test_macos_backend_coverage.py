@@ -388,6 +388,41 @@ class TestMacOSStealthInput:
         with patch("subprocess.run", side_effect=OSError("fail")):
             assert inp.press_key("escape") is False
 
+    def test_press_key_single_char_uses_keystroke(self):
+        # Single-char keys MUST use `keystroke "<char>"` (layout-independent),
+        # NOT `key code N` — the old ASCII→key-code formula sent the wrong
+        # physical key for every letter a-z on macOS (A is key code 0, not 33).
+        inp = self._make(True)
+        with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
+            assert inp.press_key("a") is True
+        script = mock_run.call_args[0][0][2]
+        assert 'keystroke "a"' in script
+        assert "key code" not in script
+
+    def test_press_key_single_char_uppercase_preserved(self):
+        inp = self._make(True)
+        with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
+            assert inp.press_key("Z") is True
+        script = mock_run.call_args[0][0][2]
+        assert 'keystroke "Z"' in script
+        assert "key code" not in script
+
+    def test_press_key_named_key_uses_key_code(self):
+        # Named keys still route through the (correct) virtual key-code table.
+        inp = self._make(True)
+        with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
+            assert inp.press_key("enter") is True
+        script = mock_run.call_args[0][0][2]
+        assert "key code 36" in script
+
+    def test_press_key_unknown_returns_false_without_osascript(self):
+        # Unknown multi-char key must NOT fall through to `key code 0`
+        # (which is the physical A key) — return False and don't call osascript.
+        inp = self._make(True)
+        with patch("subprocess.run", return_value=_make_proc(0)) as mock_run:
+            assert inp.press_key("not_a_real_key") is False
+        mock_run.assert_not_called()
+
     def test_hotkey_not_available(self):
         assert self._make(False).hotkey("ctrl", "c") is False
 
@@ -479,22 +514,24 @@ class TestMacOSStealthInput:
         assert MacOSStealthInput._to_applescript_key("f1") == 122
         assert MacOSStealthInput._to_applescript_key("pageup") == 116
 
-    def test_to_applescript_key_single_char(self):
+    def test_to_applescript_key_single_char_is_none(self):
         from core.platform.macos_backend import MacOSStealthInput
 
-        # Single char → ASCII-based key code
-        result = MacOSStealthInput._to_applescript_key("a")
-        assert result == ord("A") - 32
+        # Single-char keys are NOT mapped to key codes here — macOS virtual key
+        # codes are non-sequential and layout-dependent (A=0, B=11, C=8) and
+        # cannot be derived by formula. press_key sends them via `keystroke`.
+        assert MacOSStealthInput._to_applescript_key("a") is None
+        assert MacOSStealthInput._to_applescript_key("Z") is None
 
     def test_to_applescript_key_unknown(self):
         from core.platform.macos_backend import MacOSStealthInput
 
-        assert MacOSStealthInput._to_applescript_key("unknown_key") == 0
+        assert MacOSStealthInput._to_applescript_key("unknown_key") is None
 
     def test_to_applescript_key_empty(self):
         from core.platform.macos_backend import MacOSStealthInput
 
-        assert MacOSStealthInput._to_applescript_key("") == 0
+        assert MacOSStealthInput._to_applescript_key("") is None
 
 
 # ── MacOSCredentialBackend ─────────────────────────────────────────────────────
