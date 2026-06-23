@@ -179,19 +179,52 @@ class TestFleetLoadCorruptFilePreservation:
 
 
 class TestFleetSaveOSError:
-    """Lines 182-183 — OSError in _save() is swallowed."""
+    """OSError in _save() is swallowed."""
 
     def test_save_oserror_does_not_raise(self, tmp_path):
         fleet = FleetManager(path=tmp_path / "fleet.json")
         fleet.register_node("n1", hostname="box1")
 
-        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+        # _save now writes atomically (temp + fsync + os.replace); inject the
+        # OSError at the fsync step (the old write_text path no longer exists).
+        with patch("os.fsync", side_effect=OSError("disk full")):
             # unregister_node() calls _save() internally
             fleet.unregister_node("n1")
 
         # The operation should complete (node is gone from memory)
         # even though persisting to disk failed
         assert fleet.get_node("n1") is None
+
+
+class TestFleetSaveAtomic:
+    """_save must be atomic — a failure mid-write must not truncate the live
+    fleet file. _load was hardened (per-record tolerance + quarantine) but
+    _save wrote the live file directly with no fsync, the same missed-save
+    pattern found in scheduler/auth."""
+
+    def test_save_failure_preserves_existing_nodes(self, tmp_path, monkeypatch):
+        fleet_file = tmp_path / "fleet.json"
+        seed = FleetManager(path=fleet_file)
+        seed.register_node("alpha", hostname="box1")
+        assert fleet_file.exists()
+
+        fleet = FleetManager(path=fleet_file)
+
+        def _boom(*args, **kwargs):
+            raise OSError("simulated fsync failure")
+
+        monkeypatch.setattr("os.fsync", _boom)
+        # register_node mutates in-memory state then calls _save(); reload from
+        # disk to verify the on-disk state.
+        fleet.register_node("bravo", hostname="box2")
+
+        reloaded = FleetManager(path=fleet_file)
+        assert reloaded.get_node("alpha") is not None, (
+            "pre-existing node was lost when the new save failed"
+        )
+        assert reloaded.get_node("bravo") is None, (
+            "save() overwrote the live file before atomically replacing it"
+        )
 
 
 # ── JobQueue ──────────────────────────────────────────────────────────────

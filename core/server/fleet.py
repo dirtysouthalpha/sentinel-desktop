@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import socket
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -201,6 +203,17 @@ class FleetManager:
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             data = {"nodes": [n.to_dict() for n in self._nodes.values()]}
-            self._path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            # Atomic write: stage in a uniquely-named temp, fsync, then
+            # os.replace into place. A crash mid-write leaves the live fleet
+            # file intact — the old code wrote it directly with no fsync and a
+            # truncated write silently dropped every registered node. The unique
+            # temp name means GUI + API saves sharing this dir can't clobber
+            # each other on the final rename.
+            tmp = self._path.parent / f".fleet-{uuid.uuid4().hex}.tmp"
+            with tmp.open("w", encoding="utf-8") as fh:
+                fh.write(json.dumps(data, indent=2))
+                fh.flush()
+                os.fsync(fh.fileno())
+            tmp.replace(self._path)
         except OSError as exc:
             logger.warning("Failed to save fleet data: %s", exc)
