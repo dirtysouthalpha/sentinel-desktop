@@ -147,7 +147,7 @@ class ScenarioRunner:
         """
         if error:
             return False
-        if step.expect_success and not result.get("success", True):
+        if step.expect_success and not result.get("success", False):
             return False
         for key in step.expected_keys:
             if not result.get(key):

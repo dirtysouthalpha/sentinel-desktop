@@ -138,6 +138,22 @@ class TestScenarioRunner:
         result = runner.run(scenario)
         assert result.passed is False
 
+    def test_fail_when_success_key_missing(self):
+        """A step with expect_success=True whose action returns a dict with NO
+        ``success`` key must FAIL — missing is not affirmatively-successful.
+        (Also covers the non-dict return path, which becomes {"raw": ...} with
+        no success key.) The old code defaulted the missing key to True, scoring
+        ambiguous results as passing — contradicting the scoring docstring."""
+        def no_success_executor(action: str, **params) -> dict:
+            return {"output": "did something, success unknown"}
+
+        step = ScenarioStep(action="screenshot", expected_keys=["output"], expect_success=True)
+        scenario = _make_scenario(steps=[step])
+        runner = ScenarioRunner(no_success_executor)
+        result = runner.run(scenario)
+        assert result.passed is False
+        assert result.steps_failed == 1
+
     def test_exception_counts_as_failure(self):
         def boom(action, **params):
             raise RuntimeError("kaboom")
