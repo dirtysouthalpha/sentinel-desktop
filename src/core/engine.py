@@ -30,13 +30,6 @@ class CommandEngine:
         self.aliases = {}
         self._register_defaults()
 
-    def register(self, name: str, handler, aliases: list = None):
-        """Register a command handler."""
-        self.handlers[name] = handler
-        if aliases:
-            for alias in aliases:
-                self.aliases[alias] = name
-
     def _register_defaults(self):
         """Register built-in command handlers."""
         from src.commands.system import SystemCommands
@@ -55,6 +48,10 @@ class CommandEngine:
         """Parse natural language into (handler, args)."""
         text_lower = text.lower().strip()
 
+        # Help
+        if text_lower in ["help", "commands", "?", "what can you do"]:
+            return ("system", "help")
+
         # System commands
         if any(w in text_lower for w in ["cpu", "processor"]):
             return ("system", "cpu")
@@ -72,6 +69,16 @@ class CommandEngine:
             return ("system", "temperature")
         if "uptime" in text_lower:
             return ("system", "uptime")
+
+        # Power management
+        if any(w in text_lower for w in ["shutdown", "restart", "reboot", "sleep", "suspend", "lock screen", "lock computer", "power off", "cancel shutdown"]):
+            return ("power", text)
+
+        # Media controls
+        if any(w in text_lower for w in ["volume", "mute", "unmute"]):
+            return ("media", text)
+        if any(w in text_lower for w in ["play", "pause", "next track", "previous track", "prev track", "stop media"]):
+            return ("media", text)
 
         # Automation commands
         if text_lower.startswith("click"):
@@ -127,10 +134,6 @@ class CommandEngine:
         if text_lower.startswith("read "):
             return ("files", text)
 
-        # Help
-        if text_lower in ["help", "commands", "?", "what can you do"]:
-            return ("system", "help")
-
         # Brain/AI
         if any(w in text_lower for w in ["brain", "think", "remember", "recall"]):
             return ("ai", text)
@@ -142,7 +145,6 @@ class CommandEngine:
         parsed = self.parse_command(text)
 
         if parsed is None:
-            # Try AI routing
             return self._ai_route(text)
 
         category, args = parsed
@@ -158,6 +160,14 @@ class CommandEngine:
                 return self._run_process(args)
             elif category == "files":
                 return self._run_files(args)
+            elif category == "power":
+                return self._run_power(args)
+            elif category == "media":
+                return self._run_media(args)
+            elif category == "clipboard":
+                return self._run_clipboard(args)
+            elif category == "windows":
+                return self._run_windows(args)
             elif category == "ai":
                 return self._run_ai(args)
         except Exception as e:
@@ -219,14 +229,34 @@ class CommandEngine:
     def _run_files(self, args) -> CommandResult:
         return self.files.execute(args)
 
+    def _run_power(self, args) -> CommandResult:
+        return self.power.execute(args)
+
+    def _run_media(self, args) -> CommandResult:
+        return self.media.execute(args)
+
+    def _run_clipboard(self, args) -> CommandResult:
+        if isinstance(args, str):
+            if args == "read":
+                return self.clip.read()
+            if args.startswith("copy"):
+                text = args[5:].strip() if len(args) > 5 else ""
+                return self.clip.write(text)
+        return self.clip.execute(args)
+
+    def _run_windows(self, args) -> CommandResult:
+        if isinstance(args, str) and args == "list":
+            return self.win_mgr.list_windows()
+        return self.win_mgr.execute(args)
+
     def _run_ai(self, args) -> CommandResult:
         if isinstance(args, str):
             if args.lower().startswith("recall"):
                 query = args.split(None, 1)[1] if len(args.split()) > 1 else ""
                 results = self.brain.recall(query)
                 if results:
-                    text = "\n".join([f"- {r.get('topic', '')}: {r.get('content', '')[:100]}" for r in results[:5]])
-                    return CommandResult(True, f"Brain recall:\n{text}")
+                    text = chr(10).join([f"- {r.get('topic', '')}: {r.get('content', '')[:100]}" for r in results[:5]])
+                    return CommandResult(True, f"Brain recall:" + chr(10) + text)
                 return CommandResult(True, "No results found in brain.")
             if args.lower().startswith("think"):
                 parts = args.split(None, 2)
@@ -237,7 +267,7 @@ class CommandEngine:
             if args.lower().startswith("brain status"):
                 health = self.brain.health()
                 stats = self.brain.stats()
-                return CommandResult(True, f"Brain Status: {health}\nStats: {stats}")
+                return CommandResult(True, f"Brain Status: {health}" + chr(10) + f"Stats: {stats}")
         return CommandResult(False, "Unknown AI command")
 
     def _ai_route(self, text: str) -> CommandResult:

@@ -115,3 +115,32 @@ class TestCommandParsing:
         assert result is not None
         assert result[0] == "system"
 
+    def test_parse_shutdown(self):
+        result = self.engine.parse_command("shutdown")
+        assert result is not None
+        assert result[0] == "power"
+
+    def test_parse_restart(self):
+        result = self.engine.parse_command("restart")
+        assert result is not None
+        assert result[0] == "power"
+
+    def test_parse_sleep(self):
+        result = self.engine.parse_command("sleep")
+        assert result is not None
+        assert result[0] == "power"
+
+    def test_parse_lock(self):
+        result = self.engine.parse_command("lock screen")
+        assert result is not None
+        assert result[0] == "power"
+
+    def test_parse_volume(self):
+        result = self.engine.parse_command("volume up")
+        assert result is not None
+        assert result[0] == "media"
+
+    def test_parse_mute(self):
+        result = self.engine.parse_command("mute")
+        assert result is not None
+        assert result[0] == "media"
