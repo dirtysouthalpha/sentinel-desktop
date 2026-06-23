@@ -374,3 +374,41 @@ class TestHandleTerminalWsExceptBlock:
 
         # finally block still runs
         assert cleanup_called
+
+
+# ── _handle_resize_message — malformed client input must not kill the session ─
+
+
+class TestHandleResizeMessageValidation:
+    """_handle_resize_message must not raise on malformed client input.
+
+    Non-numeric or out-of-unsigned-short-range rows/cols previously raised
+    ValueError / struct.error OUTSIDE the ``except OSError`` clause. That
+    propagated out of ``_process_ws_message`` (called outside _read_ws's
+    try/except), killing the _read_ws task and tearing down the whole PTY
+    session on a single bad resize message.
+    """
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
+    @pytest.mark.asyncio
+    async def test_non_numeric_rows_does_not_raise(self):
+        server = _make_server()
+        with patch("api.server.fcntl.ioctl"):
+            result = await server._handle_resize_message(10, {"rows": "abc", "cols": 80})
+        assert result is True
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
+    @pytest.mark.asyncio
+    async def test_negative_rows_does_not_raise(self):
+        server = _make_server()
+        with patch("api.server.fcntl.ioctl"):
+            result = await server._handle_resize_message(10, {"rows": -1, "cols": 80})
+        assert result is True
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="PTY only on Unix")
+    @pytest.mark.asyncio
+    async def test_oversized_cols_does_not_raise(self):
+        server = _make_server()
+        with patch("api.server.fcntl.ioctl"):
+            result = await server._handle_resize_message(10, {"rows": 24, "cols": 99999})
+        assert result is True

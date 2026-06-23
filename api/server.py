@@ -879,9 +879,12 @@ class SentinelServer:
 
     async def _handle_resize_message(self, master_fd: int, msg: dict) -> bool:
         """Handle resize message from WebSocket."""
-        rows = int(msg.get("rows", 24))
-        cols = int(msg.get("cols", 80))
-        winsize = struct.pack("HHHH", rows, cols, 0, 0)
+        try:
+            rows = int(msg.get("rows", 24))
+            cols = int(msg.get("cols", 80))
+            winsize = struct.pack("HHHH", rows, cols, 0, 0)
+        except (ValueError, struct.error):
+            return True  # Malformed resize (non-numeric / out of range) — ignore.
         try:
             fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
             return True
