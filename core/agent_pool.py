@@ -110,6 +110,16 @@ class AgentSession:
         }
 
 
+# timezone-aware lower bound so sessions that never started (start_time is
+# None) sort as oldest instead of raising on aware-vs-naive comparison.
+_ORDER_EPOCH = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _session_order_key(session: AgentSession) -> datetime:
+    """Return the timestamp sessions order by, oldest first."""
+    return session.start_time or _ORDER_EPOCH
+
+
 # ---------------------------------------------------------------------------
 # AgentPool
 # ---------------------------------------------------------------------------
@@ -272,8 +282,9 @@ class AgentPool:
         """Return status dicts for all sessions, newest first."""
         with self._lock:
             sessions = list(self._sessions.values())
-        # Sort by creation order (reverse so newest is first)
-        sessions.sort(key=lambda s: s.id, reverse=True)
+        # Newest first by actual start time (session.id is a random uuid, not
+        # creation order).
+        sessions.sort(key=_session_order_key, reverse=True)
         return [s.to_dict() for s in sessions]
 
     def get_result(self, session_id: str) -> dict[str, Any]:
@@ -587,16 +598,17 @@ class AgentPool:
         """
         removed = 0
         with self._lock:
-            terminal_ids = [
-                sid
+            terminal = [
+                (sid, s)
                 for sid, s in self._sessions.items()
                 if s.status in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED)
             ]
             if keep_last > 0:
-                # Keep the newest *keep_last* by ID sort (creation order).
-                terminal_ids.sort()
-                terminal_ids = terminal_ids[:-keep_last] if len(terminal_ids) > keep_last else []
-            for sid in terminal_ids:
+                # Keep the newest *keep_last* by actual start time, clear the
+                # rest (session.id is a random uuid, not creation order).
+                terminal.sort(key=lambda pair: _session_order_key(pair[1]))
+                terminal = terminal[:-keep_last] if len(terminal) > keep_last else []
+            for sid, _s in terminal:
                 del self._sessions[sid]
                 removed += 1
         if removed:
