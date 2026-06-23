@@ -540,7 +540,7 @@ class LLMClient:
                     # Handle malformed tool_use block
                     tool_calls.append(
                         {
-                            "id": action.get("_id", ""),
+                            "id": action.get("_original_id", ""),
                             "type": "function",
                             "function": {
                                 "name": action.get("action", ""),

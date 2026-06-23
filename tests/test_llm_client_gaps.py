@@ -7,6 +7,7 @@ Lines 472-476: LLMError raised after exhausting retries on connection/timeout er
 
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -270,3 +271,48 @@ class TestAnthropicVisionAndConversion:
             [{"role": "user", "content": "hi"}],
         )
         assert result == "final answer"
+
+
+# ---------------------------------------------------------------------------
+# Non-computer (malformed/default) tool_use blocks must keep their id.
+# translate_anthropic_action returns None for any tool_use whose name is not
+# "computer" (e.g. bash/text_editor). The fallback branch must still carry the
+# original tool_use id so the engine's tool_result can correlate with it.
+# ---------------------------------------------------------------------------
+
+
+class TestAnthropicMalformedToolUseId:
+    """A non-computer tool_use block must preserve its id in the tool_call."""
+
+    def test_non_computer_tool_use_keeps_id(self) -> None:
+        data = {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": "toolu_abc123",
+                    "name": "bash",
+                    "input": {"command": "ls"},
+                }
+            ]
+        }
+        result = LLMClient._parse_anthropic_computer_response(data)
+        parsed = json.loads(result)
+        tool_call = parsed["tool_calls"][0]
+        assert tool_call["id"] == "toolu_abc123"
+        assert tool_call["function"]["name"] == "bash"
+
+    def test_normal_computer_tool_use_still_has_id(self) -> None:
+        """Regression guard: the normal (computer) branch must keep its id too."""
+        data = {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": "toolu_xyz789",
+                    "name": "computer",
+                    "input": {"action": "screenshot"},
+                }
+            ]
+        }
+        result = LLMClient._parse_anthropic_computer_response(data)
+        parsed = json.loads(result)
+        assert parsed["tool_calls"][0]["id"] == "toolu_xyz789"
