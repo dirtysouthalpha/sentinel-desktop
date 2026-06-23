@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 
+from core.net_tools import _validate_host
 from core.netops.ssh_client import SSHClient, SSHResult
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,22 @@ class CommandRunner:
 
     def ping(self, target: str, count: int = 4) -> SSHResult:
         """Ping a target host."""
+        # Validate the target before interpolating it into a device command
+        # string — same argument-injection class fixed in net_tools.ping_host.
+        # An unchecked target let "; write erase" or "\nreboot" reach the
+        # device shell via SSH exec_command.
+        safe = _validate_host(target)
+        if safe is None:
+            return SSHResult(
+                success=False,
+                stdout="",
+                stderr=f"invalid host: {target!r}",
+                exit_code=None,
+                command="",
+                duration_ms=0.0,
+            )
+        target = safe
+        count = max(1, min(10, int(count)))
         cmds = {
             "cisco_ios": f"ping {target} repeat {count}",
             "cisco_nxos": f"ping {target} count {count}",
@@ -128,6 +145,17 @@ class CommandRunner:
 
     def traceroute(self, target: str) -> SSHResult:
         """Traceroute to a target."""
+        safe = _validate_host(target)
+        if safe is None:
+            return SSHResult(
+                success=False,
+                stdout="",
+                stderr=f"invalid host: {target!r}",
+                exit_code=None,
+                command="",
+                duration_ms=0.0,
+            )
+        target = safe
         cmds = {
             "cisco_ios": f"traceroute {target}",
             "cisco_nxos": f"traceroute {target}",

@@ -297,6 +297,42 @@ class TestCommandRunner:
         runner.traceroute("8.8.8.8")
         mock_client.exec_command.assert_called_with("/tool traceroute 8.8.8.8", timeout=30.0)
 
+    @pytest.mark.parametrize(
+        "bad_target",
+        [
+            "8.8.8.8 ; write erase",  # shell metacharacters
+            "-c",                      # leading dash = flag injection
+            "$(reboot)",               # command substitution
+            "8.8.8.8\nreboot",         # newline escape
+            "",                        # empty
+            "../../etc",               # traversal-ish
+        ],
+    )
+    def test_ping_rejects_injection(self, mock_paramiko, bad_target):
+        runner, mock_client = self._make_runner(mock_paramiko, "cisco_ios")
+        result = runner.ping(bad_target, count=4)
+        assert result.success is False
+        assert "invalid host" in result.stderr
+        # No command must reach the device when the target is rejected.
+        mock_client.exec_command.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "bad_target",
+        ["8.8.8.8;reboot", "-n", "$(id)", "", "8.8.8.8|cat /etc/passwd"],
+    )
+    def test_traceroute_rejects_injection(self, mock_paramiko, bad_target):
+        runner, mock_client = self._make_runner(mock_paramiko, "linux")
+        result = runner.traceroute(bad_target)
+        assert result.success is False
+        assert "invalid host" in result.stderr
+        mock_client.exec_command.assert_not_called()
+
+    def test_ping_count_is_bounded(self, mock_paramiko):
+        runner, mock_client = self._make_runner(mock_paramiko, "cisco_ios")
+        runner.ping("8.8.8.8", count=999)
+        # count clamped to 10, not passed through as 999
+        mock_client.exec_command.assert_called_with("ping 8.8.8.8 repeat 10", timeout=30.0)
+
     def test_show_logging_cisco(self, mock_paramiko):
         runner, mock_client = self._make_runner(mock_paramiko, "cisco_ios")
         runner.show_logging(lines=20)
