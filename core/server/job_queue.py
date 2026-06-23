@@ -79,7 +79,11 @@ class Job:
             node_id=data.get("node_id"),
         )
         job.status = JobStatus(data.get("status", "pending"))
-        job.created_at = data.get("created_at", job.created_at)
+        # ``or`` (not plain .get) so an explicit null created_at — a hand-edit,
+        # migration artifact, or external writer — falls back to a sane value
+        # instead of None, which would crash list_jobs/claim_next's sort with a
+        # TypeError and poison the whole queue.
+        job.created_at = data.get("created_at") or job.created_at
         job.started_at = data.get("started_at")
         job.completed_at = data.get("completed_at")
         job.result = data.get("result")

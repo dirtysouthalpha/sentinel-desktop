@@ -304,6 +304,45 @@ class TestJobQueue:
         queue.claim_next()
         assert queue.count_pending() == 1
 
+    def test_list_jobs_with_null_created_at_does_not_crash(self, tmp_path: Path):
+        # A job file with a null created_at (hand-edit, migration artifact, or
+        # an external writer) must not crash list_jobs/count_pending. One bad
+        # file must not poison the whole queue with a TypeError on sort.
+        queue = JobQueue(path=tmp_path / "jobs")
+        (queue._path / "badjob.json").write_text(
+            json.dumps(
+                {
+                    "goal": "bad",
+                    "job_id": "badjob",
+                    "status": "pending",
+                    "priority": 0,
+                    "created_at": None,
+                }
+            ),
+            encoding="utf-8",
+        )
+        queue.submit("Good job")
+        jobs = queue.list_jobs()
+        assert len(jobs) == 2  # both jobs survive, none dropped by a crash
+        assert queue.count_pending() == 2
+
+    def test_claim_next_with_null_created_at_does_not_crash(self, tmp_path: Path):
+        queue = JobQueue(path=tmp_path / "jobs")
+        (queue._path / "badjob.json").write_text(
+            json.dumps(
+                {
+                    "goal": "bad",
+                    "job_id": "badjob",
+                    "status": "pending",
+                    "priority": 0,
+                    "created_at": None,
+                }
+            ),
+            encoding="utf-8",
+        )
+        claimed = queue.claim_next(node_id="core-1")
+        assert claimed is not None  # sorting must not raise TypeError
+
     def test_full_lifecycle(self, tmp_path: Path):
         """Submit → claim → complete — full job lifecycle."""
         queue = JobQueue(path=tmp_path / "jobs")
