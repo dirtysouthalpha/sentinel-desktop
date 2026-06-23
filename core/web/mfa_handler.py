@@ -66,7 +66,9 @@ class TOTPProvider:
             service: Service name (e.g., 'aws', 'github')
             secret: Base32-encoded secret key
         """
-        self.secrets[service.lower()] = secret
+        # Normalize: base32 secrets are often grouped with whitespace
+        # ("JBSWY 3DP EHPK 3PXP") by QR decoders; pyotp rejects spaces.
+        self.secrets[service.lower()] = "".join(secret.split()).upper()
 
     def remove_secret(self, service: str) -> None:
         """Remove a TOTP secret"""
@@ -92,7 +94,7 @@ class TOTPProvider:
             return None
 
         try:
-            totp = pyotp.TOTP(secret)
+            totp = pyotp.TOTP(secret, interval=time_step)
             return totp.now()
         except Exception as e:
             print(f"Error generating TOTP: {e}")

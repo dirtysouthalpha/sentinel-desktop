@@ -65,6 +65,30 @@ class TestTOTPProvider:
         code = provider.generate_totp("nonexistent")
         assert code is None
 
+    def test_generate_totp_honors_time_step(self):
+        """generate_totp's time_step param must reach pyotp's interval. The
+        old code ignored it (always 30s), so a service on a 60s step got a
+        code for the wrong window and rejected it."""
+        import pyotp
+
+        provider = TOTPProvider()
+        provider.add_secret("custom", "JBSWY3DPEHPK3PXP")
+        code = provider.generate_totp("custom", time_step=60)
+        assert code == pyotp.TOTP("JBSWY3DPEHPK3PXP", interval=60).now()
+
+    def test_generate_totp_normalizes_spaced_secret(self):
+        """Secrets are often grouped with spaces ("JBSWY 3DP ...") by QR
+        decoders and provisioning pages. The old code stored them as-is, so
+        pyotp raised Non-base32-digit and the code silently came back None
+        (misreported as 'No TOTP secret found')."""
+        provider = TOTPProvider()
+        provider.add_secret("spaced", "JBSWY 3DP EHPK 3PXP")
+        code = provider.generate_totp("spaced")
+        assert code is not None
+        assert len(code) == 6 and code.isdigit()
+        # stored form is normalized, not the raw spaced string
+        assert provider.get_secret("spaced") == "JBSWY3DPEHPK3PXP"
+
     def test_verify_totp_valid_code(self):
         """Test verifying a valid TOTP code."""
         provider = TOTPProvider()
