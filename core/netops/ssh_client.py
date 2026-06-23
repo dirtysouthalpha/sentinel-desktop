@@ -98,7 +98,14 @@ class SSHClient:
 
     @property
     def is_connected(self) -> bool:
-        return self._connected and self._client is not None
+        # Verify the underlying transport is live — the cached flag can't see a
+        # server-side session drop (idle timeout, firewall reap, network blip),
+        # so run_command's reconnect guard would never fire and the client would
+        # stay wedged for the rest of the session after one transient failure.
+        if not self._connected or self._client is None:
+            return False
+        transport = self._client.get_transport()
+        return bool(transport is not None and transport.is_active())
 
     def connect(self) -> None:
         """Establish SSH connection to the device."""
