@@ -135,6 +135,27 @@ def test_registry_save_leaves_no_tmp_leftover(registry: TriggerRegistry):
     assert not (registry._dir / "triggers.tmp").exists()
 
 
+def test_registry_save_uses_unique_tmp_per_write(registry: TriggerRegistry, monkeypatch):
+    # Atomic rename only protects against readers; two processes saving
+    # concurrently (GUI + API share ~/.sentinel/triggers/) must not share one
+    # temp inode or the loser's payload is clobbered on rename. Each save must
+    # therefore write to a uniquely-named temp file.
+    import core.triggers as trig
+
+    seen = []
+    orig_replace = trig.Path.replace
+
+    def spy(self, target):  # noqa: ANN001
+        seen.append(self.name)
+        return orig_replace(self, target)
+
+    monkeypatch.setattr(trig.Path, "replace", spy)
+    registry.add(Trigger("a", EventType.CUSTOM, {}, {}))
+    registry.add(Trigger("b", EventType.CUSTOM, {}, {}))
+    assert len(seen) == 2
+    assert len(set(seen)) == 2, f"two saves shared one temp inode: {seen}"
+
+
 def test_registry_corrupt_file_is_quarantined(tmp_path: Path):
     storage = tmp_path / "trig"
     storage.mkdir(parents=True)

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import uuid
 from collections.abc import Callable
@@ -128,11 +129,16 @@ class TriggerRegistry:
 
     def _save(self) -> None:
         try:
-            tmp = self._file.with_suffix(".tmp")
-            tmp.write_text(
-                json.dumps([t.to_dict() for t in self._triggers.values()], indent=2),
-                encoding="utf-8",
-            )
+            # Unique temp name per write: GUI + API can share the storage dir,
+            # and a fixed triggers.tmp would let two concurrent saves clobber
+            # each other's payload on the final rename.
+            tmp = self._dir / f".triggers-{uuid.uuid4().hex}.tmp"
+            with tmp.open("w", encoding="utf-8") as fh:
+                fh.write(
+                    json.dumps([t.to_dict() for t in self._triggers.values()], indent=2)
+                )
+                fh.flush()
+                os.fsync(fh.fileno())
             # Restrict the temp inode before the atomic replace so the renamed
             # triggers.json is owner-only on POSIX.
             restrict_file_perms(tmp)
