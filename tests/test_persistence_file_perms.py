@@ -17,6 +17,7 @@ import pytest
 from core.audit_chain import AuditChain
 from core.auth import AuthManager, Role
 from core.cost_tracker import CostTracker
+from core.forensic_log import ForensicLog
 from core.memory.episodic import EpisodicMemory
 from core.memory.semantic import SemanticMemory
 from core.scheduler import TaskScheduler
@@ -147,5 +148,18 @@ class TestTaskSchedulerPerms:
         assert _group_other_bits(path) != 0
         ts = TaskScheduler(engine=None, tasks_path=str(path))  # opening heals
         ts.stop()
+        assert _group_other_bits(path) == 0
+
+
+class TestForensicLogPerms:
+    """Per-run forensic files record action params; a ``type`` action's ``text``
+    is not caught by key-name redaction, so these files can hold typed secrets
+    (passwords, MFA codes entered into fields). Must be owner-only (0600)."""
+
+    def test_save_creates_owner_only(self, tmp_path):
+        fl = ForensicLog(log_dir=str(tmp_path / "forensic"))
+        fl.start_run("Goal", "openai", "gpt-4o")
+        fl.log_step(1, "type", "Field", {"text": "hunter2"}, "success")
+        path = tmp_path / "forensic" / f"{fl._run['run_id']}.json"
         assert _group_other_bits(path) == 0
 

@@ -10,6 +10,7 @@ Thread-safe. Uses only stdlib modules.
 import csv
 import json
 import logging
+import os
 import threading
 import uuid
 from datetime import datetime
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from core.utils import iso_now as _iso_now
+from core.utils import restrict_file_perms
 
 logger = logging.getLogger(__name__)
 
@@ -472,7 +474,13 @@ class ForensicLog:
         return "action"
 
     def _auto_save(self) -> None:
-        """Persist the current run to ``<log_dir>/<run_id>.json``."""
+        """Persist the current run to ``<log_dir>/<run_id>.json``.
+
+        Atomic (unique temp + fsync + ``os.replace``) and owner-only (0600):
+        the file is rewritten on every step, so a crash mid-save must not
+        truncate the existing trail, and action params (a ``type`` step's
+        ``text`` is missed by key-name redaction) must not land world-readable.
+        """
         if not self._run:
             return
         run_id = self._run.get("run_id")
@@ -486,8 +494,13 @@ class ForensicLog:
                     "run": dict(self._run),
                     "steps": [dict(s) for s in self._steps],
                 }
-            with dest.open("w", encoding="utf-8") as fh:
+            tmp = dest.parent / f".{run_id}-{uuid.uuid4().hex}.tmp"
+            with tmp.open("w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
+                fh.flush()
+                os.fsync(fh.fileno())
+            restrict_file_perms(tmp)
+            os.replace(tmp, dest)
         except (OSError, TypeError):
             logger.exception(
                 "Forensic auto-save failed for run %s",

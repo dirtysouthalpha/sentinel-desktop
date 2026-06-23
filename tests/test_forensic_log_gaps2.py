@@ -154,3 +154,43 @@ class TestEndRunPopulatesFields:
         assert fl._run["summary"] == "Done"
         assert fl._run["total_steps"] == 1
         assert "end_time" in fl._run
+
+
+class TestAutoSaveAtomic:
+    """_auto_save is invoked on every step; a crash mid-write must not
+    truncate the run's existing forensic trail.
+
+    The run file (<run_id>.json) is rewritten per step, so the write must go
+    to a temp file and atomically replace the destination — never truncate the
+    live file before the new content is safely on disk.
+    """
+
+    def test_save_write_failure_preserves_existing_file(self):
+        fl = ForensicLog(log_dir=tempfile.mkdtemp())
+        fl.start_run("Goal", "openai", "gpt-4o")
+        fl.log_step(1, "click", "Btn", {"x": 1, "y": 2}, "success")  # writes once
+        dest = Path(fl._log_dir) / f"{fl._run['run_id']}.json"
+        before = dest.read_text(encoding="utf-8")
+        assert before  # non-empty baseline
+
+        # A write that fails mid-save (json.dump raises) must leave dest intact.
+        # The old truncate-then-write code opened dest with "w" (truncating it)
+        # BEFORE dumping, so a failed dump left an empty file.
+        with patch("core.forensic_log.json.dump", side_effect=TypeError("boom")):
+            fl.log_step(2, "click", "Btn", {"x": 3, "y": 4}, "success")
+
+        assert dest.read_text(encoding="utf-8") == before
+
+    def test_successful_save_writes_full_payload(self):
+        """Regression guard: the atomic refactor must still persist content."""
+        tmpdir = tempfile.mkdtemp()
+        fl = ForensicLog(log_dir=tmpdir)
+        fl.start_run("Goal", "openai", "gpt-4o")
+        fl.log_step(1, "type", "Field", {"text": "hello"}, "success")
+        import json
+
+        dest = Path(tmpdir) / f"{fl._run['run_id']}.json"
+        payload = json.loads(dest.read_text(encoding="utf-8"))
+        assert payload["run"]["goal"] == "Goal"
+        assert len(payload["steps"]) == 1
+        assert payload["steps"][0]["action_type"] == "type"
