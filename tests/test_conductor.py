@@ -162,10 +162,10 @@ class TestParallelExecutor:
         assert results == []
 
     @pytest.mark.asyncio
-    async def test_deadlock_breaks_and_marks_timeout(self):
-        """Task with unsatisfied dependency triggers deadlock break (lines 69-71, 94)."""
+    async def test_missing_dependency_marks_skipped(self):
+        """Task whose dependency never appears in completed_ids is 'skipped', not 'timeout'."""
         executor = ParallelExecutor()
-        # Dependency "ghost" never appears in completed_ids → deadlock → break
+        # Dependency "ghost" never appears in completed_ids → break → skipped (not timed out)
         subtask = Subtask(
             subtask_id="t-blocked",
             description="Blocked forever",
@@ -174,7 +174,51 @@ class TestParallelExecutor:
         )
         results = await executor.execute_all([subtask])
         assert results[0]["subtask_id"] == "t-blocked"
-        assert results[0]["status"] == "timeout"
+        assert results[0]["status"] == "skipped"
+        assert "ghost" in results[0]["error"]
+
+    @pytest.mark.asyncio
+    async def test_failed_dependency_marks_dependent_skipped(self):
+        """A dependent task is 'skipped' when its dependency fails, not 'timeout'."""
+        def fail_first(subtask: Subtask) -> None:
+            if subtask.subtask_id == "t-1":
+                raise RuntimeError("upstream blew up")
+
+        executor = ParallelExecutor(executor_fn=fail_first)
+        subtasks = [
+            Subtask(subtask_id="t-1", description="First", task_type="desktop"),
+            Subtask(
+                subtask_id="t-2", description="Second", task_type="desktop", dependencies=["t-1"]
+            ),
+        ]
+        results = await executor.execute_all(subtasks)
+        by_id = {r["subtask_id"]: r for r in results}
+        assert by_id["t-1"]["status"] == "error"
+        assert by_id["t-2"]["status"] == "skipped"
+        assert "t-1" in by_id["t-2"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_skipped_cascades_through_chain(self):
+        """Skipped status cascades: t-1 fails → t-2 and t-3 (transitive deps) are skipped."""
+        def fail_first(subtask: Subtask) -> None:
+            if subtask.subtask_id == "t-1":
+                raise RuntimeError("chain root failure")
+
+        executor = ParallelExecutor(executor_fn=fail_first)
+        subtasks = [
+            Subtask(subtask_id="t-1", description="A", task_type="desktop"),
+            Subtask(
+                subtask_id="t-2", description="B", task_type="desktop", dependencies=["t-1"]
+            ),
+            Subtask(
+                subtask_id="t-3", description="C", task_type="desktop", dependencies=["t-2"]
+            ),
+        ]
+        results = await executor.execute_all(subtasks)
+        by_id = {r["subtask_id"]: r for r in results}
+        assert by_id["t-1"]["status"] == "error"
+        assert by_id["t-2"]["status"] == "skipped"
+        assert by_id["t-3"]["status"] == "skipped"
 
     @pytest.mark.asyncio
     async def test_gather_exception_hits_isinstance_branch(self):

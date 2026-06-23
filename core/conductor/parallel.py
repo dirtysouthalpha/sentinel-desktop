@@ -82,17 +82,36 @@ class ParallelExecutor:
                     }
                 else:
                     results[task.subtask_id] = result
-                    completed_ids.add(task.subtask_id)
+                    # Only satisfy dependents if the task actually succeeded.
+                    # _execute_one never raises — it returns an error dict on
+                    # failure — so a failed task must NOT be treated as completed,
+                    # or its dependents run against a failed prerequisite.
+                    if result.get("status") == "success":
+                        completed_ids.add(task.subtask_id)
 
                 remaining.remove(task)
 
-        # Mark any remaining tasks as timed out
+        # Classify remaining tasks: a task left over because its dependency
+        # never completed (failed or missing) is "skipped"; only a task whose
+        # dependencies are all satisfied but didn't get scheduled in time is a
+        # genuine "timeout". Conflating them masks upstream-failure cascades.
         for task in remaining:
-            results[task.subtask_id] = {
-                "subtask_id": task.subtask_id,
-                "status": "timeout",
-                "error": "Execution timed out",
-            }
+            failed_dep = next(
+                (dep for dep in task.dependencies if dep not in completed_ids),
+                None,
+            )
+            if failed_dep is not None:
+                results[task.subtask_id] = {
+                    "subtask_id": task.subtask_id,
+                    "status": "skipped",
+                    "error": f"Dependency '{failed_dep}' did not complete",
+                }
+            else:
+                results[task.subtask_id] = {
+                    "subtask_id": task.subtask_id,
+                    "status": "timeout",
+                    "error": "Execution timed out",
+                }
 
         elapsed_ms = (time.monotonic() - start) * 1000
         logger.info("Parallel execution complete: %d tasks, %.0fms", len(subtasks), elapsed_ms)
