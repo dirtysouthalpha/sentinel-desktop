@@ -15,6 +15,7 @@ try:
     pyautogui.PAUSE = 0.1
     PYAUTOGUI_OK = True
 except Exception:
+    pyautogui = None
     PYAUTOGUI_OK = False
 
 
