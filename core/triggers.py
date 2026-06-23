@@ -33,6 +33,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from core.utils import restrict_file_perms
+
 logger = logging.getLogger(__name__)
 
 
@@ -94,6 +96,9 @@ class TriggerRegistry:
     def _load(self) -> None:
         if not self._file.exists():
             return
+        # Trigger actions carry executor payloads that may include credentials
+        # for automated flows; heal perms on legacy world-readable files.
+        restrict_file_perms(self._file)
         try:
             data = json.loads(self._file.read_text())
             for item in data:
@@ -107,6 +112,7 @@ class TriggerRegistry:
             self._file.write_text(
                 json.dumps([t.to_dict() for t in self._triggers.values()], indent=2)
             )
+            restrict_file_perms(self._file)
         except Exception as exc:
             logger.warning("TriggerRegistry save failed: %s", exc)
 

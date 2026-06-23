@@ -15,6 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from core.utils import restrict_file_perms
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_EPISODIC_PATH = Path("memory/episodes.jsonl")
@@ -201,6 +203,9 @@ class EpisodicMemory:
             self._path.read_text(encoding="utf-8") + line if self._path.exists() else line,
             encoding="utf-8",
         )
+        # Episodes capture the user's verbatim goals (which routinely include
+        # hostnames, credentials, and IT context) — owner-only on POSIX.
+        restrict_file_perms(self._path)
 
     def _read_all(self) -> list[Episode]:
         if not self._path.exists():

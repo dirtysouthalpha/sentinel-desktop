@@ -23,6 +23,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.utils import restrict_file_perms
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -260,6 +262,7 @@ class CostTracker:
             self._history_path.parent.mkdir(parents=True, exist_ok=True)
             with self._history_path.open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(rec.to_dict()) + "\n")
+            restrict_file_perms(self._history_path)
         except OSError as exc:
             logger.warning("cost_tracker: persist failed: %s", exc)
 

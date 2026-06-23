@@ -46,7 +46,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from core.utils import iso_now
+from core.utils import iso_now, restrict_file_perms
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +117,10 @@ class AuditChain:
         """
         if not self._path.exists():
             return
+
+        # Heal perms on legacy logs: entry data payloads can include action
+        # arguments (paths, commands, credentials passed to actions).
+        restrict_file_perms(self._path)
 
         last_entry: dict[str, Any] | None = None
         try:
@@ -189,6 +193,7 @@ class AuditChain:
             with open(self._path, "a", encoding=_ENCODING) as fh:
                 fh.write(json.dumps(entry, sort_keys=True, default=str))
                 fh.write("\n")
+            restrict_file_perms(self._path)
         except OSError as exc:
             logger.error("Failed to write audit entry: %s", exc)
             raise
