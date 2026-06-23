@@ -126,6 +126,11 @@ class SentinelDesktopApp:
         self.entry.bind("<Up>", self._history_up)
         self.entry.bind("<Down>", self._history_down)
 
+        # Global hotkeys
+        self.app.bind("<Control-l>", lambda e: self._clear_chat())
+        self.app.bind("<Control-Return>", lambda e: self._handle_send())
+        self.app.bind("<Escape>", lambda e: self.entry.focus_set())
+
         self.send_btn = ctk.CTkButton(
             input_frame, text="Send", width=80, height=42,
             font=self.font_header, command=self._handle_send,

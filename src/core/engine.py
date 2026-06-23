@@ -117,6 +117,10 @@ class CommandEngine:
         if text_lower.startswith("read "):
             return ("files", text)
 
+        # Help
+        if text_lower in ["help", "commands", "?", "what can you do"]:
+            return ("system", "help")
+
         # Brain/AI
         if any(w in text_lower for w in ["brain", "think", "remember", "recall"]):
             return ("ai", text)
@@ -154,6 +158,8 @@ class CommandEngine:
 
     def _run_system(self, args) -> CommandResult:
         cmd = args if isinstance(args, str) else args
+        if cmd == "help":
+            return self.sys.help()
         if cmd == "cpu":
             return self.sys.cpu_usage()
         if cmd == "memory":
