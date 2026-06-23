@@ -138,10 +138,10 @@ def analyze_events(events: list[dict[str, Any]]) -> BiometricStatistics | None:
     types: list[dict[str, Any]] = [e for e in events if e.get("action") == "type"]
     scrolls: list[dict[str, Any]] = [e for e in events if e.get("action") == "scroll"]
 
-    # Count actual keystrokes (not type events)
-    keystroke_delays = _extract_keystroke_delays(types)
-    total_keystrokes = len(keystroke_delays) + sum(
-        len(e.get("keystrokes", [])) if isinstance(e.get("keystrokes"), list) else 0 for e in types
+    # Count actual keystrokes (not type events); one per keystroke, not per gap.
+    total_keystrokes = sum(
+        len(e.get("keystrokes", [])) if isinstance(e.get("keystrokes"), list) else 0
+        for e in types
     )
 
     # Minimum sample thresholds (from spec)

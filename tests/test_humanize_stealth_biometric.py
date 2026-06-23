@@ -338,6 +338,55 @@ class TestNoSynthesis:
         # Should return None because no clicks exist
         assert result is None
 
+    def test_returns_none_on_insufficient_keystrokes(self, tmp_path: Path):
+        """Must reject sessions under the 1000-keystroke minimum.
+
+        Regression guard: ``total_keystrokes`` once added the inter-keystroke
+        delay count to the keystroke count (~2N-1 per event instead of N), so
+        800 real keystrokes (400 type-events of 2 keys) inflated past 1000 and
+        was wrongly accepted as sufficiently sampled.
+        """
+        log = tmp_path / "under_sampled.jsonl"
+        lines = [
+            json.dumps({
+                "timestamp": i * 1.0,
+                "action": "click",
+                "distance": 100 + i,
+                "target_size": [20 + i, 10 + i],
+                "duration": 0.2 + i * 0.001,
+                "overshoot": i % 3 == 0,
+            })
+            for i in range(100)
+        ]
+        # 400 type-events * 2 keystrokes = 800 real keystrokes (< 1000 min).
+        lines.extend([
+            json.dumps({
+                "timestamp": 100.0 + i * 0.1,
+                "action": "type",
+                "keystrokes": [
+                    {"timestamp": i * 0.1, "key": "a"},
+                    {"timestamp": i * 0.1 + 0.12, "key": "b"},
+                ],
+            })
+            for i in range(400)
+        ])
+        lines.extend([
+            json.dumps({
+                "timestamp": 200.0 + i * 0.5,
+                "action": "scroll",
+                "delta_px": 120,
+                "momentum_samples": [
+                    {"delta_px": 120 * (0.85 ** t), "frame_dwell_s": 0.016}
+                    for t in range(10)
+                ],
+            })
+            for i in range(50)
+        ])
+        log.write_text("\n".join(lines))
+        result = sample_operator(str(log))
+        # 800 real keystrokes is below the 1000-keystroke quality gate.
+        assert result is None
+
     def test_returns_none_on_no_scrolls(self, tmp_path: Path):
         """Must not synthesize scroll data when no scrolls exist."""
         log = tmp_path / "no_scrolls.jsonl"
