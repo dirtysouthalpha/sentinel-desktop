@@ -1,9 +1,11 @@
-# Sentinel Desktop v2.0
+# Sentinel Desktop v2.3
 
 > AI-powered Windows desktop automation assistant with Neuralis Brain integration.
 
 [![CI](https://github.com/dirtysouthalpha/sentinel-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/dirtysouthalpha/sentinel-desktop/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Tests: 61](https://img.shields.io/badge/Tests-61%20passing-brightgreen.svg)](tests/)
+[![Python: 3.9-3.12](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://python.org)
 
 ## Features
 
@@ -83,10 +85,22 @@ Type natural language commands in the chat interface:
 | `recall <topic>` | Recall knowledge |
 | `think <topic> <content>` | Store knowledge |
 
+### Clipboard
+| Command | Description |
+|---------|-------------|
+| `copy <text>` | Copy text to clipboard |
+| `paste` | Read from clipboard |
+
+### Windows
+| Command | Description |
+|---------|-------------|
+| `list windows` | Show all open windows |
+| `windows` | Alias for list windows |
+
 ## Architecture
 
 ```'
-Sentinel Desktop v2.0
+Sentinel Desktop v2.3
 ├── main.py              # Entry point (GUI + CLI modes)
 ├── src/
 │   ├── config.py        # Central configuration
