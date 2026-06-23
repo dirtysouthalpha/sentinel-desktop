@@ -166,6 +166,39 @@ STATE_CHANGING_ACTIONS = {
     "volume_set",
     "mute_toggle",
     "speak",
+    # v16-v22 state-changing actions wired into the dispatch table after this
+    # set was last curated. Without these, dry-run mode — which promises
+    # "logged, not executed" — silently performed real FS/registry/credential/
+    # memory/system/skill/trigger/voice mutations (notably delete_file actually
+    # deleted the file). Read-only observation actions and the by-design
+    # arbitrary-command escape hatches (web_*, ssh_run, powershell, run_script,
+    # conductor_run, eval_run) are deliberately excluded: web actions are
+    # observed by tests (test_*_not_blocked_in_dry_run), and the escape hatches'
+    # own sub-actions are individually guarded when routed through execute_sync.
+    "delete_file",
+    "move_file",
+    "copy_file",
+    "mkdir",
+    "archive_create",
+    "archive_extract",
+    "registry_write",
+    "registry_delete",
+    "cred_store",
+    "memory_store",
+    "memory_forget",
+    "set_env",
+    "set_priority",
+    "service_control",
+    "cost_reset",
+    "skill_install",
+    "skill_uninstall",
+    "trigger_add",
+    "trigger_remove",
+    "trigger_enable",
+    "trigger_disable",
+    "trigger_fire_custom",
+    "voice_start_ambient",
+    "voice_stop_ambient",
 }
 
 
