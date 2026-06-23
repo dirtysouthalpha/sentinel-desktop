@@ -10,13 +10,15 @@ from core.config_store import ConfigStore, get_default_store
 
 
 class TestConfigStoreSaveOSError:
-    """OSError in save() returns False (lines 67-69)."""
+    """OSError in save() returns False. save() now writes atomically
+    (temp + fsync + os.replace); inject the OSError at the fsync step since
+    the write_text path no longer exists."""
 
     def test_save_oserror_returns_false(self, tmp_path):
         cfg = ConfigStore(path=tmp_path / "cfg.json")
         cfg.set("k", "v", auto_save=False)
 
-        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+        with patch("os.fsync", side_effect=OSError("disk full")):
             result = cfg.save()
 
         assert result is False
@@ -27,7 +29,7 @@ class TestConfigStoreSaveOSError:
         cfg = ConfigStore(path=tmp_path / "cfg.json")
         cfg.set("x", 1, auto_save=False)
 
-        with patch.object(Path, "write_text", side_effect=OSError("no space")):
+        with patch("os.fsync", side_effect=OSError("no space")):
             with caplog.at_level(logging.ERROR, logger="core.config_store"):
                 cfg.save()
 

@@ -182,3 +182,32 @@ class TestConfigStoreFilePermissions:
         ConfigStore(path=path)  # opening it should heal perms
         mode = stat.S_IMODE(path.stat().st_mode)
         assert (mode & 0o077) == 0, f"config.json not healed: {oct(mode)}"
+
+
+class TestConfigStoreAtomicSave:
+    """config.json holds LLM API keys and the JWT signing secret. A crash
+    partway through save() must NOT truncate the live file — the new payload
+    is staged in a temp and only renamed into place on success. The old code
+    wrote the live file directly with no fsync and a truncated write wiped
+    every API key + the signing secret."""
+
+    def test_save_failure_preserves_existing_keys(self, tmp_path, monkeypatch):
+        path = tmp_path / "config.json"
+        seed = ConfigStore(path=path)
+        seed.set("llm.api_key", "sk-original")
+        assert path.exists()
+
+        cfg = ConfigStore(path=path)
+
+        def _boom(*args, **kwargs):
+            raise OSError("simulated fsync failure")
+
+        monkeypatch.setattr("os.fsync", _boom)
+        # set() mutates in-memory state then calls save(); reload from disk to
+        # verify the on-disk state.
+        cfg.set("llm.api_key", "sk-newvalue")
+
+        reloaded = ConfigStore(path=path)
+        assert reloaded.get("llm.api_key") == "sk-original", (
+            "pre-existing API key was lost when the new save failed"
+        )

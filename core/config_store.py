@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -64,14 +66,22 @@ class ConfigStore:
         """Write config to disk. Returns True on success."""
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._path.write_text(
-                json.dumps(self._data, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
+            payload = json.dumps(self._data, indent=2, ensure_ascii=False)
+            # Atomic write: stage the payload in a uniquely-named temp, fsync,
+            # lock perms, then os.replace into place. A crash mid-write leaves
+            # the live config intact — the old code wrote it directly with no
+            # fsync and a truncated write silently wiped every LLM API key and
+            # the JWT signing secret, forcing a full re-key + re-auth.
+            tmp = self._path.parent / f".config-{uuid.uuid4().hex}.tmp"
+            with tmp.open("w", encoding="utf-8") as fh:
+                fh.write(payload)
+                fh.flush()
+                os.fsync(fh.fileno())
             # Owner-only on POSIX: this file holds LLM API keys and the JWT
-            # signing secret. write_text respects the umask (0644/0664) which
-            # leaves the file readable by any local user on shared IT hosts.
-            restrict_file_perms(self._path)
+            # signing secret. Restrict the temp inode before the atomic replace
+            # so the renamed config.json is owner-only.
+            restrict_file_perms(tmp)
+            tmp.replace(self._path)
             return True
         except OSError as exc:
             logger.error("Config save failed: %s", exc)
