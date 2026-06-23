@@ -153,8 +153,9 @@ class MFAHandler:
         self.totp_provider = TOTPProvider()
         self.resolution_history: list = []
         self.max_attempts = 3
-        self.code_cache: dict[str, tuple] = {}  # {code: (timestamp, service)}
-        self.cache_ttl = 300  # 5 minutes
+        self.code_cache: dict[str, tuple] = {}  # {service: (timestamp, code)}
+        self.cache_ttl = 300  # upper bound; real validity is bounded by the TOTP window
+        self.totp_step = 30  # TOTP window length codes are generated with
 
     def add_totp_secret(self, service: str, secret: str) -> None:
         """Add a TOTP secret for auto-generation"""
@@ -364,14 +365,18 @@ class MFAHandler:
         return None
 
     def _check_cache(self, service: str) -> str | None:
-        """Check if we have a cached code for this service"""
+        """Return a cached code only if it is still in the TOTP window it was
+        generated in (and within cache_ttl). A TOTP code is invalid outside its
+        30s window, so serving one cached in a prior window guarantees the
+        service rejects it — cache_ttl (300s) alone is 10x the validity window.
+        """
         if service in self.code_cache:
             timestamp, code = self.code_cache[service]
-            if time.time() - timestamp < self.cache_ttl:
+            now = time.time()
+            same_window = (int(timestamp) // self.totp_step) == (int(now) // self.totp_step)
+            if same_window and (now - timestamp) < self.cache_ttl:
                 return code
-            else:
-                # Cache expired
-                del self.code_cache[service]
+            del self.code_cache[service]
         return None
 
     def _cache_code(self, service: str, code: str) -> None:

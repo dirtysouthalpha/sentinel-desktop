@@ -195,6 +195,18 @@ class TestCheckCacheExpired:
         result = handler._check_cache("github")
         assert result == "654321"
 
+    def test_stale_window_code_not_served(self):
+        """A cached TOTP code must NOT be served once its 30s window has
+        elapsed, even though cache_ttl (300s) has not. The old code only
+        checked ``now - timestamp < cache_ttl``, so a code cached ~9 windows
+        ago was returned and silently rejected by the service on retry."""
+        handler = MFAHandler()
+        # 60s ago: well within the 300s ttl, but two 30s TOTP windows old.
+        handler.code_cache["github"] = (time.time() - 60, "123456")
+        result = handler._check_cache("github")
+        assert result is None
+        assert "github" not in handler.code_cache
+
 
 # ── _select_best_result ────────────────────────────────────────────────────
 
