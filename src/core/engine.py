@@ -333,9 +333,43 @@ class CommandEngine:
                 return CommandResult(True, f"Brain Status: {health}" + chr(10) + f"Stats: {stats}")
         return CommandResult(False, "Unknown AI command")
 
+    def _conversational_response(self, text: str) -> Optional[str]:
+        """Handle greetings and common conversational inputs."""
+        t = text.lower().strip().rstrip(".!")
+        greetings = ["hey", "hi", "hello", "yo", "sup", "howdy", "greetings", "hiya", "heya"]
+        thanks = ["thanks", "thank you", "thx", "ty", "appreciate it"]
+        byes = ["bye", "goodbye", "see you", "see ya", "later", "cya"]
+        how_are = ["how are you", "how are u", "how's it going", "whats up", "what's up", "you good"]
+        who = ["who are you", "what are you", "what can you do", "your name", "about you"]
+        love = ["i love you", "love you", "good job", "great job", "nice work", "well done", "awesome", "cool", "nice"]
+        
+        if t in greetings or any(t.startswith(g) for g in greetings):
+            return "Hey! I'm Sentinel, your desktop assistant. Type 'help' to see what I can do!"
+        if t in thanks:
+            return "You're welcome! Anything else I can help with?"
+        if t in byes:
+            return "Goodbye! I'll be here when you need me."
+        if any(t == h or h in t for h in how_are):
+            return "I'm running great! Ready to help you with your system, automation, files, and more."
+        if any(w in t for w in who):
+            return "I'm Sentinel Desktop v5.0.0 - your AI desktop assistant. I can monitor your system, automate tasks, manage files, control media, and much more. Type 'help' to see all commands!"
+        if any(t == l or l in t for l in love):
+            return "Thank you! Glad I could help. Type 'help' if you need anything else!"
+        if t in ["ok", "okay", "k", "alright", "got it"]:
+            return "Got it! Let me know if you need anything."
+        if "help me" in t or "what do you do" in t:
+            return "I can help with system monitoring, automation, network tools, media control, power management, and more. Type 'help' for the full command list!"
+        return None
+
     def _ai_route(self, text: str) -> CommandResult:
-        """Fall back to brain for natural language."""
+        """Handle conversational input and fall back to brain."""
+        # First try conversational responses
+        convo = self._conversational_response(text)
+        if convo:
+            return CommandResult(True, convo)
+        # Then try the brain
         result = self.brain.ask(text)
         if result and result != "No relevant knowledge found in brain.":
             return CommandResult(True, f"AI: {result}")
-        return CommandResult(False, f"I couldn't understand '{text}'. Type 'help' for available commands.")
+        # Friendly fallback
+        return CommandResult(True, f"I'm not sure how to help with '{text}', but I can handle system commands, automation, network tools, media, power, and more. Type 'help' to see what I can do!")

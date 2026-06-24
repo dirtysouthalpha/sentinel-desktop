@@ -61,11 +61,12 @@ class TestEdgeCases:
 
     def test_execute_empty_string(self):
         result = self.engine.execute("")
-        assert result.success is False
+        assert result.success is True  # Now returns friendly fallback
 
     def test_execute_unknown_garbage(self):
         result = self.engine.execute("xyzzy abc123")
-        assert result.success is False
+        assert result.success is True  # Now returns friendly suggestion
+        assert "help" in result.message.lower()
 
     def test_command_result_str(self):
         cr = CommandResult(True, "test message")

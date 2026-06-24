@@ -258,12 +258,19 @@ class SentinelDesktopApp:
         frame.pack(fill="x", pady=3, padx=8)
         frame.grid_columnconfigure(0, weight=1)
 
-        label = ctk.CTkLabel(
-            frame, text=text, font=self.font_mono,
+        label = ctk.CTkTextbox(
+            frame, font=self.font_mono,
+            fg_color="transparent",
             text_color=text_colors.get(sender, COLORS["text_primary"]),
-            wraplength=850, justify="left", anchor="w"
+            wrap="word", height=1,
+            activate_scrollbars=False
         )
-        label.grid(row=0, column=0, sticky="w", padx=14, pady=8)
+        label.insert("1.0", text)
+        label.configure(state="disabled")
+        label.grid(row=0, column=0, sticky="ew", padx=8, pady=6)
+        label.bind("<Button-1>", lambda e: e.widget.configure(state="normal"))
+        label.bind("<FocusOut>", lambda e: e.widget.configure(state="disabled"))
+        frame.grid_columnconfigure(0, weight=1)
 
         self.chat_scroll._parent_canvas.yview_moveto(1.0)
 
