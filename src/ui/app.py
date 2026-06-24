@@ -15,6 +15,7 @@ except ImportError:
 
 import psutil
 
+from src.utils.settings import load_settings, save_settings
 from src.config import (
     APP_TITLE, VERSION, COLORS, WINDOW_WIDTH, WINDOW_HEIGHT,
     WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT, load_config, save_config,
@@ -34,6 +35,8 @@ class SentinelDesktopApp:
         self.command_history = []
         self.history_index = -1
         self.last_response = ""
+        self.chat_history = []
+        self.settings = self._load_saved_settings()
 
         self._setup_window()
         self._setup_styles()
@@ -196,6 +199,7 @@ class SentinelDesktopApp:
 
         # Welcome message
         self._add_welcome()
+        self._show_startup_summary()
 
     def _build_input(self):
         input_frame = ctk.CTkFrame(self.app, height=70, fg_color=COLORS["bg_secondary"])
@@ -235,15 +239,23 @@ class SentinelDesktopApp:
             fg_color=COLORS["bg_tertiary"], hover_color=COLORS["accent_hover"],
             text_color=COLORS["text_secondary"]
         )
-        self.copy_btn.grid(row=0, column=2, padx=(4, 4), pady=14)
+        self.copy_btn.grid(row=0, column=3, padx=(4, 4), pady=14)
 
-        self.clear_btn = ctk.CTkButton(
-            input_frame, text="Clear", width=70, height=42,
-            font=self.font_body, command=self._clear_chat,
+        self.export_btn = ctk.CTkButton(
+            input_frame, text="Export", width=80, height=42,
+            font=self.font_body, command=self._export_chat,
+            fg_color=COLORS["bg_tertiary"], hover_color=COLORS["accent_hover"],
+            text_color=COLORS["text_secondary"]
+        )
+        self.export_btn.grid(row=0, column=2, padx=(4, 4), pady=14)
+
+        self.copy_btn = ctk.CTkButton(
+            input_frame, text="Copy", width=70, height=42,
+            font=self.font_body, command=self._copy_last,
             fg_color=COLORS["bg_tertiary"], hover_color=COLORS["error"],
             text_color=COLORS["text_secondary"]
         )
-        self.clear_btn.grid(row=0, column=3, padx=(0, 12), pady=14)
+        self.clear_btn.grid(row=0, column=4, padx=(0, 12), pady=14)
 
     def _add_welcome(self):
         sep = "=" * 40
@@ -263,6 +275,24 @@ class SentinelDesktopApp:
 
 {sep}"""
         self._add_message(welcome, "system")
+
+    def _show_startup_summary(self):
+        """Show system status summary on startup."""
+        try:
+            import psutil
+            cpu = psutil.cpu_percent(interval=0.5)
+            mem = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            boot = datetime.fromtimestamp(psutil.boot_time()).strftime("%H:%M")
+
+            summary = (
+                f"System Status — Booted at {boot}\n"
+                f"  CPU: {cpu:.1f}% | RAM: {mem.percent:.1f}% ({mem.used // (1024**3):.0f}GB/{mem.total // (1024**3):.0f}GB)\n"
+                f"  Disk: {disk.percent:.0f}% used | Processes: {len(psutil.pids())}"
+            )
+            self._add_message(summary, "system")
+        except Exception:
+            pass
 
     def _add_message(self, text: str, sender: str = "assistant"):
         """Add a message bubble to the chat."""
@@ -302,6 +332,7 @@ class SentinelDesktopApp:
             self.app.clipboard_append(msg)
         label.bind("<Button-3>", lambda e, fn=copy_msg: fn())
 
+        self.chat_history.append({"sender": sender, "text": text, "time": datetime.now().isoformat()})
         self.chat_scroll._parent_canvas.yview_moveto(1.0)
         if sender in ("assistant", "system"):
             self.last_response = text
