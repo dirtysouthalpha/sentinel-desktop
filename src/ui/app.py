@@ -217,6 +217,7 @@ class SentinelDesktopApp:
         )
         self.entry.grid(row=0, column=0, sticky="ew", padx=12, pady=14)
         self.entry.bind("<Return>", lambda e: self._handle_send())
+        self._setup_autocomplete()
         self.entry.bind("<Up>", self._history_up)
         self.entry.bind("<Down>", self._history_down)
 
@@ -256,6 +257,40 @@ class SentinelDesktopApp:
             text_color=COLORS["text_secondary"]
         )
         self.clear_btn.grid(row=0, column=4, padx=(0, 12), pady=14)
+
+    COMMAND_SUGGESTIONS = [
+        "cpu", "memory", "disk", "battery", "temperature", "uptime", "system info",
+        "screenshot", "click ", "type ", "press ", "scroll ", "move ",
+        "ping ", "ipconfig", "speedtest", "network diagnostics",
+        "open ", "kill ", "list files", "find ", "read ",
+        "copy ", "paste", "list windows",
+        "volume up", "volume down", "mute", "play", "pause", "next track", "previous track",
+        "shutdown", "restart", "sleep", "lock screen",
+        "notify ", "alert ", "remind ",
+        "timer ", "list timers", "cancel timer",
+        "brief me on ", "fetch ", "go to ", "search for ",
+        "start recording", "stop recording", "list macros",
+        "list plugins", "speak ", "help", "hey", "themes", "export",
+    ]
+
+    def _setup_autocomplete(self):
+        """Setup key binding for command autocomplete."""
+        self.entry.bind("<KeyRelease>", self._on_key_release)
+        self._suggestion_index = -1
+
+    def _on_key_release(self, event=None):
+        """Show autocomplete suggestion on Tab key or update hint."""
+        if event and event.keysym == "Tab":
+            current = self.entry.get().lower().strip()
+            if current:
+                matches = [s for s in self.COMMAND_SUGGESTIONS if s.startswith(current)]
+                if matches:
+                    self._suggestion_index = (self._suggestion_index + 1) % len(matches)
+                    self.entry.delete(0, "end")
+                    self.entry.insert(0, matches[self._suggestion_index])
+            return "break"
+        elif event and event.keysym in ("Return", "BackSpace", "Delete"):
+            self._suggestion_index = -1
 
     def _add_welcome(self):
         sep = "=" * 40
