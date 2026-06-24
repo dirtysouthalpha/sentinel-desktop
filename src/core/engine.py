@@ -47,6 +47,7 @@ class CommandEngine:
         from src.commands.voice import VoiceCommands
         from src.commands.web import WebCommands
         from src.commands.agent import AgentPlanner
+        from src.core.llm import LLMClient
         from src.core.plugins import PluginManager
 
         self.sys = SystemCommands()
@@ -65,6 +66,7 @@ class CommandEngine:
         self.web = WebCommands()
         self.agent = AgentPlanner()
         self.agent.engine = self
+        self.llm = LLMClient()
         self.plugins = PluginManager()
 
     def parse_command(self, text: str) -> Optional[tuple]:
@@ -392,14 +394,15 @@ class CommandEngine:
         return None
 
     def _ai_route(self, text: str) -> CommandResult:
-        """Handle conversational input and fall back to brain."""
-        # First try conversational responses
+        """Handle conversational input using LLM with fallback."""
         convo = self._conversational_response(text)
         if convo:
             return CommandResult(True, convo)
-        # Then try the brain
+        if self.llm and self.llm.api_key:
+            response = self.llm.converse(text)
+            if response:
+                return CommandResult(True, response)
         result = self.brain.ask(text)
-        if result and result != "No relevant knowledge found in brain.":
-            return CommandResult(True, f"AI: {result}")
-        # Friendly fallback
-        return CommandResult(True, f"I'm not sure how to help with '{text}', but I can handle system commands, automation, network tools, media, power, and more. Type 'help' to see what I can do!")
+        if result and 'No relevant' not in str(result):
+            return CommandResult(True, f'AI: {result}')
+        return CommandResult(True, f"I'm not sure how to help with '{text}', but I can handle system commands, automation, network tools, media, power, web, and more. Type 'help' to see what I can do!")

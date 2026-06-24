@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 # Version
-VERSION = "5.4.0"
+VERSION = "5.5.0"
 APP_NAME = "Sentinel Desktop"
 APP_TITLE = f"{APP_NAME} v{VERSION}"
 
@@ -95,3 +95,8 @@ COMMAND_CATEGORIES = {
     "files": "File Operations",
     "ai": "AI Assistant",
 }
+
+# LLM Configuration
+HATZ_API_KEY = os.environ.get("HATZ_API_KEY", "")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
+LLM_ENABLED = bool(HATZ_API_KEY)

@@ -8,7 +8,7 @@ from src.config import VERSION, COLORS, load_config, save_config, DEFAULT_CONFIG
 
 
 def test_version():
-    assert VERSION == "5.4.0"
+    assert VERSION == "5.5.0"
 
 
 def test_colors():
