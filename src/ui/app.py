@@ -258,19 +258,18 @@ class SentinelDesktopApp:
         frame.pack(fill="x", pady=3, padx=8)
         frame.grid_columnconfigure(0, weight=1)
 
-        label = ctk.CTkTextbox(
-            frame, font=self.font_mono,
-            fg_color="transparent",
+        label = ctk.CTkLabel(
+            frame, text=text, font=self.font_mono,
             text_color=text_colors.get(sender, COLORS["text_primary"]),
-            wrap="word", height=1,
-            activate_scrollbars=False
+            wraplength=750, justify="left", anchor="w"
         )
-        label.insert("1.0", text)
-        label.configure(state="disabled")
-        label.grid(row=0, column=0, sticky="ew", padx=8, pady=6)
-        label.bind("<Button-1>", lambda e: e.widget.configure(state="normal"))
-        label.bind("<FocusOut>", lambda e: e.widget.configure(state="disabled"))
-        frame.grid_columnconfigure(0, weight=1)
+        label.grid(row=0, column=0, sticky="w", padx=14, pady=8)
+
+        # Right-click to copy message
+        def copy_msg(msg=text):
+            self.app.clipboard_clear()
+            self.app.clipboard_append(msg)
+        label.bind("<Button-3>", lambda e, fn=copy_msg: fn())
 
         self.chat_scroll._parent_canvas.yview_moveto(1.0)
 
