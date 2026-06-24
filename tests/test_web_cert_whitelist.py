@@ -90,6 +90,41 @@ class TestShouldIgnoreCertErrors:
     def test_malformed_url(self):
         assert should_ignore_cert_errors("://broken", ["*"]) is False
 
+    def test_url_with_query_string(self):
+        # IT-appliance login pages routinely carry ?session=/&redirect= params.
+        assert (
+            should_ignore_cert_errors(
+                "https://firewall.local?session=abc&redirect=/admin",
+                ["firewall.local"],
+            )
+            is True
+        )
+
+    def test_url_with_fragment(self):
+        assert (
+            should_ignore_cert_errors("https://firewall.local#section", ["firewall.local"])
+            is True
+        )
+
+    def test_url_with_userinfo(self):
+        # Embedded-credential URLs (https://user:pass@host/) must extract the host,
+        # not the username.
+        assert (
+            should_ignore_cert_errors(
+                "https://admin:secret@firewall.local/", ["firewall.local"]
+            )
+            is True
+        )
+
+    def test_url_with_userinfo_and_port(self):
+        assert (
+            should_ignore_cert_errors(
+                "https://admin:secret@firewall.local:8443/admin",
+                ["firewall.local"],
+            )
+            is True
+        )
+
 
 class TestSaveLoadWhitelist:
     def test_save_and_load(self, tmp_path: Path):

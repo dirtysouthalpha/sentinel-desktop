@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -102,17 +103,18 @@ def should_ignore_cert_errors(
     Returns:
         True if the URL's host is whitelisted.
     """
-    # Extract hostname from URL
+    # Extract hostname from URL. urllib.parse handles userinfo (user:pass@),
+    # port, path, query (?session=...), and fragment (#...) uniformly — the
+    # previous hand-rolled chopping kept ?query/#fragment glued to the host and
+    # returned the username for user:pass@host URLs.
     try:
-        # Simple extraction — no need for urllib for this
-        if "://" in url:
-            host_part = url.split("://", 1)[1].split("/")[0]
-        else:
-            host_part = url.split("/")[0]
+        if "://" not in url:
+            url = "https://" + url
+        hostname = urlparse(url).hostname
+    except ValueError:
+        return False
 
-        # Strip port
-        hostname = host_part.split(":")[0]
-    except (IndexError, ValueError):  # pragma: no cover
+    if not hostname:
         return False
 
     return is_whitelisted(hostname, whitelist)
