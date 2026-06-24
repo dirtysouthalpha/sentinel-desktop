@@ -579,6 +579,64 @@ class TestWebTabs:
         assert result["success"] is False
         assert "Unknown tab action" in result["error"]
 
+    def test_close_before_active_decrements_index(self, browser_mgr):
+        # Closing a tab BEFORE the active one shifts every later tab left by
+        # one, so the active index must decrement — clamping alone points at
+        # the wrong page.
+        mgr, mocks = browser_mgr
+        page_b = _make_mock_page(url="https://b.com", title="B")
+        page_c = _make_mock_page(url="https://c.com", title="C")
+        mgr._pages.extend([page_b, page_c])  # [orig, B, C]
+        mgr._active_page_index = 1  # active = B
+        result = mgr.tabs(action="close", index=0)  # close orig (before active)
+        assert result["success"] is True
+        assert mgr._active_page_index == 0  # B slid into slot 0
+        assert mgr._pages[mgr._active_page_index] is page_b
+
+    def test_switch_negative_index_rejected(self, browser_mgr):
+        # A negative index must be rejected, not silently set _active_page_index
+        # to -1 (which then drifts as pages are added/removed).
+        mgr, mocks = browser_mgr
+        page2 = _make_mock_page(url="https://other.com")
+        mgr._pages.append(page2)
+        result = mgr.tabs(action="switch", index=-1)
+        assert result["success"] is False
+        assert mgr._active_page_index == 0  # unchanged
+
+    def test_close_negative_index_rejected(self, browser_mgr):
+        # Negative close index must not close the last tab via Python negative
+        # indexing.
+        mgr, mocks = browser_mgr
+        mgr._pages.append(_make_mock_page())
+        starting = len(mgr._pages)
+        result = mgr.tabs(action="close", index=-1)
+        assert result["success"] is False
+        assert len(mgr._pages) == starting  # nothing closed
+
+    def test_close_out_of_range_index_rejected(self, browser_mgr):
+        mgr, mocks = browser_mgr
+        mgr._pages.append(_make_mock_page())
+        starting = len(mgr._pages)
+        result = mgr.tabs(action="close", index=99)
+        assert result["success"] is False
+        assert len(mgr._pages) == starting
+
+    def test_new_tab_goto_failure_returns_error_no_orphan(self, browser_mgr):
+        # A goto failure (timeout/DNS/refused) must return a structured error
+        # and roll back the half-created tab — no orphan page, active index
+        # restored.
+        mgr, mocks = browser_mgr
+        starting_pages = len(mgr._pages)
+        starting_active = mgr._active_page_index
+        new_page = _make_mock_page(url="https://bad.invalid")
+        new_page.goto.side_effect = Exception("Connection refused")
+        mocks["context"].new_page.return_value = new_page
+        result = mgr.tabs(action="new", url="https://bad.invalid")
+        assert result["success"] is False
+        assert "error" in result
+        assert len(mgr._pages) == starting_pages  # no orphan tab
+        assert mgr._active_page_index == starting_active  # restored
+
 
 # ===========================================================================
 # Cookies

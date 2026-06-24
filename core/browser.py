@@ -687,7 +687,7 @@ class BrowserManager:
             return {"success": True, "tabs": tabs_info, "count": len(tabs_info)}
 
         elif action == "switch":
-            if index is None or index >= len(self._pages):
+            if index is None or index < 0 or index >= len(self._pages):
                 return {"success": False, "error": f"Invalid tab index: {index}"}
             self._active_page_index = index
             self._pages[index].bring_to_front()
@@ -695,19 +695,38 @@ class BrowserManager:
 
         elif action == "new":
             page = self._context.new_page()  # type: ignore
+            prev_active = self._active_page_index
             self._pages.append(page)
             self._active_page_index = len(self._pages) - 1
             if url:
-                page.goto(url, wait_until="load", timeout=30000)
+                try:
+                    page.goto(url, wait_until="load", timeout=30000)
+                except Exception as exc:
+                    # goto failed (timeout/DNS/refused): roll back the half-created
+                    # tab so a failed open leaves no orphan and doesn't shift the
+                    # active index.
+                    try:
+                        page.close()
+                    except Exception:
+                        pass
+                    self._pages.pop()
+                    self._active_page_index = prev_active
+                    return {"success": False, "error": str(exc)}
             return {"success": True, "index": self._active_page_index, "url": url}
 
         elif action == "close":
             if index is None:
                 return {"success": False, "error": "No tab index provided"}
+            if index < 0 or index >= len(self._pages):
+                return {"success": False, "error": f"Invalid tab index: {index}"}
             if len(self._pages) <= 1:
                 return {"success": False, "error": "Cannot close the last tab"}
             self._pages[index].close()
             self._pages.pop(index)
+            # If the closed tab was before the active one, every later tab (incl.
+            # the active one) shifts left by one — decrement to keep pointing at it.
+            if index < self._active_page_index:
+                self._active_page_index -= 1
             self._active_page_index = min(self._active_page_index, len(self._pages) - 1)
             return {"success": True, "remaining": len(self._pages)}
 
