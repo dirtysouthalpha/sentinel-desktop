@@ -33,6 +33,7 @@ class SentinelDesktopApp:
         self.engine = CommandEngine(self.brain)
         self.command_history = []
         self.history_index = -1
+        self.last_response = ""
 
         self._setup_window()
         self._setup_styles()
@@ -228,13 +229,21 @@ class SentinelDesktopApp:
         )
         self.send_btn.grid(row=0, column=1, padx=(4, 4), pady=14)
 
+        self.copy_btn = ctk.CTkButton(
+            input_frame, text="Copy", width=70, height=42,
+            font=self.font_body, command=self._copy_last,
+            fg_color=COLORS["bg_tertiary"], hover_color=COLORS["accent_hover"],
+            text_color=COLORS["text_secondary"]
+        )
+        self.copy_btn.grid(row=0, column=2, padx=(4, 4), pady=14)
+
         self.clear_btn = ctk.CTkButton(
             input_frame, text="Clear", width=70, height=42,
             font=self.font_body, command=self._clear_chat,
             fg_color=COLORS["bg_tertiary"], hover_color=COLORS["error"],
             text_color=COLORS["text_secondary"]
         )
-        self.clear_btn.grid(row=0, column=2, padx=(0, 12), pady=14)
+        self.clear_btn.grid(row=0, column=3, padx=(0, 12), pady=14)
 
     def _add_welcome(self):
         sep = "=" * 40
@@ -294,6 +303,8 @@ class SentinelDesktopApp:
         label.bind("<Button-3>", lambda e, fn=copy_msg: fn())
 
         self.chat_scroll._parent_canvas.yview_moveto(1.0)
+        if sender in ("assistant", "system"):
+            self.last_response = text
 
     def _handle_send(self):
         text = self.entry.get().strip()
