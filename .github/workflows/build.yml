@@ -27,7 +27,7 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --noconfirm --onefile --windowed             --name "SentinelDesktop"             --add-data "src;src"             main.py
+          pyinstaller --noconfirm --onefile --windowed             --name "SentinelDesktop"             --add-data "src;src"             --add-data "assets;assets"             --icon "assets/sentinel_icon.ico"             main.py
 
       - name: Upload to release
         if: github.event_name == 'release'

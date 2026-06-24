@@ -2,6 +2,7 @@
 Sentinel Desktop - Main UI Application
 Professional dark-themed chat interface with system monitoring.
 """
+import os
 import threading
 import tkinter as tk
 from tkinter import filedialog
@@ -47,6 +48,27 @@ class SentinelDesktopApp:
         self.app.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.app.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         self.app.configure(fg_color=COLORS["bg_primary"])
+
+        # Set app icon
+        import platform
+        icon_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "assets", "sentinel_icon.png"
+        )
+        if os.path.exists(icon_path):
+            icon_img = tk.PhotoImage(file=icon_path)
+            self.app.iconphoto(True, icon_img)
+            self._icon_img = icon_img  # Prevent garbage collection
+        if platform.system() == "Windows":
+            ico_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                "assets", "sentinel_icon.ico"
+            )
+            if os.path.exists(ico_path):
+                try:
+                    self.app.iconbitmap(ico_path)
+                except Exception:
+                    pass
 
     def _setup_styles(self):
         self.font_title = ("Segoe UI", 20, "bold")
