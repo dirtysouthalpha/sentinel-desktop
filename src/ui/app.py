@@ -353,6 +353,17 @@ class SentinelDesktopApp:
         else:
             self.history_index = len(self.command_history)
             self.entry.delete(0, "end")
+    def _copy_last(self):
+        """Copy last assistant response to clipboard."""
+        if hasattr(self, 'last_response') and self.last_response:
+            self.app.clipboard_clear()
+            self.app.clipboard_append(self.last_response)
+            self.copy_btn.configure(text="Copied!")
+            self.app.after(2000, lambda: self.copy_btn.configure(text="Copy"))
+        else:
+            self.copy_btn.configure(text="Nothing")
+            self.app.after(2000, lambda: self.copy_btn.configure(text="Copy"))
+
 
     def _clear_chat(self):
         for widget in self.chat_scroll.winfo_children():
