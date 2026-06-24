@@ -46,6 +46,7 @@ class CommandEngine:
         from src.commands.macros import MacroCommands
         from src.commands.voice import VoiceCommands
         from src.commands.web import WebCommands
+        from src.commands.agent import AgentPlanner
         from src.core.plugins import PluginManager
 
         self.sys = SystemCommands()
@@ -62,6 +63,8 @@ class CommandEngine:
         self.macros = MacroCommands()
         self.voice = VoiceCommands()
         self.web = WebCommands()
+        self.agent = AgentPlanner()
+        self.agent.engine = self
         self.plugins = PluginManager()
 
     def parse_command(self, text: str) -> Optional[tuple]:
@@ -180,11 +183,23 @@ class CommandEngine:
         if text_lower.startswith("read "):
             return ("files", text)
 
+        # Multi-step agent tasks
+        if self._is_complex_task(text):
+            return ("agent", text)
+
         # Brain/AI
         if any(w in text_lower for w in ["brain", "think", "remember", "recall"]):
             return ("ai", text)
 
         return None
+
+    def _is_complex_task(self, text: str) -> bool:
+        """Check if this is a multi-step request."""
+        t = text.lower()
+        indicators = [" then ", " after that ", " and then ", " and also ", 
+                       " step by step ", "first ", "second ", "finally ",
+                       " also ", " next ", " once done ", " when finished "]
+        return any(ind in t for ind in indicators) or (t.count(",") >= 2 and len(t.split()) > 6)
 
     def execute(self, text: str) -> CommandResult:
         """Execute a user command and return the result."""
@@ -208,6 +223,8 @@ class CommandEngine:
                 return self._run_files(args)
             elif category == "power":
                 return self._run_power(args)
+            elif category == "agent":
+                return self._run_agent(args)
             elif category == "web":
                 return self._run_web(args)
             elif category == "voice":
