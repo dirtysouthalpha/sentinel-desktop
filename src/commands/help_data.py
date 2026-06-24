@@ -84,6 +84,12 @@ Macros:
   list macros            - List saved macros
   delete macro name      - Delete a macro
 
+Web:
+  brief url              - Get a brief summary of a webpage
+  fetch url              - Fetch full page content
+  go to url              - Open URL in browser
+  search for query       - Google search
+
 Plugins:
   list plugins           - List available plugins
   load plugin name       - Load a plugin

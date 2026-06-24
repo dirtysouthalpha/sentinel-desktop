@@ -45,6 +45,7 @@ class CommandEngine:
         from src.commands.scheduler import SchedulerCommands
         from src.commands.macros import MacroCommands
         from src.commands.voice import VoiceCommands
+        from src.commands.web import WebCommands
         from src.core.plugins import PluginManager
 
         self.sys = SystemCommands()
@@ -60,6 +61,7 @@ class CommandEngine:
         self.scheduler = SchedulerCommands()
         self.macros = MacroCommands()
         self.voice = VoiceCommands()
+        self.web = WebCommands()
         self.plugins = PluginManager()
 
     def parse_command(self, text: str) -> Optional[tuple]:
@@ -148,6 +150,12 @@ class CommandEngine:
         if text_lower.startswith("speedtest"):
             return ("network", "speedtest")
 
+        # Web (after network so ping/speedtest aren't caught)
+        if any(w in text_lower for w in ["brief", "summarize", "summary of", "go to", "visit", "browse", "fetch", "read page", "search for", "google"]):
+            return ("web", text)
+        if re.search(r"https?://", text_lower):
+            return ("web", text)
+
         # Process management
         if text_lower.startswith("kill") or text_lower.startswith("close "):
             return ("process", text)
@@ -200,6 +208,8 @@ class CommandEngine:
                 return self._run_files(args)
             elif category == "power":
                 return self._run_power(args)
+            elif category == "web":
+                return self._run_web(args)
             elif category == "voice":
                 return self._run_voice(args)
             elif category == "macros":
@@ -279,6 +289,9 @@ class CommandEngine:
 
     def _run_power(self, args) -> CommandResult:
         return self.power.execute(args)
+
+    def _run_web(self, args) -> CommandResult:
+        return self.web.execute(args)
 
     def _run_voice(self, args) -> CommandResult:
         return self.voice.execute(args)
