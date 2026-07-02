@@ -30,7 +30,14 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Blocked
 
-- [BLOCKED: ALIEN/UNRELATED-HISTORY DIVERGENCE - local main (884 commits, Sentinel v22.0) has NO merge-base with origin/main (27 commits, different project). Discovered 2026-06-26 during maintenance pass. `git merge-base main origin/main` exits with code 1 (no common ancestor). Remote commits appear to be from a different codebase (v5-v6 series with "Command autocomplete, chat export, settings persistence" — NOT Sentinel Desktop). Per grind-loop protocol: NEVER attempt `git pull --rebase` — this is a time bomb. ESCALATION REQUIRED: Human must determine correct origin remote or reconcile the repository state. Do NOT proceed with any push/pull operations until resolved.]
+<!-- RESOLVED 2026-07-02 (human directive, Brandon): the alien/unrelated-history divergence is settled — push/pull is UNBLOCKED.
+     Resolution: a PRIVATE backup remote `backup` = github.com/dirtysouthalpha/sentinel-desktop-grind was created, and local
+     `main` now tracks `backup/main` (in sync, 0 ahead / 0 behind). The public `origin`
+     (github.com/DirtySouthAlpha/sentinel-desktop) holds a DIFFERENT project's v5-v6 releases and is intentionally left
+     untouched — do NOT reconcile with it.
+     GRIND GIT PROTOCOL (updated): use a bare `git push` (goes to backup/main via the tracked upstream). NEVER run
+     `git push origin main`, NEVER `git pull --rebase`, NEVER force-push origin. Commits/pushes may now proceed normally. -->
+- [x] RESOLVED: repository lineage escalation — backup remote wired, `main` → `backup/main`, push/pull unblocked (2026-07-02).
 - [BLOCKED: PyPI 403 - invalid API token, need Trusted Publishing or valid PYPI_API_TOKEN refresh] Phase 3: First clean automated release — verify the release pipeline
   end-to-end with a NON-COLLIDING patch version. CRITICAL: v22.0.0 is ALREADY on
   PyPI (manual upload), so do NOT push a v22.0.0 tag (release.yml would re-build
