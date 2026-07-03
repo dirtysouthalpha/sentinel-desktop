@@ -2,75 +2,45 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
-
-permissions:
-  contents: write
+    tags:
+      - "v*"
 
 jobs:
-  test:
-    name: Run tests before release
+  release:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e ".[dev]"
-      - run: pytest --timeout=30 -q
-
-  build:
-    name: Build package
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install build tools
-        run: pip install build
-      - name: Build sdist + wheel
-        run: python -m build
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-  publish-pypi:
-    name: Publish to PyPI
-    needs: build
-    runs-on: ubuntu-latest
-    environment: pypi
     permissions:
-      id-token: write
-    steps:
-      - name: Download dist artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      contents: write
 
-  github-release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download dist artifacts
-        uses: actions/download-artifact@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          name: dist
-          path: dist/
-      - name: Create release
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest psutil requests
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Create release package
+        run: |
+          mkdir -p dist
+          tar -czf dist/sentinel-desktop-${{ github.ref_name }}.tar.gz \
+            src/ main.py requirements.txt setup.py README.md LICENSE
+          zip -r dist/sentinel-desktop-${{ github.ref_name }}.zip \
+            src/ main.py requirements.txt setup.py README.md LICENSE
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

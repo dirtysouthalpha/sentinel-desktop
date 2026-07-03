@@ -1,34 +1,29 @@
 @echo off
-title Sentinel Desktop v2 - Installer
-echo ============================================
-echo   Sentinel Desktop v2 - Installer
-echo   AI-powered Windows desktop automation
-echo ============================================
+title Sentinel Desktop v2.0 - Installer
+
+echo ========================================
+echo   Sentinel Desktop v2.0 - Installer
+echo ========================================
 echo.
 
-:: Check Python
+REM Check Python
 python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Python not found. Install Python 3.8+ from python.org
-    echo         Make sure to check "Add Python to PATH" during install.
+if errorlevel 1 (
+    echo [ERROR] Python is not installed or not in PATH.
+    echo Please install Python 3.8+ from https://python.org
     pause
     exit /b 1
 )
 
-echo [1/3] Installing dependencies...
+echo [OK] Python found.
+echo.
+
+REM Install dependencies
+echo Installing dependencies...
 pip install -r requirements.txt
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to install dependencies.
-    pause
-    exit /b 1
-)
+echo.
 
-echo.
-echo [2/3] Creating config directory...
-if not exist "%APPDATA%\SentinelDesktop" mkdir "%APPDATA%\SentinelDesktop"
-
-echo.
-echo [3/3] Launching Sentinel Desktop...
-echo.
+REM Launch
+echo Launching Sentinel Desktop...
 python main.py
 pause

@@ -1,204 +1,40 @@
-#!/usr/bin/env python3
 """
-Sentinel Desktop — AI-powered Windows desktop automation agent.
+Sentinel Desktop v2.0 - Entry Point
+AI-powered Windows desktop automation assistant.
 
-Modes:
-  GUI  (default)     : CustomTkinter dark-themed chat interface
-  API  (--api)       : FastAPI server on port 8091
-  CLI  (--command)   : Single goal, execute, exit
-
-The package version is sourced from ``core.__version__``.
+Usage:
+    python main.py          # Launch GUI
+    python main.py --cli    # CLI mode
+    python main.py --version
 """
-
-from __future__ import annotations
-
-import argparse
-import logging
 import sys
-from argparse import Namespace
-from pathlib import Path
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
-logger = logging.getLogger("sentinel")
-
-# ---------------------------------------------------------------------------
-# Add project root to sys.path so `core`, `gui`, `api` packages resolve
-# ---------------------------------------------------------------------------
-PROJECT_ROOT = str(Path(__file__).resolve().parent)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
+import argparse
 
 
-def parse_args() -> Namespace:
-    """Parse command-line arguments for the Sentinel Desktop CLI."""
-    from core import __version__
+def main():
+    parser = argparse.ArgumentParser(description="Sentinel Desktop v2.0")
+    parser.add_argument("--cli", action="store_true", help="Run in CLI mode")
+    parser.add_argument("--version", action="store_true", help="Show version")
+    args = parser.parse_args()
 
-    parser = argparse.ArgumentParser(
-        prog="sentinel-desktop",
-        description=f"Sentinel Desktop v{__version__} — AI-powered Windows desktop automation",
-    )
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument(
-        "--api",
-        action="store_true",
-        help="Launch in headless API mode (FastAPI on port 8091)",
-    )
-    parser.add_argument(
-        "--command",
-        "-c",
-        type=str,
-        default=None,
-        help="Execute a single goal in CLI mode and exit",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8091,
-        help="Port for API server (default: 8091)",
-    )
-    parser.add_argument(
-        "--host",
-        type=str,
-        default="0.0.0.0",
-        help="Host for API server (default: 0.0.0.0)",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Log state-changing actions instead of executing them",
-    )
-    parser.add_argument(
-        "--autonomous",
-        action="store_true",
-        help="Skip every approval prompt and let the agent run uninterrupted",
-    )
-    return parser.parse_args()
+    if args.version:
+        from src.config import VERSION, APP_NAME
+        print(f"{APP_NAME} v{VERSION}")
+        return
 
+    if args.cli:
+        from src.cli import cli_main
+        cli_main()
+        return
 
-def run_gui() -> None:
-    """Launch the CustomTkinter GUI."""
+    # GUI mode
     try:
-        import customtkinter as ctk  # noqa: F401
-    except ImportError:
-        logger.exception("customtkinter not installed. Run: pip install -r requirements.txt")
+        from src.ui.app import main as gui_main
+        gui_main()
+    except ImportError as e:
+        print(f"GUI dependencies missing: {e}")
+        print("Install with: pip install customtkinter pyautogui psutil")
         sys.exit(1)
-
-    from config import Config
-    from gui.app import SentinelApp
-
-    logger.info("Starting Sentinel Desktop in GUI mode")
-    try:
-        config = Config()
-        config.load()
-    except (OSError, ValueError) as exc:
-        logger.warning("Config load failed (%s) — proceeding with defaults", exc)
-        config = Config()
-    app = SentinelApp(config)
-    app.run()
-
-
-def run_api(host: str = "0.0.0.0", port: int = 8091) -> None:
-    """Launch the FastAPI server."""
-    try:
-        import uvicorn
-    except ImportError:
-        logger.exception("uvicorn not installed. Run: pip install -r requirements.txt")
-        sys.exit(1)
-
-    from api.server import SentinelServer
-    from config import Config
-
-    try:
-        config = Config()
-        config.load()
-    except (OSError, ValueError) as exc:
-        logger.warning("Config load failed (%s) — proceeding with defaults", exc)
-        config = Config()
-    server = SentinelServer(config)
-    app = server.create_app()
-
-    logger.info(f"Starting Sentinel Desktop in API mode on {host}:{port}")
-    uvicorn.run(app, host=host, port=port, log_level="info")
-
-
-def run_cli(goal: str, dry_run: bool = False, autonomous: bool = False) -> None:
-    """Execute a single goal and exit."""
-    from config import Config
-    from core.engine import AgentEngine
-
-    logger.info("CLI mode — executing goal: %s", goal)
-
-    try:
-        config = Config()
-        cfg = config.load()
-    except (OSError, ValueError) as exc:
-        logger.warning("Config load failed (%s) — proceeding with defaults", exc)
-        cfg: dict[str, object] = {}
-    if dry_run:
-        cfg["dry_run"] = True
-        logger.info("DRY-RUN mode: state-changing actions will be logged, not executed")
-    if autonomous:
-        cfg["autonomous"] = True
-        logger.info("AUTONOMOUS mode: no approval prompts")
-    try:
-        engine = AgentEngine(cfg)
-        result = engine.run(goal)
-    except (OSError, RuntimeError, ValueError) as exc:
-        logger.exception("Engine execution failed: %s", exc)
-        sys.exit(1)
-
-    print(f"\n{'=' * 60}")
-    print(f"Goal: {goal}")
-    print(f"Steps: {result.get('steps', 0)}")
-    print(f"Notes: {len(result.get('notes', []))}")
-    if result.get("finish_summary"):
-        print(f"\nSummary:\n{result['finish_summary']}")
-    print(f"{'=' * 60}")
-
-
-def main() -> None:
-    """Main entry point — parse args and dispatch to API or CLI mode."""
-    args = parse_args()
-
-    if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-
-    if args.api:
-        run_api(host=args.host, port=args.port)
-    elif args.command:
-        run_cli(args.command, dry_run=args.dry_run, autonomous=args.autonomous)
-    else:
-        # Surface CLI flags to config so the GUI picks them up this session.
-        if args.dry_run or args.autonomous:
-            from config import Config
-
-            try:
-                cfg = Config()
-                data = cfg.load()
-            except (OSError, ValueError) as exc:
-                logger.warning("Config load failed (%s) — using defaults", exc)
-                cfg = Config()
-                data = cfg.as_dict()
-            if args.dry_run:
-                data["dry_run"] = True
-                logger.info("DRY-RUN mode enabled for this session")
-            if args.autonomous:
-                data["autonomous"] = True
-                logger.info("AUTONOMOUS mode enabled for this session")
-            cfg.save(data)
-        run_gui()
 
 
 if __name__ == "__main__":
