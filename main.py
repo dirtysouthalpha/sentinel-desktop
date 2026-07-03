@@ -8,8 +8,8 @@ Usage:
     python main.py --api    # Headless API server
     python main.py --version
 """
-import sys
 import argparse
+import sys
 
 
 def parse_args():
@@ -48,9 +48,10 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
 
     if args.api:
+        import uvicorn
+
         from api.server import SentinelServer
         from config import Config
-        import uvicorn
         config = Config()
         config.load()
         server = SentinelServer(config)
