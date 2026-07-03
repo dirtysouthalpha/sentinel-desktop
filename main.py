@@ -12,19 +12,40 @@ import sys
 import argparse
 
 
-def main():
+def parse_args():
+    """Parse command-line arguments. Exported for testing."""
     parser = argparse.ArgumentParser(description="Sentinel Desktop v2.0")
-    parser.add_argument("--cli", action="store_true", help="Run in CLI mode")
+    parser.add_argument("--cli", "-c", nargs="?", const=True, default=False,
+                        help="Run in CLI mode (optionally with command)")
     parser.add_argument("--api", action="store_true", help="Run headless API server")
     parser.add_argument("--host", default="0.0.0.0", help="API listen host")
     parser.add_argument("--port", type=int, default=8091, help="API listen port")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--dry-run", action="store_true", help="Dry run (no actions)")
+    parser.add_argument("--autonomous", action="store_true", help="Autonomous mode")
     parser.add_argument("--version", action="store_true", help="Show version")
     args = parser.parse_args()
+    # Convert -c with value into command string
+    if isinstance(args.cli, str):
+        args.command = args.cli
+        args.cli = True
+    else:
+        args.command = None
+    return args
+
+
+def main():
+    """Entry point for Sentinel Desktop."""
+    args = parse_args()
 
     if args.version:
         from core import __version__
-        print(f"Sentinel Desktop v{args.version}")
+        print(f"Sentinel Desktop v{__version__}")
         return
+
+    if args.debug:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
 
     if args.api:
         from api.server import SentinelServer
