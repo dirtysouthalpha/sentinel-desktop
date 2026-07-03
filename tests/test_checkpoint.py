@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 
 import pytest
 
@@ -198,9 +198,8 @@ class TestStaleCheckpoints:
         assert record["goal"] == "Old but explicit"
 
     def test_nonstale_checkpoint_preferred_over_stale(self, cm):
-        from datetime import datetime, timedelta, timezone
-
         import time
+        from datetime import datetime, timedelta, timezone
 
         # Create stale
         stale_id = _save_checkpoint(cm, goal="Stale")

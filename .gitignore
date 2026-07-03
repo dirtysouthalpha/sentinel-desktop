@@ -44,10 +44,10 @@ config.json
 sentinel_log_*.json
 logs/
 forensic_*.json
-# AuthManager bootstraps an admin user into config/users.json on first
-# AgentEngine instantiation; that file is per-deployment and contains
-# password hashes + API keys.
 /config/users.json
+sentinel_memory.db
+diag.err
+diag.out
 
 # Local screenshots / templates used for click_image
 screenshots/
@@ -59,3 +59,15 @@ templates/
 # Local-only environment overrides
 .env
 .env.local
+
+# SSH keys — NEVER commit
+.nukekey
+*.pem
+*.key
+
+# Build artifacts / temp files
+SentinelDesktop.spec
+start_api_bg.bat
+installer/output/
+*.bak-*
+*.py.bak-*

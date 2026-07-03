@@ -7,8 +7,9 @@ Focuses on lines 156-158, 264-290, 306-331.
 import base64
 import json
 import platform
+import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -48,6 +49,9 @@ class TestCorruptVaultEntry:
             assert vault.retrieve("testkey") is None
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests non-Windows fallback behavior"
+)
 class TestNonWindowsEncryptDecrypt:
     """Lines 264-290, 306-331: _encrypt/_decrypt non-Windows fallback."""
 

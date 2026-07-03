@@ -3,6 +3,7 @@
 import base64
 import json
 import platform
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -40,6 +41,9 @@ class TestImportStoreFailure:
         assert imported == 0
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests non-Windows fallback behavior"
+)
 class TestNonWindowsEncryptFallback:
     """_encrypt falls back to base64 on non-Windows."""
 
@@ -51,6 +55,9 @@ class TestNonWindowsEncryptFallback:
         assert base64.b64decode(result) == data
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests non-Windows fallback behavior"
+)
 class TestNonWindowsDecryptFallback:
     """_decrypt falls back to base64 on non-Windows."""
 

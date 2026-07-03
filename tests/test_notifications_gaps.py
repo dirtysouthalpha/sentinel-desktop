@@ -127,13 +127,15 @@ class TestToastCtypesMessageBoxW:
             with patch.object(real_ctypes, "windll", mock_windll):
                 ok, detail = nm._send_toast("MyTitle", "MyMessage", "warning")
 
-        assert ok is True
-        assert "ctypes" in detail
+                assert ok is True
+                assert "ctypes" in detail
 
-        # Thread was created — extract the target function and call it
-        mock_thread.assert_called_once()
-        target_fn = mock_thread.call_args[1]["target"]
-        target_fn()
+                # Thread was created — extract the target function and call it.
+                # MUST stay inside the patch context so the real ctypes.windll
+                # stays mocked (otherwise MessageBoxW pops a live dialog).
+                mock_thread.assert_called_once()
+                target_fn = mock_thread.call_args[1]["target"]
+                target_fn()
 
-        # Verify MessageBoxW was called with expected args
-        mock_message_box.assert_called_once_with(0, "MyMessage", "Sentinel — MyTitle", 0x40)
+                # Verify MessageBoxW was called with expected args
+                mock_message_box.assert_called_once_with(0, "MyMessage", "Sentinel — MyTitle", 0x40)

@@ -20,15 +20,12 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
 
 from core.llm_client import (
     LLMClient,
     LLMError,
-    RETRY_STATUSES,
     _friendly_http_error,
 )
-
 
 # ---------------------------------------------------------------------------
 # OpenAI-compatible path: malformed / edge-case responses

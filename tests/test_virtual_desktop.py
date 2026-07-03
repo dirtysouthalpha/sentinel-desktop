@@ -1,5 +1,6 @@
 """Tests for core/virtual_desktop.py — constants, stub, factory, and edge cases."""
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,8 +8,6 @@ import pytest
 from core.virtual_desktop import (
     _DESKTOP_FULL_ACCESS,
     _IS_WINDOWS,
-    _StubVirtualDesktop,
-    _get_current_desktop_name,
     DESKTOP_CREATEMENU,
     DESKTOP_CREATEWINDOW,
     DESKTOP_ENUMERATE,
@@ -19,6 +18,8 @@ from core.virtual_desktop import (
     DESKTOP_SWITCHDESKTOP,
     DESKTOP_WRITEOBJECTS,
     VirtualDesktop,
+    _get_current_desktop_name,
+    _StubVirtualDesktop,
 )
 
 
@@ -126,7 +127,7 @@ class TestStubVirtualDesktop:
     def test_launch_app_valid_command(self):
         """Launching a real command should succeed and return a PID."""
         stub = _StubVirtualDesktop("TestDesktop")
-        result = stub.launch_app("/bin/true")
+        result = stub.launch_app(sys.executable)
         assert result["success"] is True
         assert isinstance(result["pid"], int)
         assert result["pid"] > 0
@@ -135,7 +136,7 @@ class TestStubVirtualDesktop:
     def test_launch_app_with_args(self):
         """launch_app should accept and pass through args."""
         stub = _StubVirtualDesktop("TestDesktop")
-        result = stub.launch_app("/bin/echo", args="hello world")
+        result = stub.launch_app(sys.executable, args="-c pass")
         assert result["success"] is True
         assert isinstance(result["pid"], int)
 
@@ -228,7 +229,7 @@ class TestVirtualDesktopFactory:
 
     def test_launch_app_delegates(self):
         vd = VirtualDesktop("TestVD")
-        result = vd.launch_app("/bin/true")
+        result = vd.launch_app(sys.executable)
         assert result["success"] is True
         assert isinstance(result["pid"], int)
 

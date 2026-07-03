@@ -3,6 +3,8 @@
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.system_info import _screen_resolution, brief_system_info, system_info
 
 
@@ -333,6 +335,9 @@ class TestSystemInfoAllFailures:
         assert "arch" in result
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests non-Windows fallback behavior"
+)
 class TestSystemInfoNonWindows:
     @patch("core.system_info.platform.system", return_value="Linux")
     @patch("core.system_info._screen_resolution", return_value="1920x1080")

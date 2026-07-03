@@ -1,9 +1,9 @@
 """Tests for LLMClient._parse_openai_response helper."""
 import json
+
 import pytest
 
 from core.llm_client import LLMClient, LLMError
-
 
 # ---------------------------------------------------------------------------
 # Happy path

@@ -5,15 +5,12 @@ check_and_dismiss cooldown/dismiss-attempt logic, detect_from_screenshot
 edge cases, and _click_button strategy fallbacks.
 """
 
-import importlib
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PIL import Image
 
 import core.popup_handler as ph
-
 
 # ---------------------------------------------------------------------------
 # _have_tesseract
@@ -103,7 +100,7 @@ class TestOcrText:
         ph._pytesseract = mock_ts
 
         processed_img = Image.new("L", (100, 50))
-        with patch("core.popup_handler.preprocess_for_ocr", create=True) as mock_pp:
+        with patch("core.popup_handler.preprocess_for_ocr", create=True):
             # We need to actually import from core.ocr
             with patch.dict(sys.modules, {"core.ocr": MagicMock(preprocess_for_ocr=MagicMock(return_value=processed_img))}):
                 # The function does `from core.ocr import preprocess_for_ocr`
@@ -175,8 +172,21 @@ class TestGetForegroundWindowTitle:
         """Returns empty when both win32gui and window_manager fail."""
         mock_wingui = MagicMock()
         mock_wingui.GetForegroundWindow.side_effect = Exception("fail")
+        # Intercept the runtime ``import win32gui`` inside the function so the
+        # mock is used regardless of whether the real module is cached.
+        import builtins
+
+        _real_import = builtins.__import__
+
+        def _mock_import(name, *args, **kwargs):
+            if name == "win32gui":
+                return mock_wingui
+            return _real_import(name, *args, **kwargs)
+
         with patch.object(ph, "_IS_WINDOWS", True), \
-             patch.dict(sys.modules, {"win32gui": mock_wingui}):
+             patch("builtins.__import__", side_effect=_mock_import), \
+             patch("core.window_manager.list_windows",
+                   side_effect=Exception("wm fail")):
             assert ph._get_foreground_window_title() == ""
 
 
@@ -271,12 +281,12 @@ class TestCheckAndDismiss:
 
             # Second call: attempt 2
             handler._last_detection_time = 0
-            r2 = handler.check_and_dismiss(screenshot=img)
+            handler.check_and_dismiss(screenshot=img)
             assert handler._dismiss_attempts == 2
 
             # Third call: at max, no more dismiss (attempts stays at 2)
             handler._last_detection_time = 0
-            r3 = handler.check_and_dismiss(screenshot=img)
+            handler.check_and_dismiss(screenshot=img)
             assert handler._dismiss_attempts == 2  # didn't increase
 
     def test_no_dismiss_when_not_detected(self):

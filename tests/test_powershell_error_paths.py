@@ -9,10 +9,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.powershell import PowerShellRunner, PSResult
-
 
 # ---------------------------------------------------------------------------
 # _run() exception paths (lines 257-277) — need to mock _is_windows

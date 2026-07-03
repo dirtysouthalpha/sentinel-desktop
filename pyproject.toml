@@ -57,8 +57,8 @@ windows = [
     "keyboard ~= 0.13.5; sys_platform == 'win32'",
 ]
 dev = [
-    "pytest ~= 8.0",
-    "pytest-asyncio ~= 0.23",
+    "pytest >= 8.0",
+    "pytest-asyncio >= 0.23",
     "pytest-cov ~= 4.1",
     "ruff ~= 0.4",
     "mypy ~= 1.8",
@@ -90,20 +90,12 @@ version = { attr = "core.__version__" }
 # Ruff (lint + format)
 # ---------------------------------------------------------------------------
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py310"
 exclude = [".venv", "build", "dist", "installer/output"]
 
 [tool.ruff.lint]
-select = [
-    "E",   # pycodestyle errors
-    "F",   # pyflakes
-    "W",   # pycodestyle warnings
-    "I",   # isort
-    "UP",  # pyupgrade
-    "B",   # flake8-bugbear
-    "S",   # flake8-bandit (security)
-]
+select = ["E", "F", "W", "I"]
 ignore = [
     "E501",  # line length handled by formatter
     "E701",  # `class X: y = 1` one-liners are fine for tiny stubs

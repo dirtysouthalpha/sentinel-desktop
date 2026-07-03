@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -24,21 +23,31 @@ def stealth_module():
 
     This causes the import-time try block (lines 33-38) to succeed and
     _HAS_WIN32 to be True, plus the ctypes struct definitions (lines
-    265-277) to be executed.
+    265-277) to be executed.  We also mock ``ctypes.windll`` so that native
+    calls like ``GetGUIThreadInfo`` don't segfault when fed mock thread IDs.
     """
+    import ctypes as real_ctypes
+
     mock_win32api = MagicMock()
     mock_win32gui = MagicMock()
     mock_win32con = MagicMock()
+    mock_windll = MagicMock()
 
     # Save state
     saved_modules = {}
     for mod_name in ("win32api", "win32gui", "win32con"):
         saved_modules[mod_name] = sys.modules.get(mod_name)
+    saved_windll = getattr(real_ctypes, "windll", None)
 
     # Inject mocks before import
     sys.modules["win32api"] = mock_win32api
     sys.modules["win32gui"] = mock_win32gui
     sys.modules["win32con"] = mock_win32con
+    # Prevent real native calls (e.g. GetGUIThreadInfo) from segfaulting
+    real_ctypes.windll = mock_windll
+    # Return 0 (falsy) so _get_focus_hwnd skips the int(hwndFocus) path
+    # (the struct field is uninitialized when mocked, causing int(None)).
+    mock_windll.user32.GetGUIThreadInfo.return_value = 0
 
     # Force reload so the try/except succeeds
     import core.stealth_input as si
@@ -52,6 +61,8 @@ def stealth_module():
             sys.modules.pop(mod_name, None)
         else:
             sys.modules[mod_name] = saved
+    if saved_windll is not None:
+        real_ctypes.windll = saved_windll
 
     # Reload again to restore original state
     importlib.reload(si)

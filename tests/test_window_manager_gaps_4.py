@@ -10,8 +10,9 @@ These lines execute at import time inside conditional/try-except blocks:
 import importlib
 import platform
 import sys
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import core.window_manager as wm_original
 
@@ -175,6 +176,9 @@ class TestPywintypesImportFailsOnWindows:
                 importlib.reload(wm_original)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests non-Windows fallback behavior"
+)
 class TestNonWindowsPlatform:
     """Cover lines 29-32: else branch for non-Windows platforms."""
 

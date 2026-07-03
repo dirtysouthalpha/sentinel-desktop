@@ -7,10 +7,7 @@ _color_for_kind. GUI class tests are not included (require tkinter runtime).
 
 from __future__ import annotations
 
-import pytest
-
-from gui.overlay import _coords_from_action, _label_for_action, _color_for_kind
-
+from gui.overlay import _color_for_kind, _coords_from_action, _label_for_action
 
 # ── Tests: _coords_from_action ────────────────────────────────────────────
 

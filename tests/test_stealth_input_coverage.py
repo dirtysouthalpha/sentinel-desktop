@@ -7,13 +7,11 @@ On Linux, win32api/win32con/win32gui are never imported, so we inject mock modul
 as module-level attributes on stealth_input before calling each function.
 """
 
-import sys
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from core import stealth_input
-
 
 # ---------------------------------------------------------------------------
 # Helpers — inject mock win32 modules into the stealth_input module namespace
@@ -47,19 +45,46 @@ class MockWin32:
         stealth_input.win32gui = self.gui
 
     def remove(self):
-        """Remove the injected attributes so other tests aren't affected."""
+        """Remove the injected attributes so other tests aren't affected.
+
+        On Windows the real win32 modules exist at module load time; we must
+        NOT delete them. Only remove attributes that look like our injected
+        mocks (MagicMock instances), leaving real modules intact.
+        """
+        from unittest.mock import MagicMock as _MM
+
         for name in ("win32api", "win32con", "win32gui"):
-            if hasattr(stealth_input, name):
+            attr = getattr(stealth_input, name, None)
+            if isinstance(attr, _MM):
                 delattr(stealth_input, name)
 
 
 @pytest.fixture(autouse=True)
-def _cleanup_win32():
-    """Ensure injected win32 mocks are removed after each test."""
+def _restore_win32():
+    """Save win32 module attributes before each test and restore them after.
+
+    On Windows, ``stealth_input`` has real ``win32api``/``win32con``/``win32gui``
+    modules.  Tests in this file inject MagicMock replacements to exercise
+    PostMessage paths.  We must restore the originals afterward so that other
+    test files (which ``@patch`` these attributes) don't break with
+    ``AttributeError: <module> does not have the attribute``.
+    """
+    saved = {
+        name: getattr(stealth_input, name)
+        for name in ("win32api", "win32con", "win32gui")
+        if hasattr(stealth_input, name)
+    }
     yield
+    for name, original in saved.items():
+        setattr(stealth_input, name, original)
+    # Remove any injected attrs that weren't there originally.
+    from unittest.mock import MagicMock as _MM
+
     for name in ("win32api", "win32con", "win32gui"):
-        if hasattr(stealth_input, name):
-            delattr(stealth_input, name)
+        if name not in saved and hasattr(stealth_input, name):
+            attr = getattr(stealth_input, name)
+            if isinstance(attr, _MM):
+                delattr(stealth_input, name)
 
 
 # ---------------------------------------------------------------------------

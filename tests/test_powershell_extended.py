@@ -1,7 +1,6 @@
 """Extended tests for core/powershell.py — runner config, helpers, JSON parsing, platform guards."""
 
-import json
-import platform
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +14,6 @@ from core.powershell import (
     _ps_escape_single_quoted,
     get_default_runner,
 )
-
 
 # ---------------------------------------------------------------------------
 # _ps_escape_single_quoted extended
@@ -197,7 +195,9 @@ class TestBaseArgs:
     def test_includes_json_output(self):
         runner = PowerShellRunner()
         args = runner._base_args()
-        assert "JSON" in args
+        # -OutputFormat was removed (PS rejects "JSON"; handled by ConvertTo-Json).
+        assert not any(a.startswith("-OutputFormat") for a in args)
+        assert "JSON" not in args
 
     def test_starts_with_exe(self):
         runner = PowerShellRunner()
@@ -282,6 +282,9 @@ class TestParseJsonOutputExtended:
 # _run — non-Windows path
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests non-Windows fallback behavior"
+)
 class TestRunNonWindows:
     @patch("core.powershell._is_windows", return_value=False)
     def test_returns_non_windows_result(self, mock_win):

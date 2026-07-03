@@ -266,7 +266,7 @@ class TestCaptureRegion:
         fake_img = Image.new("RGB", (50, 50), "green")
         with patch("core.screenshot.pyautogui") as mock_pg:
             mock_pg.screenshot.return_value = fake_img
-            result = capture_region(10, 20, 50, 50)
+            capture_region(10, 20, 50, 50)
             mock_pg.screenshot.assert_called_with(region=(10, 20, 50, 50))
 
     @patch("core.screenshot._HAS_MSS", True)
@@ -471,11 +471,20 @@ class TestCaptureToBase64:
 
 class TestFindTemplate:
     def test_no_cv2_returns_none(self):
+        # Capture the real __import__ BEFORE patching to avoid infinite recursion.
+        import builtins
+
         from core.screenshot import find_template
 
+        _real_import = builtins.__import__
+
+        def _block_cv2(name, *args, **kwargs):
+            if name in ("cv2", "numpy"):
+                raise ImportError("no %s" % name)
+            return _real_import(name, *args, **kwargs)
+
         with patch.dict("sys.modules", {"cv2": None, "numpy": None}):
-            # Force re-import failure
-            with patch("builtins.__import__", side_effect=lambda *a, **kw: __import__(*a, **kw) if a[0] not in ("cv2", "numpy") else (_ for _ in ()).throw(ImportError("no cv2"))):
+            with patch("builtins.__import__", side_effect=_block_cv2):
                 result = find_template("test.png")
                 assert result is None
 

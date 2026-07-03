@@ -169,8 +169,8 @@ class PowerShellRunner:
         return env
 
     def _base_args(self) -> list[str]:
-        """Return the common PowerShell invocation flags (no profile, JSON output)."""
-        return [self._ps_exe, "-NoProfile", "-NonInteractive", "-OutputFormat", "JSON"]
+        """Return the common PowerShell invocation flags (no profile, no -OutputFormat)."""
+        return [self._ps_exe, "-NoProfile", "-NonInteractive"]
 
     @staticmethod
     def _parse_json_output(stdout: str) -> list[dict[str, Any]]:

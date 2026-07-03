@@ -1,10 +1,8 @@
 """Tests for core/engine.py — _finalize_run, _validate_run_config, _build_initial_messages."""
 
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.engine import AgentEngine
-
 
 # ---------------------------------------------------------------------------
 # _finalize_run
@@ -365,7 +363,7 @@ class TestBuildInitialMessages:
             with patch.object(eng, "_build_app_context", return_value=""):
                 with patch("core.engine.capture_to_base64", side_effect=OSError("no screen")):
                     with patch.object(eng, "_add_vision_message") as mock_vision:
-                        msgs = eng._build_initial_messages("goal")
+                        eng._build_initial_messages("goal")
 
         # Should still call _add_vision_message with empty string
         mock_vision.assert_called_once()

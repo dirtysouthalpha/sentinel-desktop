@@ -8,14 +8,12 @@ by mocking ctypes.win32 APIs so the tests run on any platform.
 from __future__ import annotations
 
 import ctypes
-import signal
 import threading
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import core.virtual_desktop as vd
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -166,7 +164,7 @@ class TestGetCurrentDesktopNameWin32:
     def test_win32_success_path(self):
         """Returns the desktop name from GetUserObjectInformationW."""
         user32 = _mock_user32()
-        kernel32 = _mock_kernel32()
+        _mock_kernel32()
 
         # Build a fake ctypes-compatible buffer
         mock_buf = MagicMock()
@@ -208,7 +206,7 @@ class TestGetCurrentDesktopNameWin32:
         """Returns 'Default' when GetUserObjectInformationW returns False."""
         user32 = _mock_user32()
         user32.GetUserObjectInformationW.return_value = False
-        kernel32 = _mock_kernel32()
+        _mock_kernel32()
 
         mock_buf = MagicMock()
         mock_buf.value = ""
@@ -234,7 +232,7 @@ class TestGetCurrentDesktopNameWin32:
         """Returns 'Default' when buffer value is empty string."""
         user32 = _mock_user32()
         user32.GetUserObjectInformationW.return_value = True
-        kernel32 = _mock_kernel32()
+        _mock_kernel32()
 
         mock_buf = MagicMock()
         mock_buf.value = ""
@@ -1032,7 +1030,7 @@ class TestWin32ListWindowsWin32:
         try:
             with patch.object(vd, "_IS_WINDOWS", True), \
                  patch.object(vd, "_get_user32", return_value=user32):
-                result = win_vd.list_windows()
+                win_vd.list_windows()
         finally:
             if had_winfunctype:
                 ctypes.WINFUNCTYPE = orig

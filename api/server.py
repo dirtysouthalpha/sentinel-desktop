@@ -182,6 +182,11 @@ class SentinelServer:
         self._ws_lock = threading.Lock()
         # Cache the loop so worker threads can schedule broadcasts onto it.
         self._loop: asyncio.AbstractEventLoop | None = None
+        # Workflow builder store + templates (initialized here so tests that
+        # bypass create_app() still have them available).
+        from core.workflow_builder import TEMPLATES, workflow_store
+        self._workflow_store = workflow_store
+        self._workflow_templates = TEMPLATES
 
     # -- auth ------------------------------------------------------------
 
@@ -204,6 +209,24 @@ class SentinelServer:
         async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             """Manage the FastAPI application lifespan (startup / shutdown)."""
             self._loop = asyncio.get_running_loop()
+            # Initialize a persistent engine at startup so engine-backed
+            # endpoints (plugins, scheduled tasks, scripts, recorder, workflows,
+            # notifications) work without first running an agent goal. Guarded so
+            # any failure degrades gracefully instead of crashing API startup.
+            if self.engine is None:
+                try:
+                    self.engine = AgentEngine(self.config.load())
+                    logger.info("Engine initialized at startup")
+                    try:
+                        sched = getattr(self.engine, "scheduler", None)
+                        if sched is not None and hasattr(sched, "start"):
+                            sched.start()
+                            logger.info("Task scheduler started")
+                    except Exception:
+                        logger.exception("Scheduler failed to start (non-fatal)")
+                except Exception:
+                    logger.exception("Engine init at startup failed (non-fatal)")
+                    self.engine = None
             yield
 
         app = FastAPI(

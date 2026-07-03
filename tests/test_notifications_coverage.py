@@ -1,6 +1,5 @@
 """Additional coverage tests for notifications.py — gap paths."""
 
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +11,6 @@ from core.notifications import (
     NotificationManager,
     _send_http,
 )
-
 
 # ---------------------------------------------------------------------------
 # _send_http — retry and error paths

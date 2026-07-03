@@ -9,7 +9,6 @@ import api.server as mod
 from api.server import SentinelServer
 from config import Config
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -553,13 +552,11 @@ class TestHandleStopEdgeCases:
 class TestWorkflowBuilderList:
     def test_list_empty(self):
         server = _make_server()
-        app = server.create_app()
         result = _run(server._handle_workflow_builder_list(authorization=None))
         assert result["workflows"] == []
 
     def test_list_returns_dicts(self):
         server = _make_server()
-        app = server.create_app()
         # Create a workflow first
         wf = server._workflow_store.create(name="Test WF")
         result = _run(server._handle_workflow_builder_list(authorization=None))
@@ -572,7 +569,6 @@ class TestWorkflowBuilderList:
 class TestWorkflowBuilderCreate:
     def test_create_default_name(self):
         server = _make_server()
-        app = server.create_app()
         result = _run(server._handle_workflow_builder_create(authorization=None))
         assert result["name"] == "New Workflow"
         assert "id" in result
@@ -581,7 +577,6 @@ class TestWorkflowBuilderCreate:
 
     def test_create_custom_name(self):
         server = _make_server()
-        app = server.create_app()
         result = _run(
             server._handle_workflow_builder_create(name="Custom WF", description="desc", authorization=None)
         )
@@ -594,7 +589,6 @@ class TestWorkflowBuilderCreate:
 class TestWorkflowTemplates:
     def test_templates_returns_dict(self):
         server = _make_server()
-        app = server.create_app()
         result = _run(server._handle_workflow_templates(authorization=None))
         assert "templates" in result
         assert isinstance(result["templates"], dict)
@@ -603,7 +597,6 @@ class TestWorkflowTemplates:
 class TestWorkflowAddStep:
     def test_add_step_success(self):
         server = _make_server()
-        app = server.create_app()
         wf = server._workflow_store.create(name="WF")
         result = _run(
             server._handle_workflow_add_step(
@@ -618,7 +611,6 @@ class TestWorkflowAddStep:
         from fastapi import HTTPException
 
         server = _make_server()
-        app = server.create_app()
         with pytest.raises(HTTPException) as exc_info:
             _run(
                 server._handle_workflow_add_step(
@@ -631,7 +623,6 @@ class TestWorkflowAddStep:
 class TestWorkflowRemoveStep:
     def test_remove_step_success(self):
         server = _make_server()
-        app = server.create_app()
         wf = server._workflow_store.create(name="WF")
         step = wf.add_step(action="type", name="Type text")
         result = _run(
@@ -644,7 +635,6 @@ class TestWorkflowRemoveStep:
         from fastapi import HTTPException
 
         server = _make_server()
-        app = server.create_app()
         with pytest.raises(HTTPException) as exc_info:
             _run(
                 server._handle_workflow_remove_step(
@@ -657,14 +647,12 @@ class TestWorkflowRemoveStep:
 class TestWorkflowBuilderDelete:
     def test_delete_existing(self):
         server = _make_server()
-        app = server.create_app()
         wf = server._workflow_store.create(name="WF")
         result = _run(server._handle_workflow_builder_delete(wf.id, authorization=None))
         assert result["deleted"] is True
 
     def test_delete_nonexistent(self):
         server = _make_server()
-        app = server.create_app()
         result = _run(server._handle_workflow_builder_delete("nonexistent", authorization=None))
         assert result["deleted"] is False
 
@@ -672,7 +660,6 @@ class TestWorkflowBuilderDelete:
 class TestWorkflowDuplicate:
     def test_duplicate_success(self):
         server = _make_server()
-        app = server.create_app()
         wf = server._workflow_store.create(name="Original")
         result = _run(server._handle_workflow_duplicate(wf.id, authorization=None))
         assert result["name"] == "Original (Copy)"
@@ -682,7 +669,6 @@ class TestWorkflowDuplicate:
 
     def test_duplicate_custom_name(self):
         server = _make_server()
-        app = server.create_app()
         wf = server._workflow_store.create(name="Original")
         result = _run(
             server._handle_workflow_duplicate(wf.id, new_name="Custom Copy", authorization=None)
@@ -695,7 +681,6 @@ class TestWorkflowDuplicate:
         from fastapi import HTTPException
 
         server = _make_server()
-        app = server.create_app()
         with pytest.raises(HTTPException) as exc_info:
             _run(server._handle_workflow_duplicate("nonexistent", authorization=None))
         assert exc_info.value.status_code == 404

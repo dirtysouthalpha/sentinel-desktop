@@ -5,14 +5,13 @@ Targets _StubVirtualDesktop (lines 604-683) and VirtualDesktop wrapper
 and repr which are platform-agnostic.
 """
 
-from unittest.mock import MagicMock, patch
-
 import subprocess
+import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core import virtual_desktop
-
 
 # ---------------------------------------------------------------------------
 # _StubVirtualDesktop — directly tested (it's the impl on Linux)
@@ -127,6 +126,7 @@ class TestStubContextManager:
 # VirtualDesktop wrapper — delegation tests (works on Linux via stub)
 # ---------------------------------------------------------------------------
 
+@patch("core.virtual_desktop._IS_WINDOWS", False)
 class TestVirtualDesktopWrapper:
     """VirtualDesktop delegates to _StubVirtualDesktop on Linux."""
 
@@ -207,6 +207,9 @@ class TestVirtualDesktopWrapper:
 # _get_user32 / _get_kernel32 — non-Windows paths
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests Linux ctypes.windll absence"
+)
 class TestLazyCtypes:
     """Lazy ctypes handles — on Linux, windll doesn't exist."""
 

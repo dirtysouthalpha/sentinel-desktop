@@ -7,15 +7,12 @@ so they run cross-platform.
 
 from __future__ import annotations
 
-import signal
 import threading
-from types import TracebackType
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import core.virtual_desktop as vd
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -366,6 +363,7 @@ class TestWin32ContextManager:
 # VirtualDesktop factory — repr
 # ---------------------------------------------------------------------------
 
+@patch.object(vd, "_IS_WINDOWS", False)
 class TestVirtualDesktopRepr:
     """Test VirtualDesktop.__repr__."""
 

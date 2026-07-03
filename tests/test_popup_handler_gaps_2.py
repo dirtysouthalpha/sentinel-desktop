@@ -6,7 +6,6 @@ Focuses on lines 349, 382-383, 530, 718-729, 735-760.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PIL import Image
 
 import core.popup_handler as ph
@@ -274,7 +273,7 @@ class TestCheckAndDismiss:
         with patch("core.screenshot.capture_screen", return_value=Image.new("RGB", (100, 100))), \
              patch.object(ph, "_ocr_text", return_value="Error\nAn error has occurred."), \
              patch.object(ph, "_get_foreground_window_title", return_value="Error"):
-            result = handler.check_and_dismiss()
+            handler.check_and_dismiss()
         # Should not have attempted to dismiss
         assert handler._dismiss_attempts == handler.MAX_DISMISS_ATTEMPTS
 

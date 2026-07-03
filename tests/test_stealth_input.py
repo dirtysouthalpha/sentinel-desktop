@@ -154,11 +154,11 @@ def test_post_named_key_unknown_key_returns_false(monkeypatch):
 
 def test_post_named_key_single_char_falls_back_to_post_text(monkeypatch):
     """Single-character key name falls through to post_text path."""
-    # On Linux, win32gui is not imported so we can't fully test the path,
-    # but we can verify that a single char doesn't hit VK_NAMES lookup
+    # Force the non-Win32 path so post_named_key returns False without
+    # calling real Win32 APIs (this is a fallback-logic test, not a Win32 test).
+    monkeypatch.setattr(stealth_input, "_HAS_WIN32", False)
     from core.stealth_input import VK_NAMES
     assert "a" not in VK_NAMES  # single chars aren't in the lookup table
-    # post_named_key("a") will try post_text, which returns False on Linux
     result = stealth_input.post_named_key("a")
     assert result is False
 
@@ -174,7 +174,6 @@ def test_vk_names_has_common_keys():
 
 
 def test_vk_names_values_are_ints():
-    from core.stealth_input import VK_NAMES
     for name, vk in stealth_input.VK_NAMES.items():
         assert isinstance(vk, int), f"VK_NAMES[{name!r}] = {vk!r} not int"
 

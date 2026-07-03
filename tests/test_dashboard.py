@@ -7,11 +7,9 @@ FastAPI endpoints with psutil mocked appropriately.
 
 from __future__ import annotations
 
-import importlib
 import sys
 import time
 from pathlib import Path
-from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -314,8 +312,9 @@ class TestDashboardOverview:
 
     @pytest.mark.asyncio
     async def test_overview_platform_info(self):
-        import core.dashboard as dash
         import platform
+
+        import core.dashboard as dash
 
         fake_psutil = _make_psutil()
         with patch.dict(sys.modules, {"psutil": fake_psutil}), \

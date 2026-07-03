@@ -6,8 +6,8 @@ built-in helpers on non-Windows, PSResult edge cases, and the module-level
 get_default_runner() factory.
 """
 
-import os
-from unittest.mock import MagicMock, patch
+import sys
+from unittest.mock import patch
 
 import pytest
 
@@ -20,13 +20,15 @@ from core.powershell import (
     get_default_runner,
 )
 
-
 # ---------------------------------------------------------------------------
 # _is_windows / _non_windows_result
 # ---------------------------------------------------------------------------
 
 
 class TestPlatformHelpers:
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="Asserts _is_windows() is False (Linux-only)"
+    )
     def test_is_windows_on_linux(self):
         assert _is_windows() is False
 
@@ -115,7 +117,10 @@ class TestRunnerInternals:
         assert args[0] == "powershell.exe"
         assert "-NoProfile" in args
         assert "-NonInteractive" in args
-        assert "JSON" in args
+        # -OutputFormat was removed (PS rejects "JSON" as a format value; JSON
+        # conversion is handled by ConvertTo-Json in the command itself).
+        assert not any(a.startswith("-OutputFormat") for a in args)
+        assert "JSON" not in args
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +128,13 @@ class TestRunnerInternals:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests Linux-only early-return path"
+)
 class TestRunOnLinux:
+    """These tests verify the non-Windows early-return path. They must NOT
+    run on Windows, where _run() would actually execute PowerShell commands."""
+
     def test_run_returns_non_windows_result(self):
         runner = PowerShellRunner()
         result = runner._run("Get-Process")
@@ -172,7 +183,7 @@ class TestRunScriptGaps:
         with patch.object(runner, "_run") as mock_run:
             mock_run.return_value = PSResult(success=True, exit_code=0, stdout="ok", stderr="", objects=[])
             # Value with null byte → _ps_escape raises ValueError → falls back to ''
-            result = runner.run_script(str(script), args={"Key": "bad\x00val"})
+            runner.run_script(str(script), args={"Key": "bad\x00val"})
             call_args = mock_run.call_args[0][0]
             assert "-Key ''" in call_args
 
@@ -182,6 +193,9 @@ class TestRunScriptGaps:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Tests non-Windows fallback behavior"
+)
 class TestBuiltInHelpersOnLinux:
     def test_get_event_errors(self):
         runner = PowerShellRunner()

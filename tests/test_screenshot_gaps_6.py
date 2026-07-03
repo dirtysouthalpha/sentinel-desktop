@@ -4,14 +4,12 @@ capture_screen, capture_region, find_template, and wait_for_template.
 Focuses on lines 57-66, 85-93, 104-122, 159-171, 259-270, 327-355.
 """
 
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 from PIL import Image
 
 import core.screenshot as sc
-
 
 # ---------------------------------------------------------------------------
 # resolve_monitor("auto") with mss available

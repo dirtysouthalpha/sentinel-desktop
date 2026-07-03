@@ -7,10 +7,7 @@ libraries) to reach the uncovered branches.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import core.window_manager as wm
-
 
 # ---------------------------------------------------------------------------
 # Helpers

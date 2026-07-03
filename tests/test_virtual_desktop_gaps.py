@@ -7,17 +7,14 @@ and module-level constants that the base test file doesn't exercise.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.virtual_desktop import (
     STARTF_USESHOWWINDOW,
     SW_SHOWNORMAL,
     UOI_NAME,
     VirtualDesktop,
-    _StubVirtualDesktop,
     _get_current_desktop_name,
+    _StubVirtualDesktop,
 )
-
 
 # ---------------------------------------------------------------------------
 # Module-level constants not covered in base test file
@@ -62,6 +59,7 @@ class TestGetCurrentDesktopName:
 # ---------------------------------------------------------------------------
 
 
+@patch("core.virtual_desktop._IS_WINDOWS", False)
 class TestVirtualDesktopFactory:
     def test_factory_creates_stub_on_linux(self):
         vd = VirtualDesktop("TestVD")

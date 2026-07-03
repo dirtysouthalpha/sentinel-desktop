@@ -408,5 +408,5 @@ class TestBuildReportText:
         ]
         text = engine._build_report_text(report, "g", 1.0, False, errors, "p", "m")
         # Count how many error lines appear
-        error_lines = [l for l in text.split("\n") if l.startswith("  Step ")]
+        error_lines = [ln for ln in text.split("\n") if ln.startswith("  Step ")]
         assert len(error_lines) <= 5

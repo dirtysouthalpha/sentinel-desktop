@@ -200,6 +200,9 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
         "manual_models": [
+            "GLM-5.1",
+            "GLM-4.7",
+            "GLM-4.5-Air",
             "glm-5",
             "glm-5-pro",
             "glm-5-flash",
@@ -211,6 +214,10 @@ PROVIDERS: dict[str, dict[str, Any]] = {
             "glm-4-flash",
             "glm-z1-air",
             "glm-z1-flash",
+            "glm-4.5v",
+            "glm-4.6v",
+            "glm-5v-turbo",
+            "glm-5v-pro",
         ],
     },
     "minimax": {
