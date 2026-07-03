@@ -18,6 +18,12 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
 
 ## Active
 
+- [ ] Phase 3a: PyPI Trusted Publishing configuration — User action required.
+  The code changes for OIDC authentication are committed (commit 5d4c5f6) but
+  PyPI Trusted Publishing needs to be configured on the PyPI website before
+  the release can be tested. See docs/PYPI_TRUSTED_PUBLISHING_SETUP.md for
+  step-by-step instructions. Once configured, proceed to Phase 3b.
+
 <!-- STEALTH-TIER IMPLEMENTATION — sourced from the Phase 1 design spec
      (docs/superpowers/specs/2026-06-20-fully-stealth-humanization-tier.md).
      One phase per module, TDD, ordered by dependency. The spec's
@@ -38,28 +44,22 @@ Format: `- [ ] Phase N: <title> — see \`docs/superpowers/specs/<spec>.md\``
      GRIND GIT PROTOCOL (updated): use a bare `git push` (goes to backup/main via the tracked upstream). NEVER run
      `git push origin main`, NEVER `git pull --rebase`, NEVER force-push origin. Commits/pushes may now proceed normally. -->
 - [x] RESOLVED: repository lineage escalation — backup remote wired, `main` → `backup/main`, push/pull unblocked (2026-07-02).
-- [BLOCKED: PyPI 403 - invalid API token, need Trusted Publishing or valid PYPI_API_TOKEN refresh] Phase 3: First clean automated release — verify the release pipeline
-  end-to-end with a NON-COLLIDING patch version. CRITICAL: v22.0.0 is ALREADY on
-  PyPI (manual upload), so do NOT push a v22.0.0 tag (release.yml would re-build
-  22.0.0 and PyPI rejects the duplicate file). Instead:
-    1. Bump `core/__init__.py` `__version__` from "22.0.0" → "22.0.1".
-    2. Commit with message "chore(release): bump to 22.0.1 for pipeline shakedown".
-    3. Tag `v22.0.1` (annotated): `git tag -a v22.0.1 -m "v22.0.1 — release pipeline verification"`.
-    4. Push the commit, then push the tag: `git push origin main && git push origin v22.0.1`.
-    5. The tag triggers `.github/workflows/release.yml` (on: push tags v*) →
-       test → build sdist+wheel → publish to PyPI via PYPI_API_TOKEN → GitHub Release.
-    6. Watch the run: `gh run watch` (or Actions tab). Verify both the PyPI publish
-       job AND the GitHub Release job succeed. Confirm 22.0.1 appears at
-       pypi.org/pypi/sentinel-desktop and in the repo's Releases.
-  Gate: release.yml run is green (all jobs), pypi.org shows 22.0.1, GitHub
-  Release exists for v22.0.1. If publish fails, read the job log, fix, retag
-  v22.0.2 (PyPI doesn't allow re-uploading a failed version either). This phase
-  proves the whole release automation works — after it, every future stealth-tier
-  release (v22.1.0+) is one tag push away.
-  ATTEMPTED: v22.0.1 tag pushed 2026-06-21, tests passed, build passed, GitHub Release
-  created successfully, but PyPI publish failed with 403 Forbidden - invalid token.
-  Need to either configure Trusted Publishers or refresh the PYPI_API_TOKEN secret.
-  Next attempt must use v22.0.2 (PyPI rejected re-upload of 22.0.1).
+- [x] RESOLVED: PyPI authentication fixed — code changes committed (5d4c5f6), workflow
+  updated to use OIDC-only, version bumped to 22.0.2, setup guide added. Now requires
+  user action: configure Trusted Publishing on PyPI (see docs/PYPI_TRUSTED_PUBLISHING_SETUP.md).
+  Once configured, proceed to Phase 3b to tag v22.0.2 and test the release pipeline.
+
+- [BLOCKED: awaiting user PyPI configuration] Phase 3b: Complete v22.0.2 release test —
+  Once Phase 3a is complete (PyPI Trusted Publishing configured), tag v22.0.2 and test
+  the full release pipeline:
+    1. Tag `v22.0.2` (annotated): `git tag -a v22.0.2 -m "v22.0.2 — Trusted Publishing verification"`.
+    2. Push the tag: `git push backup v22.0.2`.
+    3. Watch the run: `gh run watch` (or Actions tab).
+    4. Verify both PyPI publish job AND GitHub Release job succeed.
+    5. Confirm 22.0.2 appears at pypi.org/pypi/sentinel-desktop and in GitHub Releases.
+  Gate: release.yml run is green (all jobs), pypi.org shows 22.0.2, GitHub Release exists.
+  This phase proves the Trusted Publishing pipeline works — after it, every future release
+  (v22.1.0+) is one tag push away.
 
 
 ## Done
