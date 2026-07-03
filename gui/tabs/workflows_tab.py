@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Workflows Tab.
+"""Sentinel Desktop v22.0 "Aria" — Workflows Tab.
 
 Workflow management tab with left-panel list and right-panel detail view.
 """

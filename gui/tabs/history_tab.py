@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — History Tab.
+"""Sentinel Desktop v22.0 "Aria" — History Tab.
 
 Run history browser with session replay and log export.
 """

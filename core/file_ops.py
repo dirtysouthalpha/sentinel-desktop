@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Safe file operations.
+"""Sentinel Desktop v22.0 "Aria" — Safe file operations.
 
 When ``tenant_lockdown`` is enabled in the user config (or the
 ``SENTINEL_SANDBOX_ROOT`` environment variable is set), all paths resolve

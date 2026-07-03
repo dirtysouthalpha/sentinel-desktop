@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — DPAPI Credential Vault.
+"""Sentinel Desktop v22.0 "Aria" — DPAPI Credential Vault.
 
 Provides encrypted storage of sensitive credentials (API keys, tokens, etc.)
 using Windows DPAPI (Data Protection API) on Windows, and a per-entry-nonce

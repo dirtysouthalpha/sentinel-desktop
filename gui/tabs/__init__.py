@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — GUI tabs package.
+"""Sentinel Desktop v22.0 "Aria" — GUI tabs package.
 
 Importing the submodules here binds them as attributes of this package on
 every Python version. This matters for unittest.mock.patch("gui.tabs.<sub>")

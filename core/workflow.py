@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Workflow Engine.
+"""Sentinel Desktop v22.0 "Aria" — Workflow Engine.
 
 Multi-step workflow execution with conditions, loops, and variables.
 

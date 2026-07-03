@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Clipboard read/write utilities.
+"""Sentinel Desktop v22.0 "Aria" — Clipboard read/write utilities.
 
 Provides functions to read from and write to the system clipboard.
 Cross-platform clipboard operations with error handling.

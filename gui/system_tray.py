@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — System Tray Icon.
+"""Sentinel Desktop v22.0 "Aria" — System Tray Icon.
 
 Manages a persistent system tray icon with a rich context menu for quick
 access to common actions: starting tasks, recording, running scripts, and
@@ -145,7 +145,7 @@ _IT_QUICK_ACTIONS = [
 
 
 class SystemTrayIcon:
-    """System tray icon with context menu for Sentinel Desktop v3.0.
+    """System tray icon with context menu for Sentinel Desktop v22.0 "Aria".
 
     Parameters
     ----------
@@ -197,7 +197,7 @@ class SystemTrayIcon:
         self._icon = pystray.Icon(
             name="sentinel-desktop",
             icon=icon_image,
-            title="Sentinel Desktop v3.0 — Idle",
+            title="Sentinel Desktop v22.0 'Aria' — Idle",
             menu=menu,
         )
 
@@ -251,7 +251,7 @@ class SystemTrayIcon:
             # Capitalise for the tooltip.
             label = status.replace("_", " ").title()
             self._icon.icon = new_image
-            self._icon.title = f"Sentinel Desktop v3.0 — {label}"
+            self._icon.title = f"Sentinel Desktop v22.0 'Aria' — {label}"
             # Refresh the visible icon on platforms that support it.
             if hasattr(self._icon, "update_menu"):
                 self._icon.update_menu()

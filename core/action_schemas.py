@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Pydantic validation for parsed LLM actions.
+"""Sentinel Desktop v22.0 "Aria" — Pydantic validation for parsed LLM actions.
 
 The agent loop in :mod:`core.engine` calls :func:`validate_action` immediately
 after :meth:`AgentEngine._parse_action` succeeds. The function tries to

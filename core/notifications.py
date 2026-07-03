@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Multi-Channel Notification System.
+"""Sentinel Desktop v22.0 'Aria' — Multi-Channel Notification System.
 
 Provides desktop and remote notifications for task completion, errors,
 and status updates across five channels:
@@ -535,7 +535,7 @@ class NotificationManager:
             "title": title,
             "description": message,
             "color": colour,
-            "footer": {"text": "Sentinel Desktop v3.0"},
+            "footer": {"text": "Sentinel Desktop v22.0 'Aria'"},
             "timestamp": iso_now(),
         }
         payload = {"embeds": [embed]}

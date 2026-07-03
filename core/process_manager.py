@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Process management utilities.
+"""Sentinel Desktop v22.0 "Aria" — Process management utilities.
 
 Provides functions to list, start, and kill system processes.
 Integrates with psutil for cross-platform process operations.

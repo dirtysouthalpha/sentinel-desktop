@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Core desktop automation utilities.
+"""Sentinel Desktop v22.0 "Aria" — Core desktop automation utilities.
 
 Provides functions for mouse, keyboard, and screen capture operations.
 Cross-platform desktop automation with error handling and logging.

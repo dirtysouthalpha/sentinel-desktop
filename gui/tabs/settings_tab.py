@@ -1,4 +1,4 @@
-"""Sentinel Desktop v3.0 — Settings Tab.
+"""Sentinel Desktop v22.0 "Aria" — Settings Tab.
 
 Full settings panel with sections for all configuration.
 """
