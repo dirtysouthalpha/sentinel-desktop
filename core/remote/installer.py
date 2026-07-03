@@ -6,7 +6,6 @@ SentinelDesktop <host> — SSH in, detect OS, install headless agent, register w
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from .fleet import Fleet, MachineInfo
 from .ssh import SSHConfig, SSHExecutor
@@ -60,8 +59,15 @@ class AgentInstaller:
     def __init__(self, fleet: Fleet | None = None) -> None:
         self.fleet = fleet or Fleet()
 
-    def install(self, host: str, user: str = "root", key_file: str = "",
-                label: str = "", tags: list[str] | None = None, timeout: int = 300) -> bool:
+    def install(
+        self,
+        host: str,
+        user: str = "root",
+        key_file: str = "",
+        label: str = "",
+        tags: list[str] | None = None,
+        timeout: int = 300,
+    ) -> bool:
         """Install agent on a remote host and add it to the fleet."""
         config = SSHConfig(host=host, user=user, key_file=key_file, timeout=timeout)
         executor = SSHExecutor(config)
@@ -90,8 +96,11 @@ class AgentInstaller:
 
         # Register in fleet
         machine = MachineInfo(
-            host=host, user=user, key_file=key_file,
-            label=label or host, tags=tags or ["remote"],
+            host=host,
+            user=user,
+            key_file=key_file,
+            label=label or host,
+            tags=tags or ["remote"],
             online=True,
         )
         self.fleet.register(machine)
@@ -107,7 +116,9 @@ class AgentInstaller:
             return False
 
         # Stop and remove systemd service
-        executor.run("systemctl stop sentinel-agent 2>/dev/null; systemctl disable sentinel-agent 2>/dev/null; rm -f /etc/systemd/system/sentinel-agent.service")
+        executor.run(
+            "systemctl stop sentinel-agent 2>/dev/null; systemctl disable sentinel-agent 2>/dev/null; rm -f /etc/systemd/system/sentinel-agent.service"
+        )
         executor.run("userdel -r sentinel 2>/dev/null || true")
         self.fleet.unregister(host)
         logger.info("Agent removed from %s", host)

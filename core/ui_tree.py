@@ -43,8 +43,7 @@ def _have_uia() -> bool:
         _UIA_OK = True
     except (ImportError, ModuleNotFoundError, OSError) as exc:
         logger.info(
-            "UIAutomation disabled — install 'uiautomation' to enable "
-            "click_control / list_controls / set_text (%s)",
+            "UIAutomation disabled — install 'uiautomation' to enable click_control / list_controls / set_text (%s)",
             exc,
         )
         _UIA_OK = False
@@ -216,9 +215,7 @@ def _find_window(window_title: str | None) -> Any | None:
         return None
 
 
-def _walk(
-    node: Any, out: list[dict[str, Any]], depth: int, max_depth: int, max_results: int
-) -> None:
+def _walk(node: Any, out: list[dict[str, Any]], depth: int, max_depth: int, max_results: int) -> None:
     """Recursively collect UI node properties up to *max_depth* / *max_results*."""
     if len(out) >= max_results or depth > max_depth:
         return

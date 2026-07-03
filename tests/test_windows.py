@@ -1,7 +1,7 @@
 """Tests for window management commands."""
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -35,5 +35,5 @@ class TestWindowCommands:
     def test_execute_list(self):
         with patch.object(self.cmds, "list_windows") as mock_list:
             mock_list.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("list windows")
+            self.cmds.execute("list windows")
             mock_list.assert_called_once()

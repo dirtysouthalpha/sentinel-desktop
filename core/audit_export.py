@@ -34,9 +34,7 @@ _SENSITIVE_VALUES = re.compile(
 def _mask_value(value: Any) -> Any:
     """Recursively mask sensitive values inside nested dicts/lists."""
     if isinstance(value, dict):
-        return {
-            k: "***" if _SENSITIVE_KEY_NAMES.search(k) else _mask_value(v) for k, v in value.items()
-        }
+        return {k: "***" if _SENSITIVE_KEY_NAMES.search(k) else _mask_value(v) for k, v in value.items()}
     if isinstance(value, list):
         return [_mask_value(item) for item in value]
     if isinstance(value, str) and _SENSITIVE_VALUES.search(value):
@@ -68,8 +66,7 @@ def _compute_summary(masked_log: list[dict[str, Any]], metadata: dict[str, Any])
     success_count = sum(
         1
         for e in masked_log
-        if str(e.get("result", "")).lower() not in ("fail", "error", "false", "none")
-        and e.get("result") is not None
+        if str(e.get("result", "")).lower() not in ("fail", "error", "false", "none") and e.get("result") is not None
     )
     fail_count = total - success_count
     success_rate = (success_count / total * 100) if total else 0.0
@@ -118,9 +115,7 @@ class AuditExporter:
             Path(self.output_dir).mkdir(parents=True, exist_ok=True)
             self._dir_ready = True
         except OSError:
-            logger.exception(
-                "Failed to create output dir %s — all exports will fail", self.output_dir
-            )
+            logger.exception("Failed to create output dir %s — all exports will fail", self.output_dir)
 
     # ------------------------------------------------------------------
     # Public API
@@ -164,9 +159,7 @@ class AuditExporter:
             _msg = f"Unsupported format '{fmt}'. Choose from: {', '.join(dispatch)}"
             raise ValueError(_msg)
         if not self._dir_ready:
-            raise OSError(
-                f"Output directory {self.output_dir!r} is not available — check permissions"
-            )
+            raise OSError(f"Output directory {self.output_dir!r} is not available — check permissions")
         return handler(log, metadata)
 
     # ------------------------------------------------------------------
@@ -270,10 +263,7 @@ class AuditExporter:
         lines.append("  Step Timeline")
         lines.append("-" * 72)
         col_widths = (6, 22, 18, 30)
-        header_fmt = (
-            f"  {{:<{col_widths[0]}}} {{:<{col_widths[1]}}} "
-            f"{{:<{col_widths[2]}}} {{:<{col_widths[3]}}}"
-        )
+        header_fmt = f"  {{:<{col_widths[0]}}} {{:<{col_widths[1]}}} {{:<{col_widths[2]}}} {{:<{col_widths[3]}}}"
         lines.append(header_fmt.format("Step", "Timestamp", "Action", "Result"))
         lines.append("  " + "-" * (sum(col_widths) - 1))
 
@@ -467,8 +457,7 @@ class AuditExporter:
             ("Status", metadata.get("status", "N/A")),
         ]
         cards_html = "\n".join(
-            f'  <div class="meta-card"><div class="label">{label}</div>'
-            f'<div class="value">{value}</div></div>'
+            f'  <div class="meta-card"><div class="label">{label}</div><div class="value">{value}</div></div>'
             for label, value in cards
         )
         return (
@@ -485,14 +474,10 @@ class AuditExporter:
         rows = []
         for entry in masked_log:
             result_raw = str(entry.get("result", ""))
-            is_fail = (
-                result_raw.lower() in ("fail", "error", "false", "none") or result_raw == "None"
-            )
+            is_fail = result_raw.lower() in ("fail", "error", "false", "none") or result_raw == "None"
             badge_cls = "badge-fail" if is_fail else "badge-success"
             badge_label = "FAIL" if is_fail else "OK"
-            result_display = (
-                f'<span class="badge {badge_cls}">{badge_label}</span> {_esc(result_raw[:60])}'
-            )
+            result_display = f'<span class="badge {badge_cls}">{badge_label}</span> {_esc(result_raw[:60])}'
             params_str = _esc(json.dumps(entry.get("params", {}), default=str)[:80])
             rows.append(
                 f"<tr>"
@@ -526,13 +511,11 @@ class AuditExporter:
             (str(summary["status"]), "Status"),
         ]
         cards_html = "\n".join(
-            f'  <div class="summary-card"><div class="num">{num}</div>'
-            f'<div class="lbl">{lbl}</div></div>'
+            f'  <div class="summary-card"><div class="num">{num}</div><div class="lbl">{lbl}</div></div>'
             for num, lbl in cards
         )
         action_items = "\n".join(
-            f"<li>{_esc(action)}: {count}</li>"
-            for action, count in summary["action_counts"].items()
+            f"<li>{_esc(action)}: {count}</li>" for action, count in summary["action_counts"].items()
         )
         return (
             "<h2>Summary Statistics</h2>\n"

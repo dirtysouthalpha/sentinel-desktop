@@ -44,11 +44,13 @@ def _which(name: str) -> str | None:
 # Window system
 # ---------------------------------------------------------------------------
 
+
 class _LinuxWindowSystem:
     def __init__(self) -> None:
         self._has_xlib = False
         try:
             import Xlib.display  # noqa: F401
+
             self._has_xlib = True
         except ImportError:
             pass
@@ -64,7 +66,8 @@ class _LinuxWindowSystem:
 
     def _get_windows_xlib(self, visible_only: bool) -> list[WindowInfo]:
         try:
-            from Xlib import X, display, Xatom
+            from Xlib import X, Xatom, display
+
             d = display.Display()
             root = d.screen().root
             windows = []
@@ -78,20 +81,26 @@ class _LinuxWindowSystem:
                     try:
                         wmname = window.get_full_property(Xatom.WM_NAME, 0)
                         if wmname:
-                            title = wmname.value.decode("utf-8", errors="replace") if isinstance(wmname.value, bytes) else str(wmname.value)
+                            title = (
+                                wmname.value.decode("utf-8", errors="replace")
+                                if isinstance(wmname.value, bytes)
+                                else str(wmname.value)
+                            )
                     except Exception:
                         pass
                     if title:
                         geom = window.get_geometry()
                         # translate to root coordinates
                         coords = window.translate_coords(root, 0, 0)
-                        windows.append(WindowInfo(
-                            title=title,
-                            x=-coords.x,
-                            y=-coords.y,
-                            width=geom.width,
-                            height=geom.height,
-                        ))
+                        windows.append(
+                            WindowInfo(
+                                title=title,
+                                x=-coords.x,
+                                y=-coords.y,
+                                width=geom.width,
+                                height=geom.height,
+                            )
+                        )
                     for child in window.query_tree().children:
                         _walk(child)
                 except Exception:
@@ -179,12 +188,14 @@ class _LinuxWindowSystem:
 # Input controller
 # ---------------------------------------------------------------------------
 
+
 class _LinuxInput:
     def __init__(self) -> None:
         self._has_xdotool = bool(_which("xdotool"))
         self._has_pyautogui = False
         try:
             import pyautogui  # noqa: F401
+
             self._has_pyautogui = True
         except ImportError:
             pass
@@ -196,6 +207,7 @@ class _LinuxInput:
             _run(["xdotool", "mousemove", str(x), str(y), "click", "--repeat", str(clicks), str(btn)])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.click(x, y, button=button, clicks=clicks)
 
     def double_click(self, x: int, y: int, button: str = "left") -> None:
@@ -206,15 +218,31 @@ class _LinuxInput:
             _run(["xdotool", "mousemove", str(x), str(y)])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.moveTo(x, y)
 
     def drag(self, x1: int, y1: int, x2: int, y2: int, button: str = "left") -> None:
         if self._has_xdotool:
             btn_map = {"left": 1, "middle": 2, "right": 3}
             btn = btn_map.get(button, 1)
-            _run(["xdotool", "mousemove", str(x1), str(y1), "mousedown", str(btn), "mousemove", str(x2), str(y2), "mouseup", str(btn)])
+            _run(
+                [
+                    "xdotool",
+                    "mousemove",
+                    str(x1),
+                    str(y1),
+                    "mousedown",
+                    str(btn),
+                    "mousemove",
+                    str(x2),
+                    str(y2),
+                    "mouseup",
+                    str(btn),
+                ]
+            )
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.moveTo(x1, y1)
             pyautogui.drag(x2 - x1, y2 - y1, button=button, duration=0.3)
 
@@ -225,6 +253,7 @@ class _LinuxInput:
                 _run(["xdotool", "click", str(btn)])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.scroll(clicks, x=x, y=y)
 
     def key_press(self, key: str) -> None:
@@ -232,6 +261,7 @@ class _LinuxInput:
             _run(["xdotool", "key", key])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.press(key)
 
     def key_down(self, key: str) -> None:
@@ -239,6 +269,7 @@ class _LinuxInput:
             _run(["xdotool", "keydown", key])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.keyDown(key)
 
     def key_up(self, key: str) -> None:
@@ -246,6 +277,7 @@ class _LinuxInput:
             _run(["xdotool", "keyup", key])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.keyUp(key)
 
     def type_text(self, text: str, interval: float = 0.02) -> None:
@@ -253,6 +285,7 @@ class _LinuxInput:
             _run(["xdotool", "type", "--delay", str(int(interval * 1000)), text])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.typewrite(text, interval=interval)
 
     def hotkey(self, *keys: str) -> None:
@@ -260,12 +293,14 @@ class _LinuxInput:
             _run(["xdotool", "key", "+".join(keys)])
         elif self._has_pyautogui:
             import pyautogui
+
             pyautogui.hotkey(*keys)
 
 
 # ---------------------------------------------------------------------------
 # Screen capture
 # ---------------------------------------------------------------------------
+
 
 class _LinuxScreen:
     def __init__(self) -> None:
@@ -274,14 +309,17 @@ class _LinuxScreen:
         self._has_mss = False
         try:
             import mss  # noqa: F401
+
             self._has_mss = True
         except ImportError:
             pass
 
     def capture(self, region: tuple[int, int, int, int] | None = None) -> Any:
         from PIL import Image
+
         if self._has_mss:
             import mss
+
             with mss.mss() as sct:
                 if region:
                     monitor = {"left": region[0], "top": region[1], "width": region[2], "height": region[3]}
@@ -291,6 +329,7 @@ class _LinuxScreen:
                 return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
         # Fallback: scrot or import
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             path = f.name
         try:
@@ -301,7 +340,9 @@ class _LinuxScreen:
                     _run(["scrot", path])
             elif self._has_import:
                 if region:
-                    _run(["import", "-window", "root", "-crop", f"{region[2]}x{region[3]}+{region[0]}+{region[1]}", path])
+                    _run(
+                        ["import", "-window", "root", "-crop", f"{region[2]}x{region[3]}+{region[0]}+{region[1]}", path]
+                    )
                 else:
                     _run(["import", "-window", "root", path])
             return Image.open(path)
@@ -329,7 +370,9 @@ class _LinuxScreen:
                         w, h = int(w_h[0]), int(w_h[1])
                         x, y = int(pos.split("+")[0]), int(pos.split("+")[1])
                         is_primary = "*" in line
-                        result.append(MonitorInfo(index=len(result)+1, x=x, y=y, width=w, height=h, is_primary=is_primary))
+                        result.append(
+                            MonitorInfo(index=len(result) + 1, x=x, y=y, width=w, height=h, is_primary=is_primary)
+                        )
                 except (ValueError, IndexError):
                     pass
         return result or [MonitorInfo(index=1, x=0, y=0, width=1920, height=1080, is_primary=True)]
@@ -351,7 +394,7 @@ class _LinuxScreen:
     def capture_base64(self, region: tuple[int, int, int, int] | None = None, fmt: str = "PNG") -> str:
         import base64
         import io
-        from PIL import Image
+
         img = self.capture(region)
         if img is None:
             return ""
@@ -363,6 +406,7 @@ class _LinuxScreen:
 # ---------------------------------------------------------------------------
 # Application manager
 # ---------------------------------------------------------------------------
+
 
 class _LinuxApplicationManager:
     def launch(self, command: str | list[str], **kwargs: Any) -> int | None:
@@ -390,16 +434,19 @@ class _LinuxApplicationManager:
         result = []
         try:
             import psutil
+
             for p in psutil.process_iter(["pid", "name", "exe", "cpu_percent", "memory_info"]):
                 try:
                     info = p.info
-                    result.append(ProcessInfo(
-                        pid=info["pid"] or 0,
-                        name=info.get("name", ""),
-                        executable=info.get("exe", "") or "",
-                        cpu_percent=info.get("cpu_percent", 0.0) or 0.0,
-                        memory_mb=(info.get("memory_info").rss / 1024 / 1024) if info.get("memory_info") else 0.0,
-                    ))
+                    result.append(
+                        ProcessInfo(
+                            pid=info["pid"] or 0,
+                            name=info.get("name", ""),
+                            executable=info.get("exe", "") or "",
+                            cpu_percent=info.get("cpu_percent", 0.0) or 0.0,
+                            memory_mb=(info.get("memory_info").rss / 1024 / 1024) if info.get("memory_info") else 0.0,
+                        )
+                    )
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     pass
         except ImportError:
@@ -413,6 +460,7 @@ class _LinuxApplicationManager:
 # ---------------------------------------------------------------------------
 # Power management
 # ---------------------------------------------------------------------------
+
 
 class _LinuxPower:
     def shutdown(self, force: bool = False, delay: int = 0) -> None:
@@ -429,7 +477,12 @@ class _LinuxPower:
 
     def lock(self) -> None:
         # Try common Linux screen lockers
-        for locker in ("gnome-screensaver-command -l", "xscreensaver-command -lock", "loginctl lock-session", "dm-tool lock"):
+        for locker in (
+            "gnome-screensaver-command -l",
+            "xscreensaver-command -lock",
+            "loginctl lock-session",
+            "dm-tool lock",
+        ):
             if _run(locker.split()).strip() is not None:
                 return
 
@@ -443,6 +496,7 @@ class _LinuxPower:
 # ---------------------------------------------------------------------------
 # Backend
 # ---------------------------------------------------------------------------
+
 
 class LinuxBackend(Backend):
     name = "linux"

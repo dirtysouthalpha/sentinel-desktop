@@ -295,9 +295,7 @@ class AgentEngine:
         # ── Core subsystems (always needed) ──────────────────────────
         self.logger = ForensicLog()
         self.checkpoint = CheckpointManager()
-        self.gate = ApprovalGate(
-            enabled=bool(self.config.get("approval_mode") and not self.config.get("autonomous"))
-        )
+        self.gate = ApprovalGate(enabled=bool(self.config.get("approval_mode") and not self.config.get("autonomous")))
         if self.approval_callback:
             self.gate.set_callback(self.approval_callback)
         self.mfa_detector = MFADetector()
@@ -393,9 +391,7 @@ class AgentEngine:
         if self._plugin_loader is None:
             from core.plugin_loader import PluginLoader
 
-            self._plugin_loader = PluginLoader(
-                os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
-            )
+            self._plugin_loader = PluginLoader(os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins"))
             try:
                 loaded = self._plugin_loader.load_all()
                 for p in loaded:
@@ -513,9 +509,7 @@ class AgentEngine:
 
                 # Call LLM. Strip internal `_sentinel_*` markers so they
                 # never reach the provider's API.
-                use_tools = (
-                    self.config.get("use_tools", True) and provider in TOOL_CAPABLE_PROVIDERS
-                )
+                use_tools = self.config.get("use_tools", True) and provider in TOOL_CAPABLE_PROVIDERS
                 tools = ACTION_TOOLS if use_tools else None
 
                 # LLM call with exponential backoff retry for network/rate-limit errors.
@@ -582,9 +576,7 @@ class AgentEngine:
                         messages.append(
                             {
                                 "role": "user",
-                                "content": (
-                                    "The user skipped that action. Try a different approach."
-                                ),
+                                "content": ("The user skipped that action. Try a different approach."),
                             }
                         )
                         continue
@@ -620,7 +612,10 @@ class AgentEngine:
                 if not action_succeeded:
                     error_msg = result.get("output", str(action_error))
                     failure_result = self._handle_action_failure(
-                        action, action_name, error_msg, messages,
+                        action,
+                        action_name,
+                        error_msg,
+                        messages,
                     )
                     if failure_result == "abort":
                         break
@@ -631,7 +626,12 @@ class AgentEngine:
 
                 # Post-action success: log, checkpoint, screenshot
                 screenshot_b64 = self._handle_post_action_success(
-                    action, action_name, result, goal, messages, screenshot_b64,
+                    action,
+                    action_name,
+                    result,
+                    goal,
+                    messages,
+                    screenshot_b64,
                 )
 
         except (KeyboardInterrupt, SystemExit):
@@ -748,10 +748,7 @@ class AgentEngine:
                         action={"action": "mfa_pause"},
                         result={
                             "ok": False,
-                            "msg": (
-                                f"🔐 {mfa_result.type.upper()} detected: "
-                                f"{mfa_result.prompt_text}"
-                            ),
+                            "msg": (f"🔐 {mfa_result.type.upper()} detected: {mfa_result.prompt_text}"),
                         },
                     )
                 except (RuntimeError, TypeError) as exc:
@@ -859,9 +856,7 @@ class AgentEngine:
         # Check failure thresholds
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
             error_summary = (
-                f"Run terminated after "
-                f"{self._consecutive_failures} consecutive failures. "
-                f"Last error: {error_msg[:200]}"
+                f"Run terminated after {self._consecutive_failures} consecutive failures. Last error: {error_msg[:200]}"
             )
             self.notes.append(error_summary)
             self.logger.log_event(
@@ -930,9 +925,7 @@ class AgentEngine:
             )
 
         if self._consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
-            self.notes.append(
-                f"Terminating: {self._consecutive_failures} consecutive failures"
-            )
+            self.notes.append(f"Terminating: {self._consecutive_failures} consecutive failures")
             self.logger.log_event(
                 "abort",
                 {
@@ -1018,9 +1011,7 @@ class AgentEngine:
         # Checkpoint every 5 steps
         if self.checkpoint.should_auto_save(self.step):
             try:
-                safe_config = {
-                    k: v for k, v in self.config.items() if k != "api_key"
-                }
+                safe_config = {k: v for k, v in self.config.items() if k != "api_key"}
                 self.checkpoint.save(
                     goal=goal,
                     step_num=self.step,
@@ -1159,8 +1150,7 @@ class AgentEngine:
                         exc,
                     )
                     self.notes.append(
-                        f"LLM error at step {self.step} "
-                        f"(after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
+                        f"LLM error at step {self.step} (after {len(self._LLM_RETRY_DELAYS) + 1} attempts): {exc}"
                     )
                     return None
         return None  # unreachable, but satisfies type checker
@@ -1200,7 +1190,13 @@ class AgentEngine:
         }
 
         report["text"] = self._build_report_text(
-            report, goal, elapsed, success, errors, provider, model,
+            report,
+            goal,
+            elapsed,
+            success,
+            errors,
+            provider,
+            model,
         )
         return report
 
@@ -1356,9 +1352,7 @@ class AgentEngine:
             logger.warning("Failed to build app profile context: %s", exc)
             return ""
 
-    def _add_vision_message(
-        self, messages: list[dict[str, Any]], screenshot_b64: str, text: str
-    ) -> None:
+    def _add_vision_message(self, messages: list[dict[str, Any]], screenshot_b64: str, text: str) -> None:
         """Add a vision message (screenshot + text) to the conversation.
 
         capture_to_base64() encodes PNG by default; the media type below must
@@ -1595,7 +1589,5 @@ def _clean_messages_for_api(messages: list[dict[str, Any]]) -> list[dict[str, An
         if not isinstance(m, dict):
             cleaned.append(m)
             continue
-        cleaned.append(
-            {k: v for k, v in m.items() if not (isinstance(k, str) and k.startswith("_sentinel_"))}
-        )
+        cleaned.append({k: v for k, v in m.items() if not (isinstance(k, str) and k.startswith("_sentinel_"))})
     return cleaned

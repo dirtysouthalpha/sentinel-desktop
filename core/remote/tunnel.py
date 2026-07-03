@@ -11,9 +11,8 @@ import socket
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
-from .ssh import SSHConfig, SSHExecutor
+from .ssh import SSHConfig
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +79,12 @@ class TunnelManager:
         """Create an SSH local port-forward tunnel."""
         key_args = ["-i", key_file] if key_file else []
         cmd = [
-            "ssh", "-N", "-L",
+            "ssh",
+            "-N",
+            "-L",
             f"{local_port}:{remote_host}:{remote_port}",
-            "-p", str(ssh_config.port),
+            "-p",
+            str(ssh_config.port),
             f"{ssh_config.user}@{ssh_config.host}",
             *key_args,
         ]

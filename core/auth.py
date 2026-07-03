@@ -302,9 +302,7 @@ class AuthManager:
         self._api_key_index.pop(user.api_key, None)
 
         # Revoke any active sessions for this user
-        tokens_to_revoke = [
-            tok for tok, sess in self._sessions.items() if sess.get("username") == username
-        ]
+        tokens_to_revoke = [tok for tok, sess in self._sessions.items() if sess.get("username") == username]
         for tok in tokens_to_revoke:
             del self._sessions[tok]
 
@@ -419,10 +417,7 @@ class AuthManager:
 
     def get_users_requiring_rotation(self) -> list[User]:
         """Return all users whose password still matches ``DEFAULT_ADMIN_PASSWORD``."""
-        return [
-            u for u in self._users.values()
-            if _verify_password(DEFAULT_ADMIN_PASSWORD, u.password_hash, u.salt)
-        ]
+        return [u for u in self._users.values() if _verify_password(DEFAULT_ADMIN_PASSWORD, u.password_hash, u.salt)]
 
     # ------------------------------------------------------------------
     # Authorisation / Permission Checks
@@ -530,9 +525,7 @@ class AuthManager:
 
         Returns the number of sessions revoked.
         """
-        to_remove = [
-            tok for tok, sess in self._sessions.items() if sess.get("username") == username
-        ]
+        to_remove = [tok for tok, sess in self._sessions.items() if sess.get("username") == username]
         for tok in to_remove:
             del self._sessions[tok]
         logger.info("Revoked %d session(s) for user '%s'", len(to_remove), username)

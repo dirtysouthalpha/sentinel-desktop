@@ -85,9 +85,7 @@ class SentinelApp:
         header.pack(fill="x", padx=8, pady=(8, 4))
         header.pack_propagate(False)
 
-        ctk.CTkLabel(header, text="⬡ Sentinel Desktop", font=("Segoe UI", 16, "bold")).pack(
-            side="left", padx=12
-        )
+        ctk.CTkLabel(header, text="⬡ Sentinel Desktop", font=("Segoe UI", 16, "bold")).pack(side="left", padx=12)
 
         self.status_label = ctk.CTkLabel(
             header,
@@ -338,9 +336,7 @@ class SentinelApp:
         )
         self.goal_entry.grid(row=2, column=0, sticky="ew", padx=8, pady=(4, 8))
         # Placeholder behaviour (CTkTextbox doesn't have native placeholder).
-        self._placeholder_text = (
-            "Describe what you want done…   (Ctrl+Enter to run, Enter for newline)"
-        )
+        self._placeholder_text = "Describe what you want done…   (Ctrl+Enter to run, Enter for newline)"
         self.goal_entry.insert("1.0", self._placeholder_text)
         self.goal_entry.configure(text_color=self._t("text_secondary", "#849495"))
         self.goal_entry.bind("<FocusIn>", self._clear_placeholder)
@@ -401,8 +397,7 @@ class SentinelApp:
             (
                 r
                 for r in recent
-                if r.startswith(choice.rstrip("…"))
-                or (choice.endswith("…") and r.startswith(choice[:-1]))
+                if r.startswith(choice.rstrip("…")) or (choice.endswith("…") and r.startswith(choice[:-1]))
             ),
             choice,
         )
@@ -561,11 +556,7 @@ class SentinelApp:
                     f"❌ {type(e).__name__}: {e}",
                     "error",
                 )
-                log_path = (
-                    Path(os.environ.get("APPDATA", str(Path.home())))
-                    / "SentinelDesktop"
-                    / "last_error.log"
-                )
+                log_path = Path(os.environ.get("APPDATA", str(Path.home()))) / "SentinelDesktop" / "last_error.log"
                 try:
                     log_path.parent.mkdir(parents=True, exist_ok=True)
                     with log_path.open("w", encoding="utf-8") as f:
@@ -590,9 +581,7 @@ class SentinelApp:
                     ),
                 )
 
-        self.status_label.configure(
-            text="● RUNNING", text_color=self._t("status_running", "#95E400")
-        )
+        self.status_label.configure(text="● RUNNING", text_color=self._t("status_running", "#95E400"))
         self.engine_thread = threading.Thread(target=_run, daemon=True)
         self.engine_thread.start()
 
@@ -880,9 +869,7 @@ class SentinelApp:
 
             # Combine side by side
             total_w = before_img.width + after_img.width + 4
-            combined = Image.new(
-                "RGB", (total_w, max(before_img.height, after_img.height) + 20), (30, 30, 30)
-            )
+            combined = Image.new("RGB", (total_w, max(before_img.height, after_img.height) + 20), (30, 30, 30))
             combined.paste(before_img, (0, 0))
             combined.paste(after_img, (before_img.width + 4, 0))
 
@@ -905,17 +892,14 @@ class SentinelApp:
             return
         if not _tray_available():
             self._add_chat(
-                "Tray mode requested but 'pystray' isn't installed. "
-                "Install with: pip install pystray pillow",
+                "Tray mode requested but 'pystray' isn't installed. Install with: pip install pystray pillow",
                 "system",
             )
             return
         self.tray = SentinelTray(
             on_show=self._show_from_tray,
             on_hide=self._hide_to_tray,
-            on_stop_agent=lambda: (
-                self.engine.stop() if self.engine and self.engine.running else None
-            ),
+            on_stop_agent=lambda: self.engine.stop() if self.engine and self.engine.running else None,
             on_quit=lambda: self.root.after(0, self.root.destroy),
         )
         if self.tray.run() and self.cfg.get("start_in_tray"):
@@ -958,9 +942,7 @@ class SentinelApp:
         # Warn loudly if no LLM is configured — the most common first-run snag.
         cfg = self.config.load()
         provider = cfg.get("provider", "")
-        if (
-            not cfg.get("api_key") and provider not in ("ollama", "lmstudio", "custom")
-        ) or not cfg.get("model"):
+        if (not cfg.get("api_key") and provider not in ("ollama", "lmstudio", "custom")) or not cfg.get("model"):
             self._add_chat(
                 "⚠ No LLM configured yet. Click ⚙ in the top-right to choose a "
                 "provider, paste your API key, and pick a model.",
@@ -974,9 +956,7 @@ class SentinelApp:
 class SettingsWindow:
     """Settings modal for provider/API key configuration."""
 
-    def __init__(
-        self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None
-    ) -> None:
+    def __init__(self, parent: ctk.CTk, config: Config, on_save: Any = None, app: Any = None) -> None:
         self.config = config
         self.cfg = config.load()
         self.on_save = on_save
@@ -994,9 +974,7 @@ class SettingsWindow:
         from core.provider_registry import PROVIDERS, get_provider_names
 
         # Provider
-        ctk.CTkLabel(self.win, text="Provider", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(20, 4)
-        )
+        ctk.CTkLabel(self.win, text="Provider", font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=20, pady=(20, 4))
         self.provider_var = ctk.StringVar(value=self.cfg.get("provider", "openai"))
         providers = get_provider_names()
         self.provider_menu = ctk.CTkOptionMenu(
@@ -1048,9 +1026,7 @@ class SettingsWindow:
         ).pack(anchor="w", padx=20, pady=(2, 4))
 
         # API Key
-        ctk.CTkLabel(self.win, text="API Key", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
-        )
+        ctk.CTkLabel(self.win, text="API Key", font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=20, pady=(12, 4))
         self.api_key_entry = ctk.CTkEntry(
             self.win,
             show="•",
@@ -1062,9 +1038,7 @@ class SettingsWindow:
             self.api_key_entry.insert(0, self.cfg["api_key"])
 
         # Model
-        ctk.CTkLabel(self.win, text="Model", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
-        )
+        ctk.CTkLabel(self.win, text="Model", font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=20, pady=(12, 4))
         model_frame = ctk.CTkFrame(self.win)
         model_frame.pack(fill="x", padx=20, pady=4)
         model_frame.grid_columnconfigure(0, weight=1)
@@ -1087,9 +1061,7 @@ class SettingsWindow:
         ).grid(row=0, column=1)
 
         # Theme
-        ctk.CTkLabel(self.win, text="Theme", font=("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=20, pady=(12, 4)
-        )
+        ctk.CTkLabel(self.win, text="Theme", font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=20, pady=(12, 4))
         self.theme_var = ctk.StringVar(value=self.cfg.get("theme", "sentinel"))
         ctk.CTkOptionMenu(
             self.win,
@@ -1138,10 +1110,7 @@ class SettingsWindow:
             for m in mons:
                 if m.get("is_virtual"):
                     continue
-                label = (
-                    f"{m['index']} — {m['width']}x{m['height']}"
-                    f"{' (primary)' if m.get('is_primary') else ''}"
-                )
+                label = f"{m['index']} — {m['width']}x{m['height']}{' (primary)' if m.get('is_primary') else ''}"
                 monitor_choices.append(label)
         except (OSError, RuntimeError) as exc:
             logger.debug("Monitor enumeration failed, using defaults: %s", exc)
@@ -1275,9 +1244,7 @@ class SettingsWindow:
         if models:
             self.model_var.set(models[0] if len(models) == 1 else "")
             # Show first few in a tooltip-like message
-            self.model_entry.configure(
-                placeholder_text=f"Found {len(models)} models: {', '.join(models[:5])}"
-            )
+            self.model_entry.configure(placeholder_text=f"Found {len(models)} models: {', '.join(models[:5])}")
         else:
             self.model_var.set("")
             self.model_entry.configure(placeholder_text="No models found. Enter manually.")

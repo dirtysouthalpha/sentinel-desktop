@@ -116,17 +116,13 @@ class RecorderPanel(ctk.CTkFrame):
         except RuntimeError as exc:
             messagebox.showwarning("Recorder", str(exc))
             return
-        self.status_label.configure(
-            text="Recording… (0 steps)", text_color=self._t("status_error", "#ff3b3b")
-        )
+        self.status_label.configure(text="Recording… (0 steps)", text_color=self._t("status_error", "#ff3b3b"))
         self.btn_record.configure(fg_color="#ff0000")
         self._start_pulse()
 
     def _start_pulse(self) -> None:
         self._pulse_on = not self._pulse_on
-        self.btn_record.configure(
-            fg_color="#ff0000" if self._pulse_on else self._t("status_error", "#ff3b3b")
-        )
+        self.btn_record.configure(fg_color="#ff0000" if self._pulse_on else self._t("status_error", "#ff3b3b"))
         self._pulse_job = self.after(600, self._start_pulse)
 
     def _stop_pulse(self) -> None:
@@ -204,9 +200,9 @@ class RecorderPanel(ctk.CTkFrame):
             self.status_label.configure(text=f"Saved: {name}")
 
         ctk.CTkButton(bf, text="💾 Save", width=100, command=_save).pack(side="left", padx=8)
-        ctk.CTkButton(
-            bf, text="Cancel", width=100, fg_color="transparent", command=dlg.destroy
-        ).pack(side="left", padx=8)
+        ctk.CTkButton(bf, text="Cancel", width=100, fg_color="transparent", command=dlg.destroy).pack(
+            side="left", padx=8
+        )
 
     # ── Play ───────────────────────────────────────────────────────────
 
@@ -263,9 +259,9 @@ class RecorderPanel(ctk.CTkFrame):
             dlg.destroy()
 
         ctk.CTkButton(dlg, text="OK", width=80, command=_ok).grid(row=br, column=0, padx=8, pady=10)
-        ctk.CTkButton(
-            dlg, text="Cancel", width=80, fg_color="transparent", command=dlg.destroy
-        ).grid(row=br, column=1, padx=8, pady=10, sticky="w")
+        ctk.CTkButton(dlg, text="Cancel", width=80, fg_color="transparent", command=dlg.destroy).grid(
+            row=br, column=1, padx=8, pady=10, sticky="w"
+        )
         dlg.wait_window()
         return None if cancelled[0] else result
 
@@ -276,13 +272,9 @@ class RecorderPanel(ctk.CTkFrame):
             return
         total = len(script_data.get("steps", []))
         self._is_playing = True
-        self.status_label.configure(
-            text=f"Playing step 0/{total}…", text_color=self._t("status_running", "#95E400")
-        )
+        self.status_label.configure(text=f"Playing step 0/{total}…", text_color=self._t("status_running", "#95E400"))
         engine.set_progress_callback(
-            lambda s, t, a, r: self.after(
-                0, lambda: self.status_label.configure(text=f"Playing step {s}/{t}…")
-            )
+            lambda s, t, a, r: self.after(0, lambda: self.status_label.configure(text=f"Playing step {s}/{t}…"))
         )
 
         def _worker() -> None:
@@ -296,9 +288,7 @@ class RecorderPanel(ctk.CTkFrame):
                 )
                 self.after(
                     0,
-                    lambda exc=exc: messagebox.showerror(
-                        "Playback Error", f"Script execution failed:\n{exc}"
-                    ),
+                    lambda exc=exc: messagebox.showerror("Playback Error", f"Script execution failed:\n{exc}"),
                 )
                 return
             self.after(0, lambda: self._on_play_done(res))
@@ -377,9 +367,7 @@ class RecorderPanel(ctk.CTkFrame):
                     sc = len(json.load(fh).get("steps", []))
             except (OSError, json.JSONDecodeError) as exc:
                 logger.debug("Failed to read workflow step count: %s", exc)
-            ctk.CTkLabel(row, text="📜", font=("Segoe UI", 14), width=28).pack(
-                side="left", padx=(8, 4)
-            )
+            ctk.CTkLabel(row, text="📜", font=("Segoe UI", 14), width=28).pack(side="left", padx=(8, 4))
             inner = ctk.CTkFrame(row, fg_color="transparent")
             inner.pack(side="left", fill="x", expand=True, padx=4, pady=4)
             ctk.CTkLabel(
@@ -437,9 +425,9 @@ class RecorderPanel(ctk.CTkFrame):
                 text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(pady=40)
 
-        ctk.CTkButton(
-            dlg, text="Close", width=80, fg_color="transparent", command=dlg.destroy
-        ).grid(row=3, column=0, pady=(4, 12))
+        ctk.CTkButton(dlg, text="Close", width=80, fg_color="transparent", command=dlg.destroy).grid(
+            row=3, column=0, pady=(4, 12)
+        )
 
     def _delete_script(self, path: str, parent: ctk.CTkToplevel) -> None:
         if messagebox.askyesno("Delete Script", f"Delete {Path(path).name}?"):

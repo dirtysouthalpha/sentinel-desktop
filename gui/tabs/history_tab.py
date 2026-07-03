@@ -231,9 +231,7 @@ class HistoryTab(ctk.CTkFrame):
         f = self.filter_var.get()
         now = datetime.now()
         if f == "Today":
-            self.sessions = [
-                s for s in self.sessions if s.get("start", "").startswith(now.strftime("%Y-%m-%d"))
-            ]
+            self.sessions = [s for s in self.sessions if s.get("start", "").startswith(now.strftime("%Y-%m-%d"))]
         elif f == "This Week":
             week_ago = (now - timedelta(days=7)).isoformat()
             self.sessions = [s for s in self.sessions if s.get("start", "") >= week_ago]
@@ -252,17 +250,13 @@ class HistoryTab(ctk.CTkFrame):
                 continue
 
             status = session.get("status", "unknown")
-            icon = {"completed": "✅", "failed": "❌", "running": "🔄", "empty": "📭"}.get(
-                status, "❓"
-            )
+            icon = {"completed": "✅", "failed": "❌", "running": "🔄", "empty": "📭"}.get(status, "❓")
             steps = len(session.get("steps", []))
             start = session.get("start", "")[:19].replace("T", " ")
 
             card = ctk.CTkFrame(
                 self.session_list,
-                fg_color=self._t("bg_input", "#111418")
-                if i != self.selected_index
-                else self._t("accent", "#00F0FF"),
+                fg_color=self._t("bg_input", "#111418") if i != self.selected_index else self._t("accent", "#00F0FF"),
                 corner_radius=3,
                 height=60,
             )
@@ -323,9 +317,7 @@ class HistoryTab(ctk.CTkFrame):
             ok = step_data.get("ok", True)
             ts = step_data.get("timestamp", "")[11:19]
 
-            color = (
-                self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
-            )
+            color = self._t("status_running", "#95E400") if ok else self._t("status_error", "#ff3b3b")
             icon = "✓" if ok else "✗"
 
             row = ctk.CTkFrame(self.timeline, fg_color="transparent", height=28)
@@ -379,9 +371,7 @@ class HistoryTab(ctk.CTkFrame):
             return
         session = self.sessions[self.selected_index]
 
-        export_path = (
-            Path.home() / "Desktop" / f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        )
+        export_path = Path.home() / "Desktop" / f"sentinel_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         try:
             export_path.parent.mkdir(parents=True, exist_ok=True)
             with export_path.open("w", encoding="utf-8") as f:

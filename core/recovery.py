@@ -93,9 +93,7 @@ def _match_pattern(error_msg: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def _recover_element_not_found(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_element_not_found(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """Suggest OCR scan + keyboard alternative when an element can't be found."""
     action_type = action.get("action", "")
     alt = None
@@ -127,9 +125,7 @@ def _recover_element_not_found(
     )
 
 
-def _recover_permission_denied(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_permission_denied(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """Check for UAC dialog, suggest elevation or alternate path."""
     prompt = (
         "A permission error occurred. Check if a UAC/elevation dialog is "
@@ -146,9 +142,7 @@ def _recover_permission_denied(
     )
 
 
-def _recover_window_not_found(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_window_not_found(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """List windows, look for similar names, try alt-tab."""
     prompt = (
         "The target window was not found. Try pressing Alt+Tab to cycle "
@@ -169,9 +163,7 @@ def _recover_window_not_found(
     )
 
 
-def _recover_timeout(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_timeout(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """Increase wait, check for loading indicators."""
     # Suggest a longer wait
     current_wait = action.get("duration", action.get("wait", 1.0))
@@ -196,9 +188,7 @@ def _recover_timeout(
     )
 
 
-def _recover_ocr_low_confidence(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_ocr_low_confidence(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """Suggest UIA control navigation instead of OCR."""
     prompt = (
         "OCR produced low-confidence results. Try using list_controls "
@@ -214,9 +204,7 @@ def _recover_ocr_low_confidence(
     )
 
 
-def _recover_app_not_found(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_app_not_found(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """Search common install paths, suggest alternatives."""
     app_name = action.get("app", action.get("name", action.get("path", "")))
     prompt = (
@@ -239,9 +227,7 @@ def _recover_app_not_found(
     )
 
 
-def _recover_click_failed(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_click_failed(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """Generic click failure -- suggest re-screenshot and retry."""
     prompt = (
         "A click action failed. Take a fresh screenshot to get updated "
@@ -256,9 +242,7 @@ def _recover_click_failed(
     )
 
 
-def _recover_input_failed(
-    action: dict[str, Any], error: str, context: dict[str, Any]
-) -> RecoverySuggestion:
+def _recover_input_failed(action: dict[str, Any], error: str, context: dict[str, Any]) -> RecoverySuggestion:
     """Keyboard input failure -- suggest clipboard paste as alternative."""
     text = action.get("text", "")
     alt = None
@@ -373,7 +357,4 @@ class RecoveryEngine:
         threshold AND its strategy is deterministic (no LLM creativity
         needed).
         """
-        return (
-            suggestion.confidence > self.AUTO_APPLY_CONFIDENCE_THRESHOLD
-            and suggestion.is_deterministic
-        )
+        return suggestion.confidence > self.AUTO_APPLY_CONFIDENCE_THRESHOLD and suggestion.is_deterministic

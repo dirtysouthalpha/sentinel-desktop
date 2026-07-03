@@ -213,11 +213,7 @@ class CredentialVault:
         sensitive_suffixes = ("_key", "_token", "_secret", "_password")
 
         if keys is None:
-            keys = [
-                k
-                for k, v in config.items()
-                if isinstance(v, str) and k.endswith(sensitive_suffixes)
-            ]
+            keys = [k for k, v in config.items() if isinstance(v, str) and k.endswith(sensitive_suffixes)]
 
         imported = 0
         for k in keys:

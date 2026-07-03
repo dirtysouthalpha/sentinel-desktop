@@ -49,9 +49,7 @@ class ScriptsTab:
     # ── Left panel ────────────────────────────────────────────────────
 
     def _build_left_panel(self) -> None:
-        left = ctk.CTkFrame(
-            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
-        )
+        left = ctk.CTkFrame(self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5)
         left.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 4))
         left.grid_columnconfigure(0, weight=1)
         left.grid_rowconfigure(3, weight=1)
@@ -108,9 +106,7 @@ class ScriptsTab:
     # ── Right panel ───────────────────────────────────────────────────
 
     def _build_right_panel(self) -> None:
-        right = ctk.CTkFrame(
-            self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5
-        )
+        right = ctk.CTkFrame(self.frame, fg_color=self._t("bg_secondary", "#0A0C10"), corner_radius=5)
         right.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(4, 0))
         right.grid_columnconfigure(0, weight=1)
         right.grid_rowconfigure(5, weight=1)
@@ -261,11 +257,7 @@ class ScriptsTab:
                 expected = _DIR_MAP.get(cat, "")
                 if expected and not s.get("_folder", "").startswith(expected):
                     continue
-            if (
-                query
-                and query not in s.get("name", "").lower()
-                and query not in s.get("description", "").lower()
-            ):
+            if query and query not in s.get("name", "").lower() and query not in s.get("description", "").lower():
                 continue
             filtered.append(s)
         self._populate_list(filtered)
@@ -327,9 +319,7 @@ class ScriptsTab:
         self._selected_script = script
         self._selected_path = path
 
-        self._name_label.configure(
-            text=f"{script.get('icon', '📄')} {script.get('name', 'Untitled')}"
-        )
+        self._name_label.configure(text=f"{script.get('icon', '📄')} {script.get('name', 'Untitled')}")
         self._desc_label.configure(text=script.get("description", "No description."))
 
         steps = len(script.get("steps", []))
@@ -340,9 +330,7 @@ class ScriptsTab:
                 created = datetime.fromisoformat(created).strftime("%Y-%m-%d")
             except (ValueError, TypeError):
                 pass
-        self._meta_label.configure(
-            text=f"{steps} step{'s' if steps != 1 else ''}  ·  {author}  ·  {created}"
-        )
+        self._meta_label.configure(text=f"{steps} step{'s' if steps != 1 else ''}  ·  {author}  ·  {created}")
         self._build_param_fields(script)
 
     def _build_param_fields(self, script: dict[str, Any]) -> None:
@@ -409,9 +397,7 @@ class ScriptsTab:
                 mark = "✅" if result.success else "❌"
                 word = "Completed" if result.success else "Failed"
                 lines = [
-                    f"\n{mark} {word} — "
-                    f"{result.steps_completed}/{result.steps_total} steps "
-                    f"in {result.duration_ms}ms"
+                    f"\n{mark} {word} — {result.steps_completed}/{result.steps_total} steps in {result.duration_ms}ms"
                 ]
                 if result.error:
                     lines.append(f"   Error: {result.error}")
@@ -423,23 +409,17 @@ class ScriptsTab:
             except (OSError, RuntimeError, ValueError) as exc:
                 self._append_output(f"\n❌ Exception: {exc}")
             finally:
-                self.app.root.after(
-                    0, lambda: self._run_btn.configure(state="normal", text="▶ Run Script")
-                )
+                self.app.root.after(0, lambda: self._run_btn.configure(state="normal", text="▶ Run Script"))
 
         threading.Thread(target=_run, daemon=True).start()
 
-    def _on_script_progress(
-        self, step_num: int, total: int, action: str, result: dict[str, Any]
-    ) -> None:
+    def _on_script_progress(self, step_num: int, total: int, action: str, result: dict[str, Any]) -> None:
         """Progress callback from ScriptEngine (worker thread)."""
         ok = result.get("success", False)
         out = result.get("output", result.get("error", ""))
         self.app.root.after(
             0,
-            lambda: self._append_output(
-                f"   Step {step_num}/{total}: {'✓' if ok else '✗'} {action} — {out}"
-            ),
+            lambda: self._append_output(f"   Step {step_num}/{total}: {'✓' if ok else '✗'} {action} — {out}"),
         )
 
     # ── Recorder ───────────────────────────────────────────────────────

@@ -108,9 +108,7 @@ class PluginAPI:
 
     # -- registration helpers ------------------------------------------------
 
-    def register_action(
-        self, name: str, handler: Callable[..., Any], description: str = ""
-    ) -> None:
+    def register_action(self, name: str, handler: Callable[..., Any], description: str = "") -> None:
         """Register a named action that the agent can invoke.
 
         Parameters
@@ -134,9 +132,7 @@ class PluginAPI:
             )
         )
 
-    def register_command(
-        self, name: str, handler: Callable[..., Any], keywords: Sequence[str] | None = None
-    ) -> None:
+    def register_command(self, name: str, handler: Callable[..., Any], keywords: Sequence[str] | None = None) -> None:
         """Register a command-palette / voice command.
 
         Parameters
@@ -329,9 +325,7 @@ class PluginLoader:
             missing = [a for a in REQUIRED_PLUGIN_ATTRS if not hasattr(module, a)]
             if missing:
                 sys.modules.pop(module_name, None)
-                raise AttributeError(
-                    f"Plugin {filepath.name} is missing required attributes: " + ", ".join(missing)
-                )
+                raise AttributeError(f"Plugin {filepath.name} is missing required attributes: " + ", ".join(missing))
 
             if not hasattr(module, "register") or not callable(module.register):
                 sys.modules.pop(module_name, None)
@@ -499,9 +493,7 @@ class PluginLoader:
             "error": plugin.error,
             "actions": [{"name": a.name, "description": a.description} for a in plugin.api.actions],
             "commands": [{"name": c.name, "keywords": c.keywords} for c in plugin.api.commands],
-            "settings": [
-                {"key": s.key, "default": s.default, "label": s.label} for s in plugin.api.settings
-            ],
+            "settings": [{"key": s.key, "default": s.default, "label": s.label} for s in plugin.api.settings],
         }
 
     # -- dunder helpers -----------------------------------------------------

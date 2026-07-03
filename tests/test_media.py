@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.media import MediaCommands
 import src.commands.media as media_mod
+from src.commands.media import MediaCommands
 
 
 class TestMediaCommands:
@@ -62,17 +62,17 @@ class TestMediaCommands:
     def test_execute_volume(self):
         with patch.object(self.cmds, "volume") as mock_vol:
             mock_vol.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("volume up")
+            self.cmds.execute("volume up")
             mock_vol.assert_called_once_with("up")
 
     def test_execute_play(self):
         with patch.object(self.cmds, "playback") as mock_pb:
             mock_pb.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("play")
+            self.cmds.execute("play")
             mock_pb.assert_called_once_with("play")
 
     def test_execute_next_track(self):
         with patch.object(self.cmds, "playback") as mock_pb:
             mock_pb.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("next track")
+            self.cmds.execute("next track")
             mock_pb.assert_called_once_with("next")

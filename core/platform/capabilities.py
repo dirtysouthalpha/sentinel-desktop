@@ -12,7 +12,6 @@ import platform
 import shutil
 import subprocess
 from dataclasses import dataclass, field
-from typing import Any
 
 from .base import Backend
 
@@ -96,6 +95,7 @@ def _detect_display(c: Capabilities) -> None:
         # On Windows Server / headless, check for GetSystemMetrics
         try:
             import ctypes
+
             user32 = ctypes.windll.user32
             if user32.GetSystemMetrics(0) == 0 or user32.GetSystemMetrics(1) == 0:
                 c.has_display = False
@@ -137,24 +137,28 @@ def _detect_modules(c: Capabilities) -> None:
     """Detect optional Python modules."""
     try:
         import pyautogui  # noqa: F401
+
         c.has_pyautogui = True
     except ImportError:
         c.warnings.append("pyautogui not installed — input simulation unavailable")
 
     try:
         from PIL import Image  # noqa: F401
+
         c.has_pillow = True
     except ImportError:
         c.warnings.append("Pillow not installed — image processing limited")
 
     try:
         import mss  # noqa: F401
+
         c.has_mss = True
     except ImportError:
         pass
 
     try:
         import pytesseract  # noqa: F401
+
         c.has_ocr = True
     except ImportError:
         pass
@@ -163,17 +167,20 @@ def _detect_modules(c: Capabilities) -> None:
     if c.os == "Windows":
         try:
             import win32gui  # noqa: F401
+
             c.has_pywin32 = True
         except ImportError:
             pass
         try:
             import uiautomation  # noqa: F401
+
             c.has_uiautomation = True
         except ImportError:
             pass
     elif c.os == "Linux":
         try:
             import Xlib  # noqa: F401
+
             c.has_xlib = True
         except ImportError:
             pass
@@ -183,6 +190,7 @@ def _detect_modules(c: Capabilities) -> None:
     elif c.os == "Darwin":
         try:
             import Quartz  # noqa: F401
+
             c.has_quartz = True
         except ImportError:
             pass
@@ -198,9 +206,7 @@ def _detect_tools(c: Capabilities) -> None:
 
     if shutil.which("docker"):
         try:
-            result = subprocess.run(
-                ["docker", "info"], capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=5)
             c.has_docker = result.returncode == 0
         except (subprocess.TimeoutExpired, OSError):
             c.has_docker = False

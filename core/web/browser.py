@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import base64
 import io
-import json
 import logging
-import time
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +52,7 @@ class BrowserController:
         """Start the browser."""
         try:
             from playwright.sync_api import sync_playwright
+
             self._playwright = sync_playwright().start()
             browser_cls = getattr(self._playwright, self._browser_type, self._playwright.chromium)
             self._browser = browser_cls.launch(headless=self._headless)
@@ -190,12 +189,16 @@ class BrowserController:
             elements = self._page.query_selector_all(selector)
             for el in elements:
                 box = el.bounding_box()
-                results.append(ElementInfo(
-                    tag=el.evaluate("el => el.tagName.toLowerCase()"),
-                    text=(el.inner_text() or "")[:200],
-                    selector=selector,
-                    bounding_box={"x": box["x"], "y": box["y"], "width": box["width"], "height": box["height"]} if box else None,
-                ))
+                results.append(
+                    ElementInfo(
+                        tag=el.evaluate("el => el.tagName.toLowerCase()"),
+                        text=(el.inner_text() or "")[:200],
+                        selector=selector,
+                        bounding_box={"x": box["x"], "y": box["y"], "width": box["width"], "height": box["height"]}
+                        if box
+                        else None,
+                    )
+                )
         except Exception as exc:
             logger.debug("find_elements %s failed: %s", selector, exc)
         return results
@@ -260,6 +263,7 @@ class BrowserController:
             return None
         try:
             from PIL import Image
+
             data = self._page.screenshot(full_page=full_page)
             return Image.open(io.BytesIO(data))
         except Exception:

@@ -66,7 +66,7 @@ class VisionGrounder:
         try:
             # Encode screenshot for vision model
             buf = io.BytesIO()
-            if hasattr(screenshot, 'save'):
+            if hasattr(screenshot, "save"):
                 screenshot.save(buf, format="PNG")
             else:
                 return None
@@ -101,7 +101,8 @@ class VisionGrounder:
         try:
             import pytesseract
             from PIL import Image
-            img = screenshot if hasattr(screenshot, 'convert') else Image.open(io.BytesIO(screenshot))
+
+            img = screenshot if hasattr(screenshot, "convert") else Image.open(io.BytesIO(screenshot))
             # Get detailed OCR data
             output = pytesseract.image_to_data(img)
             if isinstance(output, str):
@@ -121,16 +122,20 @@ class VisionGrounder:
         for i, text in enumerate(data.get("text", [])):
             if text and description.lower() in text.lower():
                 conf = data.get("conf", [0] * (i + 1))
-                results.append(GroundedElement(
-                    text=text,
-                    x=data.get("left", [0] * (i + 1))[i],
-                    y=data.get("top", [0] * (i + 1))[i],
-                    width=data.get("width", [0] * (i + 1))[i],
-                    height=data.get("height", [0] * (i + 1))[i],
-                    confidence=float(conf[i]) / 100.0 if isinstance(conf, list) and i < len(conf) and conf[i] > 0 else 0.5,
-                    method="ocr",
-                    description=description,
-                ))
+                results.append(
+                    GroundedElement(
+                        text=text,
+                        x=data.get("left", [0] * (i + 1))[i],
+                        y=data.get("top", [0] * (i + 1))[i],
+                        width=data.get("width", [0] * (i + 1))[i],
+                        height=data.get("height", [0] * (i + 1))[i],
+                        confidence=float(conf[i]) / 100.0
+                        if isinstance(conf, list) and i < len(conf) and conf[i] > 0
+                        else 0.5,
+                        method="ocr",
+                        description=description,
+                    )
+                )
 
     @staticmethod
     def _parse_ocr_string(output: str, description: str, results: list[GroundedElement]) -> None:
@@ -142,16 +147,18 @@ class VisionGrounder:
                 if text and description.lower() in text.lower():
                     try:
                         conf = float(parts[10])
-                        results.append(GroundedElement(
-                            text=text,
-                            x=int(parts[6]),
-                            y=int(parts[7]),
-                            width=int(parts[8]),
-                            height=int(parts[9]),
-                            confidence=conf / 100.0 if conf >= 0 else 0.5,
-                            method="ocr",
-                            description=description,
-                        ))
+                        results.append(
+                            GroundedElement(
+                                text=text,
+                                x=int(parts[6]),
+                                y=int(parts[7]),
+                                width=int(parts[8]),
+                                height=int(parts[9]),
+                                confidence=conf / 100.0 if conf >= 0 else 0.5,
+                                method="ocr",
+                                description=description,
+                            )
+                        )
                     except (ValueError, IndexError):
                         pass
 

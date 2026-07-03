@@ -220,9 +220,7 @@ class ActionExecutor:
     # -------------------------------------------------------------------
     # Action handlers (sync — wrapped by execute())
     # -------------------------------------------------------------------
-    def _click(
-        self, *, x: int, y: int, button: str = "left", clicks: int = 1, **_
-    ) -> dict[str, Any]:
+    def _click(self, *, x: int, y: int, button: str = "left", clicks: int = 1, **_) -> dict[str, Any]:
         """Click at screen coordinates with optional stealth mode via PostMessage."""
         # Translate from captured-image coords to absolute screen coords for
         # multi-monitor virtual-desktop capture.
@@ -236,13 +234,7 @@ class ActionExecutor:
                     return {"success": True, "output": f"{desc} ({sx}, {sy}) — stealth"}
                 # PostMessage failed; fall through to physical click.
             self._desktop.click(sx, sy, button=button, clicks=clicks)
-            desc = (
-                "Double-clicked"
-                if clicks == 2
-                else "Right-clicked"
-                if button == "right"
-                else "Clicked"
-            )
+            desc = "Double-clicked" if clicks == 2 else "Right-clicked" if button == "right" else "Clicked"
             return {"success": True, "output": f"{desc} ({sx}, {sy})"}
         except Exception as exc:
             return {
@@ -439,9 +431,7 @@ class ActionExecutor:
                 "error": "click_control_failed",
             }
 
-    def _list_controls(
-        self, *, window_title: str | None = None, max_results: int = 60, **_
-    ) -> dict:
+    def _list_controls(self, *, window_title: str | None = None, max_results: int = 60, **_) -> dict:
         """List accessible controls in a window for the LLM to choose from."""
         try:
             controls = ui_tree.list_controls(window_title=window_title, max_results=max_results)
@@ -801,9 +791,7 @@ class ActionExecutor:
 
             sw = SmartWait()
             region_tuple = tuple(region) if region else None
-            result = sw.wait_for_stable(
-                timeout=float(timeout), stable_time=float(stable_time), region=region_tuple
-            )
+            result = sw.wait_for_stable(timeout=float(timeout), stable_time=float(stable_time), region=region_tuple)
             return {
                 "success": result.success,
                 "output": f"Screen stable after {result.elapsed:.1f}s"
@@ -821,9 +809,7 @@ class ActionExecutor:
                 "error": "wait_for_stable_failed",
             }
 
-    def _wait_for_text(
-        self, *, text: str, timeout: float = 10, region: list | None = None, **_
-    ) -> dict:
+    def _wait_for_text(self, *, text: str, timeout: float = 10, region: list | None = None, **_) -> dict:
         """Wait until specific text appears on screen via OCR."""
         try:
             from core.smart_wait import SmartWait

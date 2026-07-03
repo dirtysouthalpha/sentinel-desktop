@@ -1,5 +1,14 @@
 # Changelog
 
+## v22.0.2 (2026-07-03)
+- CI: add mss to requirements.txt so screenshot tests pass on runners
+- Tests: skip WindowsBackend test on non-Windows (pygetwindow Linux-incompatible)
+- Tests: fix ctypes.windll leak from stealth_input fixture that broke Linux tests
+- Fix: correct WindowsInfo -> WindowInfo typo in macos_backend
+- Lint: ruff clean across core/gui/api/tests (70 auto-fixed + 1 manual)
+- Format: ruff format applied to 66 files
+- Version: bump 3.1.0 -> 22.0.2 to match latest tag series
+
 ## v5.0.0 (2026-06-23)
 - Final release with comprehensive documentation
 - 168 tests across all modules

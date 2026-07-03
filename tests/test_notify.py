@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -26,13 +26,13 @@ class TestNotifyCommands:
     def test_execute_notify(self):
         with patch.object(self.cmds, "send") as mock_send:
             mock_send.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("notify test message")
+            self.cmds.execute("notify test message")
             mock_send.assert_called_once()
 
     def test_execute_alert(self):
         with patch.object(self.cmds, "alert") as mock_alert:
             mock_alert.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("alert danger")
+            self.cmds.execute("alert danger")
             mock_alert.assert_called_once()
 
     def test_execute_unknown(self):

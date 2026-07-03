@@ -58,10 +58,7 @@ def resolve_monitor(monitor: int | str | None) -> int | None:
         cy = rect[1] + rect[3] // 2
         with mss.mss() as sct:
             for i, m in enumerate(sct.monitors[1:], start=1):  # skip [0]=virtual
-                if (
-                    m["left"] <= cx < m["left"] + m["width"]
-                    and m["top"] <= cy < m["top"] + m["height"]
-                ):
+                if m["left"] <= cx < m["left"] + m["width"] and m["top"] <= cy < m["top"] + m["height"]:
                     return i
         return 1
     except (_ScreenShotError, OSError, RuntimeError, ImportError) as exc:
@@ -283,9 +280,7 @@ def capture_to_base64(quality: int = 85, fmt: str = "PNG", monitor: int | None =
     return image_to_base64(img, quality=quality, fmt=fmt)
 
 
-def capture_region_to_base64(
-    x: int, y: int, w: int, h: int, quality: int = 85, fmt: str = "PNG"
-) -> str:
+def capture_region_to_base64(x: int, y: int, w: int, h: int, quality: int = 85, fmt: str = "PNG") -> str:
     """Capture a screen region → base64 image (PNG by default)."""
     img = capture_region(x, y, w, h)
     return image_to_base64(img, quality=quality, fmt=fmt)
@@ -320,9 +315,7 @@ def base64_to_image(b64_str: str) -> Image.Image:
 # ---------------------------------------------------------------------------
 
 
-def find_template(
-    template_path: str, confidence: float = 0.8, monitor: int | None = None
-) -> tuple[int, int] | None:
+def find_template(template_path: str, confidence: float = 0.8, monitor: int | None = None) -> tuple[int, int] | None:
     """Find a template image on screen. Returns center (x, y) or None."""
     try:
         import cv2

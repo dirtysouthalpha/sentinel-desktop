@@ -44,9 +44,7 @@ class ApprovalRequest:
         """Block until the user responds or timeout. Returns True if decided."""
         return self._event.wait(timeout=timeout)
 
-    def respond(
-        self, decision: ApprovalDecision, modified_action: dict[str, Any] | None = None
-    ) -> None:
+    def respond(self, decision: ApprovalDecision, modified_action: dict[str, Any] | None = None) -> None:
         """Called by the UI/API to submit the user's decision."""
         self.decision = decision
         self.modified_action = modified_action
@@ -81,9 +79,7 @@ class ApprovalGate:
         """Set a callback to notify the UI when a request is pending."""
         self._callback = callback
 
-    def evaluate(
-        self, action: dict[str, Any], step_num: int
-    ) -> tuple[ApprovalDecision, dict[str, Any] | None]:
+    def evaluate(self, action: dict[str, Any], step_num: int) -> tuple[ApprovalDecision, dict[str, Any] | None]:
         """
         Evaluate an action through the approval gate.
 
@@ -146,9 +142,7 @@ class ApprovalGate:
         else:
             return ApprovalDecision.APPROVE, action
 
-    def respond_current(
-        self, decision: ApprovalDecision, modified_action: dict[str, Any] | None = None
-    ) -> None:
+    def respond_current(self, decision: ApprovalDecision, modified_action: dict[str, Any] | None = None) -> None:
         """Respond to the currently pending request (for API use)."""
         if self._current_request and not self._current_request.resolved:
             self._current_request.respond(decision, modified_action)

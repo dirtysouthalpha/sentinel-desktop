@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.automation import AutomationCommands
 import src.commands.automation as auto_mod
+from src.commands.automation import AutomationCommands
 
 
 class TestAutomationCommands:

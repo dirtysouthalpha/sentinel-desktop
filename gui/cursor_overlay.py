@@ -222,9 +222,7 @@ class CursorOverlay:
             r = _RING_RADIUS
             self._canvas.coords(self._ring_id, cx - r, cy - r, cx + r, cy + r)
             inner_r = r * 0.3
-            self._canvas.coords(
-                self._inner_id, cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r
-            )
+            self._canvas.coords(self._inner_id, cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r)
             self._canvas.itemconfig(self._inner_id, fill=ring_color, stipple="gray50")
             self._canvas.itemconfig(self._ring_id, outline=ring_color)
             self._root.attributes("-alpha", 0.85)

@@ -132,9 +132,7 @@ def _get_current_desktop_name() -> str:
         # GetUserObjectInformationW needs a buffer for the name string.
         buf = ctypes.create_unicode_buffer(256)
         needed = wintypes.DWORD()
-        if not user32.GetUserObjectInformationW(
-            hdesk, UOI_NAME, buf, ctypes.sizeof(buf), ctypes.byref(needed)
-        ):
+        if not user32.GetUserObjectInformationW(hdesk, UOI_NAME, buf, ctypes.sizeof(buf), ctypes.byref(needed)):
             return "Default"
 
         name = buf.value
@@ -321,6 +319,7 @@ class _Win32VirtualDesktop:
             a new process. Used internally by ``_launch_app_locked`` to
             spawn applications on a specific virtual desktop.
             """
+
             _fields_ = [
                 ("cb", wintypes.DWORD),
                 ("lpReserved", wintypes.LPWSTR),
@@ -348,6 +347,7 @@ class _Win32VirtualDesktop:
             Contains handles and IDs for the newly created process and its
             primary thread.
             """
+
             _fields_ = [
                 ("hProcess", wintypes.HANDLE),
                 ("hThread", wintypes.HANDLE),

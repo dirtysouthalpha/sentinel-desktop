@@ -1,5 +1,4 @@
 """Tests for system diagnostic commands."""
-import pytest
 import sys
 from pathlib import Path
 

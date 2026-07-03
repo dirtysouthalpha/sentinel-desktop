@@ -100,9 +100,7 @@ def _extract_required_params(script: dict[str, Any]) -> set[str]:
     return required
 
 
-def _validate_script(
-    script: dict[str, Any], params: dict[str, Any] | None, executor: Any
-) -> list[str]:
+def _validate_script(script: dict[str, Any], params: dict[str, Any] | None, executor: Any) -> list[str]:
     """Return a list of validation error strings (empty == valid)."""
     errors: list[str] = []
 
@@ -169,9 +167,7 @@ class ScriptEngine:
     def set_on_error_policy(self, policy: str) -> None:
         """Set error policy: ``'stop'``, ``'skip'``, or ``'retry_once'``."""
         if policy not in ("stop", "skip", "retry_once"):
-            raise ValueError(
-                f"Invalid on_error policy '{policy}'; expected 'stop', 'skip', or 'retry_once'."
-            )
+            raise ValueError(f"Invalid on_error policy '{policy}'; expected 'stop', 'skip', or 'retry_once'.")
         self._on_error = policy
 
     # -- public API ---------------------------------------------------------
@@ -259,8 +255,7 @@ class ScriptEngine:
                 success = False
                 if first_error is None:
                     first_error = (
-                        f"Step {step_num} ({action}) failed: "
-                        f"{result.get('output', result.get('error', 'unknown'))}"
+                        f"Step {step_num} ({action}) failed: {result.get('output', result.get('error', 'unknown'))}"
                     )
                 if self._on_error == "stop":
                     steps_completed += 1  # count the failed step as completed

@@ -295,7 +295,11 @@ TEMPLATES: dict[str, dict] = {
         "description": "Standard IT incident triage workflow",
         "steps": [
             {"action": "screenshot", "name": "Capture current state", "params": {}},
-            {"action": "launch_app", "name": "Open Ticketing System", "params": {"app": "chrome", "url": "https://servicedesk"}},
+            {
+                "action": "launch_app",
+                "name": "Open Ticketing System",
+                "params": {"app": "chrome", "url": "https://servicedesk"},
+            },
             {"action": "type_text", "name": "Search ticket", "params": {"text": "{ticket_id}"}},
             {"action": "screenshot", "name": "Document ticket state", "params": {}},
         ],
@@ -322,7 +326,11 @@ TEMPLATES: dict[str, dict] = {
             {"action": "type_text", "name": "Enter username", "params": {"text": "{username}"}},
             {"action": "type_text", "name": "Set temp password", "params": {"text": "{temp_password}"}},
             {"action": "click", "name": "Create", "params": {"text": "OK"}},
-            {"action": "launch_app", "name": "Open email admin", "params": {"app": "chrome", "url": "https://admin.microsoft.com"}},
+            {
+                "action": "launch_app",
+                "name": "Open email admin",
+                "params": {"app": "chrome", "url": "https://admin.microsoft.com"},
+            },
         ],
     },
 }

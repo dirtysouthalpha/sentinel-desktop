@@ -153,7 +153,11 @@ class RetryPlanner:
 
 
 __all__ = [
-    "RetryStrategy", "SelectorFallbackStrategy", "KeyboardFallbackStrategy",
-    "CoordAdjustmentStrategy", "CLIFallbackStrategy",
-    "RetryResult", "RetryPlanner",
+    "RetryStrategy",
+    "SelectorFallbackStrategy",
+    "KeyboardFallbackStrategy",
+    "CoordAdjustmentStrategy",
+    "CLIFallbackStrategy",
+    "RetryResult",
+    "RetryPlanner",
 ]

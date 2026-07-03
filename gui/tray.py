@@ -50,8 +50,7 @@ def _make_icon_image() -> Image.Image:
 
     cx, cy, r = size / 2, size / 2, size * 0.42
     points = [
-        (cx + r * math.cos(math.radians(60 * i - 30)), cy + r * math.sin(math.radians(60 * i - 30)))
-        for i in range(6)
+        (cx + r * math.cos(math.radians(60 * i - 30)), cy + r * math.sin(math.radians(60 * i - 30))) for i in range(6)
     ]
     draw.polygon(points, fill=(232, 121, 58, 255), outline=(255, 200, 150, 255))
     return img

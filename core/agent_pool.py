@@ -278,9 +278,7 @@ class AgentPool:
             if session is None:
                 raise KeyError(f"No such session: {session_id}")
             if session.status not in (STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED):
-                raise ValueError(
-                    f"Session {session_id} has status '{session.status}', not a terminal state"
-                )
+                raise ValueError(f"Session {session_id} has status '{session.status}', not a terminal state")
             return session.to_dict()
 
     def shutdown(self, wait: bool = True, timeout: float = 30.0) -> None:
@@ -320,11 +318,7 @@ class AgentPool:
             self._dispatcher_thread.join(timeout=timeout)
             # Join all running agent threads
             with self._lock:
-                running = [
-                    s
-                    for s in self._sessions.values()
-                    if s.thread is not None and s.thread.is_alive()
-                ]
+                running = [s for s in self._sessions.values() if s.thread is not None and s.thread.is_alive()]
             for s in running:
                 s.thread.join(timeout=timeout)
                 if s.thread.is_alive():
@@ -405,9 +399,7 @@ class AgentPool:
             desktop_name,
         )
 
-    def _mark_session_failed(
-        self, session: AgentSession, error: str, error_type: str
-    ) -> None:
+    def _mark_session_failed(self, session: AgentSession, error: str, error_type: str) -> None:
         """Thread-safe helper to mark a session as failed with error metadata."""
         with self._lock:
             session.status = STATUS_FAILED
@@ -415,7 +407,9 @@ class AgentPool:
             session.end_time = datetime.now(timezone.utc)
 
     def _setup_virtual_desktop(
-        self, session_id: str, desktop_name: str,
+        self,
+        session_id: str,
+        desktop_name: str,
     ) -> VirtualDesktop | None:
         """Create and switch to an isolated virtual desktop for a session.
 
@@ -443,7 +437,10 @@ class AgentPool:
         return vd
 
     def _cleanup_virtual_desktop(
-        self, vd: VirtualDesktop, session_id: str, desktop_name: str,
+        self,
+        vd: VirtualDesktop,
+        session_id: str,
+        desktop_name: str,
     ) -> None:
         """Switch back from and close a session's virtual desktop.
 
@@ -485,9 +482,7 @@ class AgentPool:
         try:
             from core.engine import AgentEngine
         except ImportError as exc:
-            logger.exception(
-                "Worker: failed to import engine/virtual_desktop for session %s", session_id
-            )
+            logger.exception("Worker: failed to import engine/virtual_desktop for session %s", session_id)
             with self._lock:
                 session = self._sessions.get(session_id)
             if session is not None:

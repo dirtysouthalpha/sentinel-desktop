@@ -184,9 +184,7 @@ class SettingsTab:
         )
         self._add_field(s, "API Key", "api_key", "", "entry", row=1)
         self._add_field(s, "Base URL", "base_url", "", "entry", row=2)
-        self._add_field(
-            s, "Temperature", "temperature", "0.3", "slider", values=[0.0, 2.0, 20], row=3
-        )
+        self._add_field(s, "Temperature", "temperature", "0.3", "slider", values=[0.0, 2.0, 20], row=3)
 
     def _section_agent(self) -> None:
         s = self._make_section("🤖 Agent")
@@ -441,10 +439,6 @@ class SettingsTab:
                 if isinstance(var, ctk.DoubleVar):
                     var.set(float(val))
                 elif isinstance(var, ctk.BooleanVar):
-                    var.set(
-                        bool(val)
-                        if not isinstance(val, str)
-                        else val.lower() in ("true", "1", "yes")
-                    )
+                    var.set(bool(val) if not isinstance(val, str) else val.lower() in ("true", "1", "yes"))
                 else:
                     var.set(str(val))

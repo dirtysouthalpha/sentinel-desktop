@@ -331,8 +331,7 @@ class ForensicLog:
             f"  Provider: {provider} / {model}",
             f"  Started:  {start}",
             f"  Ended:    {end}",
-            f"  Steps:    {total}  (actions={action_count}  "
-            f"errors={error_count}  overrides={override_count})",
+            f"  Steps:    {total}  (actions={action_count}  errors={error_count}  overrides={override_count})",
         ]
         if summary:
             lines.append(f"  Summary:  {summary}")
@@ -464,6 +463,4 @@ class ForensicLog:
             with dest.open("w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
         except (OSError, TypeError):
-            logger.exception(
-                "Forensic auto-save failed for run %s", self._run.get("run_id", "???")[:8]
-            )
+            logger.exception("Forensic auto-save failed for run %s", self._run.get("run_id", "???")[:8])

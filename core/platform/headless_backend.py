@@ -29,12 +29,14 @@ logger = logging.getLogger(__name__)
 
 class _HeadlessError(Exception):
     """Raised when a GUI action is attempted in headless mode."""
+
     pass
 
 
 # ---------------------------------------------------------------------------
 # Window system
 # ---------------------------------------------------------------------------
+
 
 class _HeadlessWindowSystem:
     def get_windows(self, visible_only: bool = True) -> list[WindowInfo]:
@@ -73,6 +75,7 @@ class _HeadlessWindowSystem:
 # Input controller
 # ---------------------------------------------------------------------------
 
+
 class _HeadlessInput:
     def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> None:
         logger.warning("Cannot click in headless mode")
@@ -109,9 +112,11 @@ class _HeadlessInput:
 # Screen capture
 # ---------------------------------------------------------------------------
 
+
 class _HeadlessScreen:
     def capture(self, region: tuple[int, int, int, int] | None = None) -> Any:
         from PIL import Image
+
         return Image.new("RGB", (1920, 1080), (0, 0, 0))
 
     def capture_monitor(self, index: int) -> Any:
@@ -126,7 +131,9 @@ class _HeadlessScreen:
     def capture_base64(self, region: tuple[int, int, int, int] | None = None, fmt: str = "PNG") -> str:
         import base64
         import io
+
         from PIL import Image
+
         img = Image.new("RGB", self.get_primary_size(), (30, 30, 30))
         buf = io.BytesIO()
         img.save(buf, format=fmt)
@@ -137,13 +144,16 @@ class _HeadlessScreen:
 # Application manager
 # ---------------------------------------------------------------------------
 
+
 class _HeadlessApplicationManager:
     def launch(self, command: str | list[str], **kwargs: Any) -> int | None:
         try:
             if isinstance(command, list):
                 proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs)
             else:
-                proc = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs)
+                proc = subprocess.Popen(
+                    command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs
+                )
             return proc.pid
         except Exception as exc:
             logger.warning("launch %r failed: %s", command, exc)
@@ -163,16 +173,19 @@ class _HeadlessApplicationManager:
         result = []
         try:
             import psutil
+
             for p in psutil.process_iter(["pid", "name", "exe", "cpu_percent", "memory_info"]):
                 try:
                     info = p.info
-                    result.append(ProcessInfo(
-                        pid=info["pid"] or 0,
-                        name=info.get("name", ""),
-                        executable=info.get("exe", "") or "",
-                        cpu_percent=info.get("cpu_percent", 0.0) or 0.0,
-                        memory_mb=(info.get("memory_info").rss / 1024 / 1024) if info.get("memory_info") else 0.0,
-                    ))
+                    result.append(
+                        ProcessInfo(
+                            pid=info["pid"] or 0,
+                            name=info.get("name", ""),
+                            executable=info.get("exe", "") or "",
+                            cpu_percent=info.get("cpu_percent", 0.0) or 0.0,
+                            memory_mb=(info.get("memory_info").rss / 1024 / 1024) if info.get("memory_info") else 0.0,
+                        )
+                    )
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     pass
         except ImportError:
@@ -186,6 +199,7 @@ class _HeadlessApplicationManager:
 # ---------------------------------------------------------------------------
 # Power management
 # ---------------------------------------------------------------------------
+
 
 class _HeadlessPower:
     def shutdown(self, force: bool = False, delay: int = 0) -> None:
@@ -207,6 +221,7 @@ class _HeadlessPower:
 # ---------------------------------------------------------------------------
 # Backend
 # ---------------------------------------------------------------------------
+
 
 class HeadlessBackend(Backend):
     name = "headless"

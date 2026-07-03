@@ -169,9 +169,7 @@ class TaskScheduler:
             return
         self._running = True
         self._stop_event.clear()
-        self._thread = threading.Thread(
-            target=self._scheduler_loop, name="sentinel-scheduler", daemon=True
-        )
+        self._thread = threading.Thread(target=self._scheduler_loop, name="sentinel-scheduler", daemon=True)
         self._thread.start()
         logger.info("Scheduler started (check interval=%ds).", CHECK_INTERVAL)
 
@@ -348,9 +346,7 @@ class TaskScheduler:
         with self._lock:
             data = list(self._tasks.values())
         try:
-            self._tasks_path.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
+            self._tasks_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         except OSError:
             logger.exception("Failed to save tasks to %s", self._tasks_path)
 
@@ -434,9 +430,7 @@ class TaskScheduler:
         }
         if self.engine and hasattr(self.engine, "script_engine"):
             try:
-                sr = self.engine.script_engine.run_script(
-                    task.get("path", ""), task.get("params", {})
-                )
+                sr = self.engine.script_engine.run_script(task.get("path", ""), task.get("params", {}))
                 r.update(
                     success=sr.success,
                     error=sr.error,

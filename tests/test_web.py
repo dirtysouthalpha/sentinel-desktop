@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -52,19 +52,19 @@ class TestWebCommands:
     def test_execute_brief_with_url(self):
         with patch.object(self.cmds, "brief") as mock_brief:
             mock_brief.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("brief me on https://example.com")
+            self.cmds.execute("brief me on https://example.com")
             mock_brief.assert_called_once()
 
     def test_execute_open_url(self):
         with patch.object(self.cmds, "open_url") as mock_open:
             mock_open.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("go to example.com")
+            self.cmds.execute("go to example.com")
             mock_open.assert_called_once()
 
     def test_execute_search(self):
         with patch.object(self.cmds, "search") as mock_search:
             mock_search.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("search for python tutorials")
+            self.cmds.execute("search for python tutorials")
             mock_search.assert_called_once()
 
     def test_execute_unknown(self):

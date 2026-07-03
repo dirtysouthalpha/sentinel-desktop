@@ -13,7 +13,7 @@ import logging
 import os
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -26,10 +26,10 @@ _AUTH_FILE = Path(os.environ.get("SENTINEL_AUTH_FILE", Path.home() / ".sentinel"
 class Role(Enum):
     """User roles with increasing privilege."""
 
-    VIEWER = "viewer"        # read-only access
-    OPERATOR = "operator"    # can run workflows but not manage system
-    ADMIN = "admin"          # full system access
-    SUPER = "super"          # can manage users and roles
+    VIEWER = "viewer"  # read-only access
+    OPERATOR = "operator"  # can run workflows but not manage system
+    ADMIN = "admin"  # full system access
+    SUPER = "super"  # can manage users and roles
 
 
 class Permission:
@@ -50,13 +50,21 @@ class Permission:
 _ROLE_PERMISSIONS: dict[Role, set[str]] = {
     Role.VIEWER: {Permission.VIEW_STATUS, Permission.VIEW_LOGS, Permission.VIEW_METRICS},
     Role.OPERATOR: {
-        Permission.VIEW_STATUS, Permission.RUN_ACTIONS, Permission.RUN_WORKFLOWS,
-        Permission.VIEW_LOGS, Permission.VIEW_METRICS,
+        Permission.VIEW_STATUS,
+        Permission.RUN_ACTIONS,
+        Permission.RUN_WORKFLOWS,
+        Permission.VIEW_LOGS,
+        Permission.VIEW_METRICS,
     },
     Role.ADMIN: {
-        Permission.VIEW_STATUS, Permission.RUN_ACTIONS, Permission.RUN_WORKFLOWS,
-        Permission.MANAGE_WORKFLOWS, Permission.MANAGE_FLEET, Permission.MANAGE_CONFIG,
-        Permission.VIEW_LOGS, Permission.VIEW_METRICS,
+        Permission.VIEW_STATUS,
+        Permission.RUN_ACTIONS,
+        Permission.RUN_WORKFLOWS,
+        Permission.MANAGE_WORKFLOWS,
+        Permission.MANAGE_FLEET,
+        Permission.MANAGE_CONFIG,
+        Permission.VIEW_LOGS,
+        Permission.VIEW_METRICS,
     },
     Role.SUPER: {p for p in dir(Permission) if not p.startswith("_")},
 }
@@ -172,8 +180,7 @@ class AuthManager:
     def list_keys(self) -> list[dict[str, Any]]:
         """List all API key names and their metadata (without hashes)."""
         return [
-            {"name": k.name, "role": k.role, "enabled": k.enabled,
-             "created_at": k.created_at, "last_used": k.last_used}
+            {"name": k.name, "role": k.role, "enabled": k.enabled, "created_at": k.created_at, "last_used": k.last_used}
             for k in self._values()
         ]
 
@@ -182,8 +189,10 @@ class AuthManager:
 
     def require_auth(self, permission: str = Permission.RUN_ACTIONS) -> Any:
         """Decorator factory for FastAPI endpoints."""
+
         def decorator(func: Any) -> Any:
             import functools
+
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 # Extract authorization from request context
@@ -196,8 +205,11 @@ class AuthManager:
                     if self.check_permission(key, permission):
                         return await func(*args, **kwargs)
                 from fastapi import HTTPException
+
                 raise HTTPException(status_code=401, detail="Unauthorized")
+
             return wrapper
+
         return decorator
 
 

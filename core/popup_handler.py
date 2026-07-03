@@ -575,9 +575,7 @@ class PopupHandler:
 
         # Step 3: OCR the screenshot
         ocr_output = _ocr_text(screenshot)
-        lines = (
-            [line.strip() for line in ocr_output.splitlines() if line.strip()] if ocr_output else []
-        )
+        lines = [line.strip() for line in ocr_output.splitlines() if line.strip()] if ocr_output else []
 
         # If we have a window title, use it; otherwise first OCR line
         if not title_text and lines:
@@ -593,10 +591,7 @@ class PopupHandler:
 
         # Step 5: Cooldown check — skip if same popup seen recently
         now = time.monotonic()
-        if (
-            result.popup_type == self._last_popup_type
-            and (now - self._last_detection_time) < self.COOLDOWN_SECONDS
-        ):
+        if result.popup_type == self._last_popup_type and (now - self._last_detection_time) < self.COOLDOWN_SECONDS:
             logger.debug(
                 "PopupHandler: cooldown active for %s (%.1fs remaining)",
                 result.popup_type,

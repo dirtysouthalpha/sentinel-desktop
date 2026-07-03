@@ -64,10 +64,7 @@ class PSResult:
 
     def __str__(self) -> str:
         status = "OK" if self.success else "FAIL"
-        return (
-            f"PSResult({status}, code={self.exit_code}, "
-            f"stdout={len(self.stdout)}c, objects={len(self.objects)})"
-        )
+        return f"PSResult({status}, code={self.exit_code}, stdout={len(self.stdout)}c, objects={len(self.objects)})"
 
 
 # ---------------------------------------------------------------------------
@@ -380,10 +377,7 @@ class PowerShellRunner:
                 "DisplayName": "",
                 "error": f"invalid service name: {exc}",
             }
-        cmd = (
-            f"Get-Service -Name {ps_name} -ErrorAction Stop "
-            "| Select-Object Name,Status,StartType,DisplayName"
-        )
+        cmd = f"Get-Service -Name {ps_name} -ErrorAction Stop | Select-Object Name,Status,StartType,DisplayName"
         result = self._run(cmd)
         if result.success and result.objects:
             return result.objects[0]

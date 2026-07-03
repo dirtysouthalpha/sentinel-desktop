@@ -185,6 +185,7 @@ class SentinelServer:
         # Workflow builder store + templates (initialized here so tests that
         # bypass create_app() still have them available).
         from core.workflow_builder import TEMPLATES, workflow_store
+
         self._workflow_store = workflow_store
         self._workflow_templates = TEMPLATES
 
@@ -298,8 +299,10 @@ class SentinelServer:
         app.get("/vault/keys")(self._handle_vault_keys)
         # v3.1 — System Dashboard, Workflow Builder
         from core.dashboard import router as dashboard_router
+
         app.include_router(dashboard_router)
         from core.workflow_builder import TEMPLATES, workflow_store
+
         self._workflow_store = workflow_store
         self._workflow_templates = TEMPLATES
         app.get("/workflows/builder/list")(self._handle_workflow_builder_list)
@@ -315,9 +318,7 @@ class SentinelServer:
 
     # ── Agent control ───────────────────────────────────────────────
 
-    async def _handle_goal(
-        self, req: GoalRequest, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_goal(self, req: GoalRequest, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine and self.engine.running:
             raise HTTPException(409, "Agent already running — stop it first")
@@ -382,9 +383,7 @@ class SentinelServer:
             logger.exception("Unexpected error executing command")
             raise HTTPException(500, f"Internal error: {exc}") from exc
 
-    async def _handle_stop(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, str]:
+    async def _handle_stop(self, authorization: str | None = Header(default=None)) -> dict[str, str]:
         self._check_auth(authorization)
         if self.engine and self.engine.running:
             self.engine.stop()
@@ -393,9 +392,7 @@ class SentinelServer:
 
     # ── Information endpoints ───────────────────────────────────────
 
-    async def _handle_screenshot(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, str]:
+    async def _handle_screenshot(self, authorization: str | None = Header(default=None)) -> dict[str, str]:
         self._check_auth(authorization)
         try:
             b64 = capture_to_base64()
@@ -403,9 +400,7 @@ class SentinelServer:
             raise HTTPException(500, f"Screen capture failed: {exc}") from exc
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
-    async def _handle_status(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_status(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         if self.engine:
             return {
@@ -416,9 +411,7 @@ class SentinelServer:
             }
         return {"running": False, "step": 0}
 
-    async def _handle_windows(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_windows(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
             windows = wm.list_windows()
@@ -426,9 +419,7 @@ class SentinelServer:
             raise HTTPException(500, f"Failed to list windows: {exc}") from exc
         return {"windows": windows}
 
-    async def _handle_processes(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_processes(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
             processes = pm.list_processes(limit=100)
@@ -436,9 +427,7 @@ class SentinelServer:
             raise HTTPException(500, f"Failed to list processes: {exc}") from exc
         return {"processes": processes}
 
-    async def _handle_system(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_system(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         try:
             info = sysinfo.system_info()
@@ -446,9 +435,7 @@ class SentinelServer:
             raise HTTPException(500, f"Failed to get system info: {exc}") from exc
         return {"system": info}
 
-    async def _handle_get_config(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_get_config(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         # Never leak the API key over the wire.
         cfg = dict(self.config.load())
@@ -479,9 +466,7 @@ class SentinelServer:
 
     # ── Script / Recorder / PowerShell endpoints ──────────────────────
 
-    async def _handle_scripts_list(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_scripts_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List all available scripts in the scripts/ directory."""
         self._check_auth(authorization)
         try:
@@ -538,9 +523,7 @@ class SentinelServer:
             logger.exception("PowerShell execution failed")
             return {"success": False, "error": str(exc)}
 
-    async def _handle_recorder_start(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, str]:
+    async def _handle_recorder_start(self, authorization: str | None = Header(default=None)) -> dict[str, str]:
         """Start recording actions."""
         self._check_auth(authorization)
         if not self.engine:
@@ -578,9 +561,7 @@ class SentinelServer:
 
     # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
 
-    async def _handle_workflows_list(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_workflows_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List available workflows."""
         self._check_auth(authorization)
         try:
@@ -615,9 +596,7 @@ class SentinelServer:
             "elapsed": result.elapsed_seconds,
         }
 
-    async def _handle_schedule_list(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_schedule_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List scheduled tasks."""
         self._check_auth(authorization)
         if not self.engine:
@@ -679,9 +658,7 @@ class SentinelServer:
             raise HTTPException(500, f"Notification failed: {exc}") from exc
         return {"success": success}
 
-    async def _handle_plugins_list(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_plugins_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List loaded plugins."""
         self._check_auth(authorization)
         if not self.engine:
@@ -708,9 +685,7 @@ class SentinelServer:
 
     # ── v3.0 Phase 3+4 endpoints ──────────────────────────────────────
 
-    async def _handle_agents_list(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_agents_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List all agent pool sessions."""
         self._check_auth(authorization)
         if not self.engine:
@@ -807,9 +782,7 @@ class SentinelServer:
             raise HTTPException(500, f"Logout failed: {exc}") from exc
         return {"status": "logged_out"}
 
-    async def _handle_auth_users(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_auth_users(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List users (admin only)."""
         self._check_auth(authorization)
         if not self.engine:
@@ -829,17 +802,13 @@ class SentinelServer:
             raise HTTPException(500, "Engine not initialized")
         try:
             log = self.engine.forensic_log if hasattr(self.engine, "forensic_log") else []
-            path = self.engine.audit_exporter.generate_report(
-                log, metadata={"goal": "audit"}, format=format
-            )
+            path = self.engine.audit_exporter.generate_report(log, metadata={"goal": "audit"}, format=format)
             return {"path": path, "format": format}
         except (OSError, ValueError, RuntimeError) as exc:
             logger.exception("Audit export failed")
             raise HTTPException(500, f"Audit export failed: {exc}") from exc
 
-    async def _handle_vault_keys(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_vault_keys(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         """List credential vault keys."""
         self._check_auth(authorization)
         if not self.engine:
@@ -947,9 +916,7 @@ class SentinelServer:
 
     # ── Workflow Builder (v3.1) ───────────────────────────────────────────
 
-    async def _handle_workflow_builder_list(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_workflow_builder_list(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         workflows = self._workflow_store.list_all()
         return {"workflows": [wf.to_dict() for wf in workflows]}
@@ -967,9 +934,7 @@ class SentinelServer:
         )
         return wf.to_dict()
 
-    async def _handle_workflow_templates(
-        self, authorization: str | None = Header(default=None)
-    ) -> dict[str, Any]:
+    async def _handle_workflow_templates(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
         return {"templates": self._workflow_templates}
 

@@ -15,9 +15,7 @@ def list_processes(sort_by: str = "cpu", limit: int = 50) -> list[dict[str, Any]
     for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_info"]):
         try:
             info = p.info
-            info["memory_mb"] = (
-                round(info["memory_info"].rss / (1024 * 1024), 1) if info["memory_info"] else 0
-            )
+            info["memory_mb"] = round(info["memory_info"].rss / (1024 * 1024), 1) if info["memory_info"] else 0
             del info["memory_info"]
             procs.append(info)
         except (psutil.NoSuchProcess, psutil.AccessDenied):

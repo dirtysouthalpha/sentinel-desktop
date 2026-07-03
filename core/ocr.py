@@ -187,9 +187,7 @@ def _ocr_image(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> str:
         return ""
 
 
-def _ocr_image_with_confidence(
-    img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT
-) -> tuple[str, dict[str, Any]]:
+def _ocr_image_with_confidence(img: Image.Image, preprocess: bool = PREPROCESS_DEFAULT) -> tuple[str, dict[str, Any]]:
     """OCR a PIL Image and return text + confidence data.
 
     Returns:

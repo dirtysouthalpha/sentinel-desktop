@@ -237,9 +237,7 @@ PROFILES: dict[str, AppProfile] = {
                 "Physical click File → wait → click Export for Runtime → wait → "
                 "click Export for Runtime in submenu → wait for dialog → click OK"
             ),
-            "rig_parameter": (
-                "Click parameter in list → click Add Parameter → drag mesh points on canvas"
-            ),
+            "rig_parameter": ("Click parameter in list → click Add Parameter → drag mesh points on canvas"),
         },
     ),
     "file_explorer": AppProfile(

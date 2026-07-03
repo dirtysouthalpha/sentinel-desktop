@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import os
-from unittest.mock import MagicMock, patch
+import sys
 
 import pytest
 
@@ -76,6 +75,7 @@ def test_backend_abstract_methods():
         Backend()
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="pygetwindow Windows-only")
 def test_windows_backend_creates():
     """WindowsBackend creates all subsystems."""
     from core.platform.windows_backend import WindowsBackend
@@ -159,7 +159,7 @@ def test_headless_screen_returns_placeholder():
 
 def test_capabilities_detect_runs():
     """detect_capabilities returns a populated Capabilities object."""
-    from core.platform.capabilities import detect_capabilities, Capabilities
+    from core.platform.capabilities import Capabilities, detect_capabilities
     from core.platform.windows_backend import WindowsBackend
     c = detect_capabilities(WindowsBackend())
     assert isinstance(c, Capabilities)

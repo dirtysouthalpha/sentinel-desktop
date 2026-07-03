@@ -10,7 +10,6 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any
 
 from core.platform.base import WindowInfo
 
@@ -67,8 +66,10 @@ class DesktopInspector:
             time.sleep(0.1)
 
     def _capture_snapshot(self) -> InspectorSnapshot:
-        from core.platform import platform
         import ctypes
+
+        from core.platform import platform
+
         try:
             pt = ctypes.wintypes.POINT()
             ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
@@ -78,7 +79,7 @@ class DesktopInspector:
             hdc = ctypes.windll.user32.GetDC(0)
             color = ctypes.windll.gdi32.GetPixel(hdc, x, y)
             ctypes.windll.user32.ReleaseDC(0, hdc)
-            r, g, b = color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff
+            r, g, b = color & 0xFF, (color >> 8) & 0xFF, (color >> 16) & 0xFF
 
             # Get window under cursor
             windows = platform.window_system.get_windows(visible_only=True)

@@ -71,11 +71,13 @@ class BrowserRecorder:
     def record(self, action: str, **kwargs: Any) -> None:
         if not self._active or not self._recording:
             return
-        self._recording.actions.append(RecordedAction(
-            action=action,
-            timestamp=time.time(),
-            **kwargs,
-        ))
+        self._recording.actions.append(
+            RecordedAction(
+                action=action,
+                timestamp=time.time(),
+                **kwargs,
+            )
+        )
 
     def record_click(self, selector: str, **meta: Any) -> None:
         self.record("click", selector=selector, metadata=meta)

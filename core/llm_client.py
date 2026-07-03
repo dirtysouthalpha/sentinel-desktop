@@ -470,9 +470,7 @@ class LLMClient:
                     try:
                         return resp.json()
                     except ValueError as exc:
-                        raise LLMError(
-                            f"{provider_label}: provider returned non-JSON body"
-                        ) from exc
+                        raise LLMError(f"{provider_label}: provider returned non-JSON body") from exc
                 last_status = resp.status_code
                 last_body = (resp.text or "")[:500]
                 if resp.status_code not in RETRY_STATUSES:
@@ -499,12 +497,8 @@ class LLMClient:
         if last_status is not None:
             raise LLMError(_friendly_http_error(last_status, last_body))
         if last_exc is not None:
-            raise LLMError(
-                f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}"
-            ) from last_exc
-        raise LLMError(
-            f"{provider_label}: request failed for unknown reasons ({max_retries + 1} attempts)"
-        )
+            raise LLMError(f"{provider_label}: {last_exc.__class__.__name__}: {last_exc}") from last_exc
+        raise LLMError(f"{provider_label}: request failed for unknown reasons ({max_retries + 1} attempts)")
 
     @staticmethod
     def _build_headers(

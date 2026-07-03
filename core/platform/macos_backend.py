@@ -31,7 +31,9 @@ def _osascript(script: str) -> str:
     try:
         r = subprocess.run(
             ["osascript", "-e", script],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         return r.stdout.strip()
     except (subprocess.TimeoutExpired, OSError):
@@ -42,8 +44,9 @@ def _osascript(script: str) -> str:
 # Window system
 # ---------------------------------------------------------------------------
 
+
 class _MacOSWindowSystem:
-    def get_windows(self, visible_only: bool = True) -> list[WindowsInfo]:
+    def get_windows(self, visible_only: bool = True) -> list[WindowInfo]:
         out = _osascript(
             'tell application "System Events" to get {name, position, size, value of attribute "AXMinimized"} of every window of every process'
         )
@@ -53,23 +56,26 @@ class _MacOSWindowSystem:
             return result
         # Parse the AppleScript list output (simplified)
         import re
+
         window_data = re.findall(
-            r'\{([^,]+),\s*\{(\d+),\s*(\d+)\},\s*\{(\d+),\s*(\d+)\},\s*(true|false)\}',
+            r"\{([^,]+),\s*\{(\d+),\s*(\d+)\},\s*\{(\d+),\s*(\d+)\},\s*(true|false)\}",
             out,
         )
         for title, x, y, w, h, minimized in window_data:
-            title = title.strip(', ')
+            title = title.strip(", ")
             is_visible = minimized.strip() == "false"
             if visible_only and not is_visible:
                 continue
-            result.append(WindowInfo(
-                title=title,
-                x=int(x),
-                y=int(y),
-                width=int(w),
-                height=int(h),
-                is_visible=is_visible,
-            ))
+            result.append(
+                WindowInfo(
+                    title=title,
+                    x=int(x),
+                    y=int(y),
+                    width=int(w),
+                    height=int(h),
+                    is_visible=is_visible,
+                )
+            )
         return result
 
     def get_focused_window(self) -> WindowInfo | None:
@@ -135,9 +141,11 @@ class _MacOSWindowSystem:
 # Input controller
 # ---------------------------------------------------------------------------
 
+
 class _MacOSInput:
     def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> None:
         import pyautogui
+
         pyautogui.click(x, y, button=button, clicks=clicks)
 
     def double_click(self, x: int, y: int, button: str = "left") -> None:
@@ -145,35 +153,43 @@ class _MacOSInput:
 
     def move_to(self, x: int, y: int) -> None:
         import pyautogui
+
         pyautogui.moveTo(x, y)
 
     def drag(self, x1: int, y1: int, x2: int, y2: int, button: str = "left") -> None:
         import pyautogui
+
         pyautogui.moveTo(x1, y1)
         pyautogui.drag(x2 - x1, y2 - y1, button=button, duration=0.3)
 
     def scroll(self, clicks: int, x: int | None = None, y: int | None = None) -> None:
         import pyautogui
+
         pyautogui.scroll(clicks, x=x, y=y)
 
     def key_press(self, key: str) -> None:
         import pyautogui
+
         pyautogui.press(key)
 
     def key_down(self, key: str) -> None:
         import pyautogui
+
         pyautogui.keyDown(key)
 
     def key_up(self, key: str) -> None:
         import pyautogui
+
         pyautogui.keyUp(key)
 
     def type_text(self, text: str, interval: float = 0.02) -> None:
         import pyautogui
+
         pyautogui.typewrite(text, interval=interval)
 
     def hotkey(self, *keys: str) -> None:
         import pyautogui
+
         pyautogui.hotkey(*keys)
 
 
@@ -181,14 +197,19 @@ class _MacOSInput:
 # Screen capture
 # ---------------------------------------------------------------------------
 
+
 class _MacOSScreen:
     def capture(self, region: tuple[int, int, int, int] | None = None) -> Any:
-        from PIL import Image
         import tempfile
+
+        from PIL import Image
+
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             path = f.name
         if region:
-            subprocess.run(["screencapture", "-R", f"{region[0]},{region[1]},{region[2]},{region[3]}", path], capture_output=True)
+            subprocess.run(
+                ["screencapture", "-R", f"{region[0]},{region[1]},{region[2]},{region[3]}", path], capture_output=True
+            )
         else:
             subprocess.run(["screencapture", path], capture_output=True)
         try:
@@ -204,20 +225,27 @@ class _MacOSScreen:
     def get_monitors(self) -> list[MonitorInfo]:
         try:
             import subprocess
+
             out = subprocess.run(["system_profiler", "SPDisplaysDataType"], capture_output=True, text=True).stdout
             result = []
             idx = 0
             for line in out.splitlines():
                 if "Resolution" in line:
                     import re
-                    match = re.search(r'(\d+)\s*x\s*(\d+)', line)
+
+                    match = re.search(r"(\d+)\s*x\s*(\d+)", line)
                     if match:
                         idx += 1
-                        result.append(MonitorInfo(
-                            index=idx, x=0, y=0,
-                            width=int(match.group(1)), height=int(match.group(2)),
-                            is_primary=(idx == 1),
-                        ))
+                        result.append(
+                            MonitorInfo(
+                                index=idx,
+                                x=0,
+                                y=0,
+                                width=int(match.group(1)),
+                                height=int(match.group(2)),
+                                is_primary=(idx == 1),
+                            )
+                        )
             return result or [MonitorInfo(index=1, x=0, y=0, width=2560, height=1440, is_primary=True)]
         except Exception:
             return [MonitorInfo(index=1, x=0, y=0, width=2560, height=1440, is_primary=True)]
@@ -232,7 +260,7 @@ class _MacOSScreen:
     def capture_base64(self, region: tuple[int, int, int, int] | None = None, fmt: str = "PNG") -> str:
         import base64
         import io
-        from PIL import Image
+
         img = self.capture(region)
         if img is None:
             return ""
@@ -244,6 +272,7 @@ class _MacOSScreen:
 # ---------------------------------------------------------------------------
 # Application manager
 # ---------------------------------------------------------------------------
+
 
 class _MacOSApplicationManager:
     def launch(self, command: str | list[str], **kwargs: Any) -> int | None:
@@ -270,16 +299,19 @@ class _MacOSApplicationManager:
         result = []
         try:
             import psutil
+
             for p in psutil.process_iter(["pid", "name", "exe", "cpu_percent", "memory_info"]):
                 try:
                     info = p.info
-                    result.append(ProcessInfo(
-                        pid=info["pid"] or 0,
-                        name=info.get("name", ""),
-                        executable=info.get("exe", "") or "",
-                        cpu_percent=info.get("cpu_percent", 0.0) or 0.0,
-                        memory_mb=(info.get("memory_info").rss / 1024 / 1024) if info.get("memory_info") else 0.0,
-                    ))
+                    result.append(
+                        ProcessInfo(
+                            pid=info["pid"] or 0,
+                            name=info.get("name", ""),
+                            executable=info.get("exe", "") or "",
+                            cpu_percent=info.get("cpu_percent", 0.0) or 0.0,
+                            memory_mb=(info.get("memory_info").rss / 1024 / 1024) if info.get("memory_info") else 0.0,
+                        )
+                    )
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     pass
         except ImportError:
@@ -294,9 +326,11 @@ class _MacOSApplicationManager:
 # Power management
 # ---------------------------------------------------------------------------
 
+
 class _MacOSPower:
     def shutdown(self, force: bool = False, delay: int = 0) -> None:
         import subprocess
+
         if delay:
             subprocess.run(["sudo", "shutdown", "-h", f"+{delay}"], capture_output=True)
         else:
@@ -304,6 +338,7 @@ class _MacOSPower:
 
     def restart(self, force: bool = False, delay: int = 0) -> None:
         import subprocess
+
         if delay:
             subprocess.run(["sudo", "shutdown", "-r", f"+{delay}"], capture_output=True)
         else:
@@ -311,6 +346,7 @@ class _MacOSPower:
 
     def lock(self) -> None:
         import subprocess
+
         subprocess.run(
             ["/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession", "-suspend"],
             capture_output=True,
@@ -318,11 +354,13 @@ class _MacOSPower:
 
     def sleep(self) -> None:
         import subprocess
+
         subprocess.run(["pmset", "sleepnow"], capture_output=True)
 
     def hibernate(self) -> None:
         # macOS hibernate is configured via pmset
         import subprocess
+
         subprocess.run(["pmset", "hibernatemode", "25"], capture_output=True)
         subprocess.run(["pmset", "sleepnow"], capture_output=True)
 
@@ -330,6 +368,7 @@ class _MacOSPower:
 # ---------------------------------------------------------------------------
 # Backend
 # ---------------------------------------------------------------------------
+
 
 class MacOSBackend(Backend):
     name = "macos"

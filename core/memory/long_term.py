@@ -60,11 +60,13 @@ class LongTermMemory:
     def _init_db(self) -> None:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         import sqlite3
+
         with sqlite3.connect(str(self._db_path)) as conn:
             conn.executescript(_INIT_SQL)
 
     def store(self, key: str, value: str, category: str = "", **meta: Any) -> None:
         import sqlite3
+
         now = time.time()
         meta_json = json.dumps(meta)
         with sqlite3.connect(str(self._db_path)) as conn:
@@ -81,10 +83,9 @@ class LongTermMemory:
 
     def recall(self, key: str) -> str | None:
         import sqlite3
+
         with sqlite3.connect(str(self._db_path)) as conn:
-            cursor = conn.execute(
-                "SELECT value FROM memories WHERE key = ?", (key,)
-            )
+            cursor = conn.execute("SELECT value FROM memories WHERE key = ?", (key,))
             row = cursor.fetchone()
             if row:
                 # Update last_accessed
@@ -102,6 +103,7 @@ class LongTermMemory:
     def search(self, category: str = "", limit: int = 20, min_score: float = -1.0) -> list[LongTermEntry]:
         """Search memories by category, ordered by score."""
         import sqlite3
+
         query = "SELECT key, category, value, metadata, score, created_at, last_accessed FROM memories"
         params: list[Any] = []
         conditions = []
@@ -120,15 +122,22 @@ class LongTermMemory:
             cursor = conn.execute(query, params)
             results = []
             for row in cursor.fetchall():
-                results.append(LongTermEntry(
-                    key=row[0], category=row[1], value=row[2],
-                    metadata=json.loads(row[3]) if row[3] else {},
-                    score=row[4], created_at=row[5], last_accessed=row[6],
-                ))
+                results.append(
+                    LongTermEntry(
+                        key=row[0],
+                        category=row[1],
+                        value=row[2],
+                        metadata=json.loads(row[3]) if row[3] else {},
+                        score=row[4],
+                        created_at=row[5],
+                        last_accessed=row[6],
+                    )
+                )
             return results
 
     def forget(self, key: str) -> bool:
         import sqlite3
+
         with sqlite3.connect(str(self._db_path)) as conn:
             cursor = conn.execute("DELETE FROM memories WHERE key = ?", (key,))
             return cursor.rowcount > 0
@@ -155,6 +164,7 @@ class LongTermMemory:
 
     def clear_all(self) -> None:
         import sqlite3
+
         with sqlite3.connect(str(self._db_path)) as conn:
             conn.execute("DELETE FROM memories")
 

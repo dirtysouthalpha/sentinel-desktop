@@ -63,6 +63,8 @@ def stealth_module():
             sys.modules[mod_name] = saved
     if saved_windll is not None:
         real_ctypes.windll = saved_windll
+    elif hasattr(real_ctypes, "windll"):
+        del real_ctypes.windll
 
     # Reload again to restore original state
     importlib.reload(si)

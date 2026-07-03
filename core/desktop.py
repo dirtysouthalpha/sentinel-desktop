@@ -175,9 +175,7 @@ class DesktopController:
             time.sleep(interval)
         return None
 
-    def click_image(
-        self, template_path: str, confidence: float = 0.8, button: str = "left"
-    ) -> bool:
+    def click_image(self, template_path: str, confidence: float = 0.8, button: str = "left") -> bool:
         """Find a template on screen and click it; return True if found and clicked."""
         pos = self.find_on_screen(template_path, confidence)
         if not pos:

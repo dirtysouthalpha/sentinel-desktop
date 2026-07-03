@@ -10,9 +10,7 @@ import logging
 import os
 import shlex
 import subprocess
-import tempfile
 from dataclasses import dataclass, field
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +56,14 @@ class SSHExecutor:
         if self.config.key_file and os.path.isfile(self.config.key_file):
             cmd += ["-i", self.config.key_file]
         cmd += [
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", "ConnectTimeout=" + str(self.config.timeout),
-            "-o", "BatchMode=yes",
-            "-p", str(self.config.port),
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=" + str(self.config.timeout),
+            "-o",
+            "BatchMode=yes",
+            "-p",
+            str(self.config.port),
         ]
         cmd.append(f"{self.config.user}@{self.config.host}")
         return cmd
@@ -69,6 +71,7 @@ class SSHExecutor:
     def run(self, command: str, timeout: int | None = None) -> SSHResult:
         """Run a command on the remote host and return the result."""
         import time
+
         full_cmd = self._base_cmd + [command]
         logger.debug("SSH [%s]: %s", self.config.host, command)
         start = time.time()
@@ -93,7 +96,9 @@ class SSHExecutor:
         except Exception as exc:
             return SSHResult(command=command, returncode=-1, stdout="", stderr=str(exc))
 
-    def run_script(self, script_body: str, remote_path: str = "/tmp/sentinel_cmd.sh", timeout: int | None = None) -> SSHResult:
+    def run_script(
+        self, script_body: str, remote_path: str = "/tmp/sentinel_cmd.sh", timeout: int | None = None
+    ) -> SSHResult:
         """Upload a script and run it on the remote host."""
         # Copy the script via stdin to avoid tempfile on remote
         cmd = f"cat > {shlex.quote(remote_path)} && chmod +x {shlex.quote(remote_path)} && bash {shlex.quote(remote_path)}"
@@ -108,7 +113,12 @@ class SSHExecutor:
             )
             # Clean up the script
             self.run(f"rm -f {shlex.quote(remote_path)}", timeout=5)
-            return SSHResult(command=f"script at {remote_path}", returncode=result.returncode, stdout=result.stdout, stderr=result.stderr)
+            return SSHResult(
+                command=f"script at {remote_path}",
+                returncode=result.returncode,
+                stdout=result.stdout,
+                stderr=result.stderr,
+            )
         except Exception as exc:
             return SSHResult(command="script upload", returncode=-1, stdout="", stderr=str(exc))
 
@@ -118,9 +128,12 @@ class SSHExecutor:
         if self.config.key_file and os.path.isfile(self.config.key_file):
             cmd += ["-i", self.config.key_file]
         cmd += [
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", "ConnectTimeout=" + str(self.config.timeout),
-            "-P", str(self.config.port),
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=" + str(self.config.timeout),
+            "-P",
+            str(self.config.port),
             local_path,
             f"{self.config.user}@{self.config.host}:{remote_path}",
         ]
@@ -137,9 +150,12 @@ class SSHExecutor:
         if self.config.key_file and os.path.isfile(self.config.key_file):
             cmd += ["-i", self.config.key_file]
         cmd += [
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", "ConnectTimeout=" + str(self.config.timeout),
-            "-P", str(self.config.port),
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=" + str(self.config.timeout),
+            "-P",
+            str(self.config.port),
             f"{self.config.user}@{self.config.host}:{remote_path}",
             local_path,
         ]

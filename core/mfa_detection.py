@@ -603,10 +603,7 @@ class MFADetector:
                 # within the cooldown window.
                 sig = f"{result.type}:{result.window_title}:{result.prompt_text[:40]}"
                 with self._lock:
-                    in_cooldown = (
-                        sig == self._last_prompt_sig
-                        and (now - self._last_detection_time) < self._cooldown
-                    )
+                    in_cooldown = sig == self._last_prompt_sig and (now - self._last_detection_time) < self._cooldown
 
                 if not in_cooldown:
                     with self._lock:

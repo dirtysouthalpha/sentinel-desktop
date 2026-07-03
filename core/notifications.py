@@ -199,9 +199,7 @@ class NotificationManager:
         self._last_results: dict[str, tuple[bool, str]] = {}
 
         # Cumulative counters.
-        self._stats: dict[str, dict[str, int]] = {
-            ch: {"sent": 0, "succeeded": 0, "failed": 0} for ch in CHANNELS
-        }
+        self._stats: dict[str, dict[str, int]] = {ch: {"sent": 0, "succeeded": 0, "failed": 0} for ch in CHANNELS}
         self._total_notifications = 0
 
     # ------------------------------------------------------------------
@@ -360,9 +358,7 @@ class NotificationManager:
         return {
             "enabled": list(self._config["enabled_channels"]),
             "available": list(CHANNELS),
-            "last_results": {
-                ch: {"ok": ok, "detail": detail} for ch, (ok, detail) in self._last_results.items()
-            },
+            "last_results": {ch: {"ok": ok, "detail": detail} for ch, (ok, detail) in self._last_results.items()},
         }
 
     def get_stats(self) -> dict[str, Any]:

@@ -25,6 +25,7 @@ def _get_cpu_info() -> dict[str, Any]:
     """Get CPU information."""
     try:
         import psutil
+
         return {
             "percent": psutil.cpu_percent(interval=0.5),
             "count_physical": psutil.cpu_count(logical=False),
@@ -39,6 +40,7 @@ def _get_memory_info() -> dict[str, Any]:
     """Get memory information."""
     try:
         import psutil
+
         mem = psutil.virtual_memory()
         return {
             "total_gb": round(mem.total / (1024**3), 1),
@@ -54,17 +56,20 @@ def _get_disk_info() -> list[dict[str, Any]]:
     """Get disk information."""
     try:
         import psutil
+
         disks = []
         for partition in psutil.disk_partitions():
             try:
                 usage = psutil.disk_usage(partition.mountpoint)
-                disks.append({
-                    "mount": partition.mountpoint,
-                    "total_gb": round(usage.total / (1024**3), 1),
-                    "used_gb": round(usage.used / (1024**3), 1),
-                    "free_gb": round(usage.free / (1024**3), 1),
-                    "percent": usage.percent,
-                })
+                disks.append(
+                    {
+                        "mount": partition.mountpoint,
+                        "total_gb": round(usage.total / (1024**3), 1),
+                        "used_gb": round(usage.used / (1024**3), 1),
+                        "free_gb": round(usage.free / (1024**3), 1),
+                        "percent": usage.percent,
+                    }
+                )
             except (PermissionError, OSError):
                 continue
         return disks
@@ -77,23 +82,31 @@ def _get_gpu_info() -> list[dict[str, Any]]:
     gpus = []
     try:
         import subprocess
+
         result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5,
+            [
+                "nvidia-smi",
+                "--query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             for line in result.stdout.strip().split("\n"):
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) >= 6:
-                    gpus.append({
-                        "name": parts[0],
-                        "memory_used_mb": float(parts[1]),
-                        "memory_total_mb": float(parts[2]),
-                        "temperature_c": float(parts[3]),
-                        "utilization_pct": float(parts[4]),
-                        "power_draw_w": float(parts[5]),
-                    })
+                    gpus.append(
+                        {
+                            "name": parts[0],
+                            "memory_used_mb": float(parts[1]),
+                            "memory_total_mb": float(parts[2]),
+                            "temperature_c": float(parts[3]),
+                            "utilization_pct": float(parts[4]),
+                            "power_draw_w": float(parts[5]),
+                        }
+                    )
     except Exception:
         pass
     return gpus

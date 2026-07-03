@@ -40,8 +40,7 @@ class UIDiffDetector:
             return DiffResult(changed=False)
 
         try:
-            from PIL import Image
-            if hasattr(screenshot, 'convert'):
+            if hasattr(screenshot, "convert"):
                 img = screenshot.convert("L").resize((100, 100))
                 data = list(img.tobytes())
             else:
@@ -57,8 +56,7 @@ class UIDiffDetector:
             self._last_hash = current_hash
 
             return DiffResult(
-                changed=changed,
-                description="Screenshot hash changed" if changed else "No change detected"
+                changed=changed, description="Screenshot hash changed" if changed else "No change detected"
             )
         except Exception as exc:
             logger.debug("Screenshot diff failed: %s", exc)

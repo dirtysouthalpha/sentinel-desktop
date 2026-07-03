@@ -58,11 +58,17 @@ class EventBus:
         self._running = False
         self._poll_thread: threading.Thread | None = None
 
-    def on(self, event_type: str, handler: Callable[[Event], None],
-           filter_fn: Callable[[Event], bool] | None = None, name: str = "") -> EventRule:
+    def on(
+        self,
+        event_type: str,
+        handler: Callable[[Event], None],
+        filter_fn: Callable[[Event], bool] | None = None,
+        name: str = "",
+    ) -> EventRule:
         """Register a handler for events of the given type."""
-        rule = EventRule(name=name or f"handler-{len(self._rules)}",
-                         event_type=event_type, filter_fn=filter_fn, handler=handler)
+        rule = EventRule(
+            name=name or f"handler-{len(self._rules)}", event_type=event_type, filter_fn=filter_fn, handler=handler
+        )
         with self._lock:
             self._rules.append(rule)
         return rule
@@ -97,8 +103,7 @@ class EventBus:
 
     # -- file watcher -----------------------------------------------------
 
-    def watch_file(self, path: str, event_type: str = EVENT_FILE_MODIFIED,
-                   poll_interval: float = 2.0) -> None:
+    def watch_file(self, path: str, event_type: str = EVENT_FILE_MODIFIED, poll_interval: float = 2.0) -> None:
         """Watch a single file for changes."""
         last_mtime: dict[str, float] = {}
 
@@ -107,13 +112,11 @@ class EventBus:
                 try:
                     mtime = os.path.getmtime(path)
                     if path in last_mtime and last_mtime[path] != mtime:
-                        self.emit(Event(event_type=event_type, source=path,
-                                       data={"path": path, "mtime": mtime}))
+                        self.emit(Event(event_type=event_type, source=path, data={"path": path, "mtime": mtime}))
                     last_mtime[path] = mtime
                 except FileNotFoundError:
                     if path in last_mtime:
-                        self.emit(Event(event_type=EVENT_FILE_DELETED, source=path,
-                                       data={"path": path}))
+                        self.emit(Event(event_type=EVENT_FILE_DELETED, source=path, data={"path": path}))
                         del last_mtime[path]
                 except Exception as exc:
                     logger.debug("file watch poll error: %s", exc)
@@ -123,8 +126,9 @@ class EventBus:
         t = threading.Thread(target=_poll, daemon=True)
         t.start()
 
-    def watch_dir(self, dirpath: str, event_type: str = EVENT_FILE_CREATED,
-                  pattern: str = "", poll_interval: float = 3.0) -> None:
+    def watch_dir(
+        self, dirpath: str, event_type: str = EVENT_FILE_CREATED, pattern: str = "", poll_interval: float = 3.0
+    ) -> None:
         """Watch a directory for new files."""
         seen: set[str] = set()
 
@@ -138,8 +142,7 @@ class EventBus:
                         if pattern and not fname.endswith(pattern):
                             continue
                         seen.add(full)
-                        self.emit(Event(event_type=event_type, source=dirpath,
-                                       data={"path": full, "filename": fname}))
+                        self.emit(Event(event_type=event_type, source=dirpath, data={"path": full, "filename": fname}))
                 except FileNotFoundError:
                     pass
                 except Exception as exc:
@@ -164,9 +167,17 @@ class EventBus:
 
 
 __all__ = [
-    "Event", "EventRule", "EventBus",
-    "EVENT_FILE_CREATED", "EVENT_FILE_MODIFIED", "EVENT_FILE_DELETED",
-    "EVENT_SCHEDULE_FIRED", "EVENT_WEBHOOK_RECEIVED",
-    "EVENT_PROCESS_STARTED", "EVENT_PROCESS_STOPPED",
-    "EVENT_WINDOW_CREATED", "EVENT_WINDOW_CLOSED", "EVENT_CUSTOM",
+    "Event",
+    "EventRule",
+    "EventBus",
+    "EVENT_FILE_CREATED",
+    "EVENT_FILE_MODIFIED",
+    "EVENT_FILE_DELETED",
+    "EVENT_SCHEDULE_FIRED",
+    "EVENT_WEBHOOK_RECEIVED",
+    "EVENT_PROCESS_STARTED",
+    "EVENT_PROCESS_STOPPED",
+    "EVENT_WINDOW_CREATED",
+    "EVENT_WINDOW_CLOSED",
+    "EVENT_CUSTOM",
 ]

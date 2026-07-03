@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -41,13 +41,13 @@ class TestVoiceCommands:
     def test_execute_speak(self):
         with patch.object(self.cmds, "speak") as mock_speak:
             mock_speak.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("speak hello")
+            self.cmds.execute("speak hello")
             mock_speak.assert_called_once()
 
     def test_execute_listen(self):
         with patch.object(self.cmds, "listen") as mock_listen:
             mock_listen.return_value = MagicMock(success=True, message="ok")
-            result = self.cmds.execute("listen")
+            self.cmds.execute("listen")
             mock_listen.assert_called_once()
 
     def test_execute_status(self):

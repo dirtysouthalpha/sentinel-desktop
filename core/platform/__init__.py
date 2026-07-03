@@ -73,21 +73,26 @@ def _create_backend() -> Backend:
 
     if system == "Windows":
         from .windows_backend import WindowsBackend
+
         return WindowsBackend()
     elif system == "Darwin":
         from .macos_backend import MacOSBackend
+
         return MacOSBackend()
     elif system == "Linux":
         if headless_env or (not display and not wayland and session_type != "x11"):
             from .headless_backend import HeadlessBackend
+
             logger.info("Linux headless environment detected, using HeadlessBackend")
             return HeadlessBackend()
         from .linux_backend import LinuxBackend
+
         return LinuxBackend()
     else:
         # Unknown OS — fall back to headless
         logger.warning("Unknown platform '%s', using HeadlessBackend", system)
         from .headless_backend import HeadlessBackend
+
         return HeadlessBackend()
 
 

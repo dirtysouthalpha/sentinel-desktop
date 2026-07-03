@@ -478,11 +478,7 @@ def apply_theme(name_or_dict: str | dict[str, Any]) -> dict[str, Any]:
     except ImportError:
         return THEMES["sentinel"]
 
-    theme = (
-        THEMES.get(name_or_dict, THEMES["sentinel"])
-        if isinstance(name_or_dict, str)
-        else name_or_dict
-    )
+    theme = THEMES.get(name_or_dict, THEMES["sentinel"]) if isinstance(name_or_dict, str) else name_or_dict
 
     ctk.set_appearance_mode(theme.get("appearance", "dark"))
     ctk.set_default_color_theme(theme.get("color_theme", "dark-blue"))

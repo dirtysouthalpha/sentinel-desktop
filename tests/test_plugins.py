@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.plugins import PluginManager, PLUGIN_DIR
+from src.core.plugins import PLUGIN_DIR, PluginManager
 
 
 class TestPluginManager:
