@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v3.0 — Recorder Panel
+Sentinel Desktop v23.0.0 — Recorder Panel
 
 Horizontal toolbar providing record / stop / play controls for the
 action recorder and script engine.  Sits at the top of the input area

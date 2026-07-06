@@ -1,8 +1,47 @@
-# Sentinel Desktop v2.0 - Dependencies
-customtkinter>=5.0.0
-pyautogui>=0.9.54
-psutil>=5.9.0
-requests>=2.28.0
-Pillow>=9.0.0
-mss>=9.0.0
-speedtest-cli>=2.1.0
+# Sentinel Desktop v23.0.0 — Full Dependencies
+
+# ── Core Runtime ──────────────────────────────────────────
+psutil>=5.9.0          # System diagnostics (CPU, memory, disk, processes)
+requests>=2.28.0       # HTTP client for LLM API calls and web fetch
+Pillow>=9.0.0          # Image processing for screenshots
+mss>=9.0.0             # Fast multi-monitor screenshot capture
+
+# ── LLM & AI ──────────────────────────────────────────────
+openai>=1.0.0          # OpenAI-compatible API client (16+ providers)
+httpx>=0.24.0          # Async HTTP for streaming LLM responses
+
+# ── API Server ────────────────────────────────────────────
+fastapi>=0.100.0       # Headless API server
+uvicorn>=0.23.0        # ASGI server for FastAPI
+pydantic>=2.0.0        # Request/response models
+websockets>=11.0       # WebSocket support for live status feed
+
+# ── Security & Auth ───────────────────────────────────────
+bcrypt>=4.0.0          # Password hashing for multi-user auth
+cryptography>=41.0.0   # Credential vault encryption
+
+# ── Vision & OCR ──────────────────────────────────────────
+opencv-python-headless>=4.8.0  # Computer vision (template matching, diff detection)
+numpy>=1.24.0                  # Array ops for vision pipelines
+pytesseract>=0.3.10           # OCR text extraction (requires system tesseract)
+
+# ── Desktop Automation ────────────────────────────────────
+pyautogui>=0.9.54      # Cross-platform mouse/keyboard control
+pyperclip>=1.8.0       # Clipboard read/write
+keyboard>=0.13.5       # Global hotkey listener (failsafe Esc-x3)
+
+# ── Browser Automation ────────────────────────────────────
+playwright>=1.40.0     # Headless browser for web automation module
+
+# ── GUI ───────────────────────────────────────────────────
+customtkinter>=5.0.0   # Modern dark-themed desktop GUI
+pystray>=0.19.0        # System tray icon (minimize-to-tray)
+
+# ── Build & Packaging ─────────────────────────────────────
+setuptools>=68.0.0     # Package management
+PyInstaller>=5.13.0    # Windows EXE builder (CI only)
+
+# ── Dev / Test ────────────────────────────────────────────
+pytest>=7.4.0          # Test framework
+pytest-asyncio>=0.21.0 # Async test support
+speedtest-cli>=2.1.0   # Network speed test command

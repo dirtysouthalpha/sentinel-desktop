@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v3.0 — Theme definitions for CustomTkinter.
+Sentinel Desktop v23.0.0 — Theme definitions for CustomTkinter.
 
 19 built-in themes. Default "sentinel" matches Sentinel Override's
 cyberpunk HUD exactly (cyan #00F0FF, near-black #050608, lime/amber).

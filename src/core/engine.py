@@ -384,7 +384,7 @@ class CommandEngine:
         if any(t == h or h in t for h in how_are):
             return "I'm running great! Ready to help you with your system, automation, files, and more."
         if any(w in t for w in who):
-            return "I'm Sentinel Desktop v5.0.0 - your AI desktop assistant. I can monitor your system, automate tasks, manage files, control media, and much more. Type 'help' to see all commands!"
+            return "I'm Sentinel Desktop v23.0.0 - your AI desktop assistant. I can monitor your system, automate tasks, manage files, control media, and much more. Type 'help' to see all commands!"
         if any(t == l or l in t for l in love):
             return "Thank you! Glad I could help. Type 'help' if you need anything else!"
         if t in ["ok", "okay", "k", "alright", "got it"]:

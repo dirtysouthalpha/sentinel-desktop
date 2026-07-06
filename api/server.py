@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v2 — FastAPI Headless Control Server.
+Sentinel Desktop v23.0.0 — FastAPI Headless Control Server.
 
 Run with: python main.py --api
 Endpoints:
@@ -233,7 +233,7 @@ class SentinelServer:
         app = FastAPI(
             title="Sentinel Desktop v2",
             description="AI-powered Windows desktop automation API",
-            version="2.0.0",
+            version="23.0.0",
             lifespan=lifespan,
         )
 

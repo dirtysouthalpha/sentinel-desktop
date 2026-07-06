@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v3.0 — Script replay engine.
+Sentinel Desktop v23.0.0 — Script replay engine.
 
 Loads recorded script files (JSON), performs parameter substitution,
 validates required parameters and action types, then replays each step

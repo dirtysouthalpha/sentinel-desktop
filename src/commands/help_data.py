@@ -1,7 +1,7 @@
 """Help text data for Sentinel Desktop."""
 
 HELP_TEXT = """
-Sentinel Desktop v5.0.0 - Available Commands
+Sentinel Desktop v23.0.0 - Available Commands
 ============================================
 
 System Monitoring:
