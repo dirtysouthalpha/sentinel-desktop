@@ -421,7 +421,7 @@ class SentinelServer:
         self._route_registry.add(method, path, handler)
 
     def _register_core_routes(self, app: FastAPI) -> None:
-        """Register core v1 + v3.0 script/recorder/workflow/scheduler routes."""
+        """Register core API routes: goal, command, screenshot, scripts, recorder, etc."""
         self._route(app, "POST", "/goal", self._handle_goal)
         self._route(app, "POST", "/command", self._handle_command)
         self._route(app, "GET", "/screenshot", self._handle_screenshot)
@@ -440,7 +440,7 @@ class SentinelServer:
         self._route(app, "POST", "/recorder/stop", self._handle_recorder_stop)
 
     def _register_v3_routes(self, app: FastAPI) -> None:
-        """Register v3.0 Phase 2-4 routes: workflow, scheduler, auth, agents, vault."""
+        """Register workflow, scheduler, notification, agent, and plugin management routes."""
         self._route(app, "GET", "/workflows", self._handle_workflows_list)
         self._route(app, "POST", "/workflows/run", self._handle_workflow_run)
         self._route(app, "GET", "/schedule", self._handle_schedule_list)
@@ -1357,7 +1357,7 @@ class SentinelServer:
             logger.exception("Failed to save recorded script")
             raise HTTPException(500, f"Failed to save script: {exc}") from exc
 
-    # ── v3.0 Phase 2 endpoints ────────────────────────────────────────
+    # ── Workflow and Scheduler endpoints ─────────────────────────────────
 
     async def _handle_workflows_list(
         self,
@@ -1531,7 +1531,7 @@ class SentinelServer:
             raise HTTPException(500, f"Failed to reload plugin: {exc}") from exc
         return {"success": success, "name": name}
 
-    # ── v3.0 Phase 3+4 endpoints ──────────────────────────────────────
+    # ── Advanced Feature endpoints ──────────────────────────────────────
 
     async def _handle_agents_list(
         self,
