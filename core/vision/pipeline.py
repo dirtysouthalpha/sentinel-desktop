@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v29.0.0 - Advanced Vision Pipeline.
+Sentinel Desktop v30.0.0 - Advanced Vision Pipeline.
 
 Combines OCR, template matching, and confidence scoring
 for enhanced UI element detection.

@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v29.0.0 - Multi-Agent Swarm Orchestration.
+Sentinel Desktop v30.0.0 - Multi-Agent Swarm Orchestration.
 
 Coordinate multiple AgentEngine instances on parallel tasks
 with a shared message bus and dependency tracking.

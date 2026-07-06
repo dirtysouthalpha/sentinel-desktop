@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v29.0.0 - Vector Memory Store.
+Sentinel Desktop v30.0.0 - Vector Memory Store.
 
 Lightweight semantic memory using TF-IDF similarity.
 Stores agent experiences and recalls relevant ones for new goals.

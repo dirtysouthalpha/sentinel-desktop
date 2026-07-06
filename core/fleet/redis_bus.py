@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v29.0.0 - Distributed Fleet Bus.
+Sentinel Desktop v30.0.0 - Distributed Fleet Bus.
 
 Redis-backed message bus for coordinating agents across multiple machines.
 Falls back to in-memory pub/sub when Redis is unavailable.

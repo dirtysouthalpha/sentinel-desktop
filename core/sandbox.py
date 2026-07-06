@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v29.0.0 - Plugin Sandbox.
+Sentinel Desktop v30.0.0 - Plugin Sandbox.
 
 Execute community plugins in isolated subprocesses with resource limits,
 timeout enforcement, and permission-based access control.

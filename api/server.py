@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v29.0.0 — FastAPI Headless Control Server.
+Sentinel Desktop v30.0.0 — FastAPI Headless Control Server.
 
 Run with: python main.py --api
 Endpoints:
@@ -233,7 +233,7 @@ class SentinelServer:
         app = FastAPI(
             title="Sentinel Desktop",
             description="AI-powered Windows desktop automation API",
-            version="29.0.0",
+            version="30.0.0",
             lifespan=lifespan,
         )
 
@@ -315,11 +315,11 @@ class SentinelServer:
         app.post("/notify")(self._handle_notify)
         app.get("/plugins")(self._handle_plugins_list)
         app.get("/update-check")(self._handle_update_check)
-        # v29.0.0 — Telemetry
+        # v30.0.0 — Telemetry
         app.get("/telemetry")(self._handle_telemetry_summary)
         app.get("/telemetry/summary")(self._handle_telemetry_summary)
         app.get("/telemetry/runs")(self._handle_telemetry_runs)
-        # v29.0.0 — Marketplace
+        # v30.0.0 — Marketplace
         app.get("/marketplace/list")(self._handle_marketplace_list)
         app.post("/marketplace/install")(self._handle_marketplace_install)
         app.post("/plugins/reload")(self._handle_plugins_reload)
@@ -349,7 +349,7 @@ class SentinelServer:
         app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
 
-        # v29.0.0 — Dashboard static files
+        # v30.0.0 — Dashboard static files
         from fastapi.staticfiles import StaticFiles
         from pathlib import Path as _P
         _dash_dir = _P(__file__).parent.parent / "dashboard"

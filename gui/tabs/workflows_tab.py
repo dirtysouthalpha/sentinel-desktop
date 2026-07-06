@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v29.0.0 — Workflows Tab
+Sentinel Desktop v30.0.0 — Workflows Tab
 
 Workflow management tab with left-panel list and right-panel detail view.
 """
