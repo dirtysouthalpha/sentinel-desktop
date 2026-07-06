@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v27.0.0 - Entry Point
+Sentinel Desktop v28.0.0 - Entry Point
 AI-powered desktop automation assistant.
 
 Usage:
@@ -15,7 +15,7 @@ import sys
 
 def parse_args():
     """Parse command-line arguments. Exported for testing."""
-    parser = argparse.ArgumentParser(description="Sentinel Desktop v27.0.0")
+    parser = argparse.ArgumentParser(description="Sentinel Desktop v28.0.0")
     parser.add_argument("--cli", "-c", nargs="?", const=True, default=False,
                         help="Run in CLI mode (optionally with command)")
     parser.add_argument("--api", action="store_true", help="Run headless API server")

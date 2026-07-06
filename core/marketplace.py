@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v27.0.0 - Plugin Marketplace.
+Sentinel Desktop v28.0.0 - Plugin Marketplace.
 
 Browse, install, and uninstall community plugins from a registry.
 """

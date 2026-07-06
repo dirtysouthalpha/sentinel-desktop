@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v27.0.0 — Workflow Engine
+Sentinel Desktop v28.0.0 — Workflow Engine
 Multi-step workflow execution with conditions, loops, and variables.
 
 Chain scripts, actions, and sub-workflows with control flow.

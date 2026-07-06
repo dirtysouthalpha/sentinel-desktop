@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v27.0.0 - Plugin Sandbox.
+Sentinel Desktop v28.0.0 - Plugin Sandbox.
 
 Execute community plugins in isolated subprocesses with resource limits,
 timeout enforcement, and permission-based access control.
@@ -113,7 +113,7 @@ def execute_plugin(
 
     # Build the runner script
     runner_code = f"""
-import sys, json
+import sys, json, importlib.util
 sys.path.insert(0, {str(plugin_path.parent)!r})
 
 # Apply memory limit (Unix only)
@@ -125,10 +125,10 @@ except Exception:
     pass  # Non-Unix or already limited
 
 # Load and execute plugin
-spec = __import__('importlib.util', fromlist=['util']).util.spec_from_file_location(
+spec = importlib.util.spec_from_file_location(
     'sandboxed_plugin', {str(plugin_path)!r}
 )
-module = __import__('importlib.util', fromlist=['util']).util.module_from_spec(spec)
+module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 func = getattr(module, '{function_name}', None)

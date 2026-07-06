@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v27.0.0 - Auto-Update Checker.
+Sentinel Desktop v28.0.0 - Auto-Update Checker.
 
 Checks GitHub releases for newer versions of Sentinel Desktop.
 """
