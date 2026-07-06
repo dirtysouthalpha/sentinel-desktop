@@ -43,7 +43,7 @@ class SentinelApp:
 
         # Window
         self.root = ctk.CTk()
-        self.root.title("SENTINEL DESKTOP v25.0.0")
+        self.root.title("SENTINEL DESKTOP v26.0.0")
         self.root.geometry("1200x800")
         self.root.minsize(900, 600)
 
@@ -933,7 +933,7 @@ class SentinelApp:
     def run(self) -> None:
         """Start the main application event loop."""
         self._add_chat(
-            "Sentinel Desktop v25.0.0 ready. Describe a goal and press Enter.\n"
+            "Sentinel Desktop v26.0.0 ready. Describe a goal and press Enter.\n"
             "Ctrl+K for command palette. ⚙ for settings.",
             "system",
         )

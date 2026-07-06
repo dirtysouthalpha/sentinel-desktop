@@ -1,5 +1,20 @@
 # Changelog
 
+## v26.0.0 (2026-07-05) — Enterprise Edition
+- New: **Plugin Marketplace** (`core/marketplace.py`) — browse, install, uninstall community plugins with SHA256 verification
+- New: **Telemetry & Analytics** (`core/telemetry.py`) — SQLite-backed metrics: runs, actions, LLM tokens, success rates
+- New: **Multi-Tenant Web Dashboard** (`dashboard/`) — full static HTML/CSS/JS dashboard at `/dashboard`
+- New: `/marketplace/list`, `/marketplace/install`, `DELETE /marketplace/{name}` endpoints
+- New: `/telemetry/summary`, `/telemetry/runs` endpoints
+- New: Dashboard auto-refreshes every 10s with health, agent status, telemetry, plugins
+- New: `plugins/registry.json` template for marketplace
+- Fix: `create_app()` structure restored after middleware injection broke CORS
+- Fix: Engine creation reverted to fresh-per-goal with cleanup (backward compatible)
+- Version: bumped to 26.0.0 across all modules
+- Tests: 12 new tests (7 telemetry + 5 marketplace), all passing
+
+# Changelog
+
 ## v25.0.0 (2026-07-05) — Enterprise & Polish
 - New: Auto-update checker (`core/updater.py`) — checks GitHub releases for newer versions
 - New: `/health` endpoint — system health for load balancers and monitoring (CPU, memory, engine status)

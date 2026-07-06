@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Desktop — Dashboard</title>
+    <link rel="stylesheet" href="/dashboard/styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>🛡️ Sentinel Desktop</h1>
+            <span id="version-badge" class="badge">v—</span>
+            <div class="header-actions">
+                <button id="btn-update" class="btn btn-sm" onclick="checkUpdate()">Check Updates</button>
+                <button id="btn-refresh" class="btn btn-sm" onclick="loadAll()">⟳ Refresh</button>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Health Card -->
+            <div class="card" id="card-health">
+                <h2>System Health</h2>
+                <div id="health-content" class="card-body"><p class="muted">Loading...</p></div>
+            </div>
+
+            <!-- Agent Status Card -->
+            <div class="card" id="card-agent">
+                <h2>Agent Status</h2>
+                <div id="agent-content" class="card-body"><p class="muted">Loading...</p></div>
+            </div>
+
+            <!-- Telemetry Card -->
+            <div class="card" id="card-telemetry">
+                <h2>Telemetry (30 days)</h2>
+                <div id="telemetry-content" class="card-body"><p class="muted">Loading...</p></div>
+            </div>
+
+            <!-- Plugins Card -->
+            <div class="card" id="card-plugins">
+                <h2>Plugins</h2>
+                <div id="plugins-content" class="card-body"><p class="muted">Loading...</p></div>
+            </div>
+
+            <!-- Marketplace Card -->
+            <div class="card" id="card-marketplace">
+                <h2>Marketplace</h2>
+                <div id="marketplace-content" class="card-body"><p class="muted">Loading...</p></div>
+            </div>
+
+            <!-- Quick Actions Card -->
+            <div class="card" id="card-actions">
+                <h2>Quick Actions</h2>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" id="goal-input" placeholder="Enter agent goal..." size="40">
+                        <button class="btn" onclick="startGoal()">Start Agent</button>
+                    </div>
+                    <button class="btn btn-danger" onclick="stopAgent()">Stop Agent</button>
+                    <button class="btn" onclick="takeScreenshot()">Screenshot</button>
+                    <pre id="action-result" class="code-output"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/dashboard/app.js"></script>
+</body>
+</html>

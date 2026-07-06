@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v25.0.0 — Settings Tab
+Sentinel Desktop v26.0.0 — Settings Tab
 Full settings panel with sections for all configuration.
 """
 

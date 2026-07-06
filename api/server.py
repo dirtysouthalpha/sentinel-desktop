@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v25.0.0 — FastAPI Headless Control Server.
+Sentinel Desktop v26.0.0 — FastAPI Headless Control Server.
 
 Run with: python main.py --api
 Endpoints:
@@ -233,7 +233,7 @@ class SentinelServer:
         app = FastAPI(
             title="Sentinel Desktop",
             description="AI-powered Windows desktop automation API",
-            version="25.0.0",
+            version="26.0.0",
             lifespan=lifespan,
         )
 
@@ -315,6 +315,13 @@ class SentinelServer:
         app.post("/notify")(self._handle_notify)
         app.get("/plugins")(self._handle_plugins_list)
         app.get("/update-check")(self._handle_update_check)
+        # v26.0.0 — Telemetry
+        app.get("/telemetry")(self._handle_telemetry_summary)
+        app.get("/telemetry/summary")(self._handle_telemetry_summary)
+        app.get("/telemetry/runs")(self._handle_telemetry_runs)
+        # v26.0.0 — Marketplace
+        app.get("/marketplace/list")(self._handle_marketplace_list)
+        app.post("/marketplace/install")(self._handle_marketplace_install)
         app.post("/plugins/reload")(self._handle_plugins_reload)
         # v3.0 Phase 3+4 — Agent Pool, Auth, Audit, Vault
         app.get("/agents")(self._handle_agents_list)
@@ -342,6 +349,17 @@ class SentinelServer:
         app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
 
+        # v26.0.0 — Dashboard static files
+        from fastapi.staticfiles import StaticFiles
+        from pathlib import Path as _P
+        _dash_dir = _P(__file__).parent.parent / "dashboard"
+        if _dash_dir.exists():
+            app.mount("/dashboard", StaticFiles(directory=str(_dash_dir), html=True), name="dashboard")
+
+        app.websocket("/ws")(self._handle_ws)
+
+        return app
+
     async def _handle_health(self) -> dict[str, Any]:
         """Health check endpoint for load balancers and monitoring."""
         import psutil
@@ -366,9 +384,36 @@ class SentinelServer:
             "latest_version": latest,
         }
 
-        app.websocket("/ws")(self._handle_ws)
+    async def _handle_telemetry_summary(self) -> dict[str, Any]:
+        """Return aggregated telemetry summary."""
+        from core.telemetry import get_collector
+        tc = get_collector()
+        return tc.get_summary()
 
-        return app
+    async def _handle_telemetry_runs(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Return recent agent runs."""
+        from core.telemetry import get_collector
+        tc = get_collector()
+        return tc.get_recent_runs(limit=limit)
+
+    async def _handle_marketplace_list(self) -> dict[str, Any]:
+        """List available plugins from marketplace registry."""
+        from core.marketplace import get_marketplace_listing
+        return {"plugins": get_marketplace_listing()}
+
+    async def _handle_marketplace_install(self, req: Request) -> dict[str, Any]:
+        """Install a plugin from the marketplace."""
+        from core.marketplace import install_plugin
+        body = await req.json()
+        name = body.get("name", "")
+        if not name:
+            raise HTTPException(400, "Plugin name required")
+        return install_plugin(name)
+
+    async def _handle_marketplace_uninstall(self, name: str) -> dict[str, Any]:
+        """Uninstall a plugin."""
+        from core.marketplace import uninstall_plugin
+        return uninstall_plugin(name)
 
     # ── Agent control ───────────────────────────────────────────────
 
@@ -387,13 +432,15 @@ class SentinelServer:
         if req.approval_mode is not None:
             cfg["approval_mode"] = req.approval_mode
 
-        # Reuse persistent engine or create one if none exists.
-        # This prevents orphaned subsystem instances and memory leaks.
-        if self.engine is None:
-            self.engine = AgentEngine(cfg)
-        else:
-            self.engine.config = cfg
-            self.engine.max_steps = cfg.get("max_steps", 100)
+        # Create a fresh engine per goal for clean state, but clean up
+        # any existing engine first to prevent resource leaks.
+        if self.engine is not None:
+            try:
+                if hasattr(self.engine, "cleanup"):
+                    self.engine.cleanup()
+            except Exception:
+                pass  # Best-effort cleanup
+        self.engine = AgentEngine(cfg)
         self.engine.on_step_callback = self._broadcast_step
 
         def _run() -> None:

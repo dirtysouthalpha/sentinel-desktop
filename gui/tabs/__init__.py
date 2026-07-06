@@ -1,1 +1,1 @@
-# Sentinel Desktop v25.0.0 — GUI tabs package.
+# Sentinel Desktop v26.0.0 — GUI tabs package.
