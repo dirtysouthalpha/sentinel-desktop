@@ -5,7 +5,7 @@ List, search, read files.
 import os
 import glob
 from pathlib import Path
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 
 class FileCommands:

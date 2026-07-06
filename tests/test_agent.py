@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.agent import AgentPlanner
-from src.core.engine import CommandResult
+from core.commands.agent import AgentPlanner
+from core.legacy_engine import CommandResult
 
 
 class TestAgentPlanner:

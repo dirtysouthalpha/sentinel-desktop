@@ -2,7 +2,7 @@
 import subprocess
 import platform
 import shutil
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 
 class VoiceCommands:

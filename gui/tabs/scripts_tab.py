@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v26.0.0 — Script Library tab.
+Sentinel Desktop v27.0.0 — Script Library tab.
 
 Two-panel layout: browseable/searchable script list on the left,
 script detail + parameter entry + run controls on the right.

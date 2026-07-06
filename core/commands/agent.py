@@ -1,7 +1,7 @@
 """Multi-step AI agent that plans and executes complex tasks."""
 import json
 import re
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 
 AVAILABLE_COMMANDS = [
@@ -32,7 +32,7 @@ class AgentPlanner:
     def _get_llm(self):
         if self.llm is None:
             try:
-                from src.core.llm import LLMClient
+                from core.legacy_llm import LLMClient
                 self.llm = LLMClient()
             except Exception:
                 pass

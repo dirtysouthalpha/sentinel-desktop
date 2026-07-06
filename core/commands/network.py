@@ -4,7 +4,7 @@ Ping, IP config, connectivity checks, speedtest.
 """
 import subprocess
 import platform
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 
 class NetworkCommands:

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.engine import CommandEngine, CommandResult
+from core.legacy_engine import CommandEngine, CommandResult
 
 
 class TestEdgeCases:

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.power import PowerCommands
+from core.commands.power import PowerCommands
 
 
 class TestPowerCommands:

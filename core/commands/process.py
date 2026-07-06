@@ -5,7 +5,7 @@ Open/close applications, manage running processes.
 import subprocess
 import platform
 import os
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 try:
     import psutil

@@ -3,7 +3,7 @@ import logging
 import sys
 from pathlib import Path
 from datetime import datetime
-from src.config import LOG_DIR
+from core.config_legacy import LOG_DIR
 
 def setup_logger(name="sentinel", level=logging.INFO):
     logger = logging.getLogger(name)

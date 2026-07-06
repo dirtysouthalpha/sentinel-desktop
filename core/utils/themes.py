@@ -1,5 +1,5 @@
 """Theme system for Sentinel Desktop."""
-from src.config import COLORS
+from core.config_legacy import COLORS
 
 THEMES = {
     "dark": {

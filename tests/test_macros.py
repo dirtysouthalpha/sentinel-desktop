@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.macros import MACRO_DIR, MacroCommands
+from core.commands.macros import MACRO_DIR, MacroCommands
 
 
 class TestMacroCommands:

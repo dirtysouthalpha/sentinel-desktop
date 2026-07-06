@@ -4,7 +4,7 @@ Connects to the Neuralis Brain REST API for Claude-like reasoning.
 """
 import requests
 import logging
-from src.config import BRAIN_URL, BRAIN_TIMEOUT
+from core.config_legacy import BRAIN_URL, BRAIN_TIMEOUT
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ import psutil
 import platform
 import os
 import time
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 
 class SystemCommands:
@@ -111,5 +111,5 @@ class SystemCommands:
 
     def help(self) -> CommandResult:
         """Show available commands."""
-        from src.commands.help_data import HELP_TEXT
+        from core.commands.help_data import HELP_TEXT
         return CommandResult(True, HELP_TEXT)

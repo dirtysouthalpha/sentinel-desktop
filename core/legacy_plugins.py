@@ -3,7 +3,7 @@ import importlib
 import importlib.util
 import logging
 from pathlib import Path
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.notify import NotifyCommands
+from core.commands.notify import NotifyCommands
 
 
 class TestNotifyCommands:

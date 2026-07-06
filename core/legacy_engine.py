@@ -5,7 +5,7 @@ Supports natural language parsing, direct commands, and AI routing.
 import logging
 import re
 from typing import Optional
-from src.core.brain import BrainClient
+from core.legacy_brain import BrainClient
 
 logger = logging.getLogger(__name__)
 
@@ -32,23 +32,23 @@ class CommandEngine:
 
     def _register_defaults(self):
         """Register built-in command handlers."""
-        from src.commands.system import SystemCommands
-        from src.commands.automation import AutomationCommands
-        from src.commands.network import NetworkCommands
-        from src.commands.process import ProcessCommands
-        from src.commands.files import FileCommands
-        from src.commands.clipboard import ClipboardCommands
-        from src.commands.windows import WindowCommands
-        from src.commands.media import MediaCommands
-        from src.commands.power import PowerCommands
-        from src.commands.notify import NotifyCommands
-        from src.commands.scheduler import SchedulerCommands
-        from src.commands.macros import MacroCommands
-        from src.commands.voice import VoiceCommands
-        from src.commands.web import WebCommands
-        from src.commands.agent import AgentPlanner
-        from src.core.llm import LLMClient
-        from src.core.plugins import PluginManager
+        from core.commands.system import SystemCommands
+        from core.commands.automation import AutomationCommands
+        from core.commands.network import NetworkCommands
+        from core.commands.process import ProcessCommands
+        from core.commands.files import FileCommands
+        from core.commands.clipboard import ClipboardCommands
+        from core.commands.windows import WindowCommands
+        from core.commands.media import MediaCommands
+        from core.commands.power import PowerCommands
+        from core.commands.notify import NotifyCommands
+        from core.commands.scheduler import SchedulerCommands
+        from core.commands.macros import MacroCommands
+        from core.commands.voice import VoiceCommands
+        from core.commands.web import WebCommands
+        from core.commands.agent import AgentPlanner
+        from core.legacy_llm import LLMClient
+        from core.legacy_plugins import PluginManager
 
         self.sys = SystemCommands()
         self.auto = AutomationCommands()

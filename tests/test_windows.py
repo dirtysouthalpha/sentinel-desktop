@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.windows import WindowCommands
+from core.commands.windows import WindowCommands
 
 
 class TestWindowCommands:

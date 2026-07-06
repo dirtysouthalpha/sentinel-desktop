@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import src.commands.media as media_mod
-from src.commands.media import MediaCommands
+import core.commands.media as media_mod
+from core.commands.media import MediaCommands
 
 
 class TestMediaCommands:

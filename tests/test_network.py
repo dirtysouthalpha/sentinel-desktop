@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.commands.network import NetworkCommands
+from core.commands.network import NetworkCommands
 
 
 class TestNetworkCommands:

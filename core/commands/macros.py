@@ -2,7 +2,7 @@
 import json
 import time
 from pathlib import Path
-from src.core.engine import CommandResult
+from core.legacy_engine import CommandResult
 
 
 MACRO_DIR = Path(__file__).parent.parent.parent / "macros"
