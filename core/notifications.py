@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v23.0.0 — Multi-Channel Notification System.
+Sentinel Desktop v25.0.0 — Multi-Channel Notification System.
 
 Provides desktop and remote notifications for task completion, errors,
 and status updates across five channels:
@@ -509,7 +509,7 @@ class NotificationManager:
             "title": title,
             "description": message,
             "color": colour,
-            "footer": {"text": "Sentinel Desktop v23.0.0"},
+            "footer": {"text": "Sentinel Desktop v25.0.0"},
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         payload = {"embeds": [embed]}

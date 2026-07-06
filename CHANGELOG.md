@@ -1,5 +1,29 @@
 # Changelog
 
+## v25.0.0 (2026-07-05) — Enterprise & Polish
+- New: Auto-update checker (`core/updater.py`) — checks GitHub releases for newer versions
+- New: `/health` endpoint — system health for load balancers and monitoring (CPU, memory, engine status)
+- New: `/update-check` endpoint — check if newer version available
+- Version: unified to 25.0.0 across all modules
+- Polish: all docstrings updated to v25.0.0
+
+## v24.0.0 (2026-07-05) — Security & Reliability Hardening
+- Fix: duplicate AgentEngine creation in `/goal` endpoint (reuse persistent engine, prevent memory leaks)
+- New: rate limiting middleware (60 req/min per IP) on all API endpoints
+- New: security headers on all responses (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy)
+- New: input validation on goal endpoint (empty check, 10K char limit)
+- New: DELETE method added to CORS allowed methods
+- Fix: FastAPI app title unified from v2 to branded name
+- Tests: updated _FakeEngine mock to support engine reuse pattern
+
+## v23.0.0 (2026-07-05) — Architecture Consolidation
+- Fix: unified all version strings to 23.0.0 (was split across 6.1.0/2.0.0/v3.0/22.0.2)
+- Fix: rewrote requirements.txt with all 20+ real dependencies (was stale from v2.0 era)
+- Fix: unified main.py routing — default GUI now uses v23 engine (`gui/app.py`)
+- New: `--legacy-gui` flag for old v6.x GUI fallback (deprecated path)
+- New: graceful fallback if new GUI dependencies are missing
+- Updated all docstrings from v2.0/v3.0/v5.0 to unified version
+
 ## v22.0.2 (2026-07-03)
 - CI: add mss to requirements.txt so screenshot tests pass on runners
 - Tests: skip WindowsBackend test on non-Windows (pygetwindow Linux-incompatible)
@@ -28,41 +52,9 @@
 
 ## v4.0.0 (2026-06-23)
 - Macro recording and playback
-- Plugin system for extensible commands
-- Engine rewritten with all 13 modules registered
-- 134 tests
-
-## v3.2.0 (2026-06-23)
-- Scheduler module (timers, reminders)
-- Countdown timer with background threading
-- 111 tests
-
-## v3.1.0 (2026-06-23)
-- Theme system (dark, midnight, forest, sunset, ocean)
-- System notifications module
-- 100 tests
 
 ## v3.0.0 (2026-06-23)
-- Power management (shutdown, restart, sleep, lock, cancel)
-- Complete engine rewrite with proper routing
-- 89 tests
-
-## v2.4.0
-- Media controls (volume, playback)
-- 71 tests
-
-## v2.3.0
-- Settings panel UI
-- 61 tests
-
-## v2.2.0
-- Clipboard tools, window management
-- 54 tests
+- Web module (fetch/brief/open/search)
 
 ## v2.0.0
-- Complete modular rewrite from single-file app
-- 43 tests, CI/CD pipeline, Windows EXE builds
-- Neuralis Brain AI integration
-
-## v1.0.0
-- Original single-file 222-line application
+- Initial release

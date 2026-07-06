@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v23.0.0 — FastAPI Headless Control Server.
+Sentinel Desktop v25.0.0 — FastAPI Headless Control Server.
 
 Run with: python main.py --api
 Endpoints:
@@ -233,7 +233,7 @@ class SentinelServer:
         app = FastAPI(
             title="Sentinel Desktop",
             description="AI-powered Windows desktop automation API",
-            version="23.0.0",
+            version="25.0.0",
             lifespan=lifespan,
         )
 
@@ -291,6 +291,7 @@ class SentinelServer:
         app.post("/command")(self._handle_command)
         app.get("/screenshot")(self._handle_screenshot)
         app.get("/status")(self._handle_status)
+        app.get("/health")(self._handle_health)
         app.get("/windows")(self._handle_windows)
         app.get("/processes")(self._handle_processes)
         app.get("/system")(self._handle_system)
@@ -313,6 +314,7 @@ class SentinelServer:
         app.post("/schedule/run")(self._handle_schedule_run)
         app.post("/notify")(self._handle_notify)
         app.get("/plugins")(self._handle_plugins_list)
+        app.get("/update-check")(self._handle_update_check)
         app.post("/plugins/reload")(self._handle_plugins_reload)
         # v3.0 Phase 3+4 — Agent Pool, Auth, Audit, Vault
         app.get("/agents")(self._handle_agents_list)
@@ -339,6 +341,31 @@ class SentinelServer:
         app.post("/workflows/builder/{wf_id}/remove-step")(self._handle_workflow_remove_step)
         app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
+
+    async def _handle_health(self) -> dict[str, Any]:
+        """Health check endpoint for load balancers and monitoring."""
+        import psutil
+        from core import __version__ as ver
+        cpu = psutil.cpu_percent(interval=0.1)
+        mem = psutil.virtual_memory()
+        return {
+            "status": "healthy" if mem.percent < 90 else "degraded",
+            "version": ver,
+            "cpu_percent": cpu,
+            "memory_percent": mem.percent,
+            "engine_active": bool(self.engine and self.engine.running),
+        }
+
+    async def _handle_update_check(self) -> dict[str, Any]:
+        """Check if a newer version is available on GitHub."""
+        from core.updater import is_update_available
+        available, latest = is_update_available()
+        return {
+            "update_available": available,
+            "current_version": __import__("core", fromlist=["__version__"]).__version__,
+            "latest_version": latest,
+        }
+
         app.websocket("/ws")(self._handle_ws)
 
         return app

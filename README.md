@@ -1,134 +1,72 @@
-# Sentinel Desktop v5.0.0
+# Sentinel Desktop v25.0.0
 
-AI-powered desktop automation assistant with natural language commands, system monitoring, and Neuralis Brain integration.
-
-## Features
-
-### 13 Command Modules
-
-| Module | Commands | Description |
-|--------|----------|-------------|
-| **System** | cpu, memory, disk, processes, battery, temperature, uptime, sysinfo | Real-time system monitoring |
-| **Automation** | click, type, press, move, scroll, drag, screenshot | Mouse & keyboard control |
-| **Network** | ping, ipconfig, diagnostics, speedtest | Network troubleshooting |
-| **Process** | open, kill, close | Application management |
-| **Files** | list, find, read | File operations |
-| **Clipboard** | copy, paste, read | Clipboard management |
-| **Windows** | list windows | Window enumeration |
-| **Media** | volume up/down/mute, play/pause, next/prev track | Media playback control |
-| **Power** | shutdown, restart, sleep, lock, cancel | Power management |
-| **Notify** | notify, alert, remind | System notifications |
-| **Scheduler** | timer, list timers, cancel timer | Countdown timers |
-| **Voice** | speak, listen, status | Text-to-speech & speech-to-text |
-| **Macros** | record, save, load, list, delete | Automation recording |
-| **Plugins** | list, load | Extensible plugin system |
-
-### Additional Features
-
-- **Neuralis Brain AI** integration for natural language queries
-- **5 Built-in Themes** (dark, midnight, forest, sunset, ocean)
-- **Plugin System** for custom command extensions
-- **Macro Recording** for automating repetitive tasks
-- **Voice Commands** with TTS/STT support
-- **System Tray** integration
-- **Keyboard Shortcuts**: Ctrl+L (clear), Ctrl+Enter (send)
-- **Command History** navigation (Up/Down arrows)
-
-## Installation
-
-### From Source
-
-```bash
-git clone https://github.com/dirtysouthalpha/sentinel-desktop.git
-cd sentinel-desktop
-pip install -r requirements.txt
-python main.py
-```
-
-### From Release
-
-Download the latest Windows EXE from [Releases](https://github.com/dirtysouthalpha/sentinel-desktop/releases).
-
-### CLI Mode
-
-```bash
-python -m src.cli "cpu"
-python -m src.cli "screenshot"
-python -m src.cli "ping google.com"
-```
+AI-powered desktop automation assistant with vision-based agent loop, multi-provider LLM support, self-healing intelligence, and enterprise features.
 
 ## Architecture
 
+Sentinel Desktop uses a **vision-based agent loop**: screenshot → LLM reasoning → action execution → repeat.
+
+| Subsystem | Module | Description |
+|-----------|--------|-------------|
+| **Agent Engine** | `core/engine.py` | LLM-driven agent with vision, tool-calling, self-healing, forensic logging |
+| **LLM Client** | `core/llm_client.py` | 16+ providers (OpenAI, Anthropic, Google, local, etc.) |
+| **Platform Layer** | `core/platform/` | Cross-platform abstraction (Windows, macOS, Linux, headless) |
+| **Action Executor** | `core/action_executor.py` | Mouse, keyboard, UIA, stealth input |
+| **Self-Healing** | `core/healing/` | Diff detection, retry planning, vision grounding |
+| **Memory** | `core/memory/` | Short-term and long-term agent memory |
+| **Remote Fleet** | `core/remote/` | SSH tunneling, remote installation, fleet management |
+| **Web Automation** | `core/web/` | Browser control, recording, replay |
+| **Server** | `api/server.py` | FastAPI headless API with WebSocket live feed |
+| **Security** | `core/auth.py`, `core/encryption.py` | RBAC, bcrypt auth, DPAPI credential vault |
+| **Auto-Update** | `core/updater.py` | GitHub release checker |
+| **GUI** | `gui/app.py` | CustomTkinter dark-themed desktop UI |
+
+## Quick Start
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Launch GUI
+python main.py
+
+# CLI mode
+python main.py --cli
+
+# Headless API server
+python main.py --api --port 8091
+
+# Check version
+python main.py --version
 ```
-sentinel-desktop/
-├── src/
-│   ├── core/
-│   │   ├── engine.py      # Command router & dispatcher
-│   │   ├── brain.py       # Neuralis Brain REST client
-│   │   └── plugins.py     # Plugin manager
-│   ├── commands/
-│   │   ├── system.py      # System monitoring
-│   │   ├── automation.py   # Mouse/keyboard automation
-│   │   ├── network.py      # Network tools
-│   │   ├── process.py      # Process management
-│   │   ├── files.py        # File operations
-│   │   ├── clipboard.py    # Clipboard tools
-│   │   ├── windows.py      # Window management
-│   │   ├── media.py        # Media controls
-│   │   ├── power.py        # Power management
-│   │   ├── notify.py       # Notifications
-│   │   ├── scheduler.py    # Timers & scheduling
-│   │   ├── voice.py        # Voice TTS/STT
-│   │   └── macros.py       # Macro recording
-│   ├── utils/
-│   │   └── themes.py       # Theme system (5 themes)
-│   ├── ui/
-│   │   └── app.py          # CustomTkinter GUI
-│   ├── agent/
-│   │   └── agent.py        # AI agent mode
-│   ├── config.py           # Configuration
-│   └── cli.py              # CLI interface
-├── tests/                  # 168 tests
-├── plugins/                # Plugin directory
-├── macros/                 # Saved macros
-├── docs/                   # Documentation
-└── main.py                 # Entry point
-```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/goal` | POST | Start agent with a natural language goal |
+| `/command` | POST | Execute a single desktop command |
+| `/status` | GET | Check agent status |
+| `/health` | GET | System health (CPU, memory, engine status) |
+| `/update-check` | GET | Check for newer versions on GitHub |
+| `/screenshot` | GET | Capture current screen |
+| `/config` | GET/PUT | Read/update configuration |
+| `/ws` | WS | WebSocket live status feed |
+
+## Security
+
+- **Auth**: Optional shared-secret via `SENTINEL_API_TOKEN` env var
+- **Rate Limiting**: 60 req/min per IP
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+- **Credential Vault**: DPAPI encryption on Windows, base64 fallback elsewhere
+- **RBAC**: Viewer, Operator, Admin roles with bcrypt password hashing
 
 ## Testing
 
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -q
 ```
-
-168 tests covering all modules, edge cases, and integration paths.
-
-## CI/CD
-
-- **CI**: flake8 lint + pytest on Ubuntu & Windows (Python 3.9-3.12)
-- **Build**: Windows EXE via PyInstaller
-- **Release**: Auto-published tar.gz + zip + EXE on tag push
-
-## Plugin Development
-
-Create a file in `plugins/plugin_myplugin.py`:
-
-```python
-def run():
-    print("Hello from my plugin!")
-```
-
-Then load it: `load plugin plugin_myplugin`
-
-## Requirements
-
-- Python 3.9+
-- psutil, pyautogui, customtkinter, Pillow
 
 ## License
 
-MIT License
-
-## Author
-
-Brandon (dirtysouthalpha)
+MIT

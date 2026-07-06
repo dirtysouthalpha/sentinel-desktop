@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v23.0.0 — Cron-like Task Scheduler.
+Sentinel Desktop v25.0.0 — Cron-like Task Scheduler.
 
 Runs tasks on a time-based schedule using a background thread that checks
 every 30 seconds. Supports preset schedules and standard 5-field cron

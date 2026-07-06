@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v23.0.0 — History Tab
+Sentinel Desktop v25.0.0 — History Tab
 Run history browser with session replay and log export.
 """
 
