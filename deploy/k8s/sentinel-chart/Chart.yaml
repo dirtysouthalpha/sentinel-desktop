@@ -1,0 +1,9 @@
+apiVersion: v2
+name: sentinel-desktop
+description: AI-powered desktop automation assistant
+type: application
+version: 29.0.0
+appVersion: "29.0.0"
+maintainers:
+  - name: Sentinel Team
+    email: dev@dirtysouthalpha.com

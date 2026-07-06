@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sentinel-desktop",
-    version="28.0.0",
+    version="29.0.0",
     description="AI-powered Windows desktop automation assistant",
     author="Sentinel Prime",
     author_email="dev@dirtysouthalpha.com",

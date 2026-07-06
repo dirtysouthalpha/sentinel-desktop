@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v28.0.0 - Telemetry & Analytics.
+Sentinel Desktop v29.0.0 - Telemetry & Analytics.
 
 Opt-in metrics collection for agent runs, actions, and performance.
 Data is stored in SQLite for historical analysis.
