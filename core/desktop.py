@@ -3,17 +3,22 @@
 import base64
 import io
 import logging
+import os
 import time
-
-import pyautogui
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-_FailSafeException = pyautogui.FailSafeException
-
-pyautogui.PAUSE = 0.1
-pyautogui.FAILSAFE = True
+try:
+    import pyautogui
+    from PIL import Image
+    _FailSafeException = pyautogui.FailSafeException
+    pyautogui.PAUSE = 0.1
+    pyautogui.FAILSAFE = True
+except Exception:
+    pyautogui = None
+    from PIL import Image
+    _FailSafeException = Exception
+    logger.info("pyautogui unavailable, running in headless/limited mode")
 
 
 class DesktopController:
@@ -22,7 +27,7 @@ class DesktopController:
     def __init__(self) -> None:
         try:
             self._screen_size: tuple[int, int] = pyautogui.size()
-        except (OSError, RuntimeError, ValueError):
+        except (OSError, RuntimeError, ValueError, AttributeError, TypeError):
             logger.warning("Could not detect screen size, defaulting to 1920x1080")
             self._screen_size = (1920, 1080)
 

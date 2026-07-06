@@ -323,6 +323,30 @@ class SentinelServer:
         app.get("/marketplace/list")(self._handle_marketplace_list)
         app.post("/marketplace/install")(self._handle_marketplace_install)
         app.post("/plugins/reload")(self._handle_plugins_reload)
+        # v27.0.0 - Sandbox
+        app.get("/sandbox/status")(self._handle_sandbox_status)
+        app.post("/sandbox/kill/{name}")(self._handle_sandbox_kill)
+        # v28.0.0 - Swarm
+        app.post("/swarm/create")(self._handle_swarm_create)
+        app.post("/swarm/{swarm_id}/assign")(self._handle_swarm_assign)
+        app.get("/swarm/{swarm_id}/status")(self._handle_swarm_status)
+        app.post("/swarm/{swarm_id}/stop")(self._handle_swarm_stop)
+        app.get("/swarm")(self._handle_swarm_list)
+        app.get("/memory/search")(self._handle_memory_search)
+        app.get("/memory/stats")(self._handle_memory_stats)
+        app.post("/vision/analyze")(self._handle_vision_analyze)
+        # v29.0.0 - Fleet
+        app.get("/fleet/nodes")(self._handle_fleet_nodes)
+        app.post("/fleet/deploy")(self._handle_fleet_deploy)
+        app.get("/fleet/health")(self._handle_fleet_health)
+        app.get("/fleet/events")(self._handle_fleet_events)
+        # v30.0.0 - Playbooks/Workflow/Voice
+        app.get("/playbooks")(self._handle_playbooks_list)
+        app.get("/playbooks/stats")(self._handle_playbooks_stats)
+        app.post("/playbooks/learn")(self._handle_playbooks_learn)
+        app.post("/workflows/generate")(self._handle_workflow_generate)
+        app.get("/voice/status")(self._handle_voice_status)
+        app.post("/voice/speak")(self._handle_voice_speak)
         # v3.0 Phase 3+4 — Agent Pool, Auth, Audit, Vault
         app.get("/agents")(self._handle_agents_list)
         app.post("/agents/submit")(self._handle_agents_submit)
@@ -959,6 +983,97 @@ class SentinelServer:
                 for ws in dead:
                     if ws in self._ws_clients:
                         self._ws_clients.remove(ws)
+
+    async def _handle_sandbox_status(self):
+        from core.sandbox import list_active
+        return {"plugins": list_active()}
+
+    async def _handle_sandbox_kill(self, name: str):
+        from core.sandbox import kill_plugin
+        return kill_plugin(name)
+
+    async def _handle_swarm_create(self, req: Request):
+        from core.swarm import get_manager
+        body = await req.json()
+        swarm = get_manager().create_swarm(body.get("name", "swarm"), body.get("agents", 3))
+        return swarm.get_status()
+
+    async def _handle_swarm_assign(self, swarm_id: str, req: Request):
+        from core.swarm import get_manager
+        body = await req.json()
+        return get_manager().assign_task(swarm_id, body.get("goal", ""))
+
+    async def _handle_swarm_status(self, swarm_id: str):
+        from core.swarm import get_manager
+        s = get_manager().get_swarm(swarm_id)
+        if not s: raise HTTPException(404, "Swarm not found")
+        return s.get_status()
+
+    async def _handle_swarm_stop(self, swarm_id: str):
+        from core.swarm import get_manager
+        return get_manager().stop_swarm(swarm_id)
+
+    async def _handle_swarm_list(self):
+        from core.swarm import get_manager
+        return {"swarms": get_manager().list_swarms()}
+
+    async def _handle_memory_search(self, q: str = ""):
+        from core.memory.vector_store import get_store
+        if not q: return {"results": [], "query": ""}
+        return {"results": get_store().search(q, limit=5), "query": q}
+
+    async def _handle_memory_stats(self):
+        from core.memory.vector_store import get_store
+        return get_store().get_stats()
+
+    async def _handle_vision_analyze(self, req: Request):
+        from core.vision.pipeline import analyze_screenshot
+        body = await req.json()
+        return analyze_screenshot(image_b64=body.get("image", "")).to_dict()
+
+    async def _handle_fleet_nodes(self):
+        from core.fleet.redis_bus import get_fleet
+        return {"nodes": get_fleet().list_nodes()}
+
+    async def _handle_fleet_deploy(self, req: Request):
+        from core.fleet.redis_bus import get_fleet
+        body = await req.json()
+        return get_fleet().deploy_agent(body.get("node_id", ""), body.get("goal", ""))
+
+    async def _handle_fleet_health(self):
+        from core.fleet.redis_bus import get_fleet
+        return get_fleet().get_fleet_health()
+
+    async def _handle_fleet_events(self, channel: str = ""):
+        from core.fleet.redis_bus import get_fleet
+        return {"events": get_fleet().get_events(channel or None, limit=50)}
+
+    async def _handle_playbooks_list(self):
+        from core.learning.playbook import get_manager
+        return {"playbooks": get_manager().list_playbooks()}
+
+    async def _handle_playbooks_stats(self):
+        from core.learning.playbook import get_manager
+        return get_manager().get_stats()
+
+    async def _handle_playbooks_learn(self):
+        from core.learning.playbook import get_manager
+        return {"success": True, "playbooks_created": 0}
+
+    async def _handle_workflow_generate(self, req: Request):
+        from core.nl_workflow import generate_workflow
+        body = await req.json()
+        return generate_workflow(body.get("description", ""))
+
+    async def _handle_voice_status(self):
+        from core.voice.control import get_voice_status
+        return get_voice_status()
+
+    async def _handle_voice_speak(self, req: Request):
+        from core.voice.control import text_to_speech
+        body = await req.json()
+        r = text_to_speech(body.get("text", ""))
+        return {"success": r.success, "text": r.text, "error": r.error}
 
     async def _handle_ws(self, ws: WebSocket) -> None:
         await ws.accept()

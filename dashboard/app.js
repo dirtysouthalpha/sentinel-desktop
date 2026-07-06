@@ -114,3 +114,107 @@ async function loadAll() {
 // Auto-refresh every 10 seconds
 loadAll();
 setInterval(loadAll, 10000);
+
+// ── v27-v30 Dashboard Functions ──
+
+async function createSwarm() {
+  const name = document.getElementById('swarm-name').value || 'swarm';
+  const agents = parseInt(document.getElementById('swarm-agents').value) || 3;
+  const res = await fetch('/swarm/create', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, agents})
+  });
+  const data = await res.json();
+  document.getElementById('swarm-status').innerHTML =
+    '<strong>' + data.name + '</strong> — ' + data.agents + ' agents — ' + data.status;
+}
+
+async function searchMemory() {
+  const q = document.getElementById('memory-query').value;
+  if (!q) return;
+  const res = await fetch('/memory/search?q=' + encodeURIComponent(q));
+  const data = await res.json();
+  const results = data.results || [];
+  document.getElementById('memory-stats').innerHTML = results.length
+    ? results.map(r => r.goal + ' (' + (r.success ? '✅' : '❌') + ' ' + r.score + ')').join('<br>')
+    : 'No matches found';
+}
+
+async function learnPlaybooks() {
+  const res = await fetch('/playbooks/learn', {method: 'POST'});
+  const data = await res.json();
+  loadPlaybooks();
+}
+
+async function loadPlaybooks() {
+  const res = await fetch('/playbooks');
+  const data = await res.json();
+  const pbs = data.playbooks || [];
+  document.getElementById('playbook-list').innerHTML = pbs.length
+    ? pbs.map(p => p.name + ' (' + (p.success_rate * 100).toFixed(0) + '% success)').join('<br>')
+    : 'No playbooks learned yet';
+}
+
+async function speakText() {
+  const text = document.getElementById('tts-text').value;
+  if (!text) return;
+  const res = await fetch('/voice/speak', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text})
+  });
+  const data = await res.json();
+}
+
+async function generateWorkflow() {
+  const desc = document.getElementById('workflow-desc').value;
+  if (!desc) return;
+  const res = await fetch('/workflows/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({description: desc})
+  });
+  const data = await res.json();
+  if (data.success) {
+    const steps = data.steps.map((s, i) =>
+      (i+1) + '. ' + s.action + ': ' + s.target).join('<br>');
+    document.getElementById('workflow-output').innerHTML =
+      '<strong>' + data.step_count + ' steps generated:</strong><br>' + steps;
+  } else {
+    document.getElementById('workflow-output').innerHTML = 'Error: ' + data.error;
+  }
+}
+
+// Load dynamic data on page load
+async function loadV30Data() {
+  // Fleet status
+  try {
+    const fleetRes = await fetch('/fleet/health');
+    const fleet = await fleetRes.json();
+    document.getElementById('fleet-status').innerHTML =
+      fleet.healthy_nodes + '/' + fleet.total_nodes + ' nodes online (' + fleet.bus_type + ')';
+  } catch(e) { document.getElementById('fleet-status').innerHTML = 'Fleet offline'; }
+
+  // Memory stats
+  try {
+    const memRes = await fetch('/memory/stats');
+    const mem = await memRes.json();
+    document.getElementById('memory-stats').innerHTML =
+      mem.total_entries + ' memories | ' + mem.successful + ' success | ' + mem.failed + ' fail';
+  } catch(e) { document.getElementById('memory-stats').innerHTML = 'Memory offline'; }
+
+  // Voice status
+  try {
+    const voiceRes = await fetch('/voice/status');
+    const voice = await voiceRes.json();
+    document.getElementById('voice-status').innerHTML =
+      'TTS: ' + voice.tts_engine + ' | STT: ' + voice.stt_engine + '<br>Wake word: "' + voice.wake_word + '"';
+  } catch(e) { document.getElementById('voice-status').innerHTML = 'Voice offline'; }
+
+  // Playbooks
+  loadPlaybooks();
+}
+
+// Load v30 data after page load
+setTimeout(loadV30Data, 500);

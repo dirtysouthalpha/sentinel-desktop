@@ -12,7 +12,10 @@ import io
 import logging
 import time
 
-import pyautogui
+try:
+    import pyautogui
+except Exception:
+    pyautogui = None
 from PIL import Image
 
 logger = logging.getLogger(__name__)

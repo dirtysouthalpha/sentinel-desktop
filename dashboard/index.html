@@ -66,3 +66,57 @@
     <script src="/dashboard/app.js"></script>
 </body>
 </html>
+<!-- v27-v30 Feature Panels -->
+<div class="v27-panels" style="margin-top: 2rem;">
+  <h2>🚀 Advanced Features</h2>
+  
+  <div class="feature-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+    
+    <!-- Swarm Panel -->
+    <div class="card" id="swarm-panel">
+      <h3>🐝 Swarm Control</h3>
+      <div id="swarm-status">No swarms active</div>
+      <input type="text" id="swarm-name" placeholder="Swarm name" style="width: 60%; margin-top: 0.5rem;">
+      <input type="number" id="swarm-agents" placeholder="Agents" value="3" style="width: 30%;">
+      <button onclick="createSwarm()">Create Swarm</button>
+    </div>
+    
+    <!-- Fleet Panel -->
+    <div class="card" id="fleet-panel">
+      <h3>🌐 Fleet Status</h3>
+      <div id="fleet-status">No fleet data</div>
+    </div>
+    
+    <!-- Memory Panel -->
+    <div class="card" id="memory-panel">
+      <h3>🧠 Vector Memory</h3>
+      <div id="memory-stats">No memory data</div>
+      <input type="text" id="memory-query" placeholder="Search memories..." style="width: 70%; margin-top: 0.5rem;">
+      <button onclick="searchMemory()">Search</button>
+    </div>
+    
+    <!-- Playbooks Panel -->
+    <div class="card" id="playbook-panel">
+      <h3>📚 Playbooks</h3>
+      <div id="playbook-list">No playbooks learned</div>
+      <button onclick="learnPlaybooks()" style="margin-top: 0.5rem;">Learn from Telemetry</button>
+    </div>
+    
+    <!-- Voice Panel -->
+    <div class="card" id="voice-panel">
+      <h3>🎙️ Voice Control</h3>
+      <div id="voice-status">Checking...</div>
+      <input type="text" id="tts-text" placeholder="Text to speak..." style="width: 70%; margin-top: 0.5rem;">
+      <button onclick="speakText()">Speak</button>
+    </div>
+    
+    <!-- NL Workflow Panel -->
+    <div class="card" id="workflow-panel">
+      <h3>⚡ NL Workflow Builder</h3>
+      <input type="text" id="workflow-desc" placeholder="Describe workflow..." style="width: 100%; margin-top: 0.5rem;">
+      <button onclick="generateWorkflow()" style="margin-top: 0.5rem;">Generate Workflow</button>
+      <div id="workflow-output" style="margin-top: 0.5rem;"></div>
+    </div>
+    
+  </div>
+</div>
