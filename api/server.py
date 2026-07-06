@@ -231,7 +231,7 @@ class SentinelServer:
             yield
 
         app = FastAPI(
-            title="Sentinel Desktop v2",
+            title="Sentinel Desktop",
             description="AI-powered Windows desktop automation API",
             version="23.0.0",
             lifespan=lifespan,
@@ -255,9 +255,36 @@ class SentinelServer:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
-            allow_methods=["GET", "POST", "PUT"],
+            allow_methods=["GET", "POST", "PUT", "DELETE"],
             allow_headers=["*"],
         )
+
+        # v24.0.0: Security headers
+        @app.middleware("http")
+        async def add_security_headers(request: Request, call_next):
+            response = await call_next(request)
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["X-XSS-Protection"] = "1; mode=block"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            response.headers["Server"] = "Sentinel-Desktop"
+            return response
+
+        # v24.0.0: Rate limiting (60 req/min per IP)
+        _rate_limits: dict[str, list[float]] = defaultdict(list)
+        _RATE_WINDOW = 60.0
+        _RATE_MAX = 60
+
+        @app.middleware("http")
+        async def rate_limit_middleware(request: Request, call_next):
+            client_ip = request.client.host if request.client else "unknown"
+            now = time.time()
+            _rate_limits[client_ip] = [t for t in _rate_limits[client_ip] if now - t < _RATE_WINDOW]
+            if len(_rate_limits[client_ip]) >= _RATE_MAX:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
+            _rate_limits[client_ip].append(now)
+            return await call_next(request)
 
         # Register routes
         app.post("/goal")(self._handle_goal)
@@ -320,6 +347,10 @@ class SentinelServer:
 
     async def _handle_goal(self, req: GoalRequest, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         self._check_auth(authorization)
+        if not req.goal or not req.goal.strip():
+            raise HTTPException(400, "Goal must not be empty")
+        if len(req.goal) > 10000:
+            raise HTTPException(413, "Goal too long (max 10000 characters)")
         if self.engine and self.engine.running:
             raise HTTPException(409, "Agent already running — stop it first")
 
@@ -329,8 +360,13 @@ class SentinelServer:
         if req.approval_mode is not None:
             cfg["approval_mode"] = req.approval_mode
 
-        self.engine = AgentEngine(cfg)
-        # Bridge engine step events to all connected WebSocket clients.
+        # Reuse persistent engine or create one if none exists.
+        # This prevents orphaned subsystem instances and memory leaks.
+        if self.engine is None:
+            self.engine = AgentEngine(cfg)
+        else:
+            self.engine.config = cfg
+            self.engine.max_steps = cfg.get("max_steps", 100)
         self.engine.on_step_callback = self._broadcast_step
 
         def _run() -> None:

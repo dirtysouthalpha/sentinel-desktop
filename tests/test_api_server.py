@@ -35,6 +35,12 @@ class _FakeEngine:
     step = 0
     max_steps = 50
     notes: list = []
+    config: dict = {}
+    forensic_log: list = []
+    on_step_callback = None
+
+    def run(self, goal):
+        return {"steps": 1, "finish_summary": "done"}
 
     class _recorder:
         @staticmethod
