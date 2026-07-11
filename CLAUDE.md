@@ -7,7 +7,7 @@ Vision-driven desktop automation agent. Give it a goal in plain English, it sees
 
 Quality gates status:
 - ✅ Zero lint errors (ruff check clean)
-- ✅ Test suite green: 8,921 passing, 153 skipped, 0 failed across 509 test files (verified 2026-06-21)
+- ✅ Test suite green: 9,159 passing, 153 skipped, 0 failed (verified 2026-07-11)
 - ✅ `core/voice.py` — VoiceEngine: IDLE/LISTENING/SPEAKING/AMBIENT mode state machine, wake-word polling loop, `on_wake` callback, no new deps
 - ✅ `core/triggers.py` — EventType enum, Trigger dataclass, TriggerRegistry (JSON persistence), TriggerEngine (wake-event driven dispatch)
 - ✅ 9 new executor actions: trigger_add, trigger_remove, trigger_list, trigger_enable, trigger_disable, trigger_fire_custom, voice_start_ambient, voice_stop_ambient, voice_status
@@ -162,7 +162,7 @@ Quality gates status:
 - ✅ 6 trigger executor actions: trigger_add, trigger_remove, trigger_list, trigger_enable, trigger_disable, trigger_fire_custom
 - ✅ 3 voice executor actions: voice_start_ambient, voice_stop_ambient, voice_status
 - ✅ 9 new tool schemas for LLM tool calling
-- ✅ 8,921 total tests passing (236 additional tests since v22.0 completion)
+- ✅ 9,159 total tests passing (238 additional tests since v22.0 completion)
 
 ## v21.0 — Operator: Eval Harness + Cost Tracker + Skill Marketplace (June 2026)
 - ✅ `eval/` — ScenarioStep/Scenario dataclasses with JSON save/load; ScenarioRunner with executor callback, step scoring, stop_on_failure; EvalRegistry list/load/save/delete + JSONL result history; EvalReport aggregate pass-rate + regression_check
