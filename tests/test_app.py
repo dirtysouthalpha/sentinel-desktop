@@ -128,6 +128,7 @@ def _make_app(cfg_data: dict | None = None) -> SentinelApp:
         patch("gui.tabs.scripts_tab.ScriptsTab", MagicMock()),
         patch("gui.tabs.workflows_tab.WorkflowsTab", MagicMock()),
         patch("gui.tabs.history_tab.HistoryTab", MagicMock()),
+        patch("gui.tabs.memory_tab.MemoryTab", MagicMock()),
         patch("gui.tabs.settings_tab.SettingsTab", MagicMock()),
     ):
         app = SentinelApp(cfg)
