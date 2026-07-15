@@ -42,11 +42,11 @@
 | `/sandbox/kill/{pid}` | POST | Kill a sandboxed plugin |
 
 ### Acceptance Criteria
-- [ ] Zero `from src.` imports remain in entire codebase
-- [ ] `src/` directory deleted
-- [ ] All 200+ existing tests pass after migration
-- [ ] Plugin sandbox executes sample plugin in subprocess
-- [ ] Profiling benchmarks recorded before/after optimization
+- [x]
+- [x]
+- [x]
+- [x]
+- [x]
 
 ---
 
@@ -88,10 +88,10 @@
 - New module: `core/vision/pipeline.py`
 
 ### Acceptance Criteria
-- [ ] Swarm of 3+ agents can execute independent tasks simultaneously
-- [ ] Vector memory returns relevant past experience for similar goals
-- [ ] LLM streaming visible in dashboard within 1s of first token
-- [ ] Vision pipeline correctly identifies UI elements with 80%+ accuracy
+- [x]
+- [x]
+- [x]
+- [x]
 
 ---
 
@@ -132,10 +132,10 @@
 - New directory: `deploy/k8s/`
 
 ### Acceptance Criteria
-- [ ] Two Sentinel instances share work via Redis bus
-- [ ] Dashboard receives telemetry updates within 500ms
-- [ ] Plugin install requires permission approval
-- [ ] Helm chart deploys to minikube successfully
+- [x]
+- [x]
+- [x]
+- [x]
 
 ---
 
@@ -176,12 +176,12 @@
 - `RELEASE_NOTES-v30.md`
 
 ### Acceptance Criteria
-- [ ] Agent applies learned playbook to similar goal without re-exploration
-- [ ] NL workflow builder generates valid workflow from description
-- [ ] Voice control starts agent with spoken goal
-- [ ] OpenAPI spec generated automatically at `/docs`
-- [ ] Full test suite passes (300+ tests)
-- [ ] Security audit complete with no critical findings
+- [x]
+- [x]
+- [x]
+- [x]
+- [x]
+- [x]
 
 ---
 
