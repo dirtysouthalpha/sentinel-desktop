@@ -93,7 +93,7 @@ class TestEngineIntegration:
             result = self.engine.execute("cpu")
             assert result.success is True
 
-    @patch("src.commands.clipboard.subprocess")
+    @patch("core.commands.clipboard.subprocess")
     def test_full_clipboard_flow(self, mock_subproc):
         mock_subproc.run.return_value = MagicMock(returncode=0, stdout=b"hello")
         result = self.engine.execute("copy hello world")

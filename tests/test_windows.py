@@ -12,20 +12,20 @@ class TestWindowCommands:
     def setup_method(self):
         self.cmds = WindowCommands()
 
-    @patch("src.commands.windows.subprocess.run")
+    @patch("core.commands.windows.subprocess.run")
     def test_list_windows(self, mock_run):
         mock_run.return_value = MagicMock(stdout="0x01 Notepad\n0x02 Chrome", returncode=0)
         result = self.cmds.list_windows()
         assert result.success is True
 
-    @patch("src.commands.windows.subprocess.run")
+    @patch("core.commands.windows.subprocess.run")
     def test_list_no_windows(self, mock_run):
         mock_run.return_value = MagicMock(stdout="", returncode=0)
         result = self.cmds.list_windows()
         assert result.success is True
         assert "no open" in result.message.lower()
 
-    @patch("src.commands.windows.subprocess.run")
+    @patch("core.commands.windows.subprocess.run")
     def test_list_file_not_found(self, mock_run):
         mock_run.side_effect = FileNotFoundError("wmctrl not found")
         result = self.cmds.list_windows()

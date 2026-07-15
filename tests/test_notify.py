@@ -11,13 +11,13 @@ class TestNotifyCommands:
     def setup_method(self):
         self.cmds = NotifyCommands()
 
-    @patch("src.commands.notify.subprocess.Popen")
+    @patch("core.commands.notify.subprocess.Popen")
     def test_send(self, mock_popen):
         result = self.cmds.send("Test", "Hello")
         assert result.success is True
         assert "Test" in result.message
 
-    @patch("src.commands.notify.subprocess.Popen")
+    @patch("core.commands.notify.subprocess.Popen")
     def test_alert(self, mock_popen):
         result = self.cmds.alert("Warning!")
         assert result.success is True

@@ -11,7 +11,7 @@ class TestVoiceCommands:
     def setup_method(self):
         self.cmds = VoiceCommands()
 
-    @patch("src.commands.voice.subprocess.Popen")
+    @patch("core.commands.voice.subprocess.Popen")
     def test_speak(self, mock_popen):
         self.cmds.tts_engine = "espeak"
         result = self.cmds.speak("hello world")

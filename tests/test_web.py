@@ -11,18 +11,18 @@ class TestWebCommands:
     def setup_method(self):
         self.cmds = WebCommands()
 
-    @patch("src.commands.web.webbrowser.open")
+    @patch("core.commands.web.webbrowser.open")
     def test_open_url(self, mock_open):
         result = self.cmds.open_url("https://example.com")
         assert result.success is True
         assert "example.com" in result.message
 
-    @patch("src.commands.web.webbrowser.open")
+    @patch("core.commands.web.webbrowser.open")
     def test_open_url_adds_https(self, mock_open):
         result = self.cmds.open_url("example.com")
         assert result.success is True
 
-    @patch("src.commands.web.requests.get")
+    @patch("core.commands.web.requests.get")
     def test_fetch(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200, text="<html><title>Test</title><body>Hello world this is a test page</body></html>",
@@ -32,7 +32,7 @@ class TestWebCommands:
         assert result.success is True
         assert "Test" in result.message
 
-    @patch("src.commands.web.requests.get")
+    @patch("core.commands.web.requests.get")
     def test_brief(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200,
@@ -43,7 +43,7 @@ class TestWebCommands:
         assert result.success is True
         assert "BRIEF" in result.message
 
-    @patch("src.commands.web.webbrowser.open")
+    @patch("core.commands.web.webbrowser.open")
     def test_search(self, mock_open):
         result = self.cmds.search("python tutorials")
         assert result.success is True

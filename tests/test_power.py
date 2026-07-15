@@ -11,36 +11,36 @@ class TestPowerCommands:
     def setup_method(self):
         self.cmds = PowerCommands()
 
-    @patch("src.commands.power.subprocess.Popen")
+    @patch("core.commands.power.subprocess.Popen")
     def test_shutdown(self, mock_popen):
         result = self.cmds.shutdown(0)
         assert result.success is True
         assert "Shut" in result.message
 
-    @patch("src.commands.power.subprocess.Popen")
+    @patch("core.commands.power.subprocess.Popen")
     def test_shutdown_delay(self, mock_popen):
         result = self.cmds.shutdown(30)
         assert result.success is True
 
-    @patch("src.commands.power.subprocess.Popen")
+    @patch("core.commands.power.subprocess.Popen")
     def test_restart(self, mock_popen):
         result = self.cmds.restart(0)
         assert result.success is True
         assert "Restart" in result.message
 
-    @patch("src.commands.power.subprocess.Popen")
+    @patch("core.commands.power.subprocess.Popen")
     def test_sleep(self, mock_popen):
         result = self.cmds.sleep()
         assert result.success is True
         assert "sleep" in result.message.lower()
 
-    @patch("src.commands.power.subprocess.Popen")
+    @patch("core.commands.power.subprocess.Popen")
     def test_lock(self, mock_popen):
         result = self.cmds.lock()
         assert result.success is True
         assert "lock" in result.message.lower()
 
-    @patch("src.commands.power.subprocess.Popen")
+    @patch("core.commands.power.subprocess.Popen")
     def test_cancel(self, mock_popen):
         result = self.cmds.cancel()
         assert result.success is True
