@@ -45,13 +45,14 @@ class TestSaveErrors:
 
     def test_save_oserror_returns_none(self, tmp_path: Path) -> None:
         cm = CheckpointManager(str(tmp_path))
-        with patch.object(Path, "open", side_effect=OSError("disk full")):
+        with patch("core.checkpoint.atomic_write_text", side_effect=OSError("disk full")):
             result = cm.save("goal", 1, [], None, {}, "running")
         assert result is None
 
     def test_save_value_error_returns_none(self, tmp_path: Path) -> None:
         cm = CheckpointManager(str(tmp_path))
-        with patch("json.dump", side_effect=ValueError("bad value")):
+        # save() serializes via json.dumps before the atomic write.
+        with patch("json.dumps", side_effect=ValueError("bad value")):
             result = cm.save("goal", 1, [], None, {}, "running")
         assert result is None
 

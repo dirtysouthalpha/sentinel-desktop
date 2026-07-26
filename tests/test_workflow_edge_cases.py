@@ -306,6 +306,6 @@ class TestSaveWorkflowOSError:
         import pytest
 
         target = tmp_path / "out.json"
-        with patch.object(Path, "open", side_effect=OSError("disk full")):
+        with patch("core.workflow.atomic_write_text", side_effect=OSError("disk full")):
             with pytest.raises(OSError, match="disk full"):
                 WorkflowEngine.save_workflow(str(target), {"steps": []})

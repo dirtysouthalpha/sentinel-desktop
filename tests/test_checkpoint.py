@@ -265,8 +265,8 @@ class TestSaveEdgeCases:
         ro_dir = tmp_path / "readonly"
         ro_dir.mkdir()
         cm = CheckpointManager(checkpoint_dir=str(ro_dir))
-        # Mock Path.open to raise OSError (simulating write failure)
-        with patch.object(Path, "open", side_effect=OSError("Simulated write failure")):
+        # Saves route through the atomic writer now; simulate the failure there.
+        with patch("core.checkpoint.atomic_write_text", side_effect=OSError("Simulated write failure")):
             result = _save_checkpoint(cm)
             assert result is None
 

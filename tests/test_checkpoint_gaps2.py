@@ -102,7 +102,9 @@ class _patch_json_dump_raises:
         self._cm = None
 
     def __enter__(self):
-        self._cm = _patch("json.dump", side_effect=self.exc)
+        # save() now serializes via json.dumps (passed to the atomic writer),
+        # not json.dump.
+        self._cm = _patch("json.dumps", side_effect=self.exc)
         return self._cm.__enter__()
 
     def __exit__(self, *args):

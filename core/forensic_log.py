@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.atomic_io import atomic_write_text
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -355,9 +357,10 @@ class ForensicLog:
 
         try:
             file_path = Path(path)
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with file_path.open("w", encoding="utf-8") as fh:
-                json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
+            atomic_write_text(
+                file_path,
+                json.dumps(payload, indent=2, default=str, ensure_ascii=False),
+            )
         except (OSError, TypeError, ValueError):
             logger.exception("export_json failed")
             return False
@@ -460,7 +463,9 @@ class ForensicLog:
                     "run": dict(self._run),
                     "steps": [dict(s) for s in self._steps],
                 }
-            with dest.open("w", encoding="utf-8") as fh:
-                json.dump(payload, fh, indent=2, default=str, ensure_ascii=False)
+            atomic_write_text(
+                dest,
+                json.dumps(payload, indent=2, default=str, ensure_ascii=False),
+            )
         except (OSError, TypeError):
             logger.exception("Forensic auto-save failed for run %s", self._run.get("run_id", "???")[:8])
