@@ -48,6 +48,23 @@ DEFAULT_RETRY_BASE_DELAY = 1.0  # seconds — multiplied by 2^attempt with jitte
 # HTTP status codes we consider transient and worth retrying.
 RETRY_STATUSES = {408, 425, 429, 500, 502, 503, 504, 522, 524}
 
+# Anthropic model families that removed the sampling parameters
+# (temperature / top_p / top_k). Sending "temperature" to one of these is a
+# hard 400, so _chat_anthropic omits it rather than letting the request fail.
+NO_SAMPLING_PARAM_PREFIXES = (
+    "claude-fable-5",
+    "claude-mythos-5",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+)
+
+
+def omits_sampling_params(model: str) -> bool:
+    """True when ``model`` rejects ``temperature``/``top_p``/``top_k``."""
+    return model.startswith(NO_SAMPLING_PARAM_PREFIXES)
+
 
 class LLMError(Exception):
     """Raised for unrecoverable LLM errors with a human-friendly message."""
@@ -357,8 +374,9 @@ class LLMClient:
             "model": model,
             "messages": converted_messages,
             "max_tokens": max_tokens,
-            "temperature": temperature,
         }
+        if not omits_sampling_params(model):
+            payload["temperature"] = temperature
         if system_msg.strip():
             payload["system"] = system_msg.strip()
         if tools:

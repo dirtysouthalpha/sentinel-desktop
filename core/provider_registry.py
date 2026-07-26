@@ -55,14 +55,12 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "chat_endpoint": "/messages",
         "anthropic_native": True,
         "manual_models": [
+            "claude-opus-5",
+            "claude-sonnet-5",
+            "claude-opus-4-8",
             "claude-opus-4-7",
             "claude-sonnet-4-6",
             "claude-haiku-4-5-20251001",
-            "claude-sonnet-4-20250514",
-            "claude-opus-4-20250514",
-            "claude-3-7-sonnet-20250219",
-            "claude-3-5-sonnet-20241022",
-            "claude-3-haiku-20240307",
         ],
     },
     "google": {

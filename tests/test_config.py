@@ -50,7 +50,7 @@ def test_save_load_roundtrip(tmp_path):
     c = Config()
     c._path = str(path)
     c.set("provider", "anthropic")
-    c.set("model", "claude-3-5-sonnet-20241022")
+    c.set("model", "claude-sonnet-5")
     c.set("api_key", "test-key")
     c.save()
     assert path.exists()
@@ -59,7 +59,7 @@ def test_save_load_roundtrip(tmp_path):
     c2._path = str(path)
     data = c2.load()
     assert data["provider"] == "anthropic"
-    assert data["model"] == "claude-3-5-sonnet-20241022"
+    assert data["model"] == "claude-sonnet-5"
     assert data["api_key"] == "test-key"
     # Defaults still merged in:
     assert "max_steps" in data

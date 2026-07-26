@@ -266,7 +266,7 @@ class TestAnthropicEmptyContent:
         )
         client = LLMClient()
         result = client.chat(
-            "anthropic", "sk-ant-test", "claude-3-5-sonnet-20241022",
+            "anthropic", "sk-ant-test", "claude-sonnet-5",
             [{"role": "user", "content": "hi"}],
         )
         assert result == ""
@@ -297,7 +297,7 @@ class TestAnthropicToolUse:
         )
         client = LLMClient()
         result = client.chat(
-            "anthropic", "sk-ant-test", "claude-3-5-sonnet-20241022",
+            "anthropic", "sk-ant-test", "claude-sonnet-5",
             [{"role": "user", "content": "click the button"}],
         )
         parsed = json.loads(result)
@@ -323,7 +323,7 @@ class TestAnthropicSystemPromptExtraction:
         )
         client = LLMClient()
         result = client.chat(
-            "anthropic", "sk-ant-test", "claude-3-5-sonnet-20241022",
+            "anthropic", "sk-ant-test", "claude-sonnet-5",
             [
                 {"role": "system", "content": "You are helpful."},
                 {"role": "user", "content": "hi"},
