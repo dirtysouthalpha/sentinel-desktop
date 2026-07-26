@@ -270,7 +270,7 @@ class TestAnthropicEmptyContent:
         result = client.chat(
             "anthropic",
             "sk-ant-test",
-            "claude-3-5-sonnet-20241022",
+            "claude-sonnet-5",
             [{"role": "user", "content": "hi"}],
         )
         assert result == ""
@@ -305,7 +305,7 @@ class TestAnthropicToolUse:
         result = client.chat(
             "anthropic",
             "sk-ant-test",
-            "claude-3-5-sonnet-20241022",
+            "claude-sonnet-5",
             [{"role": "user", "content": "click the button"}],
         )
         parsed = json.loads(result)
@@ -333,7 +333,7 @@ class TestAnthropicSystemPromptExtraction:
         result = client.chat(
             "anthropic",
             "sk-ant-test",
-            "claude-3-5-sonnet-20241022",
+            "claude-sonnet-5",
             [
                 {"role": "system", "content": "You are helpful."},
                 {"role": "user", "content": "hi"},

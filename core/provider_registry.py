@@ -56,14 +56,12 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "anthropic_native": True,
         "computer_use": "anthropic",
         "manual_models": [
+            "claude-opus-5",
+            "claude-sonnet-5",
+            "claude-opus-4-8",
             "claude-opus-4-7",
             "claude-sonnet-4-6",
             "claude-haiku-4-5-20251001",
-            "claude-sonnet-4-20250514",
-            "claude-opus-4-20250514",
-            "claude-3-7-sonnet-20250219",
-            "claude-3-5-sonnet-20241022",
-            "claude-3-haiku-20240307",
         ],
     },
     "google": {
@@ -201,6 +199,16 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "auth_prefix": "Bearer ",
         "chat_endpoint": "/chat/completions",
         "manual_models": [
+            # Vision / multimodal models — REQUIRED for Sentinel's screenshot
+            # driven desktop agent. The text-only coding models below cannot
+            # see the screen. Verify the exact identifier + your plan's access
+            # in the Z.ai API docs before relying on one.
+            "glm-4.6v",
+            "glm-4.6v-flash",
+            "glm-4.5v",
+            "glm-5v-turbo",
+            # Text-only coding models (good for code generation, NOT for the
+            # vision agent).
             "glm-5",
             "glm-5-pro",
             "glm-5-flash",

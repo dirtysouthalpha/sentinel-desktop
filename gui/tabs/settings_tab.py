@@ -220,11 +220,17 @@ class SettingsTab:
             values=[
                 "gpt-4o",
                 "gpt-4o-mini",
-                "gpt-4-turbo",
-                "claude-3.5-sonnet",
-                "glm-4v",
-                "qwen-vl-max",
-                "gemini-1.5-flash",
+                "claude-opus-5",
+                "claude-sonnet-5",
+                "claude-haiku-4-5",
+                "glm-5",
+                "glm-5-pro",
+                "glm-4.6v",
+                "glm-5v-turbo",
+                "gemini-2.0-flash",
+                "grok-3",
+                "deepseek-chat",
+                "qwen-max",
             ],
             row=0,
         )
@@ -252,6 +258,23 @@ class SettingsTab:
             "dropdown",
             values=["auto", "approve", "deny"],
             row=2,
+        )
+        self._add_field(
+            s,
+            "Tool Tier",
+            "model_tier",
+            "full",
+            "dropdown",
+            values=["full", "core"],
+            row=3,
+        )
+        self._add_field(
+            s,
+            "Computer Use",
+            "computer_use_enabled",
+            "true",
+            "checkbox",
+            row=4,
         )
 
     def _section_theme(self) -> None:
@@ -462,6 +485,8 @@ class SettingsTab:
             "max_steps": "50",
             "timeout": "300",
             "approval_mode": "auto",
+            "model_tier": "full",
+            "computer_use_enabled": "true",
             "theme": "sentinel",
             "scheduler_enabled": "false",
             "notify_toast": "true",

@@ -57,7 +57,7 @@ class TestConnectionErrors:
             client.chat(
                 "anthropic",
                 "sk-ant-test",
-                "claude-3-5-sonnet-20241022",
+                "claude-sonnet-5",
                 [{"role": "user", "content": "test"}],
                 max_retries=2,
             )

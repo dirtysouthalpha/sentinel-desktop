@@ -47,6 +47,23 @@ DEFAULT_RETRY_BASE_DELAY = 1.0  # seconds — multiplied by 2^attempt with jitte
 # HTTP status codes we consider transient and worth retrying.
 RETRY_STATUSES = {408, 425, 429, 500, 502, 503, 504, 522, 524}
 
+# Anthropic model families that removed the sampling parameters
+# (temperature / top_p / top_k). Sending "temperature" to one of these is a
+# hard 400, so _chat_anthropic omits it rather than letting the request fail.
+NO_SAMPLING_PARAM_PREFIXES = (
+    "claude-fable-5",
+    "claude-mythos-5",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+)
+
+
+def omits_sampling_params(model: str) -> bool:
+    """True when ``model`` rejects ``temperature``/``top_p``/``top_k``."""
+    return model.startswith(NO_SAMPLING_PARAM_PREFIXES)
+
 # Common HTTP status codes
 HTTP_OK = 200
 HTTP_CREATED = 201
@@ -63,6 +80,11 @@ HTTP_SERVER_ERROR_MAX = 600
 
 # Error message truncation length
 MAX_ERROR_SNIPPET_LENGTH = 240
+
+# Anthropic computer-use models lose click accuracy on screenshots larger than
+# roughly this many pixels on the longest edge (the API downscales big images
+# internally). We downscale to this size ourselves and scale coordinates back.
+MAX_SCREENSHOT_EDGE = 1536
 
 
 class LLMError(Exception):
@@ -115,6 +137,7 @@ class LLMClient:
         timeout: int = DEFAULT_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
+        computer_use_enabled: bool = True,
     ) -> str:
         """Send a chat completion request and return the assistant's text.
 
@@ -157,6 +180,7 @@ class LLMClient:
             timeout=timeout,
             max_retries=max_retries,
             retry_base_delay=retry_base_delay,
+            computer_use_enabled=computer_use_enabled,
         )
 
     def _route_chat_request(
@@ -172,6 +196,7 @@ class LLMClient:
         timeout: int,
         max_retries: int,
         retry_base_delay: float,
+        computer_use_enabled: bool = True,
     ) -> str:
         """Route chat request to appropriate provider implementation.
 
@@ -183,8 +208,8 @@ class LLMClient:
         if not provider_config:
             raise ValueError(f"Unknown provider: {provider}")
 
-        # Check for native computer-use support
-        computer_use_type = provider_config.get("computer_use")
+        # Check for native computer-use support — respect the enabled flag
+        computer_use_type = provider_config.get("computer_use") if computer_use_enabled else None
 
         if provider_config.get("anthropic_native"):
             return self._chat_anthropic(
@@ -422,6 +447,121 @@ class LLMClient:
     # Anthropic native API
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _infer_display_size(
+        messages: list[dict[str, Any]],
+        default: tuple[int, int] = (1920, 1080),
+    ) -> tuple[int, int]:
+        """Infer the display resolution from the most recent screenshot.
+
+        The Anthropic computer tool must be told the exact pixel dimensions of
+        the screenshots it receives, otherwise returned click coordinates are
+        scaled wrong. We read the dimensions straight from the latest image in
+        the message list so this works at any resolution without hardcoding.
+
+        Handles both Anthropic-native image blocks
+        (``{"type": "image", "source": {"data": <b64>}}``) and OpenAI-style
+        data URLs (``{"type": "image_url", "image_url": {"url": "data:...;base64,..."}}``).
+        Falls back to *default* when no decodable image is present.
+        """
+        import base64
+        from io import BytesIO
+
+        b64: str | None = None
+        for message in reversed(messages):
+            content = message.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in reversed(content):
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "image":
+                    source = block.get("source", {})
+                    if isinstance(source, dict) and source.get("data"):
+                        b64 = source["data"]
+                        break
+                elif block.get("type") == "image_url":
+                    url = block.get("image_url", {}).get("url", "")
+                    if "base64," in url:
+                        b64 = url.split("base64,", 1)[1]
+                        break
+            if b64:
+                break
+
+        if not b64:
+            return default
+        try:
+            from PIL import Image
+
+            with Image.open(BytesIO(base64.b64decode(b64))) as img:
+                width, height = img.size
+            if width > 0 and height > 0:
+                return width, height
+        except Exception as exc:  # noqa: BLE001 — bad image must never break a call
+            logger.debug("Could not infer display size from screenshot: %s", exc)
+        return default
+
+    @staticmethod
+    def _downscale_message_images(
+        messages: list[dict[str, Any]],
+        scale: float,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Resize every embedded screenshot by *scale* (0 < scale < 1).
+
+        Returns ``(new_messages, count)`` where *count* is how many images were
+        actually resized. The original list is left untouched. Any image that
+        fails to decode is passed through unchanged so a bad frame never breaks
+        the call. The count lets the caller scale returned coordinates only when
+        a real screenshot was downscaled (never on the no-image fallback).
+        """
+        if scale >= 1.0:
+            return messages, 0
+        import base64
+        from io import BytesIO
+
+        from PIL import Image
+
+        downscaled = 0
+        out: list[dict[str, Any]] = []
+        for message in messages:
+            content = message.get("content")
+            if not isinstance(content, list):
+                out.append(message)
+                continue
+            new_content: list[Any] = []
+            for block in content:
+                if (
+                    isinstance(block, dict)
+                    and block.get("type") == "image"
+                    and isinstance(block.get("source"), dict)
+                    and block["source"].get("type") == "base64"
+                    and block["source"].get("data")
+                ):
+                    try:
+                        raw = base64.b64decode(block["source"]["data"])
+                        with Image.open(BytesIO(raw)) as im:
+                            new_w = max(1, round(im.width * scale))
+                            new_h = max(1, round(im.height * scale))
+                            resized = im.resize((new_w, new_h))
+                            buf = BytesIO()
+                            resized.save(buf, format="PNG")
+                        new_data = base64.b64encode(buf.getvalue()).decode()
+                        new_content.append({
+                            **block,
+                            "source": {
+                                **block["source"],
+                                "media_type": "image/png",
+                                "data": new_data,
+                            },
+                        })
+                        downscaled += 1
+                        continue
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("Image downscale failed, sending as-is: %s", exc)
+                new_content.append(block)
+            out.append({**message, "content": new_content})
+        return out, downscaled
+
     def _chat_anthropic(
         self,
         api_key: str,
@@ -457,16 +597,64 @@ class LLMClient:
             "model": model,
             "messages": converted_messages,
             "max_tokens": max_tokens,
-            "temperature": temperature,
         }
+        if not omits_sampling_params(model):
+            payload["temperature"] = temperature
         if system_msg.strip():
             payload["system"] = system_msg.strip()
 
         # Use native computer-use tools when available
+        coord_scale = 1.0
         if computer_use_type == "anthropic":
             from core.computer_use import build_anthropic_tools
 
-            payload["tools"] = build_anthropic_tools(tools)
+            # 1. Infer the true screenshot resolution (no 1920x1080 assumption).
+            src_w, src_h = self._infer_display_size(messages)
+
+            # 2. Anthropic's computer-use models lose click accuracy on images
+            #    larger than ~1568px on the long edge (they get internally
+            #    downscaled). Downscale the screenshots OURSELVES to a known
+            #    size, declare that exact size to the model, and remember the
+            #    factor so returned coordinates can be scaled back up to real
+            #    screen pixels. This keeps clicks accurate on big displays
+            #    (3440x1440 ultrawide, 4K) at any resolution.
+            scale = 1.0
+            longest = max(src_w, src_h)
+            if longest > MAX_SCREENSHOT_EDGE:
+                scale = MAX_SCREENSHOT_EDGE / longest
+
+            # Downscale the screenshots in the payload first. Only if at least
+            # one real image was actually resized do we declare the reduced size
+            # and scale coordinates back — otherwise (e.g. a text-only call with
+            # no screenshot) we keep native size and pass coordinates through
+            # unchanged.
+            downscaled = 0
+            if scale < 1.0:
+                payload["messages"], downscaled = self._downscale_message_images(
+                    payload["messages"], scale,
+                )
+            if downscaled:
+                disp_w = max(1, round(src_w * scale))
+                disp_h = max(1, round(src_h * scale))
+                coord_scale = src_w / disp_w if disp_w else 1.0
+            else:
+                disp_w, disp_h = src_w, src_h
+                coord_scale = 1.0
+
+            payload["tools"] = build_anthropic_tools(
+                display_width=disp_w, display_height=disp_h,
+            )
+            # Attach Sentinel's own action tools (finish, note, click_text, …)
+            # as native Anthropic tools so the agent loop keeps working. The
+            # response parser handles these tool_use blocks alongside the
+            # computer tool.
+            if tools:
+                payload["tools"] += self._convert_tools_to_anthropic(tools)
+            # The computer_20250124 tool type is gated behind a beta flag.
+            # Without this header Anthropic rejects the request with HTTP 400
+            # ("Input tag 'computer_20250124' does not match any expected
+            # tags"). The version string must match the tool version above.
+            headers["anthropic-beta"] = "computer-use-2025-01-24"
         elif tools:
             payload["tools"] = self._convert_tools_to_anthropic(tools)
 
@@ -481,9 +669,11 @@ class LLMClient:
             provider_label="anthropic",
         )
 
-        # Parse response — translate computer tool actions to our format
+        # Parse response — translate computer tool actions to our format,
+        # scaling coordinates from the (downscaled) model space back to real
+        # screen pixels.
         if computer_use_type == "anthropic":
-            return self._parse_anthropic_computer_response(data)
+            return self._parse_anthropic_computer_response(data, coord_scale=coord_scale)
         return self._parse_anthropic_response(data)
 
     @staticmethod
@@ -533,14 +723,20 @@ class LLMClient:
         return "\n".join(text_parts).strip()
 
     @staticmethod
-    def _parse_anthropic_computer_response(data: dict[str, Any]) -> str:
+    def _parse_anthropic_computer_response(
+        data: dict[str, Any],
+        coord_scale: float = 1.0,
+    ) -> str:
         """Parse Anthropic response with native computer tool actions.
 
         Translates computer_20250124 tool responses to our JSON action format
-        so the executor can handle them uniformly.
+        so the executor can handle them uniformly. *coord_scale* multiplies the
+        returned coordinates to convert from the (possibly downscaled) image
+        space the model saw back to real screen pixels.
         """
         from core.computer_use import translate_anthropic_action
 
+        coord_keys = ("x", "y", "from_x", "from_y", "to_x", "to_y")
         content_blocks = data.get("content", [])
         text_parts: list[str] = []
         actions: list[dict[str, Any]] = []
@@ -552,6 +748,11 @@ class LLMClient:
             elif block_type == "tool_use":
                 action = translate_anthropic_action(block)
                 if action:
+                    if coord_scale != 1.0:
+                        for key in coord_keys:
+                            value = action.get(key)
+                            if isinstance(value, (int, float)):
+                                action[key] = int(round(value * coord_scale))
                     # Store the original id from the tool_use block
                     action["_original_id"] = block.get("id", "")
                     actions.append(action)

@@ -1,5 +1,24 @@
 # Changelog
 
+> **Versioning note.** This branch tracks the v13–v17 line; `origin/main` tracks a
+> separate v23–v30 line (the two were force-merged once as unrelated histories and
+> have diverged since — shared merge base 2026-05-24). `core.__version__` is the
+> authoritative version for *this* tree. Reconcile the lineages before comparing
+> version numbers across the two.
+
+## [7.0.0] – [17.0.0] - 2026-06-05 → 2026-06-10
+
+Released without individual changelog entries. Summarized from commit history —
+see `git log v6.0.0..HEAD` for the full record:
+
+- **v13** — file ops, process control, credential vault, registry access, memory
+  tab, MFA detection, MCP server, extensive test coverage
+- **v14–v17** — resilience engine, config store, network tools, window control,
+  HTTP client, file watcher, audio/voice
+- Anthropic client fixes: `anthropic-version: 2023-06-01` header,
+  `Accept-Encoding: identity` to prevent gzip mis-encoding through proxy layers
+- GUI: warn instead of reporting success when a run aborts without `finish()`
+
 ## [6.0.0] - 2026-06-05
 
 ### Dependency upgrades
