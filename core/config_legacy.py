@@ -6,6 +6,8 @@ import os
 import json
 from pathlib import Path
 
+from core.atomic_io import atomic_write_text
+
 # Version
 VERSION = "30.0.0"
 APP_NAME = "Sentinel Desktop"
@@ -78,10 +80,10 @@ def load_config() -> dict:
 
 
 def save_config(cfg: dict):
-    """Save config to disk."""
+    """Save config to disk atomically (it holds API keys)."""
     try:
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(cfg, f, indent=2)
+        # Crash-safe + owner-only: a truncated config on crash loses API keys.
+        atomic_write_text(CONFIG_FILE, json.dumps(cfg, indent=2))
     except Exception:
         pass
 

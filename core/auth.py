@@ -19,6 +19,8 @@ from typing import Any
 
 import bcrypt
 
+from core.atomic_io import atomic_write_text
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -247,8 +249,13 @@ class AuthManager:
             "users": [u.to_dict() for u in self._users.values()],
         }
         try:
-            with open(self.config_path, "w", encoding="utf-8") as fh:
-                json.dump(payload, fh, indent=2, ensure_ascii=False)
+            # Atomic + owner-only: the user store holds credential hashes, so a
+            # crash mid-write must not truncate it (lockout) and it must not be
+            # world-readable.
+            atomic_write_text(
+                self.config_path,
+                json.dumps(payload, indent=2, ensure_ascii=False),
+            )
             logger.debug("Saved %d user(s) to %s", len(self._users), self.config_path)
             return True
         except OSError as exc:

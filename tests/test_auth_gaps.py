@@ -39,7 +39,9 @@ def test_save_oserror_returns_false(tmp_path):
     config = tmp_path / "users.json"
     manager = AuthManager(config_path=str(config))
 
-    with patch("builtins.open", side_effect=OSError("disk full")):
+    # _save now persists via the atomic writer, so simulate the failure there
+    # rather than at builtins.open (which the atomic path doesn't use directly).
+    with patch("core.auth.atomic_write_text", side_effect=OSError("disk full")):
         result = manager._save()
 
     assert result is False
