@@ -10,12 +10,46 @@ import hashlib
 import json
 import logging
 import os
+import re
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Restrict plugin names to a safe charset with an alphanumeric start, so
+# traversal tokens (``..``, ``/``, ``\``, a leading dash, or an absolute path)
+# can never form a valid name. Without this, install/uninstall joined an
+# unsanitized name onto PLUGINS_DIR — a registry (or caller) supplying
+# ``name="../../core/engine"`` reached write_bytes()/unlink() OUTSIDE the
+# plugins directory (arbitrary file write / delete). Ported from the v22
+# "Aria" lineage fix (tag archive-v22-aria-final, commit 83841b4).
+_PLUGIN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+# Cloud instance-metadata endpoints — reaching one returns cloud credentials.
+# A plugin download_url comes from the (remote) registry, so a compromised
+# registry could point it at the host's metadata service. Block them. Ported
+# from the v22 http_client SSRF fixes (commits ea07472, ea03e99).
+_METADATA_HOSTS = frozenset(
+    {
+        "169.254.169.254",  # AWS / Azure / GCP IPv4 IMDS
+        "169.254.170.2",  # AWS ECS task metadata
+        "169.254.169.253",  # AWS IMDS (alternate)
+        "metadata.google.internal",  # GCP metadata
+        "metadata.azure.com",  # Azure metadata
+    }
+)
+
+
+def _is_metadata_url(url: str) -> bool:
+    """True if *url*'s host is a known cloud instance-metadata endpoint."""
+    try:
+        host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    except ValueError:
+        return True  # unparseable → treat as unsafe
+    return host in _METADATA_HOSTS or host.startswith("169.254.")
 
 # Built-in registry URL (can be overridden via env)
 REGISTRY_URL = os.environ.get(
@@ -112,6 +146,22 @@ def get_marketplace_listing() -> list[dict[str, Any]]:
     return listing
 
 
+def _safe_plugin_path(name: str) -> Path:
+    """Validate *name* and return its resolved ``<name>.py`` path under PLUGINS_DIR.
+
+    Raises ValueError if the name is empty, contains ``..`` or path
+    separators, or resolves outside PLUGINS_DIR. The regex blocks traversal
+    tokens up front; the resolved-containment check is defense-in-depth.
+    """
+    if not isinstance(name, str) or ".." in name or not _PLUGIN_NAME_RE.match(name):
+        raise ValueError(f"invalid plugin name: {name!r}")
+    root = PLUGINS_DIR.resolve()
+    dest = (root / f"{name}.py").resolve()
+    if root != dest.parent:
+        raise ValueError(f"plugin name escapes plugins dir: {name!r}")
+    return dest
+
+
 def install_plugin(name: str) -> dict[str, Any]:
     """Download and install a plugin from the marketplace.
 
@@ -124,6 +174,9 @@ def install_plugin(name: str) -> dict[str, Any]:
 
     if not plugin.download_url:
         return {"success": False, "message": f"Plugin '{name}' has no download URL"}
+
+    if _is_metadata_url(plugin.download_url):
+        return {"success": False, "message": "Refusing to fetch cloud metadata endpoint"}
 
     try:
         req = urllib.request.Request(plugin.download_url, headers={"User-Agent": "Sentinel-Desktop"})
@@ -144,9 +197,12 @@ def install_plugin(name: str) -> dict[str, Any]:
     except SyntaxError as e:
         return {"success": False, "message": f"Plugin has invalid Python syntax: {e}"}
 
-    # Install to plugins directory
+    # Install to plugins directory — validate the name can't escape it.
+    try:
+        dest = _safe_plugin_path(name)
+    except ValueError as e:
+        return {"success": False, "message": f"Rejected plugin name: {e}"}
     PLUGINS_DIR.mkdir(parents=True, exist_ok=True)
-    dest = PLUGINS_DIR / f"{name}.py"
     dest.write_bytes(content)
 
     logger.info("Installed plugin '%s' to %s", name, dest)
@@ -162,7 +218,11 @@ def uninstall_plugin(name: str) -> dict[str, Any]:
     if name in ("__init__", "template"):
         return {"success": False, "message": f"Cannot remove built-in file '{name}'"}
 
-    target = PLUGINS_DIR / f"{name}.py"
+    # Validate the name can't escape the plugins dir (arbitrary-delete guard).
+    try:
+        target = _safe_plugin_path(name)
+    except ValueError as e:
+        return {"success": False, "message": f"Rejected plugin name: {e}"}
     if not target.exists():
         return {"success": False, "message": f"Plugin '{name}' is not installed"}
 
