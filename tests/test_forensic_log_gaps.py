@@ -15,7 +15,7 @@ class TestForensicLogExportErrors:
     def test_export_json_write_failure_returns_false(self):
         fl = ForensicLog(log_dir=tempfile.mkdtemp())
         fl.start_run("Goal", "openai", "gpt-4o")
-        with patch("pathlib.Path.open", side_effect=OSError("disk full")):
+        with patch("core.forensic_log.atomic_write_text", side_effect=OSError("disk full")):
             assert fl.export_json("/fake/path.json") is False
 
     def test_export_csv_write_failure_returns_false(self):

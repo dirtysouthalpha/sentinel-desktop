@@ -15,6 +15,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from core.atomic_io import atomic_write_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -482,10 +484,9 @@ class WorkflowEngine:
     def save_workflow(path: str, workflow_data: dict[str, Any]) -> None:
         """Save a workflow definition to JSON."""
         try:
-            p = Path(path)
-            p.parent.mkdir(parents=True, exist_ok=True)
-            with p.open("w", encoding="utf-8") as f:
-                json.dump(workflow_data, f, indent=2, ensure_ascii=False)
+            atomic_write_text(
+                path, json.dumps(workflow_data, indent=2, ensure_ascii=False)
+            )
         except (OSError, TypeError):
             logger.exception("Failed to save workflow to %s", path)
             raise

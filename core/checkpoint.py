@@ -18,6 +18,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from core.atomic_io import atomic_write_text
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -173,8 +175,10 @@ class CheckpointManager:
         saved = False
         with self._lock:
             try:
-                with dest.open("w", encoding="utf-8") as fh:
-                    json.dump(record, fh, indent=2, default=str, ensure_ascii=False)
+                atomic_write_text(
+                    dest,
+                    json.dumps(record, indent=2, default=str, ensure_ascii=False),
+                )
                 saved = True
                 logger.info(
                     "Checkpoint saved: %s  step=%d  status=%s",
