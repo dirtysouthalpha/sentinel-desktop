@@ -134,14 +134,14 @@ class TestListVoices:
         mock_voice_entry.GetDescription.return_value = "Microsoft David"
         mock_voice_entry.Id = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0"
         mock_voice_obj.GetVoices.return_value = [mock_voice_entry]
-        with patch("win32com.client.Dispatch", return_value=mock_voice_obj, create=True):
-            with patch.dict("sys.modules", {"win32com": MagicMock(), "win32com.client": MagicMock(
-                Dispatch=MagicMock(return_value=mock_voice_obj)
-            )}):
-                from importlib import reload
-                import core.audio as audio_mod
-                audio_mod._tts_voice = None  # reset cached voice
-                voices = audio_mod.list_voices()
+        # Patch sys.modules directly — patching "win32com.client.Dispatch" would
+        # try to import the real (Windows-only) module and fail on Linux/macOS.
+        with patch.dict("sys.modules", {"win32com": MagicMock(), "win32com.client": MagicMock(
+            Dispatch=MagicMock(return_value=mock_voice_obj)
+        )}):
+            import core.audio as audio_mod
+            audio_mod._tts_voice = None  # reset cached voice
+            voices = audio_mod.list_voices()
         # Either list of dicts or empty (depending on mock resolution)
         assert isinstance(voices, list)
 

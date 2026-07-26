@@ -55,6 +55,12 @@ except ImportError:
 # less than this on *every* channel are considered identical.
 _CHANNEL_THRESHOLD = 30
 
+# Fraction of changed pixels below which a frame-to-frame change is treated as
+# background "noise" (animated wallpaper, video, blinking cursor) rather than a
+# real UI change. Keeps wait_for_stable from resetting its timer forever when
+# only the desktop background animates.
+_STABILITY_NOISE_THRESHOLD = 0.05
+
 # Downscale factor applied before comparison — trades a bit of precision
 # for a large speed win (1/4 resolution = ~16× fewer pixels).
 _DOWNSCALE = 4
@@ -480,7 +486,11 @@ class SmartWait:
             score = _compute_change_score(prev_small, current_small)
             prev_small = current_small
 
-            if score > 0.0:
+            # Only a change above the noise threshold resets the stability
+            # timer. Minor background animation (wallpaper/video) is ignored so
+            # the screen can still be reported stable when the foreground app
+            # has settled.
+            if score > _STABILITY_NOISE_THRESHOLD:
                 last_change_time = time.monotonic()
                 last_score = score
             else:

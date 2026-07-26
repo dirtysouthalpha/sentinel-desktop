@@ -414,8 +414,11 @@ class BrowserManager:
                 )
                 desc = f"text={text!r}"
             else:
-                page.wait_for_load_state("networkidle", timeout=timeout)
-                desc = "networkidle"
+                # "load" is far more reliable than "networkidle" as a default:
+                # ad/tracker-heavy sites (CNN, news portals) never reach a true
+                # network-idle state, so networkidle would always time out.
+                page.wait_for_load_state("load", timeout=timeout)
+                desc = "load"
 
             return {"success": True, "waited_for": desc}
 

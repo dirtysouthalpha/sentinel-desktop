@@ -15,10 +15,31 @@ import sys
 import threading
 import time
 
-import pyautogui
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+# pyautogui needs a display server; importing it on a headless host raises
+# (mouseinfo raises KeyError('DISPLAY')). Guard the import so headless/API
+# mode can still boot — capture calls then fail per-call with RuntimeError,
+# which every caller below already handles (mss is tried first anyway).
+try:
+    import pyautogui
+
+    PYAUTOGUI_AVAILABLE = True
+except Exception as _import_exc:  # noqa: BLE001 — ImportError or KeyError('DISPLAY')
+
+    class _HeadlessPyAutoGUIStub:
+        """Stand-in for pyautogui when no display is available."""
+
+        def __getattr__(self, name: str):
+            raise RuntimeError(
+                f"pyautogui.{name} unavailable — no display detected (headless environment)",
+            )
+
+    pyautogui = _HeadlessPyAutoGUIStub()  # type: ignore[assignment]
+    PYAUTOGUI_AVAILABLE = False
+    logger.warning("pyautogui unavailable — screen capture limited to mss: %s", _import_exc)
 
 # Thread lock for screenshot cache — shared by agent pool and concurrent access.
 _cache_lock = threading.Lock()
@@ -273,7 +294,7 @@ def list_monitors() -> list[dict[str, int | bool]]:
 
     try:
         w, h = pyautogui.size()
-    except OSError as exc:
+    except (OSError, RuntimeError) as exc:
         logger.debug("pyautogui.size() failed: %s", exc)
         w, h = 0, 0
     return [

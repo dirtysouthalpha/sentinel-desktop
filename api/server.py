@@ -43,6 +43,7 @@ from config import Config
 from core import process_manager as pm
 from core import system_info as sysinfo
 from core import window_manager as wm
+from core.dashboard import health_check as dashboard_health_check
 from core.dashboard import router as dashboard_router
 from core.engine import AgentEngine
 from core.screenshot import capture_to_base64
@@ -345,6 +346,9 @@ class SentinelServer:
     def _register_v31_routes(self, app: FastAPI) -> None:
         """Register v3.1 dashboard router and workflow builder endpoints."""
         app.include_router(dashboard_router)
+        # Root-level alias for load balancers / uptime monitors that expect
+        # a conventional /health path (full check lives at /dashboard/health).
+        app.get("/health")(dashboard_health_check)
         self._workflow_store = workflow_store
         self._workflow_templates = TEMPLATES
         app.get("/workflows/builder/list")(self._handle_workflow_builder_list)
@@ -764,47 +768,106 @@ class SentinelServer:
             pass
 
     async def _handle_terminal_ws(self, ws: WebSocket) -> None:
-        """Spawn a PTY shell and proxy I/O over WebSocket.
+        """Interactive SSH shell to the NUKE node (Linux), proxied over WebSocket.
 
-        Only available on Unix (Linux/macOS). On Windows, returns an
-        error message since PTY is not supported.
+        The dashboard's Terminal is the live shell on the AI mini-PC (NUKE),
+        not the Windows host — so we SSH into it and tunnel a real PTY. The
+        previous Unix-`pty` path was dead on this Windows host anyway.
         """
         await ws.accept()
 
-        if not _HAS_PTY:
-            await ws.send_json(
-                {
-                    "type": "error",
-                    "data": "Terminal not available on Windows — PTY requires Unix",
-                }
-            )
+        nuke_host = "100.86.200.42"
+        nuke_user = "dad"
+        # Key copied to a SYSTEM+Administrators-readable path so it works whether
+        # the dashboard runs as SYSTEM (current) or Administrator (reboot/task).
+        key_path = r"C:\SentinelDesktop\.nukekey"
+        if not os.access(key_path, os.R_OK):
+            key_path = r"C:\Users\Administrator\.ssh\id_ed25519"
+
+        try:
+            import paramiko
+        except Exception as exc:  # noqa: BLE001
+            await ws.send_json({"type": "error", "data": f"paramiko unavailable: {exc}"})
             await ws.close()
             return
 
-        master_fd, slave_fd = pty.openpty()  # type: ignore[union-attr]
-        child_pid = os.fork()
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            await asyncio.to_thread(
+                client.connect, nuke_host, username=nuke_user, key_filename=key_path,
+                timeout=12, look_for_keys=False, allow_agent=False,
+            )
+        except Exception as exc:  # noqa: BLE001
+            await ws.send_json({"type": "error", "data": f"SSH to NUKE failed: {exc}"})
+            await ws.close()
+            return
 
-        if child_pid == 0:
-            # ── Child process ──────────────────────────────────────────
-            self._setup_pty_child(slave_fd)
-        else:
-            # ── Parent process (async event loop) ──────────────────────
-            os.close(slave_fd)
-            self._configure_master_fd_nonblocking(master_fd)
+        chan = client.invoke_shell(term="xterm-256color", width=120, height=30)
+        chan.setblocking(False)
+        await ws.send_json(
+            {"type": "data", "data": f"\r\n\x1b[36m● Connected to NUKE — {nuke_user}@{nuke_host}\x1b[0m\r\n"}
+        )
 
+        async def pump_out() -> None:
+            while True:
+                try:
+                    if chan.recv_ready():
+                        data = chan.recv(4096)
+                        if not data:
+                            break
+                        await ws.send_json({"type": "data", "data": data.decode("utf-8", "replace")})
+                    elif chan.closed or chan.exit_status_ready():
+                        break
+                    else:
+                        await asyncio.sleep(0.02)
+                except (OSError, ConnectionError, RuntimeError):
+                    break
+
+        async def pump_in() -> None:
+            while True:
+                try:
+                    raw = await asyncio.wait_for(ws.receive_text(), timeout=300.0)
+                    msg = json.loads(raw)
+                except asyncio.TimeoutError:
+                    continue
+                except (json.JSONDecodeError,):
+                    continue
+                except (WebSocketDisconnect, ConnectionError, RuntimeError):
+                    break
+                mtype = msg.get("type", "")
+                if mtype == "input":
+                    try:
+                        chan.send(msg.get("data", ""))
+                    except OSError:
+                        break
+                elif mtype == "resize":
+                    try:
+                        chan.resize_pty(width=int(msg.get("cols", 120)), height=int(msg.get("rows", 30)))
+                    except Exception:  # noqa: BLE001
+                        pass
+                elif mtype == "ping":
+                    try:
+                        await ws.send_json({"type": "pong"})
+                    except (OSError, RuntimeError, ConnectionError):
+                        break
+
+        try:
+            out_task = asyncio.create_task(pump_out())
+            in_task = asyncio.create_task(pump_in())
+            _done, pending = await asyncio.wait(
+                [out_task, in_task], return_when=asyncio.FIRST_COMPLETED
+            )
+            for t in pending:
+                t.cancel()
+        except (WebSocketDisconnect, ConnectionError, RuntimeError):
+            pass
+        finally:
             try:
-                read_pty_task = asyncio.create_task(self._read_pty(master_fd, ws))
-                read_ws_task = asyncio.create_task(self._read_ws(master_fd, ws))
-                done, pending = await asyncio.wait(
-                    [read_pty_task, read_ws_task],
-                    return_when=asyncio.FIRST_COMPLETED,
-                )
-                for t in pending:
-                    t.cancel()
-            except (WebSocketDisconnect, ConnectionError, RuntimeError):
+                chan.close()
+            except Exception:  # noqa: BLE001
                 pass
-            finally:
-                await self._cleanup_pty(child_pid, master_fd)
+            client.close()
 
     # ── Agent control ───────────────────────────────────────────────
 
@@ -1531,7 +1594,14 @@ class SentinelServer:
                         self._ws_clients.remove(ws)
 
     async def _authenticate_ws(self, ws: WebSocket) -> bool:
-        """Perform the initial auth handshake on *ws*. Returns True if auth passed."""
+        """Perform the initial auth handshake on *ws*. Returns True if auth passed.
+
+        When no API token is configured, no handshake is required (matching the
+        REST endpoints) — otherwise the client, which sends no auth frame, would
+        time out and the connection would flap online/offline.
+        """
+        if not os.environ.get(API_TOKEN_ENV):
+            return True
         try:
             auth_msg = await asyncio.wait_for(ws.receive_text(), timeout=10)
             auth_data = json.loads(auth_msg)

@@ -20,6 +20,12 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+# Pre-import the memory subpackage at module load. engine.run() executes in
+# worker threads (agent pool); importing a package for the first time inside
+# a thread can race with concurrent sys.modules mutation (CPython import
+# machinery KeyError). Importing here guarantees the package is fully loaded
+# before any worker thread starts.
+import core.memory  # noqa: F401  (stdlib-only subpackage, cheap to load)
 from core import failsafe
 from core import system_info as sysinfo
 from core import window_manager as wm
@@ -35,8 +41,7 @@ from core.popup_handler import PopupHandler
 from core.recovery import RecoveryEngine
 from core.screenshot import capture_to_base64, get_capture_offset  # noqa: F401
 from core.smart_wait import SmartWait
-from core.tool_schemas import TOOL_CAPABLE_PROVIDERS
-from core.tool_schemas import TOOLS as ACTION_TOOLS
+from core.tool_schemas import TOOL_CAPABLE_PROVIDERS, get_tools_for_tier
 
 if TYPE_CHECKING:
     from core.agent_pool import AgentPool
@@ -98,6 +103,36 @@ and take actions to accomplish the user's goal.
 2. Return ONE JSON action.
 3. Observe the next screenshot.
 4. Repeat until done, then finish.
+
+## Clicking strategy — READ THIS FIRST
+Prefer targeting controls by NAME / ACCESSIBILITY over raw pixel coordinates.
+Vision-estimated x/y coordinates miss small targets — buttons, menu items,
+toolbar icons, calculator keys — especially on large or high-resolution
+displays. The accessibility layer clicks the exact center of the real control
+every time, so it is far more reliable.
+
+Priority order for ANY click on a NATIVE app (Calculator, Notepad, File
+Explorer, Settings, Office, dialogs, etc.):
+  1. click_element / click_mark — when the perception list gave numbered elements.
+  2. click_control {"name": "7"} (or automation_id / control_type), and
+     set_text {"name": "Search", "text": "..."} for text fields — target by
+     control name. Run list_controls FIRST if you are unsure of the names.
+  3. click_text {"text": "Save"} — target by visible label.
+  4. {"action": "click", "x": .., "y": ..} — raw coordinates, ONLY as a LAST
+     RESORT when steps 1–3 cannot expose the target.
+
+For WEB pages/apps use the web_* actions (web_click by selector / text / role),
+never pixel coordinates.
+
+Do NOT mix strategies mid-task: if list_controls shows the control, use
+click_control — never fall back to guessing coordinates for something the
+accessibility tree already exposes.
+
+## Opening apps — use smart_open FIRST
+To open or switch to ANY app, your first action is smart_open — it launches the
+app if closed or focuses it if already open. Do NOT hunt for a desktop icon, a
+Start-menu entry, or an "Open" button by clicking; that wastes steps. Example:
+{"action": "smart_open", "name": "notepad"} (also: chrome, edge, calc, excel…).
 
 ## Actions — return ONE JSON object per step. No markdown. No commentary.
 
@@ -231,9 +266,9 @@ Element targeting is more reliable than pixel coordinates.
 
 Wrong click / nothing happened:
   1. Take a screenshot to see current state
-  2. Re-identify the target coordinates
-  3. Try click_control with the button name
-  4. Try keyboard: tab to the control then press enter
+  2. Try click_control / click_text by name (run list_controls if unsure)
+  3. Try keyboard: tab to the control then press enter
+  4. Only as a last resort, re-estimate raw coordinates
 
 OCR garbled / text not found:
   1. IGNORE the OCR output — read the screenshot directly with your vision
@@ -270,6 +305,9 @@ NEVER give up silently. Try at least 2 different approaches before finish() with
 ## Stopping Rules
 - Finish IMMEDIATELY when the goal is met. A 3-step success beats a 15-step success.
 - If you can see the answer in the current screenshot, finish NOW.
+- Once web_read / web_extract / read_text returns the content you need, EXTRACT
+  the answer from that text and finish. Do NOT keep clicking, searching, or
+  navigating once you already have the information.
 - Extra steps compound errors — stop as soon as the goal is met.
 
 ## Safety
@@ -277,6 +315,83 @@ NEVER give up silently. Try at least 2 different approaches before finish() with
 - Never delete files or kill processes unless explicitly instructed.
 - If unsure about a destructive action, use note() and wait for guidance.
 - Report failures honestly with [UNVERIFIED] for uncertain results.
+
+Return ONLY a JSON object. No markdown fences. No commentary.
+"""
+
+SYSTEM_PROMPT_CORE = """\
+You are a desktop automation agent. You see screenshots and take actions.
+
+## Environment
+{env_context}
+{app_context}
+
+## Loop
+1. LOOK at the screenshot.
+2. Return ONE JSON action.
+3. Observe the next screenshot.
+4. Repeat until done, then finish.
+
+## Actions — return ONE JSON object per step. No markdown. No commentary.
+
+### Mouse
+{"action": "click", "x": 500, "y": 300}
+{"action": "click", "x": 500, "y": 300, "button": "right"}
+{"action": "double_click", "x": 500, "y": 300}
+{"action": "scroll", "amount": -3}
+
+### Click by text (preferred over raw coordinates)
+{"action": "click_text", "text": "Save"}
+{"action": "click_control", "name": "OK"}
+{"action": "list_controls"} — find controls by name
+
+### Keyboard
+{"action": "type_text", "text": "Hello World"}
+{"action": "press_key", "key": "enter"}
+{"action": "hotkey", "keys": ["ctrl", "c"]}
+
+### Screen
+{"action": "screenshot"} — take a fresh screenshot
+{"action": "read_text"} — OCR the screen
+
+### Apps
+{"action": "smart_open", "name": "chrome"} — open or focus app
+{"action": "focus_window", "title": "Chrome"}
+{"action": "close_window", "title": "Notepad"}
+{"action": "list_windows"}
+
+### System
+{"action": "system_info"}
+{"action": "list_processes"}
+{"action": "powershell", "command": "Get-Process | Select-Object -First 5"}
+
+### Files
+{"action": "read_file", "path": "C:/Users/user/doc.txt"}
+{"action": "write_file", "path": "C:/Users/user/doc.txt", "content": "text"}
+{"action": "list_directory", "path": "C:/Users/user"}
+
+### Clipboard
+{"action": "clipboard_read"}
+{"action": "clipboard_write", "text": "copied text"}
+
+### Meta
+{"action": "note", "text": "observation — no side effects"}
+{"action": "finish", "summary": "Task completed."}
+
+### Waiting
+{"action": "smart_wait", "timeout": 10}
+{"action": "wait", "seconds": 2}
+
+## Self-Healing
+Wrong click: take screenshot, try click_text by name, try list_controls.
+App didn't open: smart_wait(3), screenshot, try smart_open again.
+Window not found: list_windows to see titles, use partial title.
+
+NEVER give up silently. Try at least 2 approaches before finish() with failure.
+
+## Safety
+- Never type passwords unless explicitly instructed.
+- Never delete files unless explicitly instructed.
 
 Return ONLY a JSON object. No markdown fences. No commentary.
 """
@@ -709,8 +824,10 @@ class AgentEngine:
         Returns (action, None) on success, or (None, outcome) for early exit.
         outcome is "abort" or "continue".
         """
+        model_tier = self.config.get("model_tier", "full")
         use_tools = self.config.get("use_tools", True) and provider in TOOL_CAPABLE_PROVIDERS
-        tools = ACTION_TOOLS if use_tools else None
+        tools = get_tools_for_tier(model_tier) if use_tools else None
+        computer_use_enabled = self.config.get("computer_use_enabled", True)
 
         response_text = self._call_llm_with_retry(
             provider=provider,
@@ -718,6 +835,7 @@ class AgentEngine:
             model=model,
             messages=messages,
             tools=tools,
+            computer_use_enabled=computer_use_enabled,
         )
         if response_text is None:
             result = self._handle_consecutive_failure("llm_call", messages)
@@ -727,11 +845,28 @@ class AgentEngine:
 
         action = self._parse_action(response_text)
         if not action:
+            # The model replied with prose and no parseable JSON action — most
+            # often because it wrote out a final answer instead of calling
+            # finish(). Tell it explicitly so it self-corrects instead of
+            # repeating the same prose.
+            messages.append({
+                "role": "user",
+                "content": (
+                    "I could not find a JSON action in that reply. Respond with "
+                    "exactly one JSON action object. If the task is complete, "
+                    'use {"action": "finish", "summary": "..."} and put your '
+                    "findings in the summary."
+                ),
+            })
             result = self._handle_consecutive_failure("parse", messages)
             return None, ("abort" if result == "abort" else "continue")
 
-        # Schema-validate — warn and continue on errors so the engine keeps
-        # making progress. Unmodeled actions pass through unchanged.
+        # Schema-validate. Unmodeled actions pass through with no errors; a
+        # non-empty error list always means a KNOWN action with invalid params
+        # (e.g. a click missing 'y', or a non-integer coordinate). Dispatching
+        # such an action would crash its handler, so instead we skip execution,
+        # feed the error back to the model, and count it as a failure so it can
+        # self-correct on the next step.
         action, schema_errors = validate_action(action)
         if schema_errors:
             err_msg = (
@@ -740,6 +875,15 @@ class AgentEngine:
             )
             logger.warning(err_msg)
             self.notes.append(err_msg)
+            messages.append({
+                "role": "user",
+                "content": (
+                    f"Your last action was rejected — {'; '.join(schema_errors)}. "
+                    "Resend a single corrected JSON action."
+                ),
+            })
+            result = self._handle_consecutive_failure("schema_validation", messages)
+            return None, ("abort" if result == "abort" else "continue")
         return action, None
 
     def _check_approval_gate(
@@ -871,7 +1015,9 @@ class AgentEngine:
         # whose braces would otherwise be interpreted as format placeholders
         # (Python's str.format raises KeyError: '"action"' on those).
         env_context = self._build_env_context()
-        system_prompt = SYSTEM_PROMPT.replace("{env_context}", env_context)
+        model_tier = self.config.get("model_tier", "full")
+        prompt_template = SYSTEM_PROMPT_CORE if model_tier == "core" else SYSTEM_PROMPT
+        system_prompt = prompt_template.replace("{env_context}", env_context)
 
         # v11.0: Inject memory context if available
         memory_context = self._build_memory_context()
@@ -1347,6 +1493,7 @@ class AgentEngine:
         model: str,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None,
+        computer_use_enabled: bool = True,
     ) -> str | None:
         """Call the LLM with per-step retry for network/rate-limit errors.
 
@@ -1374,6 +1521,7 @@ class AgentEngine:
                     custom_url=self.config.get("custom_base_url") or None,
                     max_retries=0,
                     retry_base_delay=0,
+                    computer_use_enabled=computer_use_enabled,
                 )
             except LLMError as exc:
                 logger.error("LLM error (non-retriable): %s", exc)

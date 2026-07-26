@@ -9,15 +9,40 @@ import io
 import logging
 import time
 
-import pyautogui
 from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-_FailSafeException = pyautogui.FailSafeException
+# pyautogui requires a display server. On a headless host (Linux server, CI,
+# containers) importing it raises (mouseinfo raises KeyError('DISPLAY')).
+# Never let that kill module import — API/headless mode must still boot.
+# Every call site in this module already catches RuntimeError, so the stub
+# degrades each individual action gracefully instead.
+try:
+    import pyautogui
 
-pyautogui.PAUSE = 0.1
-pyautogui.FAILSAFE = True
+    _FailSafeException = pyautogui.FailSafeException
+    pyautogui.PAUSE = 0.1
+    pyautogui.FAILSAFE = True
+    PYAUTOGUI_AVAILABLE = True
+except Exception as _import_exc:  # noqa: BLE001 — ImportError or KeyError('DISPLAY')
+
+    class _HeadlessPyAutoGUIStub:
+        """Stand-in for pyautogui when no display is available.
+
+        Any attribute access raises RuntimeError, which all callers in this
+        module already handle (logged warning + safe fallback return).
+        """
+
+        def __getattr__(self, name: str):
+            raise RuntimeError(
+                f"pyautogui.{name} unavailable — no display detected (headless environment)",
+            )
+
+    pyautogui = _HeadlessPyAutoGUIStub()  # type: ignore[assignment]
+    _FailSafeException = RuntimeError
+    PYAUTOGUI_AVAILABLE = False
+    logger.warning("pyautogui unavailable — desktop input disabled: %s", _import_exc)
 
 
 class DesktopController:

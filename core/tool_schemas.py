@@ -1847,6 +1847,29 @@ TOOLS: list[dict[str, Any]] = [
     },
 ]
 
+# Core tools — essential subset for weaker models or smaller context windows.
+# Includes only the most critical actions for basic desktop automation.
+CORE_TOOL_NAMES = {
+    "click", "double_click", "right_click", "scroll", "drag",
+    "type_text", "press_key", "hotkey",
+    "screenshot", "read_text", "click_text", "click_control",
+    "smart_open", "open_app", "focus_window", "close_window", "list_windows",
+    "finish", "note", "wait",
+    "list_controls", "set_text",
+    "system_info", "list_processes",
+}
+
+ACTION_TOOLS_CORE = [
+    t for t in TOOLS if t["function"]["name"] in CORE_TOOL_NAMES
+]
+
+
+def get_tools_for_tier(tier: str) -> list[dict]:
+    """Return tool schemas for the given tier ('full' or 'core')."""
+    if tier == "core":
+        return ACTION_TOOLS_CORE
+    return TOOLS
+
 
 # Providers known to support OpenAI/Anthropic tool calling. Other OpenAI-
 # compatible providers technically accept the `tools` parameter but model
@@ -1871,4 +1894,9 @@ TOOL_CAPABLE_PROVIDERS = {
     "deepinfra",
     "zai",
     "deepseek",
+    "xai",
+    "azure_openai",
+    "ollama",
+    "lmstudio",
+    "custom",
 }

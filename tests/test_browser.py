@@ -356,11 +356,12 @@ class TestWebWaitFor:
         assert result["success"] is True
         assert "text='Dashboard'" in result["waited_for"]
 
-    def test_wait_for_network_idle(self, browser_mgr):
+    def test_wait_for_default_load_state(self, browser_mgr):
         mgr, mocks = browser_mgr
         result = mgr.wait_for()
         assert result["success"] is True
-        assert "networkidle" in result["waited_for"]
+        # Default waits for "load" (networkidle is unreliable on real sites).
+        assert "load" in result["waited_for"]
 
     def test_wait_for_failure(self, browser_mgr):
         mgr, mocks = browser_mgr

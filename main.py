@@ -84,16 +84,37 @@ def parse_args() -> Namespace:
         action="store_true",
         help="Skip every approval prompt and let the agent run uninterrupted",
     )
+    parser.add_argument(
+        "--steel",
+        action="store_true",
+        help="Launch with the Steel (PySide6 + QML) UI instead of tkinter",
+    )
     return parser.parse_args()
 
 
-def run_gui() -> None:
-    """Launch the CustomTkinter GUI."""
+def run_gui(steel: bool = False) -> None:
+    """Launch the GUI — Steel (PySide6 + QML) or CustomTkinter."""
+    if steel:
+        try:
+            from gui.steel_launcher import run_steel
+        except ImportError:
+            logger.exception("PySide6 not installed. Run: pip install PySide6")
+            sys.exit(1)
+        logger.info("Starting Sentinel Desktop in Steel (PySide6 + QML) mode")
+        run_steel()
+        return
+
     try:
         import customtkinter as ctk  # noqa: F401
     except ImportError:
-        logger.exception("customtkinter not installed. Run: pip install -r requirements.txt")
-        sys.exit(1)
+        logger.info("customtkinter not available — falling back to Steel UI")
+        try:
+            from gui.steel_launcher import run_steel
+        except ImportError:
+            logger.exception("Neither customtkinter nor PySide6 available")
+            sys.exit(1)
+        run_steel()
+        return
 
     from config import Config
     from gui.app import SentinelApp
@@ -198,7 +219,7 @@ def main() -> None:
                 data["autonomous"] = True
                 logger.info("AUTONOMOUS mode enabled for this session")
             cfg.save(data)
-        run_gui()
+        run_gui(steel=args.steel)
 
 
 if __name__ == "__main__":

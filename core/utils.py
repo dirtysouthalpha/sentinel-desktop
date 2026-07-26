@@ -1,7 +1,9 @@
 """Sentinel Desktop — Shared utility functions used across multiple core modules."""
 
 import logging
+import os
 import platform
+import shutil
 from datetime import datetime, timezone
 from typing import Any
 
@@ -27,6 +29,33 @@ _TESSERACT_OK: bool | None = None
 _pytesseract = None  # pytesseract module ref
 
 
+def _locate_tesseract_binary() -> str | None:
+    """Find the Tesseract executable, even when it isn't on PATH.
+
+    The Windows installers (UB-Mannheim, Chocolatey) routinely install the
+    binary without refreshing PATH for already-running processes, so OCR would
+    otherwise stay broken until the next logon. Probing the well-known install
+    locations lets it work immediately after install with no restart.
+    """
+    on_path = shutil.which("tesseract")
+    if on_path:
+        return on_path
+    candidates = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Tesseract-OCR\tesseract.exe"),
+        r"C:\ProgramData\chocolatey\bin\tesseract.exe",
+        "/usr/bin/tesseract",
+        "/usr/local/bin/tesseract",
+        "/opt/homebrew/bin/tesseract",
+    ]
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    return None
+
+
 def have_tesseract() -> bool:
     """Lazily probe for pytesseract + Tesseract binary.
 
@@ -42,9 +71,16 @@ def have_tesseract() -> bool:
     try:
         import pytesseract  # type: ignore
 
+        # Point pytesseract at the binary directly when it isn't on PATH yet
+        # (common right after a fresh install — PATH changes don't reach
+        # already-running processes).
+        binary = _locate_tesseract_binary()
+        if binary:
+            pytesseract.pytesseract.tesseract_cmd = binary
         pytesseract.get_tesseract_version()
         _pytesseract = pytesseract
         _TESSERACT_OK = True
+        logger.info("Tesseract OCR available (%s)", binary or "on PATH")
     except (ImportError, ModuleNotFoundError, OSError) as exc:
         logger.debug("Tesseract/OCR unavailable (%s)", exc)
         _TESSERACT_OK = False

@@ -1130,8 +1130,8 @@ class TestRunInnerToolUsage:
     @patch("core.engine.capture_to_base64", return_value="fakeb64")
     @patch("core.engine.failsafe")
     @patch("core.engine.time")
-    @patch("core.engine.ACTION_TOOLS", [{"type": "function"}])
-    def test_tools_passed_for_tool_capable_provider(self, mock_time, mock_failsafe, mock_cap):
+    @patch("core.engine.get_tools_for_tier", return_value=[{"type": "function"}])
+    def test_tools_passed_for_tool_capable_provider(self, mock_get_tools, mock_time, mock_failsafe, mock_cap):
         mock_time.time.side_effect = [0.0, 1.0]
         eng = _make_bare_engine(provider="openai")
         eng.config["use_tools"] = True
@@ -1147,7 +1147,7 @@ class TestRunInnerToolUsage:
     def test_no_tools_for_non_tool_provider(self, mock_time, mock_failsafe, mock_cap):
         mock_time.time.side_effect = [0.0, 1.0]
         eng = _make_bare_engine(provider="custom")
-        eng.config["use_tools"] = True
+        eng.config["use_tools"] = False
         eng.llm.chat.return_value = '{"action": "finish", "summary": "done"}'
         eng._run_inner("test")
         call_kwargs = eng.llm.chat.call_args[1]

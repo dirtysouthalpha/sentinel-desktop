@@ -822,21 +822,44 @@ s=s.replace(/\n/g,'<br>');
 return s;
 }
 
-function sendMessage(){
+let chatHistory=[];
+async function sendMessage(){
 const input=document.getElementById('chat-input');
 const text=input.value.trim();
 if(!text)return;
 input.value='';
 input.style.height='auto';
 addMessage('user',text);
+
+// "/goal <task>" hands off to the desktop-automation agent; anything else is
+// a normal conversation with Sentinel Prime.
+if(text.toLowerCase().startsWith('/goal ')){
+const goal=text.slice(6).trim();
 showThinking();
-api.startGoal(text).then(r=>{
-toast('Agent started','success');
-}).catch(e=>{
-hideThinking();
-toast('Failed: '+e.message,'error');
-addMessage('sentinel','Error: '+e.message);
+api.startGoal(goal).then(()=>toast('Agent goal started','success'))
+.catch(e=>{hideThinking();addMessage('sentinel','Error: '+e.message);toast('Failed: '+e.message,'error')});
+return;
+}
+
+chatHistory.push({role:'user',content:text});
+showThinking();
+try{
+const r=await fetch(API_BASE+'/dashboard/chat/sentinel-ai',{
+method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({message:text,history:chatHistory.slice(0,-1)})
 });
+const d=await r.json();
+hideThinking();
+if(d.status==='success'&&d.response){
+addMessage('sentinel',d.response);
+chatHistory.push({role:'assistant',content:d.response});
+}else{
+addMessage('sentinel','⚠ '+(d.error||'No response from model'));
+}
+}catch(e){
+hideThinking();
+addMessage('sentinel','⚠ '+e.message);
+}
 }
 
 document.getElementById('chat-input').addEventListener('keydown',e=>{
@@ -1157,10 +1180,9 @@ ws.terminalResize(Math.floor(r.height/15),Math.floor(r.width/7.5));
     const input = document.getElementById('sentinelHeroInput');
     const messagesContainer = document.getElementById('sentinelHeroMessages');
     
-    // Show hero overlay automatically
-    setTimeout(() => {
-        overlay.classList.add('active');
-    }, 1000);
+    // Auto-popup DISABLED — it covered the whole dashboard on every load and
+    // its backend (/dashboard/chat/sentinel-ai) currently 404s. The main Chat
+    // section is primary; open this overlay manually via window.sentinelHero.show().
     
     // Close overlay
     closeBtn.addEventListener('click', () => {

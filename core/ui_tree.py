@@ -250,7 +250,8 @@ def _invoke_control(ctrl: Any, button: str) -> None:
         if pattern is not None:
             pattern.Invoke()
             invoked = True
-    except (OSError, AttributeError, RuntimeError) as exc:
+    except (OSError, AttributeError, RuntimeError, TypeError) as exc:
+        # Fall through to the next activation method rather than aborting.
         logger.debug("InvokePattern failed: %s", exc)
 
     if not invoked:
@@ -259,7 +260,7 @@ def _invoke_control(ctrl: Any, button: str) -> None:
             if sel is not None:
                 sel.Select()
                 invoked = True
-        except (OSError, AttributeError, RuntimeError) as exc:
+        except (OSError, AttributeError, RuntimeError, TypeError) as exc:
             logger.debug("SelectionItemPattern failed: %s", exc)
 
     if not invoked:
@@ -408,9 +409,11 @@ def _score_node(
 ) -> int:
     """Score a UIA node against search needles; return -1 to reject, ≥0 to accept."""
     score = 0
-    n = (node.Name or "").lower()
-    a = (getattr(node, "AutomationId", "") or "").lower()
-    t = (node.ControlTypeName or "").lower()
+    # Coerce to str defensively: some legacy controls return non-string UIA
+    # properties, which would otherwise raise when we call .lower().
+    n = str(node.Name or "").lower()
+    a = str(getattr(node, "AutomationId", "") or "").lower()
+    t = str(node.ControlTypeName or "").lower()
     if needle_name:
         if n == needle_name:
             score += 3
@@ -450,7 +453,10 @@ def _bfs_best_match(
         visited += 1
         try:
             score = _score_node(node, needle_name, needle_id, needle_type)
-        except (OSError, AttributeError, RuntimeError) as exc:
+        except (OSError, AttributeError, RuntimeError, TypeError, ValueError) as exc:
+            # A single quirky control (e.g. legacy win32 widgets whose UIA
+            # properties return unexpected types) must never abort the whole
+            # search — skip it and keep walking the tree.
             logger.debug("Scoring failed for node: %s", exc)
             score = -1
         if score > best_score:
@@ -460,7 +466,7 @@ def _bfs_best_match(
             try:
                 for child in node.GetChildren():
                     queue.append((child, depth + 1))
-            except (OSError, AttributeError, RuntimeError) as exc:
+            except (OSError, AttributeError, RuntimeError, TypeError, ValueError) as exc:
                 logger.debug("_find_best_match: failed to get children: %s", exc)
                 continue
     return best

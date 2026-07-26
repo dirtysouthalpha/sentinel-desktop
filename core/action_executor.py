@@ -1066,11 +1066,18 @@ class ActionExecutor:
                 stable_time=float(stable_time),
                 region=region_tuple,
             )
+            # A timeout is NOT a failure: waiting is best-effort, and some
+            # screens never fully settle (animated wallpaper, video, live
+            # tickers). Returning success here avoids burning the agent's
+            # consecutive-failure budget on a benign wait. The "stable" flag
+            # and message still tell the model what happened.
             return {
-                "success": result.success,
+                "success": True,
                 "output": f"Screen stable after {result.elapsed:.1f}s"
                 if result.success
-                else f"Still changing after {result.elapsed:.1f}s",
+                else f"Screen still changing after {result.elapsed:.1f}s "
+                "(animated/background content) — proceeding anyway",
+                "stable": result.success,
                 "elapsed": result.elapsed,
             }
         except Exception as exc:

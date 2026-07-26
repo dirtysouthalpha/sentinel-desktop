@@ -20,6 +20,7 @@ from typing import Any
 import customtkinter as ctk
 
 from config import Config
+from core import __version__
 from gui.overlay import ActionOverlay
 from gui.themes import THEMES, apply_theme, get_theme
 from gui.tray import SentinelTray
@@ -27,7 +28,9 @@ from gui.tray import is_available as _tray_available
 
 logger = logging.getLogger(__name__)
 
-_VERSION = "18.0"
+# Single source of truth — keep the GUI version in lock-step with core so the
+# title bar and "about" panel never drift from the package version.
+_VERSION = __version__
 
 # Sidebar tab definitions: (key, icon, label, module, class)
 _TAB_DEFS = [

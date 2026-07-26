@@ -77,14 +77,13 @@ def build_anthropic_tools(
 
     # Add standard tools as function tools (fallback for non-screen actions)
     if standard_tools:
-        for tool in standard_tools:
-            if tool.get("type") == "function":
-                func = tool.get("function", {})
-                tools.append({
-                    "type": "text_editor_20250124",
-                    "name": func.get("name", "text_editor"),
-                })
-                break  # One text editor is enough
+        # NOTE: we deliberately do NOT add the built-in text_editor_20250124
+        # tool here. It is unsupported on some models (e.g. claude-haiku-4-5)
+        # and Anthropic rejects the ENTIRE request with HTTP 400 when an
+        # unsupported tool type is present. Sentinel's own action tools
+        # (finish, note, click_text, …) are attached separately by the caller
+        # via _convert_tools_to_anthropic, so the agent loop still works.
+        pass
 
     return tools
 
@@ -123,6 +122,21 @@ def build_openai_tools(
     return tools
 
 
+def _as_int(value: Any, default: int = 0) -> int:
+    """Best-effort coerce a coordinate component to int (handles float / str)."""
+    try:
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_coord(coord: Any) -> tuple[int, int]:
+    """Return an (x, y) int pair from a possibly-malformed coordinate value."""
+    if isinstance(coord, (list, tuple)) and len(coord) >= 2:
+        return _as_int(coord[0]), _as_int(coord[1])
+    return 0, 0
+
+
 def translate_anthropic_action(response_block: dict[str, Any]) -> dict[str, Any] | None:
     """Translate an Anthropic computer tool response to our action format.
 
@@ -144,10 +158,12 @@ def translate_anthropic_action(response_block: dict[str, Any]) -> dict[str, Any]
 
     inp = response_block.get("input", {})
     action_type = inp.get("action", "").lower()
-    _coord = inp.get("coordinate", [0, 0])
-    _cx, _cy = _coord[0], _coord[1]
-    _start = inp.get("start_coordinate", [0, 0])
-    _sx, _sy = _start[0], _start[1]
+    # Coerce coordinates defensively: the model occasionally returns floats,
+    # numeric strings, or a malformed/short list. Without this they fail the
+    # integer action schema ("x: Input should be a valid integer") or raise an
+    # IndexError, wasting a step.
+    _cx, _cy = _safe_coord(inp.get("coordinate"))
+    _sx, _sy = _safe_coord(inp.get("start_coordinate"))
 
     action_map: dict[str, dict[str, Any]] = {
         "click": {"action": "click", "x": _cx, "y": _cy},

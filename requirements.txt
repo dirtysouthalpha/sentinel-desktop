@@ -32,8 +32,16 @@ mss ~= 9.0
 # ── Global Esc-x3 failsafe hotkey (optional — agent runs without it) ────
 keyboard ~= 0.13.5; sys_platform == "win32"
 
-# ── OCR for click_text / read_text (optional — also requires the Tesseract binary)
-# Windows install: choco install tesseract  OR  download from https://github.com/UB-Mannheim/tesseract
+# ── OCR for click_text / read_text — REQUIRED for reliable screen verification.
+# Without it the agent cannot read on-screen text and will flail trying to
+# confirm its own actions. Needs BOTH the pytesseract wrapper (below) AND the
+# Tesseract binary as a SYSTEM dependency (not pip-installable):
+#   Windows:  choco install tesseract -y
+#             OR download the installer from https://github.com/UB-Mannheim/tesseract/wiki
+#   macOS:    brew install tesseract
+#   Linux:    sudo apt-get install tesseract-ocr
+# Sentinel auto-detects the binary at the standard install paths, so no PATH
+# changes or shell restart are needed after installing (see core/utils.py).
 pytesseract ~= 0.3.10
 
 # ── Native Windows accessibility (optional — enables click_control / set_text / list_controls)

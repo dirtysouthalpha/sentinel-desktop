@@ -28,6 +28,10 @@ All quality gates met:
 - Run GUI: `python main.py`
 - Run API: `python main.py --api --port 8091`
 
+## System Dependencies (beyond pip)
+- **Tesseract OCR — REQUIRED.** Enables `read_text` / `click_text` so the agent can read and verify on-screen content. Without it the agent cannot confirm its own actions and becomes unreliable. Install the binary separately (not pip): Windows `choco install tesseract -y` (or UB-Mannheim installer), macOS `brew install tesseract`, Linux `apt-get install tesseract-ocr`. Sentinel auto-detects the binary at standard install paths (`core/utils._locate_tesseract_binary`), so no PATH edit or restart is needed.
+- The computer-use tool now declares the **actual** screen resolution (inferred per-call from the screenshot in `core/llm_client._infer_display_size`) instead of a hardcoded 1920x1080 — clicks are accurate on any display (4K, ultrawide, scaled panels).
+
 ## Architecture
 - **core/platform/** — Cross-platform abstraction layer (v4.0): base interfaces + Windows/Linux/macOS backends
   - `base.py` — Abstract base classes (Accessibility, StealthInput, Credentials, Shell, Window, Overlay)

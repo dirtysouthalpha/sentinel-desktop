@@ -261,27 +261,66 @@ async def metrics() -> dict[str, Any]:
     }
 
 
+SENTINEL_SYSTEM_PROMPT = (
+    "You are SENTINEL PRIME, the master-control AI for Brandon's autonomous "
+    "homelab/agent fleet (nodes: CORE, EDGE/Hackbox, NUKE, plus a Tailscale mesh). "
+    "You are precise, fast, and a little cinematic — confident but never verbose. "
+    "Answer directly, use short paragraphs, and format code in fenced blocks. "
+    "Always respond in clear English. "
+    "When asked to act on the system, explain what you'd do; the operator triggers it."
+)
+
+
+def _wincred(name: str) -> str | None:
+    """Read a secret from Windows Credential Manager (WINCRED:sentinel/<name>)."""
+    try:
+        import win32cred  # type: ignore
+
+        cred = win32cred.CredRead("WINCRED:sentinel/" + name, win32cred.CRED_TYPE_GENERIC)
+        return cred["CredentialBlob"].decode("utf-16-le").strip()
+    except Exception:
+        return None
+
+
+def _resolve_llm() -> tuple[str, str, str, str | None]:
+    """Pick (provider, api_key, model, custom_url): configured provider first,
+    then a known-good Z.ai GLM fallback keyed from WINCRED."""
+    try:
+        from config import Config
+
+        data = Config().load()
+    except Exception:
+        data = {}
+    provider = (data.get("provider") or "").strip()
+    api_key = (data.get("api_key") or "").strip()
+    model = (data.get("model") or "").strip()
+    custom = (data.get("custom_base_url") or "").strip() or None
+    if provider and api_key and model:
+        return provider, api_key, model, custom
+    key = _wincred("zai-sentinel-override-api-key") or _wincred("zai-coding-api-key")
+    if key:
+        return "zai", key, "glm-4.6", None
+    return provider or "openai", api_key, model or "glm-4.6", custom
+
+
 @router.post("/chat/sentinel-ai")
 async def sentinel_chat(message_request: dict) -> dict[str, Any]:
-    """Handle chat requests to Sentinel Agent using Ollama on port 11434"""
-    import httpx
+    """Grounded, tool-using chat with Sentinel Prime.
 
+    Delegates to core.sentinel_brain, which seeds each turn with a live fleet
+    snapshot and runs an agentic tool-calling loop (real commands on CORE/NUKE/
+    EDGE) — not a roleplay. Accepts {message, history?:[{role,content}]}.
+    """
+    import anyio
+
+    from core.sentinel_brain import chat as brain_chat
+
+    message = (message_request.get("message") or "").strip()
+    if not message:
+        return {"error": "message is required", "status": "error"}
+    history = message_request.get("history") or []
     try:
-        message = message_request.get("message", "")
-        if not message:
-            return {"error": "message is required"}
-        # Use Ollama API directly
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "http://localhost:11434/api/generate",
-                json={"model": "gemma4-12b", "prompt": message, "stream": False},
-            )
-            response.raise_for_status()
-            result = response.json()
-            return {"response": result.get("response", ""), "status": "success"}
-    except httpx.TimeoutException:
-        return {"error": "Model timeout", "status": "timeout"}
-    except httpx.HTTPError as e:
-        return {"error": f"Model error: {str(e)}", "status": "error"}
-    except Exception as e:
-        return {"error": f"Internal error: {str(e)}", "status": "error"}
+        return await anyio.to_thread.run_sync(lambda: brain_chat(message, history))
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("sentinel chat failed")
+        return {"error": f"{type(exc).__name__}: {exc}", "status": "error"}

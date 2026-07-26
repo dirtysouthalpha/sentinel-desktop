@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 
 _IS_WINDOWS = is_windows()
 
+# Once beeping fails (headless host, no audio device, server VM), stop trying so
+# we don't spam a warning on every single run. Notification sound is cosmetic.
+_SOUND_AVAILABLE = True
+
 # Sleep intervals for sound sequences
 MFA_BEEP_INTERVAL = 0.1
 SUCCESS_TONE_INTERVAL = 0.05
@@ -37,6 +41,9 @@ def play_sound(sound_type: str = "complete", blocking: bool = False) -> None:
 
 def _play(sound_type: str) -> None:
     """Produce the sound internally."""
+    global _SOUND_AVAILABLE
+    if not _SOUND_AVAILABLE:
+        return
     try:
         if _IS_WINDOWS:
             import winsound
@@ -77,7 +84,10 @@ def _play(sound_type: str) -> None:
             # Non-Windows: print BEL character
             print("\a", end="", flush=True)
     except (OSError, RuntimeError) as exc:
-        logger.warning("Sound playback failed: %s", exc)
+        # Cosmetic only — downgrade to debug and stop retrying so we don't log
+        # on every run when the host simply has no beep-capable audio device.
+        _SOUND_AVAILABLE = False
+        logger.debug("Sound playback unavailable, disabling beeps: %s", exc)
 
 
 def play_file(filepath: str, blocking: bool = False) -> None:
