@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 from collections import defaultdict, deque
@@ -44,15 +45,21 @@ class InMemoryBus:
         self._lock = threading.Lock()
 
     def publish(self, channel: str, message: dict[str, Any]) -> None:
-        """Publish a message to a channel."""
+        """Publish a message to a channel.
+
+        Callbacks fire *after* the lock is released. Invoking them while
+        holding this non-reentrant lock (pre-v31) meant any subscriber that
+        published in response deadlocked itself.
+        """
         msg = {"channel": channel, "data": message, "timestamp": time.time()}
         with self._lock:
             self._messages.append(msg)
-            for callback in self._channels.get(channel, []):
-                try:
-                    callback(message)
-                except Exception as e:
-                    logger.debug("Bus callback error: %s", e)
+            callbacks = list(self._channels.get(channel, []))
+        for callback in callbacks:
+            try:
+                callback(message)
+            except Exception as e:
+                logger.debug("Bus callback error: %s", e)
 
     def subscribe(self, channel: str, callback: Callable) -> None:
         """Subscribe to a channel."""
@@ -104,8 +111,10 @@ class FleetManager:
                 capabilities=capabilities or [],
             )
             self._nodes[node_id] = node
-            self._bus.publish("fleet", {"event": "node_registered", "node_id": node_id})
-            return node
+        # Publish outside the lock so a subscriber that calls back into the
+        # FleetManager cannot deadlock against it.
+        self._bus.publish("fleet", {"event": "node_registered", "node_id": node_id})
+        return node
 
     def heartbeat(self, node_id: str) -> None:
         """Update heartbeat for a node."""
@@ -131,11 +140,15 @@ class FleetManager:
 
     def deploy_agent(self, node_id: str, goal: str, config: dict[str, Any] | None = None) -> dict[str, Any]:
         """Deploy an agent task to a specific node."""
-        node = self._nodes.get(node_id)
-        if not node:
-            return {"success": False, "message": f"Node '{node_id}' not found"}
-        if not node.is_healthy:
-            return {"success": False, "message": f"Node '{node_id}' is offline"}
+        with self._lock:
+            node = self._nodes.get(node_id)
+            if not node:
+                return {"success": False, "message": f"Node '{node_id}' not found"}
+            if not node.is_healthy:
+                return {"success": False, "message": f"Node '{node_id}' is offline"}
+            # Increment under the lock — read-modify-write outside it (pre-v31)
+            # lost counts under concurrent deploys.
+            node.agents_running += 1
 
         task = {
             "node_id": node_id,
@@ -144,7 +157,6 @@ class FleetManager:
             "deployed_at": time.time(),
         }
         self._bus.publish("deploy", task)
-        node.agents_running += 1
 
         if self._redis:
             try:
@@ -181,8 +193,6 @@ class FleetManager:
         """Get recent events from the bus."""
         return self._bus.get_messages(channel, limit)
 
-
-import os
 
 _fleet: FleetManager | None = None
 

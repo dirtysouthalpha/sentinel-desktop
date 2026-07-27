@@ -197,6 +197,11 @@ class PowerShellRunner:
 
         args = self._base_args()
 
+        # Path the elevated child redirects its output to. Kept in a local so
+        # the read-back below uses the path we actually generated — pre-v31 it
+        # re-derived tmp_out by scanning *command* for a ".tmp" token, but that
+        # path only ever appears in *wrapped*, so stdout was always empty.
+        tmp_out = ""
         if self.run_as_admin:
             tmp_out = str(Path(self.working_dir) / f"_ps_elev_{int(time.time())}.tmp")
             wrapped = (
@@ -227,12 +232,6 @@ class PowerShellRunner:
 
             # Elevated mode: read captured output from temp file
             if self.run_as_admin:
-                for part in command.split():
-                    if part.endswith(".tmp"):
-                        tmp_out = part.strip('"').strip("'")
-                        break
-                else:
-                    tmp_out = ""
                 if tmp_out and Path(tmp_out).is_file():
                     try:
                         with Path(tmp_out).open(encoding="utf-8", errors="replace") as fh:

@@ -410,6 +410,19 @@ class _WindowsApplicationManager:
 # ---------------------------------------------------------------------------
 
 
+def _run_rundll32(entry: str, entry_args: str) -> None:
+    """Invoke ``rundll32.exe powrprof.dll,<entry> <entry_args>`` without a shell.
+
+    ``entry_args`` is a separate argv element, matching how rundll32 parses the
+    command line (``rundll32 powrprof.dll,SetSuspendState 0,1,0``).
+    """
+    subprocess.run(
+        ["rundll32.exe", f"powrprof.dll,{entry}", entry_args],
+        capture_output=True,
+        check=False,
+    )
+
+
 class _WindowsPower:
     def shutdown(self, force: bool = False, delay: int = 0) -> None:
         cmd = ["shutdown", "/s", "/t", str(delay)]
@@ -435,8 +448,9 @@ class _WindowsPower:
         try:
             ctypes.windll.PowrProf.SetSuspendState(0, 0, 0)
         except AttributeError:
-            # Fallback: Python's SystemStandbyRequirement
-            os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
+            # Fallback via rundll32. Uses subprocess with an argument list
+            # rather than os.system so nothing goes through a shell.
+            _run_rundll32("SetSuspendState", "0,1,0")
 
     def hibernate(self) -> None:
         import ctypes
@@ -444,7 +458,7 @@ class _WindowsPower:
         try:
             ctypes.windll.PowrProf.SetSuspendState(1, 0, 0)
         except AttributeError:
-            os.system("rundll32.exe powrprof.dll,SetSuspendState 1,1,0")
+            _run_rundll32("SetSuspendState", "1,1,0")
 
 
 # ---------------------------------------------------------------------------
