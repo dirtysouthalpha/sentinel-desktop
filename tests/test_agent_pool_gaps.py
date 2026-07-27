@@ -199,6 +199,20 @@ class TestDispatcherEdgeCases:
 class TestAgentWorkerFullFlow:
     """Cover _agent_worker: success, failure, cleanup, callback."""
 
+    @pytest.fixture(autouse=True)
+    def _no_dispatcher_race(self):
+        """Stop the pool's dispatcher from also running the submitted session.
+
+        Every test here submits a session and then drives ``_agent_worker``
+        directly. The dispatcher thread would run the *same* session
+        concurrently, so ``on_session_complete`` fired twice and
+        ``callback.assert_called_once()`` failed with "Called 2 times". The race
+        was only lost on slower hosts — it showed up on ubuntu-latest 3.12 while
+        every other matrix entry passed.
+        """
+        with patch.object(AgentPool, "_start_agent_thread"):
+            yield
+
     def test_worker_session_not_found_returns_early(self):
         """Worker logs error and returns if session_id is missing."""
         pool = AgentPool(max_agents=2)
