@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v30.0.0 — FastAPI Headless Control Server.
+Sentinel Desktop v31.0.0 — FastAPI Headless Control Server.
 
 Run with: python main.py --api
 Endpoints:
@@ -18,6 +18,8 @@ Endpoints:
 """
 
 import asyncio
+import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -45,6 +47,74 @@ logger = logging.getLogger(__name__)
 # require an Authorization: Bearer <token> header on every request. Unset →
 # no auth (legacy behaviour, OK for localhost-only use).
 API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # noqa: S105
+
+# Explicit, documented opt-out for the loopback-bind requirement below.
+ALLOW_INSECURE_BIND_ENV = "SENTINEL_ALLOW_INSECURE_BIND"
+
+
+class InsecureBindError(RuntimeError):
+    """Raised when the API would listen off-host with authentication disabled."""
+
+
+def _safe_script_stem(name: str) -> str:
+    """Reduce a caller-supplied script name to a safe single-segment filename.
+
+    Pre-v31 ``/recorder/stop`` only replaced spaces, so ``name`` values such as
+    ``../../core/engine`` or ``..\\..\\x`` escaped the ``scripts/`` directory
+    and wrote JSON over arbitrary files. This mirrors the alphanumeric
+    whitelist already used by ``gui/recorder_panel.py``.
+    """
+    stem = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in (name or ""))
+    stem = stem.strip("._-")
+    return stem.lower() or "untitled"
+
+
+def _is_loopback_host(host: str) -> bool:
+    """True if *host* can only be reached from this machine."""
+    h = (host or "").strip().strip("[]").lower()
+    if h in {"localhost", "localhost.localdomain", ""}:
+        return True
+    try:
+        return ipaddress.ip_address(h).is_loopback
+    except ValueError:
+        # A hostname we can't classify (or a wildcard like "*"): not loopback.
+        return False
+
+
+def require_secure_bind(host: str) -> None:
+    """Refuse to listen on a non-loopback interface with auth disabled.
+
+    ``_check_auth`` is a no-op when ``SENTINEL_API_TOKEN`` is unset, while
+    ``/powershell`` and ``/command`` execute arbitrary code. Binding
+    ``0.0.0.0`` in that state publishes unauthenticated remote code execution
+    to every reachable network, so it is now a hard startup error rather than
+    a silent default.
+
+    Set ``SENTINEL_ALLOW_INSECURE_BIND=1`` to override (e.g. when an external
+    firewall or reverse proxy provides the authentication instead).
+
+    Raises:
+        InsecureBindError: non-loopback host, no token, no explicit override.
+    """
+    if os.environ.get(API_TOKEN_ENV):
+        return
+    if _is_loopback_host(host):
+        return
+    if os.environ.get(ALLOW_INSECURE_BIND_ENV, "").strip().lower() in {"1", "true", "yes"}:
+        logger.warning(
+            "Binding %s with authentication DISABLED because %s is set. "
+            "/powershell and /command are reachable without credentials.",
+            host,
+            ALLOW_INSECURE_BIND_ENV,
+        )
+        return
+    raise InsecureBindError(
+        f"Refusing to bind {host!r} with authentication disabled: "
+        f"/powershell and /command would allow unauthenticated remote code "
+        f"execution. Set {API_TOKEN_ENV} to require a bearer token, bind "
+        f"127.0.0.1 instead, or set {ALLOW_INSECURE_BIND_ENV}=1 to accept "
+        f"the risk explicitly."
+    )
 
 
 # ── Request models ──────────────────────────────────────────────────────
@@ -194,9 +264,11 @@ class SentinelServer:
     def _check_auth(self, authorization: str | None) -> None:
         token = os.environ.get(API_TOKEN_ENV)
         if not token:
-            return  # auth disabled
+            return  # auth disabled — see require_secure_bind()
         expected = f"Bearer {token}"
-        if not authorization or authorization != expected:
+        # Constant-time compare: `!=` on the token leaks length/prefix through
+        # timing, and /powershell and /command run arbitrary code.
+        if not authorization or not hmac.compare_digest(authorization, expected):
             raise HTTPException(401, "Missing or invalid Authorization header")
 
     def create_app(self) -> FastAPI:
@@ -233,7 +305,7 @@ class SentinelServer:
         app = FastAPI(
             title="Sentinel Desktop",
             description="AI-powered Windows desktop automation API",
-            version="30.0.0",
+            version="31.0.0",
             lifespan=lifespan,
         )
 
@@ -374,8 +446,9 @@ class SentinelServer:
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
 
         # v30.0.0 — Dashboard static files
-        from fastapi.staticfiles import StaticFiles
         from pathlib import Path as _P
+
+        from fastapi.staticfiles import StaticFiles
         _dash_dir = _P(__file__).parent.parent / "dashboard"
         if _dash_dir.exists():
             app.mount("/dashboard", StaticFiles(directory=str(_dash_dir), html=True), name="dashboard")
@@ -387,6 +460,7 @@ class SentinelServer:
     async def _handle_health(self) -> dict[str, Any]:
         """Health check endpoint for load balancers and monitoring."""
         import psutil
+
         from core import __version__ as ver
         cpu = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory()
@@ -398,8 +472,11 @@ class SentinelServer:
             "engine_active": bool(self.engine and self.engine.running),
         }
 
-    async def _handle_update_check(self) -> dict[str, Any]:
+    async def _handle_update_check(
+        self, authorization: str | None = Header(default=None)
+    ) -> dict[str, Any]:
         """Check if a newer version is available on GitHub."""
+        self._check_auth(authorization)
         from core.updater import is_update_available
         available, latest = is_update_available()
         return {
@@ -408,25 +485,37 @@ class SentinelServer:
             "latest_version": latest,
         }
 
-    async def _handle_telemetry_summary(self) -> dict[str, Any]:
+    async def _handle_telemetry_summary(
+        self, authorization: str | None = Header(default=None)
+    ) -> dict[str, Any]:
         """Return aggregated telemetry summary."""
+        self._check_auth(authorization)
         from core.telemetry import get_collector
         tc = get_collector()
         return tc.get_summary()
 
-    async def _handle_telemetry_runs(self, limit: int = 20) -> list[dict[str, Any]]:
+    async def _handle_telemetry_runs(
+        self, limit: int = 20, authorization: str | None = Header(default=None)
+    ) -> list[dict[str, Any]]:
         """Return recent agent runs."""
+        self._check_auth(authorization)
         from core.telemetry import get_collector
         tc = get_collector()
         return tc.get_recent_runs(limit=limit)
 
-    async def _handle_marketplace_list(self) -> dict[str, Any]:
+    async def _handle_marketplace_list(
+        self, authorization: str | None = Header(default=None)
+    ) -> dict[str, Any]:
         """List available plugins from marketplace registry."""
+        self._check_auth(authorization)
         from core.marketplace import get_marketplace_listing
         return {"plugins": get_marketplace_listing()}
 
-    async def _handle_marketplace_install(self, req: Request) -> dict[str, Any]:
+    async def _handle_marketplace_install(
+        self, req: Request, authorization: str | None = Header(default=None)
+    ) -> dict[str, Any]:
         """Install a plugin from the marketplace."""
+        self._check_auth(authorization)
         from core.marketplace import install_plugin
         body = await req.json()
         name = body.get("name", "")
@@ -434,8 +523,11 @@ class SentinelServer:
             raise HTTPException(400, "Plugin name required")
         return install_plugin(name)
 
-    async def _handle_marketplace_uninstall(self, name: str) -> dict[str, Any]:
+    async def _handle_marketplace_uninstall(
+        self, name: str, authorization: str | None = Header(default=None)
+    ) -> dict[str, Any]:
         """Uninstall a plugin."""
+        self._check_auth(authorization)
         from core.marketplace import uninstall_plugin
         return uninstall_plugin(name)
 
@@ -686,7 +778,7 @@ class SentinelServer:
         try:
             scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
             os.makedirs(scripts_dir, exist_ok=True)
-            path = os.path.join(scripts_dir, f"{name.replace(' ', '_').lower()}.json")
+            path = os.path.join(scripts_dir, f"{_safe_script_stem(name)}.json")
             script.save(path)
             return {"status": "saved", "path": path, "steps": len(script.steps)}
         except OSError as exc:
@@ -984,92 +1076,120 @@ class SentinelServer:
                     if ws in self._ws_clients:
                         self._ws_clients.remove(ws)
 
-    async def _handle_sandbox_status(self):
+    # NOTE: every handler below takes ``authorization`` and calls
+    # ``_check_auth``. Pre-v31 this whole block was unauthenticated even when
+    # SENTINEL_API_TOKEN was set, so an anonymous caller could spawn swarms,
+    # deploy fleet goals, read agent memory and install plugins (which execute
+    # Python). Only ``/health`` is intentionally left open, for load balancers.
+
+    async def _handle_sandbox_status(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.sandbox import list_active
         return {"plugins": list_active()}
 
-    async def _handle_sandbox_kill(self, name: str):
+    async def _handle_sandbox_kill(self, name: str, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.sandbox import kill_plugin
         return kill_plugin(name)
 
-    async def _handle_swarm_create(self, req: Request):
+    async def _handle_swarm_create(self, req: Request, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.swarm import get_manager
         body = await req.json()
         swarm = get_manager().create_swarm(body.get("name", "swarm"), body.get("agents", 3))
         return swarm.get_status()
 
-    async def _handle_swarm_assign(self, swarm_id: str, req: Request):
+    async def _handle_swarm_assign(
+        self, swarm_id: str, req: Request, authorization: str | None = Header(default=None)
+    ):
+        self._check_auth(authorization)
         from core.swarm import get_manager
         body = await req.json()
         return get_manager().assign_task(swarm_id, body.get("goal", ""))
 
-    async def _handle_swarm_status(self, swarm_id: str):
+    async def _handle_swarm_status(self, swarm_id: str, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.swarm import get_manager
         s = get_manager().get_swarm(swarm_id)
         if not s: raise HTTPException(404, "Swarm not found")
         return s.get_status()
 
-    async def _handle_swarm_stop(self, swarm_id: str):
+    async def _handle_swarm_stop(self, swarm_id: str, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.swarm import get_manager
         return get_manager().stop_swarm(swarm_id)
 
-    async def _handle_swarm_list(self):
+    async def _handle_swarm_list(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.swarm import get_manager
         return {"swarms": get_manager().list_swarms()}
 
-    async def _handle_memory_search(self, q: str = ""):
+    async def _handle_memory_search(self, q: str = "", authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.memory.vector_store import get_store
         if not q: return {"results": [], "query": ""}
         return {"results": get_store().search(q, limit=5), "query": q}
 
-    async def _handle_memory_stats(self):
+    async def _handle_memory_stats(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.memory.vector_store import get_store
         return get_store().get_stats()
 
-    async def _handle_vision_analyze(self, req: Request):
+    async def _handle_vision_analyze(self, req: Request, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.vision.pipeline import analyze_screenshot
         body = await req.json()
         return analyze_screenshot(image_b64=body.get("image", "")).to_dict()
 
-    async def _handle_fleet_nodes(self):
+    async def _handle_fleet_nodes(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.fleet.redis_bus import get_fleet
         return {"nodes": get_fleet().list_nodes()}
 
-    async def _handle_fleet_deploy(self, req: Request):
+    async def _handle_fleet_deploy(self, req: Request, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.fleet.redis_bus import get_fleet
         body = await req.json()
         return get_fleet().deploy_agent(body.get("node_id", ""), body.get("goal", ""))
 
-    async def _handle_fleet_health(self):
+    async def _handle_fleet_health(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.fleet.redis_bus import get_fleet
         return get_fleet().get_fleet_health()
 
-    async def _handle_fleet_events(self, channel: str = ""):
+    async def _handle_fleet_events(self, channel: str = "", authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.fleet.redis_bus import get_fleet
         return {"events": get_fleet().get_events(channel or None, limit=50)}
 
-    async def _handle_playbooks_list(self):
+    async def _handle_playbooks_list(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.learning.playbook import get_manager
         return {"playbooks": get_manager().list_playbooks()}
 
-    async def _handle_playbooks_stats(self):
+    async def _handle_playbooks_stats(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.learning.playbook import get_manager
         return get_manager().get_stats()
 
-    async def _handle_playbooks_learn(self):
-        from core.learning.playbook import get_manager
+    async def _handle_playbooks_learn(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
+        from core.learning.playbook import get_manager  # noqa: F401
         return {"success": True, "playbooks_created": 0}
 
-    async def _handle_workflow_generate(self, req: Request):
+    async def _handle_workflow_generate(self, req: Request, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.nl_workflow import generate_workflow
         body = await req.json()
         return generate_workflow(body.get("description", ""))
 
-    async def _handle_voice_status(self):
+    async def _handle_voice_status(self, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.voice.control import get_voice_status
         return get_voice_status()
 
-    async def _handle_voice_speak(self, req: Request):
+    async def _handle_voice_speak(self, req: Request, authorization: str | None = Header(default=None)):
+        self._check_auth(authorization)
         from core.voice.control import text_to_speech
         body = await req.json()
         r = text_to_speech(body.get("text", ""))
@@ -1082,9 +1202,9 @@ class SentinelServer:
             auth_msg = await asyncio.wait_for(ws.receive_text(), timeout=10)
             auth_data = json.loads(auth_msg)
             auth_token = auth_data.get("token", "")
-            # Validate the token.
+            # Validate the token (constant-time — see _check_auth).
             api_token = os.environ.get(API_TOKEN_ENV)
-            if api_token and auth_token != api_token:
+            if api_token and not hmac.compare_digest(str(auth_token), api_token):
                 await ws.send_json({"type": "auth_error", "message": "Invalid token"})
                 await ws.close()
                 return

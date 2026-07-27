@@ -1,5 +1,5 @@
 """
-Sentinel Desktop v30.0.0 - Entry Point
+Sentinel Desktop v31.0.0 - Entry Point
 AI-powered desktop automation assistant.
 
 Usage:
@@ -15,7 +15,7 @@ import sys
 
 def parse_args():
     """Parse command-line arguments. Exported for testing."""
-    parser = argparse.ArgumentParser(description="Sentinel Desktop v30.0.0")
+    parser = argparse.ArgumentParser(description="Sentinel Desktop v31.0.0")
     parser.add_argument("--cli", "-c", nargs="?", const=True, default=False,
                         help="Run in CLI mode (optionally with command)")
     parser.add_argument("--api", action="store_true", help="Run headless API server")
@@ -52,8 +52,17 @@ def main():
     # API server mode
     if args.api:
         import uvicorn
-        from api.server import SentinelServer
+
+        from api.server import InsecureBindError, SentinelServer, require_secure_bind
         from config import Config
+
+        # Fail fast rather than publishing unauthenticated RCE to the network.
+        try:
+            require_secure_bind(args.host)
+        except InsecureBindError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            sys.exit(2)
+
         config = Config()
         config.load()
         server = SentinelServer(config)
