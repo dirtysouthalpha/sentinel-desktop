@@ -11,8 +11,9 @@ import hashlib
 import logging
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class ScreenAgent:
         try:
             small = screenshot.convert("L").resize((64, 64))
             data = small.tobytes()
-            current_hash = hashlib.md5(data).hexdigest()
+            current_hash = hashlib.md5(data, usedforsecurity=False).hexdigest()
 
             if self._last_hash and current_hash != self._last_hash:
                 change_pct = self._estimate_change(screenshot)

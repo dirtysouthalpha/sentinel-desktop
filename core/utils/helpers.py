@@ -1,6 +1,6 @@
 """Miscellaneous helper functions."""
 import platform
-from pathlib import Path
+
 
 def is_windows():
     return platform.system() == "Windows"

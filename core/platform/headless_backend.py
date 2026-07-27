@@ -151,7 +151,7 @@ class _HeadlessApplicationManager:
             if isinstance(command, list):
                 proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs)
             else:
-                proc = subprocess.Popen(
+                proc = subprocess.Popen(  # noqa: S602  # string command fallback
                     command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs
                 )
             return proc.pid

@@ -2,9 +2,11 @@
 Neuralis Brain AI Client
 Connects to the Neuralis Brain REST API for Claude-like reasoning.
 """
-import requests
 import logging
-from core.config_legacy import BRAIN_URL, BRAIN_TIMEOUT
+
+import requests
+
+from core.config_legacy import BRAIN_TIMEOUT, BRAIN_URL
 
 logger = logging.getLogger(__name__)
 

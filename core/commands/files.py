@@ -3,8 +3,8 @@ File Operation Commands
 List, search, read files.
 """
 import os
-import glob
 from pathlib import Path
+
 from core.legacy_engine import CommandResult
 
 

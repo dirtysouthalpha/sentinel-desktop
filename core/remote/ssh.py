@@ -142,7 +142,7 @@ class SSHExecutor:
             return SSHResult(command=command, returncode=-1, stdout="", stderr=str(exc))
 
     def run_script(
-        self, script_body: str, remote_path: str = "/tmp/sentinel_cmd.sh", timeout: int | None = None
+        self, script_body: str, remote_path: str = "/tmp/sentinel_cmd.sh", timeout: int | None = None  # noqa: S108  # remote temp path
     ) -> SSHResult:
         """Upload a script and run it on the remote host."""
         # Copy the script via stdin to avoid tempfile on remote

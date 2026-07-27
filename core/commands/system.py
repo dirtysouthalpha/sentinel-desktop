@@ -2,10 +2,12 @@
 System Diagnostic Commands
 CPU, Memory, Disk, Process monitoring.
 """
-import psutil
-import platform
 import os
+import platform
 import time
+
+import psutil
+
 from core.legacy_engine import CommandResult
 
 

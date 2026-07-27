@@ -2,9 +2,13 @@
 Sentinel Desktop v30.0.0 - Voice Control.
 """
 from __future__ import annotations
-import logging, shutil, subprocess, sys
+
+import importlib.util
+import logging
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
-from typing import Any
 
 logger = logging.getLogger(__name__)
 WAKE_WORD = "hey sentinel"
@@ -79,8 +83,8 @@ def get_voice_status():
         elif sys.platform == "darwin" and shutil.which("say"):
             status["tts_engine"] = "say"
     try:
-        import whisper
+        importlib.util.find_spec("whisper")
         status["stt_engine"] = "whisper"
-    except ImportError:
+    except (ModuleNotFoundError, ValueError):
         pass
     return status

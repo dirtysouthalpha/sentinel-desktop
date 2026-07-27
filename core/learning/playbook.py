@@ -2,7 +2,9 @@
 Sentinel Desktop v30.0.0 - Self-Learning Playbooks.
 """
 from __future__ import annotations
-import json, logging
+
+import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path

@@ -25,19 +25,19 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "customtkinter ~= 5.2",
+    "customtkinter ~= 6.0",
     "pyautogui ~= 0.9.54",
-    "psutil ~= 5.9",
-    "Pillow ~= 12.2",
+    "psutil ~= 7.2",
+    "Pillow ~= 12.3",
     "pyperclip ~= 1.8",
     "requests ~= 2.31",
-    "httpx ~= 0.27",
-    "fastapi ~= 0.110",
-    "uvicorn ~= 0.27",
-    "websockets ~= 12.0",
-    "pydantic ~= 2.5",
+    "httpx ~= 0.28",
+    "fastapi ~= 0.140",
+    "uvicorn ~= 0.51",
+    "websockets ~= 16.1",
+    "pydantic ~= 2.13",
     "pygetwindow ~= 0.0.9; sys_platform == 'win32'",
-    "bcrypt ~= 4.1",
+    "bcrypt ~= 5.0",
 ]
 
 [project.optional-dependencies]
@@ -57,13 +57,14 @@ windows = [
     "keyboard ~= 0.13.5; sys_platform == 'win32'",
 ]
 dev = [
-    "pytest >= 8.0",
-    "pytest-asyncio >= 0.23",
-    "pytest-cov ~= 4.1",
-    "ruff ~= 0.4",
-    "mypy ~= 1.8",
-    "pip-audit ~= 2.7",
-    "pre-commit ~= 3.6",
+    "pytest ~= 9.1",
+    "pytest-asyncio ~= 1.4",
+    "pytest-cov ~= 7.1",
+    "pytest-timeout ~= 2.4",
+    "ruff ~= 0.16",
+    "mypy ~= 2.3",
+    "pip-audit ~= 2.10",
+    "pre-commit ~= 4.6",
 ]
 all = [
     "sentinel-desktop[ocr,screenshot,tray]",
@@ -95,7 +96,7 @@ target-version = "py310"
 exclude = [".venv", "build", "dist", "installer/output"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "UP", "B", "S"]
 ignore = [
     "E501",  # line length handled by formatter
     "E701",  # `class X: y = 1` one-liners are fine for tiny stubs

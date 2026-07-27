@@ -24,9 +24,11 @@ class ProcessCommands:
         is_win = platform.system() == "Windows"
         try:
             if is_win:
-                os.startfile(name)  # pylint: disable=no-member
+                os.startfile(name)  # noqa: S606  # pylint: disable=no-member
             else:
-                subprocess.Popen([name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen(
+                    [name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
             return CommandResult(True, f"Opening: {name}")
         except Exception:
             # Fallback: try subprocess.

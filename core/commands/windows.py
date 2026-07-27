@@ -1,6 +1,7 @@
 """Window management commands."""
-import subprocess
 import platform
+import subprocess
+
 from core.legacy_engine import CommandResult
 
 

@@ -124,8 +124,8 @@ class PluginInfo:
 def fetch_registry() -> list[PluginInfo]:
     """Fetch the plugin registry from the remote URL. Returns empty list on failure."""
     try:
-        req = urllib.request.Request(REGISTRY_URL, headers={"User-Agent": "Sentinel-Desktop"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        req = urllib.request.Request(REGISTRY_URL, headers={"User-Agent": "Sentinel-Desktop"})  # noqa: S310  # https URL
+        with urllib.request.urlopen(req, timeout=15) as resp:  # noqa: S310  # scheme allowlisted
             data = json.loads(resp.read())
         plugins = []
         for entry in data.get("plugins", []):
@@ -248,8 +248,8 @@ def install_plugin(name: str) -> dict[str, Any]:
         }
 
     try:
-        req = urllib.request.Request(plugin.download_url, headers={"User-Agent": "Sentinel-Desktop"})
-        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - scheme allowlisted above
+        req = urllib.request.Request(plugin.download_url, headers={"User-Agent": "Sentinel-Desktop"})  # noqa: S310  # scheme allowlisted
+        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310  # scheme allowlisted
             content = resp.read()
     except Exception as e:
         return {"success": False, "message": f"Download failed: {e}"}

@@ -1,6 +1,6 @@
 """Settings persistence - save/load user preferences."""
-import os
 import json
+import os
 
 DEFAULTS = {
     "brain_url": "http://100.70.240.55:8001",
@@ -29,7 +29,7 @@ def load_settings():
             with open(path) as f:
                 saved = json.load(f)
             settings.update(saved)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
     return settings
 

@@ -1,8 +1,7 @@
 """Web browsing and content fetching commands."""
 import re
-import subprocess
-import platform
 import webbrowser
+
 from core.legacy_engine import CommandResult
 
 try:

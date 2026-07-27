@@ -414,7 +414,7 @@ class _LinuxApplicationManager:
             if isinstance(command, list):
                 proc = subprocess.Popen(command, **kwargs)
             else:
-                proc = subprocess.Popen(command, shell=True, **kwargs)
+                proc = subprocess.Popen(command, shell=True, **kwargs)  # noqa: S602  # string command fallback
             return proc.pid
         except Exception as exc:
             logger.warning("launch %r failed: %s", command, exc)

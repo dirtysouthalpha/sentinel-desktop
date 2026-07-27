@@ -4,7 +4,7 @@ Supports natural language parsing, direct commands, and AI routing.
 """
 import logging
 import re
-from typing import Optional
+
 from core.legacy_brain import BrainClient
 
 logger = logging.getLogger(__name__)
@@ -32,21 +32,21 @@ class CommandEngine:
 
     def _register_defaults(self):
         """Register built-in command handlers."""
-        from core.commands.system import SystemCommands
+        from core.commands.agent import AgentPlanner
         from core.commands.automation import AutomationCommands
-        from core.commands.network import NetworkCommands
-        from core.commands.process import ProcessCommands
-        from core.commands.files import FileCommands
         from core.commands.clipboard import ClipboardCommands
-        from core.commands.windows import WindowCommands
-        from core.commands.media import MediaCommands
-        from core.commands.power import PowerCommands
-        from core.commands.notify import NotifyCommands
-        from core.commands.scheduler import SchedulerCommands
+        from core.commands.files import FileCommands
         from core.commands.macros import MacroCommands
+        from core.commands.media import MediaCommands
+        from core.commands.network import NetworkCommands
+        from core.commands.notify import NotifyCommands
+        from core.commands.power import PowerCommands
+        from core.commands.process import ProcessCommands
+        from core.commands.scheduler import SchedulerCommands
+        from core.commands.system import SystemCommands
         from core.commands.voice import VoiceCommands
         from core.commands.web import WebCommands
-        from core.commands.agent import AgentPlanner
+        from core.commands.windows import WindowCommands
         from core.legacy_llm import LLMClient
         from core.legacy_plugins import PluginManager
 
@@ -69,7 +69,7 @@ class CommandEngine:
         self.llm = LLMClient()
         self.plugins = PluginManager()
 
-    def parse_command(self, text: str) -> Optional[tuple]:
+    def parse_command(self, text: str) -> tuple | None:
         """Parse natural language into (handler, args)."""
         text_lower = text.lower().strip()
 
@@ -198,7 +198,7 @@ class CommandEngine:
     def _is_complex_task(self, text: str) -> bool:
         """Check if this is a multi-step request."""
         t = text.lower()
-        indicators = [" then ", " after that ", " and then ", " and also ", 
+        indicators = [" then ", " after that ", " and then ", " and also ",
                        " step by step ", "first ", "second ", "finally ",
                        " also ", " next ", " once done ", " when finished "]
         return any(ind in t for ind in indicators) or (t.count(",") >= 2 and len(t.split()) > 6)
@@ -351,7 +351,7 @@ class CommandEngine:
                 results = self.brain.recall(query)
                 if results:
                     text = chr(10).join([f"- {r.get('topic', '')}: {r.get('content', '')[:100]}" for r in results[:5]])
-                    return CommandResult(True, f"Brain recall:" + chr(10) + text)
+                    return CommandResult(True, "Brain recall:" + chr(10) + text)
                 return CommandResult(True, "No results found in brain.")
             if args.lower().startswith("think"):
                 parts = args.split(None, 2)
@@ -365,7 +365,7 @@ class CommandEngine:
                 return CommandResult(True, f"Brain Status: {health}" + chr(10) + f"Stats: {stats}")
         return CommandResult(False, "Unknown AI command")
 
-    def _conversational_response(self, text: str) -> Optional[str]:
+    def _conversational_response(self, text: str) -> str | None:
         """Handle greetings and common conversational inputs."""
         t = text.lower().strip().rstrip(".!")
         greetings = ["hey", "hi", "hello", "yo", "sup", "howdy", "greetings", "hiya", "heya"]
@@ -374,7 +374,7 @@ class CommandEngine:
         how_are = ["how are you", "how are u", "how's it going", "whats up", "what's up", "you good"]
         who = ["who are you", "what are you", "what can you do", "your name", "about you"]
         love = ["i love you", "love you", "good job", "great job", "nice work", "well done", "awesome", "cool", "nice"]
-        
+
         if t in greetings or any(t.startswith(g) for g in greetings):
             return "Hey! I'm Sentinel, your desktop assistant. Type 'help' to see what I can do!"
         if t in thanks:
@@ -385,7 +385,7 @@ class CommandEngine:
             return "I'm running great! Ready to help you with your system, automation, files, and more."
         if any(w in t for w in who):
             return "I'm Sentinel Desktop v23.0.0 - your AI desktop assistant. I can monitor your system, automate tasks, manage files, control media, and much more. Type 'help' to see all commands!"
-        if any(t == l or l in t for l in love):
+        if any(t == word or word in t for word in love):
             return "Thank you! Glad I could help. Type 'help' if you need anything else!"
         if t in ["ok", "okay", "k", "alright", "got it"]:
             return "Got it! Let me know if you need anything."

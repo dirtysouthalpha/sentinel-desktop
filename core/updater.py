@@ -20,8 +20,8 @@ GITHUB_API = "https://api.github.com/repos/dirtysouthalpha/sentinel-desktop/rele
 def get_latest_version() -> str | None:
     """Fetch the latest release tag from GitHub. Returns None on failure."""
     try:
-        req = urllib.request.Request(GITHUB_API, headers={"User-Agent": "Sentinel-Desktop"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        req = urllib.request.Request(GITHUB_API, headers={"User-Agent": "Sentinel-Desktop"})  # noqa: S310  # https URL
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310  # scheme allowlisted
             data = json.loads(resp.read())
         tag = data.get("tag_name", "")
         return tag.lstrip("v") if tag else None

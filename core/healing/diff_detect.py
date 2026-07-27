@@ -46,7 +46,7 @@ class UIDiffDetector:
             else:
                 return DiffResult(changed=False)
 
-            current_hash = hashlib.md5(bytes(data)).hexdigest()
+            current_hash = hashlib.md5(bytes(data), usedforsecurity=False).hexdigest()
             if not self._last_hash:
                 self._last_hash = current_hash
                 return DiffResult(changed=False)

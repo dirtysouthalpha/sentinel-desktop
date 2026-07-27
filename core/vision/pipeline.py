@@ -101,8 +101,8 @@ def analyze_screenshot(image_b64: str | None = None, image_path: str | None = No
 
     # Template matching pass (if OpenCV available)
     try:
-        import numpy as np
         import cv2
+        import numpy as np
         img_array = np.array(pil_image)
         if len(img_array.shape) == 3:
             gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)

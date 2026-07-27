@@ -2,8 +2,8 @@
 Sentinel Desktop v2.0 - Configuration
 Central settings, constants, and paths.
 """
-import os
 import json
+import os
 from pathlib import Path
 
 from core.atomic_io import atomic_write_text
@@ -68,7 +68,7 @@ def load_config() -> dict:
     """Load user config or create default."""
     if CONFIG_FILE.exists():
         try:
-            with open(CONFIG_FILE, "r") as f:
+            with open(CONFIG_FILE) as f:
                 cfg = json.load(f)
             # Merge defaults
             merged = {**DEFAULT_CONFIG, **cfg}

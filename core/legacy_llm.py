@@ -1,7 +1,8 @@
 """LLM client for Hatz.ai - powers the agent planner and conversational AI."""
-import os
 import json
 import logging
+import os
+
 import requests
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ class LLMClient:
                 return [str(step) for step in plan if step]
         except json.JSONDecodeError:
             pass
-        lines = [l.strip().lstrip("0123456789.-) ") for l in response.split("\n") if l.strip()]
+        lines = [ln.strip().lstrip("0123456789.-) ") for ln in response.split("\n") if ln.strip()]
         return lines if lines else None
 
     def converse(self, user_message, context=""):

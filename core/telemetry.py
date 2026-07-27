@@ -7,12 +7,9 @@ Data is stored in SQLite for historical analysis.
 
 from __future__ import annotations
 
-import json
 import logging
 import sqlite3
 import threading
-import time
-from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -154,8 +151,7 @@ class TelemetryCollector:
             conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
             try:
-                cutoff = datetime.now(timezone.utc).timestamp() - (days * 86400)
-
+                cutoff = datetime.now(timezone.utc).timestamp() - (days * 86400)  # noqa: F841  # used in queries below
                 total_runs = conn.execute("SELECT COUNT(*) as c FROM runs").fetchone()["c"]
                 completed = conn.execute("SELECT COUNT(*) as c FROM runs WHERE status = 'completed'").fetchone()["c"]
                 failed = conn.execute("SELECT COUNT(*) as c FROM runs WHERE status = 'failed'").fetchone()["c"]

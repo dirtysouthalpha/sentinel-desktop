@@ -1,7 +1,7 @@
 """Power management commands."""
-import subprocess
 import platform
-import time
+import subprocess
+
 from core.legacy_engine import CommandResult
 
 

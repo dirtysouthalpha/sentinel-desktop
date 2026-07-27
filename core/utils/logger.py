@@ -1,9 +1,10 @@
 """Logging utility for Sentinel Desktop."""
 import logging
 import sys
-from pathlib import Path
 from datetime import datetime
+
 from core.config_legacy import LOG_DIR
+
 
 def setup_logger(name="sentinel", level=logging.INFO):
     logger = logging.getLogger(name)

@@ -1,6 +1,4 @@
 """Media control commands."""
-import subprocess
-import platform
 from core.legacy_engine import CommandResult
 
 try:

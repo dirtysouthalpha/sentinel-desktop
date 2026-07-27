@@ -1,7 +1,7 @@
 """CLI mode for Sentinel Desktop."""
-from core.legacy_engine import CommandEngine
-from core.legacy_brain import BrainClient
 from core.config_legacy import VERSION
+from core.legacy_brain import BrainClient
+from core.legacy_engine import CommandEngine
 
 
 def cli_main():

@@ -6,7 +6,6 @@ Adapts the existing win32/PIL/pyautogui code into the platform abstraction.
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 from typing import Any
 
@@ -361,7 +360,7 @@ class _WindowsApplicationManager:
             if isinstance(command, list):
                 proc = subprocess.Popen(command, **kwargs)
             else:
-                proc = subprocess.Popen(command, shell=True, **kwargs)
+                proc = subprocess.Popen(command, shell=True, **kwargs)  # noqa: S602  # string command fallback
             return proc.pid
         except Exception as exc:
             logger.warning("launch %r failed: %s", command, exc)

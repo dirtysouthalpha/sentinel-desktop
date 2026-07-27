@@ -2,8 +2,9 @@
 Network Diagnostic Commands
 Ping, IP config, connectivity checks, speedtest.
 """
-import subprocess
 import platform
+import subprocess
+
 from core.legacy_engine import CommandResult
 
 
