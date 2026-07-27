@@ -52,7 +52,9 @@ class TestRunElevatedPath:
 
         def _fake_run(args, **kwargs):
             wrapped = args[-1]
-            match = re.search(r"([A-Za-z]:[^\"]*?_ps_elev_\d+\.tmp)", wrapped)
+            # The runner embeds the path as -FilePath \"<path>\". Anchor on that
+            # rather than on a drive letter, so this works for POSIX paths too.
+            match = re.search(r'-FilePath \\"(.+?_ps_elev_\d+\.tmp)\\"', wrapped)
             assert match, f"no generated temp path in wrapped command: {wrapped}"
             Path(match.group(1)).write_text('{"Result": "ok"}', encoding="utf-8")
             return MagicMock(returncode=0, stdout="", stderr="")

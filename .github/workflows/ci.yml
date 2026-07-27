@@ -34,7 +34,13 @@ jobs:
           # without it every @pytest.mark.asyncio test became a hard collection
           # error ("'asyncio' not found in `markers`") and aborted the run.
           pip install pytest pytest-asyncio psutil requests
-          pip install -e . || true
+          # The optional extras are NOT optional for the test suite: tests patch
+          # core.screenshot.mss (needs [screenshot]) and exercise the win32 /
+          # uiautomation paths (needs [windows]). Without them ~84 tests failed
+          # on windows-latest and ~20 on ubuntu-latest with AttributeError.
+          # The [windows] pins all carry sys_platform == 'win32' markers, so this
+          # is a no-op on Linux.
+          pip install -e ".[screenshot,windows]" || pip install -e . || true
 
       - name: Run tests
         run: |
