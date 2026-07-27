@@ -496,7 +496,8 @@ class TestMonitorLoopDetection:
             )
 
             def fake_ocr(screenshot):
-                nonlocal poll_count
+                # Reads poll_count from the enclosing scope; no `nonlocal`
+                # needed (and declaring it tripped flake8 F824).
                 if poll_count <= 1:
                     return detection
                 return None

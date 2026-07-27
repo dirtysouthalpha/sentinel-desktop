@@ -22,6 +22,11 @@ logger = logging.getLogger(__name__)
 
 _AUTH_FILE = Path(os.environ.get("SENTINEL_AUTH_FILE", Path.home() / ".sentinel" / "auth.json"))
 
+# Minimum seconds between persisting a key's ``last_used`` timestamp. Without
+# this, every authenticated request rewrote the whole auth store (write
+# amplification, plus a corruption window per request) just to bump a clock.
+LAST_USED_PERSIST_INTERVAL = 300.0
+
 
 class Role(Enum):
     """User roles with increasing privilege."""
@@ -66,7 +71,15 @@ _ROLE_PERMISSIONS: dict[Role, set[str]] = {
         Permission.VIEW_LOGS,
         Permission.VIEW_METRICS,
     },
-    Role.SUPER: {p for p in dir(Permission) if not p.startswith("_")},
+    # SUPER gets every permission. This must collect the permission *values*
+    # ("view_status"), not the attribute *names* ("VIEW_STATUS") — check_permission
+    # compares against values, so building the set from dir() alone (pre-v31)
+    # left the highest-privilege role denied everything.
+    Role.SUPER: {
+        value
+        for name in dir(Permission)
+        if not name.startswith("_") and isinstance(value := getattr(Permission, name), str)
+    },
 }
 
 
@@ -159,10 +172,15 @@ class AuthManager:
             if hmac.compare_digest(api_key.key_hash, key_hash):
                 if not api_key.enabled:
                     return None
-                if api_key.expires_at > 0 and time.time() > api_key.expires_at:
+                now = time.time()
+                if api_key.expires_at > 0 and now > api_key.expires_at:
                     return None
-                api_key.last_used = time.time()
-                self._save()
+                # Keep last_used fresh in memory on every call, but only touch
+                # disk once per LAST_USED_PERSIST_INTERVAL.
+                should_persist = (now - api_key.last_used) >= LAST_USED_PERSIST_INTERVAL
+                api_key.last_used = now
+                if should_persist:
+                    self._save()
                 return api_key
         return None
 

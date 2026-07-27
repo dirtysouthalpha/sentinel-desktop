@@ -42,9 +42,12 @@ def test_install_refuses_metadata_download_url(tmp_path, monkeypatch):
     plugins = tmp_path / "plugins"
     plugins.mkdir()
     monkeypatch.setattr(marketplace, "PLUGINS_DIR", plugins)
+    # https so the scheme allowlist (v31) doesn't short-circuit before the
+    # metadata-host check this test is actually about.
     evil = marketplace.PluginInfo(
         name="weather", version="1.0",
-        download_url="http://169.254.169.254/latest/meta-data/",
+        download_url="https://169.254.169.254/latest/meta-data/",
+        sha256="0" * 64,
     )
     monkeypatch.setattr(marketplace, "fetch_registry", lambda: [evil])
     result = install_plugin("weather")

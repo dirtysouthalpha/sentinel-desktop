@@ -6,13 +6,23 @@ Used by the fleet manager and agent installer.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import shlex
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Host keys for fleet hosts are pinned here by default.
+DEFAULT_KNOWN_HOSTS = Path(
+    os.environ.get("SENTINEL_SSH_KNOWN_HOSTS", "")
+    or (Path.home() / ".sentinel" / "known_hosts")
+).expanduser()
+
+_VALID_HOST_KEY_POLICIES = frozenset({"yes", "accept-new", "no"})
 
 
 @dataclass
@@ -27,6 +37,15 @@ class SSHConfig:
     timeout: int = 30
     label: str = ""  # friendly name for fleet display
     tags: list[str] = field(default_factory=list)
+    # Host-key policy. "yes" (default) requires the host to already be in
+    # known_hosts, so a first-contact MITM cannot silently become trusted.
+    # "accept-new" restores the pre-v31 trust-on-first-use behaviour and must
+    # be opted into per host.
+    strict_host_key_checking: str = "yes"
+    # Where to persist host keys. Defaults to a Sentinel-managed file so fleet
+    # hosts are pinned explicitly rather than inheriting the user's global
+    # known_hosts (or nothing at all).
+    known_hosts_file: str = ""
 
 
 @dataclass
@@ -55,9 +74,25 @@ class SSHExecutor:
         cmd = ["ssh"]
         if self.config.key_file and os.path.isfile(self.config.key_file):
             cmd += ["-i", self.config.key_file]
+
+        policy = (self.config.strict_host_key_checking or "yes").strip().lower()
+        if policy not in _VALID_HOST_KEY_POLICIES:
+            raise ValueError(
+                f"invalid strict_host_key_checking {self.config.strict_host_key_checking!r}; "
+                f"expected one of {sorted(_VALID_HOST_KEY_POLICIES)}"
+            )
+        if policy == "accept-new":
+            logger.warning(
+                "SSH to %s uses StrictHostKeyChecking=accept-new: the first key "
+                "seen is trusted, so a first-contact MITM would go undetected.",
+                self.config.host,
+            )
+
         cmd += [
             "-o",
-            "StrictHostKeyChecking=accept-new",
+            f"StrictHostKeyChecking={policy}",
+            "-o",
+            f"UserKnownHostsFile={self._known_hosts_path()}",
             "-o",
             "ConnectTimeout=" + str(self.config.timeout),
             "-o",
@@ -67,6 +102,16 @@ class SSHExecutor:
         ]
         cmd.append(f"{self.config.user}@{self.config.host}")
         return cmd
+
+    def _known_hosts_path(self) -> str:
+        """Return the known_hosts file to pin host keys in, creating its dir."""
+        if self.config.known_hosts_file:
+            path = Path(self.config.known_hosts_file).expanduser()
+        else:
+            path = DEFAULT_KNOWN_HOSTS
+        with contextlib.suppress(OSError):
+            path.parent.mkdir(parents=True, exist_ok=True)
+        return str(path)
 
     def run(self, command: str, timeout: int | None = None) -> SSHResult:
         """Run a command on the remote host and return the result."""

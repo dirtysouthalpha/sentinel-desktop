@@ -9,7 +9,7 @@ from pathlib import Path
 from core.atomic_io import atomic_write_text
 
 # Version
-VERSION = "30.0.0"
+VERSION = "31.0.0"
 APP_NAME = "Sentinel Desktop"
 APP_TITLE = f"{APP_NAME} v{VERSION}"
 

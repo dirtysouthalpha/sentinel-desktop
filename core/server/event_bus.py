@@ -56,7 +56,10 @@ class EventBus:
         self._rules: list[EventRule] = []
         self._lock = threading.Lock()
         self._running = False
-        self._poll_thread: threading.Thread | None = None
+        # Every watcher thread is tracked here. Pre-v31 they were started as
+        # bare locals and ``_poll_thread`` was never assigned, so watchers
+        # leaked and could not be joined or enumerated.
+        self._watcher_threads: list[threading.Thread] = []
 
     def on(
         self,
@@ -122,9 +125,7 @@ class EventBus:
                     logger.debug("file watch poll error: %s", exc)
                 time.sleep(poll_interval)
 
-        self._running = True
-        t = threading.Thread(target=_poll, daemon=True)
-        t.start()
+        self._start_watcher(_poll, f"watch-file:{path}")
 
     def watch_dir(
         self, dirpath: str, event_type: str = EVENT_FILE_CREATED, pattern: str = "", poll_interval: float = 3.0
@@ -149,9 +150,39 @@ class EventBus:
                     logger.debug("dir watch error: %s", exc)
                 time.sleep(poll_interval)
 
+        self._start_watcher(_poll, f"watch-dir:{dirpath}")
+
+    # -- watcher lifecycle ------------------------------------------------
+
+    def _start_watcher(self, target: Callable[[], None], name: str) -> threading.Thread:
+        """Start a tracked watcher thread and return it."""
         self._running = True
-        t = threading.Thread(target=_poll, daemon=True)
-        t.start()
+        thread = threading.Thread(target=target, name=name, daemon=True)
+        with self._lock:
+            self._watcher_threads.append(thread)
+        thread.start()
+        return thread
+
+    @property
+    def watcher_threads(self) -> list[threading.Thread]:
+        """Snapshot of the watcher threads this bus started."""
+        with self._lock:
+            return list(self._watcher_threads)
+
+    def stop_watchers(self, timeout: float = 5.0) -> None:
+        """Signal all watchers to stop and join them.
+
+        Each watcher wakes at its own poll interval, so ``timeout`` is the
+        total budget spread across the outstanding threads.
+        """
+        self._running = False
+        threads = self.watcher_threads
+        deadline = time.time() + timeout
+        for thread in threads:
+            remaining = max(0.0, deadline - time.time())
+            thread.join(timeout=remaining)
+        with self._lock:
+            self._watcher_threads = [t for t in self._watcher_threads if t.is_alive()]
 
     # -- lifecycle --------------------------------------------------------
 

@@ -7,6 +7,8 @@ Browse, install, and uninstall community plugins from a registry.
 from __future__ import annotations
 
 import hashlib
+import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -27,6 +29,9 @@ logger = logging.getLogger(__name__)
 # plugins directory (arbitrary file write / delete). Ported from the v22
 # "Aria" lineage fix (tag archive-v22-aria-final, commit 83841b4).
 _PLUGIN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+# A registry entry must pin its payload with a full SHA-256 hex digest.
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 # Cloud instance-metadata endpoints — reaching one returns cloud credentials.
 # A plugin download_url comes from the (remote) registry, so a compromised
@@ -50,6 +55,48 @@ def _is_metadata_url(url: str) -> bool:
     except ValueError:
         return True  # unparseable → treat as unsafe
     return host in _METADATA_HOSTS or host.startswith("169.254.")
+
+
+# Only https:// downloads are installable. Blocking metadata hosts alone was
+# not enough: the download_url comes from the remote registry, so `file://`
+# (read any local file and install it as an importable plugin), `http://` (no
+# transport integrity) and loopback/link-local hosts (SSRF into services that
+# trust localhost) all had to be refused too.
+_ALLOWED_SCHEMES = frozenset({"https"})
+
+
+def _is_allowed_download_url(url: str) -> tuple[bool, str]:
+    """Validate a registry-supplied download URL.
+
+    Returns ``(ok, reason)``; *reason* is empty when ok.
+    """
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return False, "download URL is unparseable"
+
+    scheme = (parts.scheme or "").lower()
+    if scheme not in _ALLOWED_SCHEMES:
+        return False, f"download URL scheme {scheme or '(none)'!r} is not allowed (https only)"
+
+    host = (parts.hostname or "").lower()
+    if not host:
+        return False, "download URL has no host"
+
+    if _is_metadata_url(url):
+        return False, "refusing to fetch cloud metadata endpoint"
+
+    # Reject addresses that are only meaningful on this host / this link.
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        if host in {"localhost", "localhost.localdomain"} or host.endswith(".localhost"):
+            return False, "download URL points at localhost"
+        return True, ""
+
+    if ip.is_loopback or ip.is_link_local or ip.is_unspecified:
+        return False, f"download URL points at a local address ({host})"
+    return True, ""
 
 # Built-in registry URL (can be overridden via env)
 REGISTRY_URL = os.environ.get(
@@ -172,24 +219,44 @@ def install_plugin(name: str) -> dict[str, Any]:
     if not plugin:
         return {"success": False, "message": f"Plugin '{name}' not found in registry"}
 
+    # Validate the destination name before fetching anything: a name we would
+    # never install is not worth a network round-trip, and this keeps the
+    # traversal guard the first thing an attacker-controlled name meets.
+    try:
+        dest = _safe_plugin_path(name)
+    except ValueError as e:
+        return {"success": False, "message": f"Rejected plugin name: {e}"}
+
     if not plugin.download_url:
         return {"success": False, "message": f"Plugin '{name}' has no download URL"}
 
-    if _is_metadata_url(plugin.download_url):
-        return {"success": False, "message": "Refusing to fetch cloud metadata endpoint"}
+    allowed, reason = _is_allowed_download_url(plugin.download_url)
+    if not allowed:
+        return {"success": False, "message": f"Rejected download URL: {reason}"}
+
+    # An unpinned plugin is an unverifiable remote code drop. Pre-v31 a
+    # registry that simply omitted "sha256" silently skipped integrity
+    # checking, so require it before fetching anything.
+    expected_hash = (plugin.sha256 or "").strip().lower()
+    if not _SHA256_RE.match(expected_hash):
+        return {
+            "success": False,
+            "message": (
+                f"Plugin '{name}' has no valid sha256 in the registry; "
+                "refusing to install unverified code"
+            ),
+        }
 
     try:
         req = urllib.request.Request(plugin.download_url, headers={"User-Agent": "Sentinel-Desktop"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - scheme allowlisted above
             content = resp.read()
     except Exception as e:
         return {"success": False, "message": f"Download failed: {e}"}
 
-    # Verify SHA256 if provided
-    if plugin.sha256:
-        actual_hash = hashlib.sha256(content).hexdigest()
-        if actual_hash != plugin.sha256:
-            return {"success": False, "message": f"SHA256 mismatch: expected {plugin.sha256}, got {actual_hash}"}
+    actual_hash = hashlib.sha256(content).hexdigest()
+    if not hmac.compare_digest(actual_hash, expected_hash):
+        return {"success": False, "message": f"SHA256 mismatch: expected {expected_hash}, got {actual_hash}"}
 
     # Validate it's Python source
     try:
@@ -197,11 +264,7 @@ def install_plugin(name: str) -> dict[str, Any]:
     except SyntaxError as e:
         return {"success": False, "message": f"Plugin has invalid Python syntax: {e}"}
 
-    # Install to plugins directory — validate the name can't escape it.
-    try:
-        dest = _safe_plugin_path(name)
-    except ValueError as e:
-        return {"success": False, "message": f"Rejected plugin name: {e}"}
+    # Install to plugins directory (dest was validated up front).
     PLUGINS_DIR.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(content)
 

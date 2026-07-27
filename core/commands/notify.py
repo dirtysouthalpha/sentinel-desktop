@@ -1,7 +1,9 @@
 """System notification commands."""
-import subprocess
 import platform
+import subprocess
+
 from core.legacy_engine import CommandResult
+from core.powershell import _ps_escape_single_quoted
 
 
 class NotifyCommands:
@@ -12,8 +14,28 @@ class NotifyCommands:
         try:
             is_win = platform.system() == "Windows"
             if is_win:
-                ps_cmd = f"[System.Reflection.Assembly]::LoadWithPartialName(\"System.Windows.Forms\"); $n=New-Object System.Windows.Forms.NotifyIcon; $n.BalloonTipTitle=\"" + title + "\"; $n.BalloonTipText=\"" + message + "\"; $n.Visible=$true; $n.ShowBalloonTip(5000)"
-                subprocess.Popen(["powershell", "-command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # title/message are user/agent supplied. Pre-v31 they were
+                # concatenated into a double-quoted PowerShell string, where
+                # `"`, `$(...)` and `;` all execute — so a notification title
+                # was arbitrary code. Quote them as verbatim single-quoted
+                # literals instead.
+                try:
+                    ps_title = _ps_escape_single_quoted(title)
+                    ps_message = _ps_escape_single_quoted(message)
+                except (TypeError, ValueError) as exc:
+                    return CommandResult(False, f"Unsafe notification text: {exc}")
+                ps_cmd = (
+                    '[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms"); '
+                    "$n=New-Object System.Windows.Forms.NotifyIcon; "
+                    f"$n.BalloonTipTitle={ps_title}; "
+                    f"$n.BalloonTipText={ps_message}; "
+                    "$n.Visible=$true; $n.ShowBalloonTip(5000)"
+                )
+                subprocess.Popen(
+                    ["powershell", "-NoProfile", "-command", ps_cmd],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             else:
                 subprocess.Popen(["notify-send", title, message], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return CommandResult(True, f"Notification sent: {title}")

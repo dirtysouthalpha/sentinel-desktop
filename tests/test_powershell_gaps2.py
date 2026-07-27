@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from core.powershell import PowerShellRunner
@@ -39,16 +41,49 @@ class TestRunElevatedPath:
     @patch("core.powershell._is_windows", return_value=True)
     @patch("core.powershell.subprocess.run")
     def test_elevated_reads_tmp_output_file(self, mock_run, mock_iw, tmp_path):
-        tmp_out = tmp_path / "elevated_output.tmp"
-        tmp_out.write_text('{"Result": "ok"}', encoding="utf-8")
-        tmp_name = str(tmp_out)
-        mock_proc = MagicMock(returncode=0, stdout="", stderr="")
-        mock_run.return_value = mock_proc
-        runner = _make_runner(run_as_admin=True)
-        # The elevated path splits command by space and looks for .tmp suffix
-        result = runner._run(f"Get-Date {tmp_name}")
+        """Output is read back from the temp path the runner itself generated.
+
+        v31 regression guard: the elevated path used to re-derive the temp path
+        by scanning *command* for a ``.tmp`` token, but that path only ever
+        appears in the *wrapped* command it builds — so ``stdout`` was always
+        empty for run_as_admin. This test writes to the path the runner really
+        told PowerShell to use, and requires it to be read back and cleaned up.
+        """
+
+        def _fake_run(args, **kwargs):
+            wrapped = args[-1]
+            # The runner embeds the path as -FilePath \"<path>\". Anchor on that
+            # rather than on a drive letter, so this works for POSIX paths too.
+            match = re.search(r'-FilePath \\"(.+?_ps_elev_\d+\.tmp)\\"', wrapped)
+            assert match, f"no generated temp path in wrapped command: {wrapped}"
+            Path(match.group(1)).write_text('{"Result": "ok"}', encoding="utf-8")
+            return MagicMock(returncode=0, stdout="", stderr="")
+
+        mock_run.side_effect = _fake_run
+        runner = _make_runner(run_as_admin=True, working_dir=str(tmp_path))
+        result = runner._run("Get-Date")
         assert result.success is True
-        assert not tmp_out.exists()  # temp file should be cleaned up
+        assert result.stdout == '{"Result": "ok"}'  # actually read back
+        assert result.objects == [{"Result": "ok"}]  # and parsed
+        assert list(tmp_path.glob("_ps_elev_*.tmp")) == []  # cleaned up
+
+    @patch("core.powershell._is_windows", return_value=True)
+    @patch("core.powershell.subprocess.run")
+    def test_elevated_ignores_tmp_path_inside_command(self, mock_run, mock_iw, tmp_path):
+        """A ``.tmp`` token in the user's command must not be read or deleted.
+
+        The old token-scanning logic would treat any ``.tmp`` word in the
+        caller's command as the output file and unlink it — an arbitrary-delete
+        primitive driven by command text.
+        """
+        decoy = tmp_path / "important.tmp"
+        decoy.write_text("do not touch", encoding="utf-8")
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        runner = _make_runner(run_as_admin=True, working_dir=str(tmp_path))
+        result = runner._run(f"Get-Content {decoy}")
+        assert result.success is True
+        assert decoy.exists()
+        assert decoy.read_text(encoding="utf-8") == "do not touch"
 
     @patch("core.powershell._is_windows", return_value=True)
     @patch("core.powershell.subprocess.run")

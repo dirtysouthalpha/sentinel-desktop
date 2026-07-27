@@ -7,6 +7,7 @@ get_default_runner() factory.
 """
 
 import sys
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -98,8 +99,31 @@ class TestRunnerInit:
 
 class TestRunnerInternals:
     def test_resolve_ps_exe_on_linux(self):
-        runner = PowerShellRunner()
+        # Force the non-Windows branch this test is named for. Without the
+        # patch the result depended on whether the host happened to have
+        # pwsh.exe on PATH: it passed on hosts with only powershell.exe and
+        # failed on GitHub's windows-latest runner, which ships PowerShell 7
+        # and therefore resolves to pwsh.exe.
+        with patch("core.powershell._is_windows", return_value=False):
+            runner = PowerShellRunner()
         assert runner._ps_exe == "powershell.exe"
+
+    def test_resolve_ps_exe_prefers_pwsh_on_windows(self):
+        """On Windows, pwsh is preferred over powershell when present."""
+        with patch("core.powershell._is_windows", return_value=True), patch(
+            "core.powershell.subprocess.run"
+        ) as mock_run:
+            mock_run.return_value = SimpleNamespace(returncode=0, stdout="C:\\pwsh.exe\n")
+            runner = PowerShellRunner()
+        assert runner._ps_exe == PowerShellRunner.PS_CORE_EXE
+
+    def test_resolve_ps_exe_falls_back_when_pwsh_missing(self):
+        with patch("core.powershell._is_windows", return_value=True), patch(
+            "core.powershell.subprocess.run"
+        ) as mock_run:
+            mock_run.return_value = SimpleNamespace(returncode=1, stdout="")
+            runner = PowerShellRunner()
+        assert runner._ps_exe == PowerShellRunner.POWERSHELL_EXE
 
     def test_build_env_includes_custom_vars(self):
         runner = PowerShellRunner(env_vars={"MY_VAR": "test"})
@@ -114,7 +138,10 @@ class TestRunnerInternals:
     def test_base_args_structure(self):
         runner = PowerShellRunner()
         args = runner._base_args()
-        assert args[0] == "powershell.exe"
+        # Whichever executable this host resolved to — pwsh.exe on runners with
+        # PowerShell 7, powershell.exe elsewhere.
+        assert args[0] == runner._ps_exe
+        assert args[0] in (PowerShellRunner.PS_CORE_EXE, PowerShellRunner.POWERSHELL_EXE)
         assert "-NoProfile" in args
         assert "-NonInteractive" in args
         # -OutputFormat was removed (PS rejects "JSON" as a format value; JSON

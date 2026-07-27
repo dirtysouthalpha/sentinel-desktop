@@ -10,7 +10,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import secrets
+import sys
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -31,7 +33,30 @@ SALT_LENGTH: int = 32
 API_KEY_LENGTH: int = 32  # secrets.token_hex(32) → 64-char hex string
 SESSION_EXPIRY_SECONDS: int = 86_400  # 24 hours
 DEFAULT_ADMIN_USERNAME: str = "admin"
-DEFAULT_ADMIN_PASSWORD: str = "[REDACTED]"  # noqa: S105
+
+# Environment variable an operator can set to choose the bootstrap password
+# (useful for unattended provisioning). When unset, one is generated.
+BOOTSTRAP_PASSWORD_ENV: str = "SENTINEL_BOOTSTRAP_PASSWORD"  # noqa: S105
+
+
+def _make_bootstrap_password() -> str:
+    """Return the one-time bootstrap password for the first admin account.
+
+    Before v31 this was a constant string committed to source, so every
+    deployment shipped with the same known ADMIN credentials and the account
+    was auto-provisioned on first run. Now it is either supplied by the
+    operator via ``SENTINEL_BOOTSTRAP_PASSWORD`` or randomly generated per
+    process and surfaced exactly once (see ``AuthManager._bootstrap_admin``).
+    """
+    from_env = os.environ.get(BOOTSTRAP_PASSWORD_ENV, "").strip()
+    if from_env:
+        return from_env
+    return secrets.token_urlsafe(24)
+
+
+# Generated once per process. Not a shared secret and never committed: if the
+# admin account is bootstrapped, this value is logged once and must be rotated.
+DEFAULT_ADMIN_PASSWORD: str = _make_bootstrap_password()
 
 
 # ---------------------------------------------------------------------------
@@ -209,12 +234,35 @@ class AuthManager:
         # Load existing data or bootstrap with the default admin
         self._load()
         if not self._users:
-            logger.info("No users found — creating default admin account")
-            self.create_user(
-                username=DEFAULT_ADMIN_USERNAME,
-                password=DEFAULT_ADMIN_PASSWORD,
-                role=Role.ADMIN,
-            )
+            self._bootstrap_admin()
+
+    def _bootstrap_admin(self) -> None:
+        """Create the first ADMIN account with a one-time generated password.
+
+        The password is surfaced once — to the log and to stderr — because it
+        exists nowhere else. ``requires_password_rotation()`` stays True until
+        the operator changes it.
+        """
+        self.create_user(
+            username=DEFAULT_ADMIN_USERNAME,
+            password=DEFAULT_ADMIN_PASSWORD,
+            role=Role.ADMIN,
+        )
+        banner = (
+            "\n"
+            "=================================================================\n"
+            " Sentinel Desktop first-run: ADMIN account created\n"
+            f"   username: {DEFAULT_ADMIN_USERNAME}\n"
+            f"   password: {DEFAULT_ADMIN_PASSWORD}\n"
+            " This password is shown ONCE and is not stored anywhere in\n"
+            " plaintext. Rotate it now — until you do,\n"
+            " requires_password_rotation() reports True for this account.\n"
+            "=================================================================\n"
+        )
+        logger.warning(banner)
+        # Also go straight to stderr: the log may be suppressed or redirected
+        # and losing this password means losing the account.
+        print(banner, file=sys.stderr, flush=True)
 
     # ------------------------------------------------------------------
     # Persistence

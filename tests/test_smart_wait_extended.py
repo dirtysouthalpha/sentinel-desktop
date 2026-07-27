@@ -1,5 +1,6 @@
 """Extended tests for core/smart_wait.py — SmartWait class methods and edge cases."""
 
+import itertools
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -323,9 +324,12 @@ class TestWaitForChange:
 class TestWaitForStable:
     @patch.object(SmartWait, "_capture")
     def test_returns_success_when_stable(self, mock_capture, sw):
-        # First: baseline, then same images = stable
+        # Identical frames forever = stable. An exact-length side_effect list
+        # made this timing-dependent: how many polls fit inside stable_time
+        # varies with host speed, and one poll too many raised StopIteration
+        # (seen on windows-latest 3.10/3.11 while 3.12 passed in the same run).
         img = _solid_image()
-        mock_capture.side_effect = [img, img.copy(), img.copy()]
+        mock_capture.side_effect = lambda *a, **k: img.copy()
         result = sw.wait_for_stable(timeout=2, stable_time=0.1, interval=0.05)
         assert result.success is True
 
@@ -336,10 +340,13 @@ class TestWaitForStable:
 
     @patch.object(SmartWait, "_capture")
     def test_timeout_when_never_stable(self, mock_capture, sw):
-        # Alternate between two images = never stable
-        a = _solid_image((100, 100, 100))
-        b = _different_image((200, 200, 200))
-        mock_capture.side_effect = [a, b, a, b, a, b, a, b]
+        # Alternate between two images forever = never stable. Cycled rather
+        # than a fixed-length list so a slow host cannot exhaust it and turn a
+        # timeout assertion into StopIteration.
+        frames = itertools.cycle(
+            [_solid_image((100, 100, 100)), _different_image((200, 200, 200))]
+        )
+        mock_capture.side_effect = lambda *a, **k: next(frames)
         result = sw.wait_for_stable(timeout=0.3, stable_time=0.2, interval=0.05)
         assert result.success is False
 
@@ -355,8 +362,9 @@ class TestWaitForStable:
 
     @patch.object(SmartWait, "_capture")
     def test_change_score_on_success(self, mock_capture, sw):
+        # Unbounded for the same reason as test_returns_success_when_stable.
         img = _solid_image()
-        mock_capture.side_effect = [img, img.copy(), img.copy()]
+        mock_capture.side_effect = lambda *a, **k: img.copy()
         result = sw.wait_for_stable(timeout=2, stable_time=0.1, interval=0.05)
         assert isinstance(result.change_score, float)
 
