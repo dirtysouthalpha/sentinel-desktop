@@ -1231,16 +1231,35 @@ class SettingsWindow:
         self.base_url_var.set(PROVIDERS.get(provider, {}).get("base_url", ""))
 
     def _detect_models(self) -> None:
-        """Fetch available models from the selected provider."""
-        from core.provider_registry import fetch_models
+        """Fetch available models from the selected provider.
 
+        ``fetch_models`` performs a network round-trip. Running it inline on the
+        Tk thread (pre-v31) froze the settings window until the HTTP call
+        returned or timed out, so it runs on a worker and marshals the result
+        back with ``after()``.
+        """
         provider = self.provider_var.get()
         api_key = self.api_key_entry.get().strip()
         if not api_key:
             self.model_var.set("Enter API key first")
             return
 
-        models = fetch_models(provider, api_key)
+        self.model_entry.configure(placeholder_text="Detecting models…")
+
+        def _worker() -> None:
+            from core.provider_registry import fetch_models
+
+            try:
+                models = fetch_models(provider, api_key)
+            except Exception as exc:  # network/parse failures must not kill the thread
+                logger.debug("Model detection failed for %s: %s", provider, exc)
+                models = []
+            self.win.after(0, self._apply_detected_models, models)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _apply_detected_models(self, models: list[str]) -> None:
+        """Apply the result of a background model detection (Tk thread only)."""
         if models:
             self.model_var.set(models[0] if len(models) == 1 else "")
             # Show first few in a tooltip-like message
