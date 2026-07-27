@@ -2,13 +2,15 @@ from setuptools import setup, find_packages
 
 setup(
     name="sentinel-desktop",
-    version="30.0.0",
+    version="31.0.0",
     description="AI-powered Windows desktop automation assistant",
     author="Sentinel Prime",
     author_email="dev@dirtysouthalpha.com",
     url="https://github.com/dirtysouthalpha/sentinel-desktop",
     packages=find_packages(),
-    python_requires=">=3.8",
+    # Must match pyproject.toml's requires-python (was ">=3.8", which
+    # contradicted it and made the 3.9 CI matrix entry look supported).
+    python_requires=">=3.10",
     install_requires=[
         "customtkinter>=5.0.0",
         "pyautogui>=0.9.54",
