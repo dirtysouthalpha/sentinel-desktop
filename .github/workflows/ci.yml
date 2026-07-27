@@ -10,9 +10,14 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
+      # Report every combination instead of cancelling siblings on the first
+      # failure — one red cell used to hide the state of the other eight.
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        # pyproject.toml declares requires-python >= 3.10, so 3.9 could never
+        # resolve `pip install -e .` and only produced misleading failures.
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +30,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest psutil requests
+          # pytest-asyncio is required: pyproject sets `--strict-markers`, so
+          # without it every @pytest.mark.asyncio test became a hard collection
+          # error ("'asyncio' not found in `markers`") and aborted the run.
+          pip install pytest pytest-asyncio psutil requests
           pip install -e . || true
 
       - name: Run tests
@@ -46,8 +54,13 @@ jobs:
         run: pip install flake8
 
       - name: Lint with flake8
+        # NB: `src/` is not tracked in this repo (it holds only gitignored
+        # __pycache__ dirs), so linting it failed with E902 FileNotFoundError on
+        # every run. Lint the real packages instead.
         run: |
-          # Stop the build on syntax errors
-          flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Exit-zero treats all errors as warnings
-          flake8 src/ --count --exit-zero --max-line-length=120 --statistics
+          # Stop the build on syntax errors and undefined names
+          flake8 core api gui tests main.py config.py setup.py \
+            --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Exit-zero treats all other findings as warnings
+          flake8 core api gui tests main.py config.py setup.py \
+            --count --exit-zero --max-line-length=120 --statistics
