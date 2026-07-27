@@ -2,9 +2,10 @@
 Process Management Commands
 Open/close applications, manage running processes.
 """
-import subprocess
-import platform
 import os
+import platform
+import subprocess
+
 from core.legacy_engine import CommandResult
 
 try:
@@ -27,11 +28,20 @@ class ProcessCommands:
             else:
                 subprocess.Popen([name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return CommandResult(True, f"Opening: {name}")
-        except Exception as e:
-            # Fallback: try subprocess
+        except Exception:
+            # Fallback: try subprocess.
+            # On Windows, shell=True with a list flattens the list into a
+            # single cmd.exe command line, so `name` reached the shell as code
+            # (`open "foo & calc"` ran calc). Pass the name as an argument to
+            # cmd.exe's own `start` instead, and reject shell metacharacters.
             try:
                 if is_win:
-                    subprocess.Popen(["start", "", name], shell=True)
+                    if any(c in name for c in '&|<>^"\r\n\x00'):
+                        return CommandResult(False, f"Unsafe application name: {name!r}")
+                    subprocess.Popen(
+                        ["cmd.exe", "/c", "start", "", name],
+                        shell=False,
+                    )
                 else:
                     subprocess.Popen([name])
                 return CommandResult(True, f"Opening: {name}")

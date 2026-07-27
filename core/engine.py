@@ -73,6 +73,10 @@ APPROVAL_REQUIRED_ACTIONS = {
     "hotkey",
     "scroll",
     "open_app",
+    # smart_open launches an arbitrary program (and falls back to PowerShell
+    # Start-Process). It is in STATE_CHANGING_ACTIONS but was missing here
+    # pre-v31, so it slipped past the approval gate entirely.
+    "smart_open",
     "start_process",
     "close_app",
     "kill_process",

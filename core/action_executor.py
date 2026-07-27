@@ -854,12 +854,27 @@ class ActionExecutor:
         if result.get("success"):
             return result
 
-        # Fallback: PowerShell Start-Process
+        # Fallback: PowerShell Start-Process.
+        # ``name`` is agent/LLM-supplied, so it must be quoted as a PowerShell
+        # literal. Interpolating it raw into f"Start-Process '{name}'" (pre-v31)
+        # let a single quote in the name close the string and append arbitrary
+        # PowerShell — e.g. name="x'; calc; '".
         import subprocess
+
+        from core.powershell import _ps_escape_single_quoted
+
+        try:
+            ps_name = _ps_escape_single_quoted(name)
+        except (TypeError, ValueError) as exc:
+            return {
+                "success": False,
+                "output": f"smart_open rejected unsafe app name: {exc}",
+                "error": "unsafe_app_name",
+            }
 
         try:
             subprocess.Popen(
-                ["powershell", "-Command", f"Start-Process '{name}'"],
+                ["powershell", "-NoProfile", "-Command", f"Start-Process {ps_name}"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

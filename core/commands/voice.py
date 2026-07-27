@@ -1,8 +1,10 @@
 """Voice command integration - speech-to-text and text-to-speech."""
-import subprocess
 import platform
 import shutil
+import subprocess
+
 from core.legacy_engine import CommandResult
+from core.powershell import _ps_escape_single_quoted
 
 
 class VoiceCommands:
@@ -28,7 +30,8 @@ class VoiceCommands:
         """Detect available STT engine."""
         if shutil.which("whisper"):
             return "whisper"
-        if shutil.which(" pocketsphinx_continuous"):
+        # NB: this had a leading space pre-v31, so the lookup could never hit.
+        if shutil.which("pocketsphinx_continuous"):
             return "pocketsphinx"
         return "none"
 
@@ -45,8 +48,21 @@ class VoiceCommands:
             elif engine == "say":
                 subprocess.Popen(["say", text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             elif engine == "sapi":
-                ps_cmd = f"Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{text}')"
-                subprocess.Popen(["powershell", "-command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # A single quote in *text* closed the literal and appended
+                # arbitrary PowerShell pre-v31; escape it properly.
+                try:
+                    ps_text = _ps_escape_single_quoted(text)
+                except (TypeError, ValueError) as exc:
+                    return CommandResult(False, f"Unsafe speech text: {exc}")
+                ps_cmd = (
+                    "Add-Type -AssemblyName System.Speech; "
+                    f"(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak({ps_text})"
+                )
+                subprocess.Popen(
+                    ["powershell", "-NoProfile", "-command", ps_cmd],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             return CommandResult(True, f"Speaking: {text[:50]}")
         except FileNotFoundError:
             return CommandResult(False, "TTS engine not found")
