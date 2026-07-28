@@ -5,15 +5,36 @@ Real-time system health metrics endpoint.
 
 from __future__ import annotations
 
+import hmac
+import os
 import platform
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+API_TOKEN_ENV = "SENTINEL_API_TOKEN"  # noqa: S105
+
+
+def require_token(authorization: str | None = Header(default=None)) -> None:
+    """Gate an endpoint behind the bearer token when one is configured.
+
+    This router is mounted with ``include_router`` and therefore never passed
+    through ``APIServer._check_auth``, so its endpoints had no authentication at
+    all. Mirrors that method's contract: a no-op when no token is set (a purely
+    local install keeps working), enforced when one is, and compared in constant
+    time.
+    """
+    token = os.environ.get(API_TOKEN_ENV)
+    if not token:
+        return
+    expected = f"Bearer {token}"
+    if not authorization or not hmac.compare_digest(authorization, expected):
+        raise HTTPException(401, "Missing or invalid Authorization header")
 
 # ─── System Metrics ───────────────────────────────────────────────────────
 
@@ -126,9 +147,16 @@ def _count_log_entries() -> dict[str, int]:
 # ─── Endpoints ───────────────────────────────────────────────────────────────
 
 
-@router.get("/overview")
+@router.get("/overview", dependencies=[Depends(require_token)])
 async def dashboard_overview() -> dict[str, Any]:
-    """Full system dashboard overview."""
+    """Full system dashboard overview.
+
+    Authenticated: unlike the liveness endpoints below, this returns hostname,
+    OS and Python versions, CPU model, RAM, GPU list and every disk mount with
+    its size - i.e. host reconnaissance. It was previously reachable without a
+    token even while the far less revealing /status ({"running": false,
+    "step": 0, ...}) required one.
+    """
     uptime_seconds = int(time.time() - _start_time)
     hours, remainder = divmod(uptime_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)

@@ -627,7 +627,12 @@ class SentinelServer:
         return {"screenshot": b64, "format": "png", "encoding": "base64"}
 
     async def _handle_status(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
-        self._check_auth(authorization)
+        # Intentionally unauthenticated: this returns only agent-loop liveness
+        # ({"running": false, "step": 0, "max_steps": 100, "notes_count": 0}) and
+        # is what fleet monitors poll. Gating it broke fleet health checks across
+        # the mesh while /dashboard/overview - hostname, OS, CPU, RAM, disks -
+        # stayed wide open, i.e. the gating was inverted. The recon endpoint is
+        # now the authenticated one; see core.dashboard.require_token.
         if self.engine:
             return {
                 "running": self.engine.running,
