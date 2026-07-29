@@ -164,29 +164,50 @@ class CodeAuditor:
         return findings
 
     def _check_missing_logging(self, tree: ast.AST, rel_path: str) -> list[Finding]:
-        """Find public functions that have no logging calls at all."""
+        """Find public functions that do I/O but have no logging calls.
+
+        Only flags functions that perform file/network/process I/O without
+        any logging — a real observability gap. Pure computation functions
+        are not flagged.
+        """
+        # Patterns that indicate I/O side effects.
+        IO_ATTRS = {"open", "read", "write", "close", "connect", "send", "recv"}
+        IO_MODULES = {"urllib", "requests", "subprocess", "shutil", "socket", "httpx", "aiohttp"}
+        IO_FUNCS = {"open", "print"}  # print often used for side-effect output
+
         findings = []
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                # Skip private/single-line functions.
                 if node.name.startswith("_") or len(node.body) < 3:
                     continue
-                # Check if any call in the function body is a logging call.
+
                 has_logging = False
+                has_io = False
                 for child in ast.walk(node):
                     if isinstance(child, ast.Call):
                         func = child.func
+                        # Check for logging.
                         if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
                             if func.value.id == "logger" and func.attr in ("info", "warning", "error", "debug"):
                                 has_logging = True
-                                break
-                if not has_logging:
+                        # Check for I/O: obj.method() patterns.
+                        if isinstance(func, ast.Attribute) and func.attr in IO_ATTRS:
+                            has_io = True
+                        # Check for I/O: module.func() patterns.
+                        if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+                            if func.value.id in IO_MODULES:
+                                has_io = True
+                        # Check for bare I/O function calls.
+                        if isinstance(func, ast.Name) and func.id in IO_FUNCS:
+                            has_io = True
+
+                if has_io and not has_logging:
                     findings.append(Finding(
                         category=FindingCategory.MISSING_LOGGING,
                         severity=FindingSeverity.LOW,
                         file_path=rel_path,
                         line_number=node.lineno,
-                        description=f"Public function '{node.name}' has no logging calls",
+                        description=f"Public function '{node.name}' does I/O without logging",
                         suggestion=f"Add logging to '{node.name}' for observability",
                     ))
         return findings
@@ -202,18 +223,22 @@ class CodeAuditor:
             (r"\.register_node\(", "Method '.register_node()' may not exist (use 'elect_leader()')"),
         ]
         for i, line in enumerate(source.splitlines(), 1):
+            # Skip comment lines and test files.
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if "/tests/" in rel_path:
+                continue
             for pattern, desc in mismatch_patterns:
                 if re.search(pattern, line):
-                    # Only flag in non-test files (tests may intentionally test wrong APIs).
-                    if "/tests/" not in rel_path:
-                        findings.append(Finding(
-                            category=FindingCategory.API_MISMATCH,
-                            severity=FindingSeverity.HIGH,
-                            file_path=rel_path,
-                            line_number=i,
-                            description=desc,
-                            suggestion=f"Verify API exists; {desc}",
-                        ))
+                    findings.append(Finding(
+                        category=FindingCategory.API_MISMATCH,
+                        severity=FindingSeverity.HIGH,
+                        file_path=rel_path,
+                        line_number=i,
+                        description=desc,
+                        suggestion=f"Verify API exists; {desc}",
+                    ))
         return findings
 
 
