@@ -40,6 +40,23 @@ Vision-driven desktop automation agent. Give it a goal in plain English, it sees
 - **tests/** — pytest suite with 138 test files
 - Multi-provider LLM support (20+ providers including OpenAI, Anthropic, Google, xAI, Z.ai GLM-5)
 
+## Fleet Mesh (vNext)
+
+The `core/mesh/` package implements distributed fleet orchestration:
+- **Event Bus** (`event_bus.py`) — WebSocket pub/sub for inter-node events
+- **Node Identity** (`node.py`) — Node capabilities, priority, heartbeat
+- **Leader Election** (`leader_election.py`) — Lease-based, priority-ordered
+- **Task Graph** (`task_graph.py`) — Task model, dependencies, checkpointing
+- **Orchestrator** (`orchestrator.py`) — Plan→delegate→execute→remember loop
+- **Cache** (`cache.py`) — Local SQLite state cache for resilience
+- **Recovery** (`recovery.py`) — Self-recovery ladder with failure classification
+- **Digest** (`digest.py`) — Daily digest generation
+- **Budget** (`budget.py`) — Task budget caps
+- **Trust Dial** (`trust_dial.py`) — Per-action-type autonomy levels
+- **Partition** (`partition.py`) — Vector clocks, conflict resolution
+
+Run with `--mesh` flag to enable fleet mesh mode.
+
 ## Completed Features (May 15–17 Grind)
 - ✅ Popup handler — automatic dialog detection and dismissal (57 tests)
 - ✅ Workflow builder API endpoints and system dashboard router
