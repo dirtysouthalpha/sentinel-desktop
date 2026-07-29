@@ -69,7 +69,43 @@ class TaskGraph:
             Path(self.checkpoint_dir).mkdir(parents=True, exist_ok=True)
 
     def add_task(self, task: Task) -> None:
+        # Check for self-dependency
+        if task.id in task.depends_on:
+            raise ValueError(f"Task {task.id} cannot depend on itself")
+        # Temporarily add and check for cycles
+        existing = task.id in self.tasks
         self.tasks[task.id] = task
+        if self._has_cycle():
+            if not existing:
+                del self.tasks[task.id]
+            raise ValueError(f"Adding task {task.id} would create a dependency cycle")
+
+    def _has_cycle(self) -> bool:
+        """Detect cycles in the task dependency graph using DFS."""
+        visited: set[str] = set()
+        rec_stack: set[str] = set()
+
+        def dfs(node_id: str) -> bool:
+            visited.add(node_id)
+            rec_stack.add(node_id)
+            node_task = self.tasks.get(node_id)
+            if node_task:
+                for dep_id in node_task.depends_on:
+                    if dep_id not in self.tasks:
+                        continue  # Missing dependency — handled by is_ready
+                    if dep_id not in visited:
+                        if dfs(dep_id):
+                            return True
+                    elif dep_id in rec_stack:
+                        return True
+            rec_stack.discard(node_id)
+            return False
+
+        for task_id in self.tasks:
+            if task_id not in visited:
+                if dfs(task_id):
+                    return True
+        return False
 
     def get_task(self, task_id: str) -> Task | None:
         return self.tasks.get(task_id)
