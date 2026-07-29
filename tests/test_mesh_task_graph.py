@@ -63,3 +63,17 @@ class TestTaskGraph:
             assert loaded is not None
             assert loaded["id"] == "t1"
             assert loaded["retry_count"] == 2
+
+    def test_cycle_detection(self):
+        graph = TaskGraph()
+        t1 = Task(id="a", type="test", goal="a", depends_on=["b"])
+        t2 = Task(id="b", type="test", goal="b", depends_on=["a"])
+        graph.add_task(t1)
+        with pytest.raises(ValueError, match="cycle"):
+            graph.add_task(t2)
+
+    def test_self_dependency_rejected(self):
+        graph = TaskGraph()
+        t = Task(id="a", type="test", goal="a", depends_on=["a"])
+        with pytest.raises(ValueError, match="itself"):
+            graph.add_task(t)

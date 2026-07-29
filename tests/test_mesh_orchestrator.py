@@ -54,3 +54,20 @@ class TestOrchestrator:
         plan_id = orch.create_plan("test", [task])
         orch.fail_task(plan_id, "t1", "permanent error")
         assert task.status == TaskStatus.FAILED
+
+    def test_plan_status(self, tmp_path):
+        orch, bus, cache = make_orchestrator(str(tmp_path))
+        tasks = [
+            Task(id="t1", type="reasoning", goal="a"),
+            Task(id="t2", type="reasoning", goal="b", max_retries=0),
+            Task(id="t3", type="reasoning", goal="c"),
+        ]
+        plan_id = orch.create_plan("test", tasks)
+        orch.complete_task(plan_id, "t1", {"result": "ok"})
+        orch.fail_task(plan_id, "t2", "error")
+        status = orch.get_plan_status(plan_id)
+        assert status["total"] == 3
+        assert status["completed"] == 1
+        assert status["failed"] == 1
+        assert status["pending"] == 1
+        assert status["is_complete"] is False

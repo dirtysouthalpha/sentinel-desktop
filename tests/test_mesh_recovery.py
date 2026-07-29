@@ -46,3 +46,10 @@ class TestRecoveryManager:
         n1 = make_node("n1")
         n1.heartbeat()
         assert mgr.select_fallback_node(current_node_id="n1", available_nodes=[n1]) is None
+
+    def test_retry_delay_exponential(self):
+        mgr = RecoveryManager()
+        assert mgr.get_retry_delay(0) == 1.0
+        assert mgr.get_retry_delay(1) == 2.0
+        assert mgr.get_retry_delay(2) == 4.0
+        assert mgr.get_retry_delay(3) == 8.0
