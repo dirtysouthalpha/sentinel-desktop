@@ -222,6 +222,15 @@ class SentinelApp:
                 text_color=self._t("text_secondary", "#b9cacb"),
             ).pack(pady=20)
 
+        # Fleet Mesh tab (optional — only if mesh is available)
+        try:
+            from gui.tabs.fleet_tab import FleetTab
+
+            tab_fleet = self.tabview.add("🛰️ Fleet")
+            self.fleet_tab = FleetTab(tab_fleet, self)
+        except ImportError as e:
+            logger.debug("Fleet tab not available: %s", e)
+
     def _build_main_area_into(self, parent: ctk.CTkFrame) -> None:
         """Build the original main area content into a given parent frame."""
         main = ctk.CTkFrame(parent, fg_color="transparent")
