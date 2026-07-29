@@ -20,13 +20,14 @@ Modules:
 
 from core.mesh.event_bus import EventBus
 from core.mesh.leader_election import LeaderElection
-from core.mesh.node import MeshNode, NodeCapabilities
+from core.mesh.node import MeshNode, NodeCapabilities, NodePriority
 from core.mesh.orchestrator import Orchestrator
 
 __all__ = [
     "EventBus",
     "MeshNode",
     "NodeCapabilities",
+    "NodePriority",
     "LeaderElection",
     "Orchestrator",
 ]
