@@ -27,15 +27,53 @@ class FleetTab:
         self._start_polling()
 
     def _subscribe_events(self) -> None:
-        """Subscribe to fleet events for live metrics updates."""
+        """Subscribe to fleet events for live real-time updates."""
         bus = getattr(self.app, "_fleet_bus", None)
         if bus is not None:
             bus.subscribe(FleetEvent.NODE_METRICS, self._on_metrics)
+            bus.subscribe(FleetEvent.TASK_COMPLETED, self._on_task_event)
+            bus.subscribe(FleetEvent.TASK_FAILED, self._on_task_event)
+            bus.subscribe(FleetEvent.TASK_ASSIGNED, self._on_task_event)
+            bus.subscribe(FleetEvent.NODE_JOINED, self._on_node_event)
+            bus.subscribe(FleetEvent.NODE_LEFT, self._on_node_event)
 
     async def _on_metrics(self, envelope: dict[str, Any]) -> None:
         """Handle incoming NODE_METRICS event."""
         data = envelope.get("data", {})
         self._metrics_aggregator.update(data)
+        self._update_metrics_label()
+
+    async def _on_task_event(self, envelope: dict[str, Any]) -> None:
+        """Handle task lifecycle events — update UI in real-time."""
+        data = envelope.get("data", {})
+        task_id = data.get("task_id", "?")
+        event_type = envelope.get("type", "?")
+        self.add_event(f"[{event_type}] task={task_id}")
+
+    async def _on_node_event(self, envelope: dict[str, Any]) -> None:
+        """Handle node join/left events — update UI in real-time."""
+        data = envelope.get("data", {})
+        node_id = data.get("node_id", "?")
+        event_type = envelope.get("type", "?")
+        self.add_event(f"[{event_type}] node={node_id}")
+
+    def _update_metrics_label(self) -> None:
+        """Update the metrics label from the aggregator (thread-safe)."""
+        try:
+            if hasattr(self.app, 'root') and self.app.root is not None:
+                self.app.root.after(0, self._do_update_metrics_label)
+        except RuntimeError:
+            pass
+
+    def _do_update_metrics_label(self) -> None:
+        """Actually update the metrics label on the main thread."""
+        summary = self._metrics_aggregator.get_fleet_summary()
+        if summary["total_nodes"] > 0:
+            self._metrics_label.configure(
+                text=f"Fleet CPU: {summary['avg_cpu']:.0f}% | "
+                     f"Mem: {summary['avg_memory']:.0f}% | "
+                     f"Healthy: {summary['healthy_nodes']}/{summary['total_nodes']}"
+            )
 
     def _build_ui(self) -> None:
         """Build the fleet dashboard UI."""
