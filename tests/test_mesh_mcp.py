@@ -23,13 +23,16 @@ def server(metrics):
 class TestFleetMCPServer:
     def test_list_tools(self, server):
         tools = server.list_tools()
-        assert len(tools) == 5
+        assert len(tools) == 8
         names = [t["name"] for t in tools]
         assert "fleet_status" in names
         assert "list_nodes" in names
         assert "create_plan" in names
         assert "deploy_task" in names
         assert "get_metrics" in names
+        assert "get_plans" in names
+        assert "get_events" in names
+        assert "inject_failure" in names
 
     @pytest.mark.asyncio
     async def test_tool_fleet_status(self, server):
