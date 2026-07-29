@@ -25,10 +25,12 @@ class TestEventBus:
 
         bus.subscribe("fleet.event.task.completed", handler)
         await bus.publish("fleet.event.task.completed", {"task_id": "t1", "result": "ok"})
-        await asyncio.sleep(0.01)  # let async handler run
 
         assert len(received) == 1
-        assert received[0]["task_id"] == "t1"
+        assert received[0]["type"] == "fleet.event.task.completed"
+        assert "event_id" in received[0]
+        assert "timestamp" in received[0]
+        assert received[0]["data"]["task_id"] == "t1"
 
     @pytest.mark.asyncio
     async def test_subscriber_receives_only_its_events(self):
@@ -41,7 +43,6 @@ class TestEventBus:
 
         bus.subscribe("fleet.event.task.completed", handler)
         await bus.publish("fleet.event.task.failed", {"task_id": "t2"})
-        await asyncio.sleep(0.01)
 
         assert len(received) == 0
 
@@ -55,7 +56,40 @@ class TestEventBus:
         bus.subscribe("fleet.event.node.heartbeat", lambda evt: a.append(evt))
         bus.subscribe("fleet.event.node.heartbeat", lambda evt: b.append(evt))
         await bus.publish("fleet.event.node.heartbeat", {"node_id": "n1"})
-        await asyncio.sleep(0.01)
 
         assert len(a) == 1
         assert len(b) == 1
+
+    @pytest.mark.asyncio
+    async def test_handler_exception_does_not_block_others(self):
+        """A raising handler does not prevent other subscribers from receiving the event."""
+        bus = EventBus()
+        received: list[dict] = []
+
+        async def bad_handler(event: dict) -> None:
+            raise RuntimeError("boom")
+
+        async def good_handler(event: dict) -> None:
+            received.append(event)
+
+        bus.subscribe("fleet.event.task.created", bad_handler)
+        bus.subscribe("fleet.event.task.created", good_handler)
+        await bus.publish("fleet.event.task.created", {"task_id": "t3"})
+
+        assert len(received) == 1
+        assert received[0]["data"]["task_id"] == "t3"
+
+    @pytest.mark.asyncio
+    async def test_unsubscribe(self):
+        """Unsubscribed handler no longer receives events."""
+        bus = EventBus()
+        received: list[dict] = []
+
+        async def handler(event: dict) -> None:
+            received.append(event)
+
+        bus.subscribe("fleet.event.plan.created", handler)
+        bus.unsubscribe("fleet.event.plan.created", handler)
+        await bus.publish("fleet.event.plan.created", {"plan_id": "p1"})
+
+        assert len(received) == 0

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -51,7 +53,6 @@ class EventBus:
 
     def __init__(self) -> None:
         self._subscribers: dict[str, list[EventHandler]] = {}
-        self._lock = asyncio.Lock()
 
     def subscribe(self, event_type: str, handler: EventHandler) -> None:
         """Register *handler* for *event_type*."""
@@ -69,14 +70,23 @@ class EventBus:
     async def publish(self, event_type: str, data: dict[str, Any]) -> None:
         """Publish an event to all subscribers.
 
-        Handlers run concurrently; exceptions are logged but don't block.
+        Data is wrapped in an envelope containing the event type, a unique
+        id, and a UTC timestamp. Handlers run concurrently; exceptions are
+        logged but don't block.
         """
         handlers = list(self._subscribers.get(event_type, []))
         if not handlers:
             return
 
+        envelope: dict[str, Any] = {
+            "type": event_type,
+            "event_id": str(uuid.uuid4()),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": data,
+        }
+
         results = await asyncio.gather(
-            *[self._safe_call(h, data) for h in handlers],
+            *[self._safe_call(h, envelope) for h in handlers],
             return_exceptions=True,
         )
         for result in results:
