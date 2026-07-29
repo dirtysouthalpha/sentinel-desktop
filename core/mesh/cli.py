@@ -5,6 +5,8 @@ import argparse
 import asyncio
 import json
 import logging
+import os
+from pathlib import Path
 from typing import Any
 
 from core.mesh.event_bus import EventBus, FleetEvent
@@ -69,6 +71,21 @@ def create_parser() -> argparse.ArgumentParser:
     p_logs.add_argument("--limit", type=int, default=20, help="Number of events")
     p_logs.add_argument("--format", choices=["text", "json"], default="text")
 
+    # empire
+    p_empire = subparsers.add_parser("empire", help="Run an empire analytics plan")
+    p_empire.add_argument("--format", choices=["text", "json"], default="text")
+
+    # audit
+    p_audit = subparsers.add_parser("audit", help="Run self-improvement code audit")
+    p_audit.add_argument("--format", choices=["text", "json"], default="text")
+
+    # evals
+    p_evals = subparsers.add_parser("evals", help="Run golden eval suite")
+    p_evals.add_argument("--format", choices=["text", "json"], default="text")
+
+    # version
+    p_version = subparsers.add_parser("version", help="Show fleet version info")
+
     return parser
 
 
@@ -89,7 +106,14 @@ class FleetCLI:
 
     def execute(self, args: list[str] | None = None) -> str:
         """Execute a CLI command and return the output."""
-        parsed = self.parser.parse_args(args)
+        try:
+            parsed = self.parser.parse_args(args)
+        except SystemExit as exc:
+            # argparse raises SystemExit(0) for --help (let it through)
+            # and SystemExit(2) for unknown subcommands (friendly message).
+            if exc.code == 0:
+                raise
+            return f"Unknown command. Run 'fleet --help' for available commands."
 
         if not parsed.command:
             self.parser.print_help()
@@ -242,6 +266,109 @@ class FleetCLI:
             summary = ", ".join(f"{k}={v}" for k, v in list(data.items())[:3])
             lines.append(f"  {evt_type}: {summary}")
         return "\n".join(lines)
+
+
+    def cmd_empire(self, args: argparse.Namespace) -> str:
+        """Run an empire analytics plan (yt-stats, alpaca-pnl, buffer-metrics → score → narrative)."""
+        from core.mesh.empire_tasks import (
+            handle_alpaca_pnl,
+            handle_buffer_metrics,
+            handle_empire_score,
+            handle_narrative,
+            handle_yt_stats,
+        )
+
+        import asyncio
+
+        # Execute data tasks (stub mode if no credentials).
+        yt = asyncio.run(handle_yt_stats({"params": {}}))
+        alpaca = asyncio.run(handle_alpaca_pnl({"params": {"include_positions": False}}))
+        buffer = asyncio.run(handle_buffer_metrics({"params": {}}))
+
+        # Aggregate score.
+        score = asyncio.run(handle_empire_score({"params": {
+            "dependency_results": {"yt-stats": yt, "alpaca-pnl": alpaca, "buffer-metrics": buffer},
+        }}))
+
+        # Narrative.
+        narrative = asyncio.run(handle_narrative({"params": {
+            "dependency_results": {"empire-score": score},
+            "tone": "professional",
+        }}))
+
+        result = {
+            "yt_stats": yt,
+            "alpaca_pnl": alpaca,
+            "buffer_metrics": buffer,
+            "empire_score": score["total_score"],
+            "components": score["components"],
+            "narrative": narrative["narrative"],
+        }
+        if args.format == "json":
+            return json.dumps(result, indent=2, default=str)
+        lines = [
+            "EMPIRE ANALYTICS PLAN",
+            "=" * 40,
+            f"  Empire Score: {score['total_score']}/100",
+            f"  YT: views={yt.get('views', 'n/a')}, subs={yt.get('subscribers', 'n/a')}",
+            f"  Alpaca: equity={alpaca.get('equity', 'n/a')}, P&L={alpaca.get('unrealized_pl', 'n/a')}",
+            f"  Buffer: posts={buffer.get('posts', 'n/a')}",
+            f"  Narrative: {narrative['narrative']}",
+        ]
+        return "\n".join(lines)
+
+    def cmd_audit(self, args: argparse.Namespace) -> str:
+        """Run the self-improvement code audit."""
+        import os
+
+        from core.mesh.self_improvement import SelfImprovementLoop
+
+        # Resolve project root (core/cli.py → project root is 2 levels up).
+        project_root = str(Path(os.path.abspath(__file__)).parent.parent.parent)
+        loop = SelfImprovementLoop(project_root)
+        report = loop.run()
+        if args.format == "json":
+            return json.dumps(
+                {"findings": len(report.findings), "proposals": len(report.proposals),
+                 "executed": len(report.executed), "verified": len(report.verified),
+                 "summary": report.summary},
+                indent=2,
+            )
+        lines = [
+            "SELF-IMPROVEMENT AUDIT",
+            "=" * 40,
+            report.summary,
+            "",
+            "TOP FINDINGS:",
+        ]
+        for f in sorted(report.findings, key=lambda x: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(x.severity.value, 9))[:5]:
+            lines.append(f"  [{f.severity.value.upper()}] {f.file_path}:{f.line_number}  {f.description[:60]}")
+        return "\n".join(lines)
+
+    def cmd_evals(self, args: argparse.Namespace) -> str:
+        """Run the golden eval suite."""
+        from core.mesh.golden_evals import suite
+
+        report = suite.run()
+        if args.format == "json":
+            results = [{"name": r.name, "component": r.component.value, "passed": r.passed, "message": r.message} for r in report.results]
+            return json.dumps({"total": report.total, "passed": report.passed, "failed": report.failed, "pass_rate": report.pass_rate, "results": results}, indent=2)
+        return report.summary()
+
+    def cmd_version(self, args: argparse.Namespace) -> str:
+        """Show fleet version info."""
+        import importlib
+
+        core_mod = importlib.import_module("core")
+        version = getattr(core_mod, "__version__", "unknown")
+        mesh_mod = importlib.import_module("core.mesh")
+        mod_count = len(getattr(mesh_mod, "__all__", [])) or len([n for n in dir(mesh_mod) if not n.startswith("_")])
+        return (
+            f"Sentinel Fleet Mesh v{version}\n"
+            f"CLI: 1.0.0\n"
+            f"Mesh: Phase 6\n"
+            f"Components: {mod_count} modules"
+        )
 
 
 def main(args: list[str] | None = None) -> str:
