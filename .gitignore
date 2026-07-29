@@ -71,3 +71,8 @@ start_api_bg.bat
 installer/output/
 *.bak-*
 *.py.bak-*
+*.db
+*.db-shm
+*.db-wal
+memory/
+sentinel-desktop/

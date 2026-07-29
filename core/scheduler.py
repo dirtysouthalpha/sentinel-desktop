@@ -322,6 +322,10 @@ class TaskScheduler:
                 cron_expr = self._tasks[task_id].get("cron_expr", "")
                 self._tasks[task_id]["next_run"] = _next_run_after(cron_expr, now).isoformat()
 
+        # Honor on_complete directive (disable/remove) — same as the
+        # background scheduler loop does in _tick().
+        self._handle_on_complete(task_copy, result)
+
         self.save()
         return result
 
