@@ -143,6 +143,7 @@ def main():
         from core.mesh.self_recovery import SelfRecoveryLadder
         from core.mesh.digest_scheduler import DigestPipeline
 
+        import logging
         logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
         logger = logging.getLogger("mesh")
 
