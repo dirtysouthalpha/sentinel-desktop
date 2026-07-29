@@ -91,17 +91,18 @@ async def _run_mesh_node_full(
     # Start watcher + recovery
     recovery.start()
 
-    # Start metrics reporter (every 60s)
-    reporter = MetricsReporter(metrics_agg, metrics_collector, interval=60, node_id=node.node_id)
-
     logger.info("Mesh node fully started — listening, executing, watching, recovering")
 
-    # Main loop: heartbeats + metrics + digest
+    # Main loop: heartbeats + metrics
+    tick_count = 0
     try:
         while True:
             node.heartbeat()
-            await reporter.tick()
-            # Generate digest every 24h (86400s) — simplified to check each loop
+            # Report metrics every 60s (every 4th tick at 15s interval)
+            tick_count += 1
+            if tick_count % 4 == 0:
+                data = metrics_collector.collect()
+                metrics_agg.update(data)
             await asyncio.sleep(15)
     except asyncio.CancelledError:
         pass
@@ -139,7 +140,7 @@ def main():
         from core.mesh.transport import WebSocketTransport
         from core.mesh.executor import TaskExecutor
         from core.mesh.watcher import SelfHealingWatcher, WatcherConfig
-        from core.mesh.metrics import MetricsCollector, MetricsReporter, FleetMetricsAggregator
+        from core.mesh.metrics import MetricsCollector, FleetMetricsAggregator
         from core.mesh.memory import NeuralisMemory
         from core.mesh.self_recovery import SelfRecoveryLadder
         from core.mesh.digest_scheduler import DigestPipeline
