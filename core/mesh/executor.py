@@ -6,6 +6,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from core.action_executor import ActionExecutor
+from core.llm_client import LLMClient
 from core.mesh.event_bus import EventBus, FleetEvent
 from core.mesh.node import NodeCapabilities
 
@@ -23,17 +25,35 @@ class TaskExecutor:
         node_id: str,
         bus: EventBus,
         capabilities: NodeCapabilities,
+        llm_config: dict[str, str] | None = None,
     ) -> None:
         self.node_id = node_id
         self.bus = bus
         self.capabilities = capabilities
+        self.llm_config = llm_config or {}
         self._handlers: dict[str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]] = {
             "shell": self._exec_shell,
             "python": self._exec_python,
             "action": self._exec_action,
             "llm": self._exec_llm,
         }
+        self._executor: ActionExecutor | None = None  # lazy-init
+        self._llm: LLMClient | None = None  # lazy-init
         self._running = False
+
+    @property
+    def action_executor(self) -> ActionExecutor:
+        """Lazily create the ActionExecutor instance."""
+        if self._executor is None:
+            self._executor = ActionExecutor()
+        return self._executor
+
+    @property
+    def llm_client(self) -> LLMClient:
+        """Lazily create the LLMClient instance."""
+        if self._llm is None:
+            self._llm = LLMClient()
+        return self._llm
 
     def start(self) -> None:
         """Start listening for task assignments."""
@@ -141,19 +161,45 @@ class TaskExecutor:
         return {"return_value": repr(result)}
 
     async def _exec_action(self, task: dict[str, Any]) -> dict[str, Any]:
-        """Execute a Sentinel Desktop action."""
+        """Execute a Sentinel Desktop action via ActionExecutor."""
         action_name = task.get("params", {}).get("action", "")
         action_params = task.get("params", {}).get("action_params", {})
         if not action_name:
             raise ValueError("Action task requires 'action' param")
-        # Placeholder — would integrate with core.actions
-        return {"action": action_name, "status": "executed", "params": action_params}
+
+        # Build the action dict in the format ActionExecutor expects
+        action = {"action": action_name, **action_params}
+
+        # Execute (run in thread pool since execute_sync is blocking)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, self.action_executor.execute_sync, action
+        )
+        return result
 
     async def _exec_llm(self, task: dict[str, Any]) -> dict[str, Any]:
-        """Execute an LLM call."""
+        """Execute an LLM call via LLMClient."""
         prompt = task.get("goal", "")
-        model = task.get("params", {}).get("model", "default")
+        model = task.get("params", {}).get("model", self.llm_config.get("model", "gpt-4o"))
+        provider = task.get("params", {}).get("provider", self.llm_config.get("provider", "openai"))
+        api_key = self.llm_config.get("api_key", "")
+        api_base_url = self.llm_config.get("api_base_url")
+
         if not prompt:
             raise ValueError("LLM task requires a goal/prompt")
-        # Placeholder — would integrate with core.engine
-        return {"model": model, "prompt": prompt, "response": "LLM response placeholder"}
+
+        messages = [{"role": "user", "content": prompt}]
+
+        # Run in thread pool since LLMClient.chat is blocking
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: self.llm_client.chat(
+                provider=provider,
+                api_key=api_key,
+                model=model,
+                messages=messages,
+                custom_url=api_base_url,
+            ),
+        )
+        return {"model": model, "provider": provider, "prompt": prompt, "response": response}
