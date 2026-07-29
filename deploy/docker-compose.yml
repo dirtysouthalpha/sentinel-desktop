@@ -1,0 +1,76 @@
+# Multi-node fleet mesh deployment.
+#
+# Spins up three mesh services (cns, prime, desktop) on separate ports with
+# distinct leader-election priorities. Each node runs `python main.py --mesh`
+# and persists its state to a named volume.
+#
+# Usage:
+#   MESH_AUTH_TOKEN=<token> NEURALIS_BRAIN_URL=<url> docker compose up -d
+#
+# Tailscale DNS (e.g. cns-main.fleet.local) is expected to route to the
+# correct host; this compose file keeps everything on one network for
+# simplicity and relies on the host's DNS for name resolution.
+
+version: "3.9"
+
+x-node-defaults: &node-defaults
+  image: dirtysouthalpha/sentinel-desktop:latest
+  restart: unless-stopped
+  environment: &env-defaults
+    MESH_AUTH_TOKEN: "${MESH_AUTH_TOKEN:?MESH_AUTH_TOKEN must be set}"
+    NEURALIS_BRAIN_URL: "${NEURALIS_BRAIN_URL:-http://host.docker.internal:8080}"
+  networks:
+    - mesh
+
+services:
+  mesh-cns:
+    <<: *node-defaults
+    container_name: mesh-cns
+    command: ["python", "main.py", "--mesh", "--node-id", "cns-main", "--node-priority", "cns"]
+    ports:
+      - "4433:8091"
+    environment:
+      <<: *env-defaults
+      MESH_NODE_PRIORITY: cns
+      MESH_PORT: "4433"
+    volumes:
+      - cns-data:/opt/sentinel-desktop/data
+
+  mesh-prime:
+    <<: *node-defaults
+    container_name: mesh-prime
+    command: ["python", "main.py", "--mesh", "--node-id", "prime-main", "--node-priority", "prime"]
+    ports:
+      - "4434:8091"
+    environment:
+      <<: *env-defaults
+      MESH_NODE_PRIORITY: prime
+      MESH_PORT: "4434"
+    volumes:
+      - prime-data:/opt/sentinel-desktop/data
+
+  mesh-desktop:
+    <<: *node-defaults
+    container_name: mesh-desktop
+    command: ["python", "main.py", "--mesh", "--node-id", "desktop-main", "--node-priority", "desktop"]
+    ports:
+      - "4435:8091"
+    environment:
+      <<: *env-defaults
+      MESH_NODE_PRIORITY: desktop
+      MESH_PORT: "4435"
+    volumes:
+      - desktop-data:/opt/sentinel-desktop/data
+
+volumes:
+  cns-data:
+    name: sentinel-mesh-cns
+  prime-data:
+    name: sentinel-mesh-prime
+  desktop-data:
+    name: sentinel-mesh-desktop
+
+networks:
+  mesh:
+    name: sentinel-mesh
+    driver: bridge

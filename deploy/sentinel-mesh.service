@@ -1,0 +1,51 @@
+# systemd template unit for a Sentinel Desktop fleet mesh node.
+#
+# Enable per-instance units with:
+#   systemctl enable --now sentinel-mesh@cns.service
+#   systemctl enable --now sentinel-mesh@prime.service
+#   systemctl enable --now sentinel-mesh@desktop.service
+#
+# Override PRIORITY / PORT / PEERS per instance via drop-in:
+#   mkdir -p /etc/systemd/system/sentinel-mesh@cns.service.d
+#   cat > /etc/systemd/system/sentinel-mesh@cns.service.d/override.conf <<'EOF'
+#   [Service]
+#   Environment=PRIORITY=cns
+#   Environment=PORT=4433
+#   Environment=PEERS=prime-main.fleet.local:4434,desktop-main.fleet.local:4435
+#   EOF
+#   systemctl daemon-reload
+#   systemctl restart sentinel-mesh@cns.service
+
+[Unit]
+Description=Sentinel Desktop Fleet Mesh Node (%i)
+Documentation=https://github.com/dirtysouthalpha/sentinel-desktop
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sentinel
+Group=sentinel
+WorkingDirectory=/opt/sentinel-desktop
+ExecStart=/usr/bin/python3 main.py --mesh --node-id %i --node-priority ${PRIORITY}
+Restart=always
+RestartSec=5
+
+# Instance-specific values — override via drop-in.
+Environment=PRIORITY=desktop
+Environment=PORT=4435
+Environment=PEERS=
+
+# Shared secrets — populate via EnvironmentFile or drop-in.
+Environment=MESH_AUTH_TOKEN=
+Environment=NEURALIS_BRAIN_URL=
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/sentinel-desktop/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
