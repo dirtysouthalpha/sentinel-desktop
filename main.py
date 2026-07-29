@@ -29,6 +29,9 @@ def parse_args():
                         help="Launch legacy v6.x GUI (deprecated)")
     parser.add_argument("--version", action="store_true", help="Show version")
     parser.add_argument("--mesh", action="store_true", help="Enable fleet mesh mode")
+    parser.add_argument("--fleet", nargs="*", default=None,
+                        metavar="COMMAND",
+                        help="Fleet mesh CLI (status, nodes, plans, deploy, ...)")
     parser.add_argument("--node-id", type=str, default=None, help="Unique node ID for mesh mode")
     parser.add_argument("--node-priority", type=str, default="desktop",
                         choices=["cns", "prime", "desktop", "agent_zero"],
@@ -63,9 +66,17 @@ def main():
         import logging
         logging.basicConfig(level=logging.DEBUG)
 
+    # Fleet CLI mode
+    if args.fleet is not None:
+        from core.mesh.cli import FleetCLI
+        cli = FleetCLI()
+        output = cli.execute(args.fleet)
+        print(output)
+        return
+
     # Fleet mesh mode
     if args.mesh:
-        from core.mesh import EventBus, MeshNode, NodeCapabilities, NodePriority, LeaderElection, Orchestrator
+        from core.mesh import EventBus, LeaderElection, MeshNode, NodeCapabilities, NodePriority, Orchestrator
         from core.mesh.cache import StateCache
 
         logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
