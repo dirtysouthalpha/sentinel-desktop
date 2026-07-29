@@ -65,6 +65,7 @@ async def _run_mesh_node_full(
     metrics_agg, metrics_collector, peers,
 ):
     """Run a full mesh node with transport, executor, watcher, and recovery."""
+    import logging
     logger = logging.getLogger("mesh")
 
     # Wire transport to event bus
