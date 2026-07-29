@@ -1,8 +1,91 @@
-"""WebSocket pub/sub event bus for the fleet mesh."""
+"""WebSocket pub/sub event bus for the fleet mesh.
+
+In-process pub/sub for single-node operation. The WebSocket transport
+layer (Task 8) wraps this for cross-node delivery. This design keeps
+the core bus testable without network I/O.
+"""
 from __future__ import annotations
+
+import asyncio
+import logging
+from collections.abc import Awaitable, Callable
+from enum import Enum
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+class FleetEvent(str, Enum):
+    """Fleet event types published on the mesh event bus."""
+    # Lifecycle
+    NODE_HEARTBEAT = "fleet.event.node.heartbeat"
+    NODE_JOINED = "fleet.event.node.joined"
+    NODE_LEFT = "fleet.event.node.left"
+    # Tasks
+    TASK_CREATED = "fleet.event.task.created"
+    TASK_ASSIGNED = "fleet.event.task.assigned"
+    TASK_PROGRESS = "fleet.event.task.progress"
+    TASK_COMPLETED = "fleet.event.task.completed"
+    TASK_FAILED = "fleet.event.task.failed"
+    # Plans
+    PLAN_CREATED = "fleet.event.plan.created"
+    PLAN_UPDATED = "fleet.event.plan.updated"
+    PLAN_COMPLETED = "fleet.event.plan.completed"
+    # Memory
+    MEMORY_STORED = "fleet.event.memory.stored"
+    MEMORY_RECALLED = "fleet.event.memory.recalled"
+    # Escalation
+    ESCALATION_DAILY = "fleet.event.escalation.daily"
+    ESCALATION_CRITICAL = "fleet.event.escalation.critical"
+
+
+EventHandler = Callable[[dict[str, Any]], Awaitable[None] | None]
 
 
 class EventBus:
-    """Placeholder — implemented in Task 2."""
+    """In-process async event bus.
+
+    Subscribers register a handler for an event type. `publish` delivers
+    the event to all matching subscribers concurrently.
+    """
+
     def __init__(self) -> None:
-        raise NotImplementedError("Task 2")
+        self._subscribers: dict[str, list[EventHandler]] = {}
+        self._lock = asyncio.Lock()
+
+    def subscribe(self, event_type: str, handler: EventHandler) -> None:
+        """Register *handler* for *event_type*."""
+        if event_type not in self._subscribers:
+            self._subscribers[event_type] = []
+        self._subscribers[event_type].append(handler)
+
+    def unsubscribe(self, event_type: str, handler: EventHandler) -> None:
+        """Remove *handler* from *event_type*."""
+        if event_type in self._subscribers:
+            self._subscribers[event_type] = [
+                h for h in self._subscribers[event_type] if h is not handler
+            ]
+
+    async def publish(self, event_type: str, data: dict[str, Any]) -> None:
+        """Publish an event to all subscribers.
+
+        Handlers run concurrently; exceptions are logged but don't block.
+        """
+        handlers = list(self._subscribers.get(event_type, []))
+        if not handlers:
+            return
+
+        results = await asyncio.gather(
+            *[self._safe_call(h, data) for h in handlers],
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, Exception):
+                logger.warning("Event handler error: %s", result)
+
+    @staticmethod
+    async def _safe_call(handler: EventHandler, data: dict[str, Any]) -> None:
+        """Call handler, catching exceptions."""
+        result = handler(data)
+        if asyncio.iscoroutine(result):
+            await result
