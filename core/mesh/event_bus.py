@@ -28,6 +28,7 @@ class FleetEvent(str, Enum):
     # Tasks
     TASK_CREATED = "fleet.event.task.created"
     TASK_ASSIGNED = "fleet.event.task.assigned"
+    TASK_RUNNING = "fleet.event.task.running"
     TASK_PROGRESS = "fleet.event.task.progress"
     TASK_COMPLETED = "fleet.event.task.completed"
     TASK_FAILED = "fleet.event.task.failed"
