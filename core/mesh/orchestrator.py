@@ -9,6 +9,7 @@ from typing import Any
 from core.mesh.cache import StateCache
 from core.mesh.event_bus import EventBus, FleetEvent
 from core.mesh.leader_election import LeaderElection
+from core.mesh.memory import NeuralisMemory
 from core.mesh.recovery import FailureType, RecoveryManager
 from core.mesh.task_graph import Task, TaskGraph, TaskStatus
 
@@ -16,12 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
-    def __init__(self, event_bus: EventBus, cache: StateCache, leader_election: LeaderElection, node_id: str, recovery: RecoveryManager | None = None) -> None:
+    def __init__(self, event_bus: EventBus, cache: StateCache, leader_election: LeaderElection, node_id: str, recovery: RecoveryManager | None = None, memory: NeuralisMemory | None = None) -> None:
         self.bus = event_bus
         self.cache = cache
         self.election = leader_election
         self.node_id = node_id
         self.recovery = recovery
+        self.memory = memory
         self._plans: dict[str, TaskGraph] = {}
 
     def _publish(self, event_type: str, data: dict[str, Any]) -> None:
@@ -69,6 +71,9 @@ class Orchestrator:
         task.status = TaskStatus.COMPLETED
         task.result = result
         graph.checkpoint(task_id)
+        if self.memory:
+            plan_data = self.cache.get("plan", plan_id) or {}
+            self.memory.store_checkpoint(plan_id, plan_data.get("name", ""), graph)
         self._publish(FleetEvent.TASK_COMPLETED, {"plan_id": plan_id, "task_id": task_id, "node_id": task.assigned_node, "result": result})
         logger.info("Task %s completed by node %s", task_id, task.assigned_node)
 
@@ -92,6 +97,9 @@ class Orchestrator:
             logger.error("Task %s permanently failed: %s", task_id, error)
         self._publish(FleetEvent.TASK_FAILED, {"plan_id": plan_id, "task_id": task_id, "error": error, "failure_type": failure_type.value, "retried": should_retry})
         graph.checkpoint(task_id)
+        if self.memory:
+            plan_data = self.cache.get("plan", plan_id) or {}
+            self.memory.store_checkpoint(plan_id, plan_data.get("name", ""), graph)
 
     def get_plan_status(self, plan_id: str) -> dict[str, Any] | None:
         graph = self._plans.get(plan_id)
