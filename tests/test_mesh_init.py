@@ -1,5 +1,5 @@
 """Tests for the mesh package."""
-from core.mesh import EventBus, LeaderElection, MeshNode, Orchestrator
+from core.mesh import EventBus, LeaderElection, MeshNode, NodeCapabilities, Orchestrator
 
 
 class TestMeshImport:
