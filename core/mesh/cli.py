@@ -92,6 +92,12 @@ def create_parser() -> argparse.ArgumentParser:
                         help="Goal for the CNS to plan and evaluate")
     p_cns.add_argument("--format", choices=["text", "json"], default="text")
 
+    # recall
+    p_recall = subparsers.add_parser("recall", help="Run recall quality eval")
+    p_recall.add_argument("--url", default="http://localhost:8091",
+                          help="Neuralis brain base URL")
+    p_recall.add_argument("--format", choices=["text", "json"], default="text")
+
     return parser
 
 
@@ -432,6 +438,29 @@ class FleetCLI:
                 lines.append(f"  [{c.severity}] {c.message}")
 
         return "\n".join(lines)
+
+
+    def cmd_recall(self, args: argparse.Namespace) -> str:
+        """Run the recall quality eval against the brain."""
+        from core.cns.recall import RecallEvaluator, make_http_backend
+
+        backend = make_http_backend(base_url=args.url)
+        ev = RecallEvaluator(backend=backend)
+        report = ev.run()
+
+        if args.format == "json":
+            import json
+            return json.dumps({
+                "timestamp": report.timestamp,
+                "total": report.total,
+                "hits": report.hits,
+                "misses": report.misses,
+                "hit_rate": round(report.hit_rate, 1),
+                "meets_target": report.meets_target,
+                "mean_latency": round(report.mean_latency, 3),
+            }, indent=2)
+
+        return report.summary()
 
 
 def main(args: list[str] | None = None) -> str:

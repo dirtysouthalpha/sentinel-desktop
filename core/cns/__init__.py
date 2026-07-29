@@ -24,6 +24,14 @@ from core.cns.reasoner import (
     Rule,
     default_reasoner,
 )
+from core.cns.recall import (
+    RecallEvaluator,
+    RecallReport,
+    GoldenQuery,
+    QueryResult,
+    GOLDEN_QUERIES,
+    make_http_backend,
+)
 
 __all__ = [
     "TaskPlanner",
@@ -41,4 +49,10 @@ __all__ = [
     "Conclusion",
     "Rule",
     "default_reasoner",
+    "RecallEvaluator",
+    "RecallReport",
+    "GoldenQuery",
+    "QueryResult",
+    "GOLDEN_QUERIES",
+    "make_http_backend",
 ]

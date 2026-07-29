@@ -530,3 +530,43 @@ def cns_reasoner_detects_failures() -> tuple[bool, str]:
     if not output.anomalies:
         return False, "Expected anomalies for failed results"
     return True, f"{len(output.anomalies)} anomaly(ies) detected"
+
+
+# ---- Recall evals (Phase 4: Neuralis recall 85%+) ----
+
+@suite.register(EvalComponent.CNS, EvalPriority.HIGH)
+def recall_evaluator_report_structure() -> tuple[bool, str]:
+    """RecallEvaluator produces a valid report with all golden queries."""
+    from core.cns.recall import RecallEvaluator, GOLDEN_QUERIES
+
+    ev = RecallEvaluator(backend=None)  # offline mode
+    report = ev.run()
+    if report.total != len(GOLDEN_QUERIES):
+        return False, f"Expected {len(GOLDEN_QUERIES)} queries, got {report.total}"
+    if not report.summary():
+        return False, "Summary was empty"
+    return True, f"{report.total} golden queries defined"
+
+
+@suite.register(EvalComponent.CNS, EvalPriority.HIGH)
+def recall_evaluator_perfect_backend_passes() -> tuple[bool, str]:
+    """RecallEvaluator with a perfect backend hits 85%+ target."""
+    from core.cns.recall import RecallEvaluator, GoldenQuery, QueryResult
+
+    # Simulate a backend that always returns the expected neuron.
+    def perfect_backend(query, k=8):
+        return [{"id": int(hash(query) % 100000)}]
+
+    queries = [GoldenQuery(f"q_{i}", i) for i in range(10)]
+    # Override: make backend return the expected id for each query.
+    def exact_backend(query, q=queries, k=8):
+        for gq in q:
+            if gq.query == query:
+                return [{"id": gq.expected_neuron_id}]
+        return []
+
+    ev = RecallEvaluator(backend=exact_backend, golden_queries=queries)
+    report = ev.run()
+    if not report.meets_target:
+        return False, f"Hit rate {report.hit_rate:.1f}% below 85%"
+    return True, f"Hit rate {report.hit_rate:.1f}%"
