@@ -84,10 +84,11 @@ class FleetEvent(str, Enum):
 
 ### 3.4 Leader Election
 
-- **Lease-based:** "first node alive wins" with 30-second lease TTL
+- **Lease-based, priority-ordered:** leader is the highest-priority alive node with a valid 30-second lease
+- Node priority: CNS > Prime > Desktop > Agent Zero (Neuralis is memory-only, never leader)
 - Lease stored in Neuralis (region: "system") so it survives any single node failure
 - Leader renews lease every 15s via heartbeat
-- If lease expires, next alive node claims it (deterministic ordering by node priority: CNS > Prime > Desktop > Agent Zero)
+- If lease expires, the next highest-priority alive node claims it within 5s
 - Leader runs the orchestration loop; followers execute assigned tasks
 
 ### 3.5 Local State Cache
