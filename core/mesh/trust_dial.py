@@ -51,7 +51,7 @@ class TrustDial:
             "delete", "kill", "remove", "rename", "move_file",
             "write_file", "create_file", "create_dir",
             "run", "execute", "shell", "powershell",
-            "restart", "shutdown", "terminate",
+            "restart", "shutdown", "terminate", "rm",
         }
         irreversible_actions = {
             "format", "wipe", "factory_reset", "unlink",
