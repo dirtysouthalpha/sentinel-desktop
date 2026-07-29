@@ -10,6 +10,7 @@ from core.action_executor import ActionExecutor
 from core.llm_client import LLMClient
 from core.mesh.event_bus import EventBus, FleetEvent
 from core.mesh.node import NodeCapabilities
+from core.mesh.trust_dial import TrustDial
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class TaskExecutor:
         }
         self._executor: ActionExecutor | None = None  # lazy-init
         self._llm: LLMClient | None = None  # lazy-init
+        self._trust_dial = TrustDial()
         self._running = False
 
     @property
@@ -166,6 +168,13 @@ class TaskExecutor:
         action_params = task.get("params", {}).get("action_params", {})
         if not action_name:
             raise ValueError("Action task requires 'action' param")
+
+        # Trust dial check — destructive/irreversible actions require trust
+        action_type = self._trust_dial.classify_action(action_name)
+        if not self._trust_dial.can_execute(action_type):
+            raise PermissionError(
+                f"Action '{action_name}' blocked by trust dial (type={action_type.value})"
+            )
 
         # Build the action dict in the format ActionExecutor expects
         action = {"action": action_name, **action_params}
