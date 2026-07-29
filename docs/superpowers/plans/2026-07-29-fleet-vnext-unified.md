@@ -281,15 +281,18 @@ the core bus testable without network I/O.
 from __future__ import annotations
 
 import asyncio
+import enum
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
+from enum import Enum
+
 logger = logging.getLogger(__name__)
 
 
-class FleetEvent(str, enum := __import__("enum").Enum):
+class FleetEvent(str, Enum):
     """Fleet event types published on the mesh event bus."""
     # Lifecycle
     NODE_HEARTBEAT = "fleet.event.node.heartbeat"
@@ -2178,7 +2181,7 @@ class VectorClock:
 
         if self_lte and not other_lte:
             return -1  # self before other
-        if other_lte and not not self_lte:
+        if other_lte and not self_lte:
             return 1   # self after other
         if self_lte and other_lte:
             return 0   # equal
