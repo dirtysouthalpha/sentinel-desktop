@@ -197,11 +197,12 @@ class CommandEngine:
 
     def _is_complex_task(self, text: str) -> bool:
         """Check if this is a multi-step request."""
-        t = text.lower()
+        # Pad with spaces so indicators like " after that " match at end-of-string.
+        t = f" {text.lower()} "
         indicators = [" then ", " after that ", " and then ", " and also ",
-                       " step by step ", "first ", "second ", "finally ",
+                       " step by step ", " first ", " second ", " finally ",
                        " also ", " next ", " once done ", " when finished "]
-        return any(ind in t for ind in indicators) or (t.count(",") >= 2 and len(t.split()) > 6)
+        return any(ind in t for ind in indicators) or (text.lower().count(",") >= 2 and len(text.split()) > 6)
 
     def execute(self, text: str) -> CommandResult:
         """Execute a user command and return the result."""

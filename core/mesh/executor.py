@@ -8,6 +8,7 @@ from typing import Any
 
 from core.action_executor import ActionExecutor
 from core.llm_client import LLMClient
+from core.mesh.empire_tasks import EMPIRE_HANDLERS
 from core.mesh.event_bus import EventBus, FleetEvent
 from core.mesh.node import NodeCapabilities
 from core.mesh.trust_dial import TrustDial
@@ -37,6 +38,7 @@ class TaskExecutor:
             "python": self._exec_python,
             "action": self._exec_action,
             "llm": self._exec_llm,
+            **EMPIRE_HANDLERS,
         }
         self._executor: ActionExecutor | None = None  # lazy-init
         self._llm: LLMClient | None = None  # lazy-init
