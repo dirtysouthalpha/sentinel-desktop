@@ -42,7 +42,7 @@ def parse_args():
     return args
 
 
-async def _run_mesh_node(node, bus, election, orch):
+async def _run_mesh_node(node, _bus, _election, _orch):
     """Keep the mesh node alive with periodic heartbeats."""
     import asyncio
     while True:
