@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+from core.mesh.transport import WebSocketTransport
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,6 +55,7 @@ class EventBus:
 
     def __init__(self) -> None:
         self._subscribers: dict[str, list[EventHandler]] = {}
+        self._transport: WebSocketTransport | None = None
 
     def subscribe(self, event_type: str, handler: EventHandler) -> None:
         """Register *handler* for *event_type*."""
@@ -66,6 +69,23 @@ class EventBus:
             self._subscribers[event_type] = [
                 h for h in self._subscribers[event_type] if h is not handler
             ]
+
+    def set_transport(self, transport: WebSocketTransport) -> None:
+        """Set the remote transport for cross-node event delivery."""
+        self._transport = transport
+        transport.on_remote_event(self._handle_remote_event)
+
+    async def _handle_remote_event(self, envelope: dict[str, Any]) -> None:
+        """Deliver a remote event to local subscribers."""
+        event_type = envelope.get("type")
+        if event_type and event_type in self._subscribers:
+            results = await asyncio.gather(
+                *[self._safe_call(h, envelope) for h in self._subscribers[event_type]],
+                return_exceptions=True,
+            )
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.warning("Handler error for %s: %s", event_type, result)
 
     async def publish(self, event_type: str, data: dict[str, Any]) -> None:
         """Publish an event to all subscribers.
@@ -92,6 +112,10 @@ class EventBus:
         for result in results:
             if isinstance(result, Exception):
                 logger.warning("Event handler error: %s", result)
+
+        # Forward to remote peers
+        if self._transport:
+            await self._transport.send_to_peers(envelope)
 
     @staticmethod
     async def _safe_call(handler: EventHandler, data: dict[str, Any]) -> None:

@@ -1,6 +1,9 @@
 """Tests for the WebSocket event bus."""
 import asyncio
+from unittest.mock import AsyncMock
+
 import pytest
+
 from core.mesh.event_bus import EventBus, FleetEvent
 
 
@@ -93,3 +96,23 @@ class TestEventBus:
         await bus.publish("fleet.event.plan.created", {"plan_id": "p1"})
 
         assert len(received) == 0
+
+    @pytest.mark.asyncio
+    async def test_publish_forwards_to_transport(self):
+        """EventBus forwards events to the transport."""
+        bus = EventBus()
+        mock_transport = AsyncMock()
+        # on_remote_event stores the handler; don't wrap it in a coroutine
+        mock_transport.on_remote_event = lambda handler: None
+        bus.set_transport(mock_transport)
+
+        received = []
+        bus.subscribe("test.event", lambda evt: received.append(evt))
+        await bus.publish("test.event", {"key": "value"})
+
+        await asyncio.sleep(0.01)
+        assert len(received) == 1
+        mock_transport.send_to_peers.assert_called_once()
+        envelope = mock_transport.send_to_peers.call_args[0][0]
+        assert envelope["type"] == "test.event"
+        assert envelope["data"]["key"] == "value"
