@@ -18,8 +18,13 @@ class StateCache:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS cache (
                     bucket TEXT NOT NULL,
@@ -34,7 +39,7 @@ class StateCache:
     def put(self, bucket: str, key: str, value: dict[str, Any]) -> None:
         now = time.time()
         blob = json.dumps({"bucket": bucket, "key": key, "value": value, "created_at": now})
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO cache (bucket, key, value, created_at) VALUES (?, ?, ?, ?)",
                 (bucket, key, blob, now),
@@ -42,7 +47,7 @@ class StateCache:
             conn.commit()
 
     def get(self, bucket: str, key: str) -> dict[str, Any] | None:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             row = conn.execute("SELECT value FROM cache WHERE bucket = ? AND key = ?", (bucket, key)).fetchone()
         if row is None:
             return None
@@ -52,7 +57,7 @@ class StateCache:
             return None
 
     def list_bucket(self, bucket: str) -> list[dict[str, Any]]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             rows = conn.execute("SELECT value FROM cache WHERE bucket = ?", (bucket,)).fetchall()
         results = []
         for row in rows:
@@ -66,13 +71,13 @@ class StateCache:
         return results
 
     def delete(self, bucket: str, key: str) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute("DELETE FROM cache WHERE bucket = ? AND key = ?", (bucket, key))
             conn.commit()
 
     def prune(self, max_age_seconds: float) -> int:
         cutoff = time.time() - max_age_seconds
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("DELETE FROM cache WHERE created_at < ?", (cutoff,))
             conn.commit()
             return cursor.rowcount
