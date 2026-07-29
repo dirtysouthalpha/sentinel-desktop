@@ -86,6 +86,12 @@ def create_parser() -> argparse.ArgumentParser:
     # version
     p_version = subparsers.add_parser("version", help="Show fleet version info")
 
+    # cns
+    p_cns = subparsers.add_parser("cns", help="Run CNS reasoning engine demo")
+    p_cns.add_argument("goal", nargs="?", default="analyze fleet health then plan improvements",
+                        help="Goal for the CNS to plan and evaluate")
+    p_cns.add_argument("--format", choices=["text", "json"], default="text")
+
     return parser
 
 
@@ -369,6 +375,63 @@ class FleetCLI:
             f"Mesh: Phase 6\n"
             f"Components: {mod_count} modules"
         )
+
+    def cmd_cns(self, args: argparse.Namespace) -> str:
+        """Run the CNS reasoning engine on a goal."""
+        import asyncio
+
+        from core.cns.conductor import Conductor
+        from core.cns.reasoner import default_reasoner
+        from core.cns.planner import TaskPlanner
+
+        planner = TaskPlanner()
+        subtasks = planner.decompose(args.goal)
+
+        async def run():
+            cond = Conductor()
+            return await cond.run(args.goal)
+
+        result = asyncio.run(run())
+        reasoner = default_reasoner()
+        reasoning = reasoner.reason(result.eval_results, {"retried": result.retried})
+
+        if args.format == "json":
+            import json
+            return json.dumps({
+                "goal": result.goal,
+                "status": result.status,
+                "subtotal": result.subtotal,
+                "completed": result.completed,
+                "failed": result.failed,
+                "retried": result.retried,
+                "overall_score": round(result.overall_score, 2),
+                "subtasks": [{"id": s.id, "desc": s.description, "type": s.type.value,
+                              "status": s.status, "deps": s.dependencies} for s in subtasks],
+                "conclusions": [{"rule": c.rule, "severity": c.severity, "msg": c.message}
+                                for c in reasoning.conclusions],
+            }, indent=2)
+
+        lines = [
+            f"CNS REASONING — {result.goal}",
+            "=" * 45,
+            f"Status: {result.status}",
+            f"Subtasks: {result.completed}/{result.subtotal} completed, {result.failed} failed",
+            f"Retries: {result.retried}",
+            f"Score: {result.overall_score:.2f}",
+            "",
+            "Task Graph:",
+        ]
+        for s in subtasks:
+            deps = f" (after: {', '.join(s.dependencies)})" if s.dependencies else ""
+            lines.append(f"  [{s.type.value}] {s.description}{deps}")
+
+        if reasoning.conclusions:
+            lines.append("")
+            lines.append("Conclusions:")
+            for c in reasoning.conclusions:
+                lines.append(f"  [{c.severity}] {c.message}")
+
+        return "\n".join(lines)
 
 
 def main(args: list[str] | None = None) -> str:

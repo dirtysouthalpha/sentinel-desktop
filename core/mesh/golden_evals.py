@@ -37,6 +37,7 @@ class EvalComponent(str, Enum):
     MEMORY = "memory"
     SELF_IMPROVEMENT = "self_improvement"
     CLI = "cli"
+    CNS = "cns"
 
 
 class EvalPriority(str, Enum):
@@ -467,3 +468,65 @@ def cli_parser_builds() -> tuple[bool, str]:
         return True, "CLI parser built"
     except Exception as e:
         return False, f"Parser build failed: {e}"
+
+
+# ---- CNS evals ----
+
+@suite.register(EvalComponent.CNS, EvalPriority.CRITICAL)
+def cns_planner_decomposes_multistep() -> tuple[bool, str]:
+    """TaskPlanner decomposes a multi-step goal into multiple subtasks."""
+    from core.cns.planner import TaskPlanner
+
+    planner = TaskPlanner()
+    subtasks = planner.decompose("check disk then check memory then alert")
+    if len(subtasks) < 2:
+        return False, f"Expected >=2 subtasks, got {len(subtasks)}"
+    return True, f"{len(subtasks)} subtasks"
+
+
+@suite.register(EvalComponent.CNS, EvalPriority.CRITICAL)
+def cns_evaluator_perfect_match_scores_one() -> tuple[bool, str]:
+    """Evaluator scores a perfect match as 1.0 (PASS)."""
+    from core.cns.evaluator import Evaluator
+
+    ev = Evaluator()
+    result = ev.evaluate(subtask_id="x", expected="hello world", actual="hello world")
+    if result.score != 1.0:
+        return False, f"Expected 1.0, got {result.score}"
+    if result.status.value != "pass":
+        return False, f"Expected pass, got {result.status}"
+    return True, "Perfect match scored 1.0"
+
+
+@suite.register(EvalComponent.CNS, EvalPriority.HIGH)
+def cns_conductor_completes_simple_plan() -> tuple[bool, str]:
+    """Conductor runs a simple plan to completion."""
+    import asyncio
+
+    from core.cns.conductor import Conductor
+
+    async def run():
+        cond = Conductor()
+        return await cond.run("list files")
+
+    result = asyncio.run(run())
+    if result.completed < 1:
+        return False, f"Expected >=1 completed, got {result.completed}"
+    return True, f"{result.completed}/{result.subtotal} subtasks completed"
+
+
+@suite.register(EvalComponent.CNS, EvalPriority.HIGH)
+def cns_reasoner_detects_failures() -> tuple[bool, str]:
+    """Reasoner flags failed evaluations as anomalies."""
+    from core.cns.evaluator import EvalResult, EvalStatus
+    from core.cns.reasoner import default_reasoner
+
+    reasoner = default_reasoner()
+    results = [
+        EvalResult("a", EvalStatus.PASS, 1.0),
+        EvalResult("b", EvalStatus.FAIL, 0.1),
+    ]
+    output = reasoner.reason(results)
+    if not output.anomalies:
+        return False, "Expected anomalies for failed results"
+    return True, f"{len(output.anomalies)} anomaly(ies) detected"
