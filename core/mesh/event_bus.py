@@ -39,6 +39,8 @@ class FleetEvent(str, Enum):
     # Memory
     MEMORY_STORED = "fleet.event.memory.stored"
     MEMORY_RECALLED = "fleet.event.memory.recalled"
+    # Metrics
+    NODE_METRICS = "fleet.event.node.metrics"
     # Escalation
     ESCALATION_DAILY = "fleet.event.escalation.daily"
     ESCALATION_CRITICAL = "fleet.event.escalation.critical"

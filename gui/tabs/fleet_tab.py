@@ -6,6 +6,9 @@ from typing import Any
 
 import customtkinter as ctk
 
+from core.mesh.event_bus import FleetEvent
+from core.mesh.metrics import FleetMetricsAggregator
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,10 +19,23 @@ class FleetTab:
         self.app = app
         self._t = app._t
         self.frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        self._metrics_aggregator = FleetMetricsAggregator()
         self._build_ui()
         self._poll_interval = 2000  # ms
         self._scheduled_poll: str | None = None
+        self._subscribe_events()
         self._start_polling()
+
+    def _subscribe_events(self) -> None:
+        """Subscribe to fleet events for live metrics updates."""
+        bus = getattr(self.app, "_fleet_bus", None)
+        if bus is not None:
+            bus.subscribe(FleetEvent.NODE_METRICS, self._on_metrics)
+
+    async def _on_metrics(self, envelope: dict[str, Any]) -> None:
+        """Handle incoming NODE_METRICS event."""
+        data = envelope.get("data", {})
+        self._metrics_aggregator.update(data)
 
     def _build_ui(self) -> None:
         """Build the fleet dashboard UI."""
@@ -49,6 +65,11 @@ class FleetTab:
             status_frame, text="Tasks: 0 active", font=ctk.CTkFont(size=12)
         )
         self._tasks_label.pack(anchor="w", padx=10, pady=2)
+
+        self._metrics_label = ctk.CTkLabel(
+            status_frame, text="Fleet CPU: — | Mem: —", font=ctk.CTkFont(size=12)
+        )
+        self._metrics_label.pack(anchor="w", padx=10, pady=2)
 
         # Node list
         nodes_header = ctk.CTkLabel(
@@ -118,6 +139,17 @@ class FleetTab:
             self._leader_label.configure(text=f"Leader: {leader}")
             self._nodes_label.configure(text=f"Nodes: {len(nodes)}")
             self._tasks_label.configure(text=f"Tasks: {len(tasks)} active")
+
+            # Update metrics label from aggregator
+            summary = self._metrics_aggregator.get_fleet_summary()
+            if summary["total_nodes"] > 0:
+                self._metrics_label.configure(
+                    text=f"Fleet CPU: {summary['avg_cpu']:.0f}% | "
+                    f"Mem: {summary['avg_memory']:.0f}% | "
+                    f"Healthy: {summary['healthy_nodes']}/{summary['total_nodes']}"
+                )
+            else:
+                self._metrics_label.configure(text="Fleet CPU: — | Mem: —")
 
             # Update nodes text
             self._nodes_text.configure(state="normal")
