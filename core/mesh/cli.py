@@ -72,12 +72,21 @@ def create_parser() -> argparse.ArgumentParser:
     p_logs.add_argument("--format", choices=["text", "json"], default="text")
 
     # empire
-    p_empire = subparsers.add_parser("empire", help="Run an empire analytics plan")
-    p_empire.add_argument("--format", choices=["text", "json"], default="text")
+    p_emp = subparsers.add_parser("empire", help="Run Empire metrics collection")
+    p_emp.add_argument("action", nargs="?", default="all",
+                        choices=["score", "yt-stats", "alpaca-pnl", "buffer-metrics", "narrative", "all"],
+                        help="Empire action to run (default: all)")
+    p_emp.add_argument("--format", choices=["text", "json"], default="text")
+    p_emp.add_argument("--days", type=int, default=7, help="Lookback days for metrics")
 
     # audit
     p_audit = subparsers.add_parser("audit", help="Run self-improvement code audit")
     p_audit.add_argument("--format", choices=["text", "json"], default="text")
+
+    # self-improvement
+    p_si = subparsers.add_parser("self-improvement", help="Run self-improvement audit cycle")
+    p_si.add_argument("--format", choices=["text", "json"], default="text")
+    p_si.add_argument("--root", default=".", help="Project root directory")
 
     # evals
     p_evals = subparsers.add_parser("evals", help="Run golden eval suite")
@@ -281,7 +290,13 @@ class FleetCLI:
 
 
     def cmd_empire(self, args: argparse.Namespace) -> str:
-        """Run an empire analytics plan (yt-stats, alpaca-pnl, buffer-metrics → score → narrative)."""
+        """Run Empire metrics collection.
+
+        Dispatches to the handler for ``args.action``.  For ``all`` the full
+        pipeline (yt-stats, alpaca-pnl, buffer-metrics → score → narrative) runs.
+        """
+        import asyncio
+
         from core.mesh.empire_tasks import (
             handle_alpaca_pnl,
             handle_buffer_metrics,
@@ -290,16 +305,91 @@ class FleetCLI:
             handle_yt_stats,
         )
 
+        action = args.action
+        days = args.days
+
+        # Credentials check — used to warn when running in stub mode.
+        _has_creds = bool(
+            os.environ.get("ALPACA_KEY_ID")
+            or os.environ.get("YT_ANALYTICS_URL")
+            or os.environ.get("BUFFER_ACCESS_TOKEN")
+        )
+
+        # ── Dispatch ──────────────────────────────────────────────────────
+        if action == "all":
+            return self._empire_run_all(args, _has_creds, days)
+
+        # Single-action dispatch.
+        if action == "yt-stats":
+            result = asyncio.run(handle_yt_stats({"params": {"days": days}}))
+        elif action == "alpaca-pnl":
+            result = asyncio.run(handle_alpaca_pnl({"params": {"include_positions": False}}))
+        elif action == "buffer-metrics":
+            result = asyncio.run(handle_buffer_metrics({"params": {}}))
+        elif action == "score":
+            result = asyncio.run(handle_empire_score({"params": {
+                "dependency_results": self._empire_base_metrics(days),
+            }}))
+        elif action == "narrative":
+            score = asyncio.run(handle_empire_score({"params": {
+                "dependency_results": self._empire_base_metrics(days),
+            }}))
+            result = asyncio.run(handle_narrative({"params": {
+                "dependency_results": {"empire-score": score},
+                "tone": "professional",
+            }}))
+        else:
+            return f"Unknown empire action: {action}"
+
+        if args.format == "json":
+            return json.dumps(result, indent=2, default=str)
+
+        # Text mode — pretty-print the raw dict.
+        lines = [f"EMPIRE {action.upper()}", "=" * 40]
+        for k, v in result.items():
+            lines.append(f"  {k}: {v}")
+        if not _has_creds:
+            lines.append("  Note: credentials not configured — showing stub data.")
+        return "\n".join(lines)
+
+    def _empire_base_metrics(self, days: int) -> dict[str, Any]:
+        """Run the three base data tasks and return them as a dependency dict."""
         import asyncio
 
-        # Execute data tasks (stub mode if no credentials).
-        yt = asyncio.run(handle_yt_stats({"params": {}}))
+        from core.mesh.empire_tasks import (
+            handle_alpaca_pnl,
+            handle_buffer_metrics,
+            handle_yt_stats,
+        )
+
+        yt = asyncio.run(handle_yt_stats({"params": {"days": days}}))
         alpaca = asyncio.run(handle_alpaca_pnl({"params": {"include_positions": False}}))
         buffer = asyncio.run(handle_buffer_metrics({"params": {}}))
+        return {"yt-stats": yt, "alpaca-pnl": alpaca, "buffer-metrics": buffer}
+
+    def _empire_run_all(
+        self,
+        args: argparse.Namespace,
+        _has_creds: bool,
+        days: int,
+    ) -> str:
+        """Run the full empire pipeline (all actions)."""
+        import asyncio
+
+        from core.mesh.empire_tasks import (
+            handle_alpaca_pnl,
+            handle_buffer_metrics,
+            handle_empire_score,
+            handle_narrative,
+            handle_yt_stats,
+        )
+
+        base = self._empire_base_metrics(days)
+        yt, alpaca, buffer = base["yt-stats"], base["alpaca-pnl"], base["buffer-metrics"]
 
         # Aggregate score.
         score = asyncio.run(handle_empire_score({"params": {
-            "dependency_results": {"yt-stats": yt, "alpaca-pnl": alpaca, "buffer-metrics": buffer},
+            "dependency_results": base,
         }}))
 
         # Narrative.
@@ -327,6 +417,8 @@ class FleetCLI:
             f"  Buffer: posts={buffer.get('posts', 'n/a')}",
             f"  Narrative: {narrative['narrative']}",
         ]
+        if not _has_creds:
+            lines.append("  Note: credentials not configured — showing stub data.")
         return "\n".join(lines)
 
     def cmd_audit(self, args: argparse.Namespace) -> str:
@@ -355,6 +447,67 @@ class FleetCLI:
         ]
         for f in sorted(report.findings, key=lambda x: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(x.severity.value, 9))[:5]:
             lines.append(f"  [{f.severity.value.upper()}] {f.file_path}:{f.line_number}  {f.description[:60]}")
+        return "\n".join(lines)
+
+    def cmd_self_improvement(self, args: argparse.Namespace) -> str:
+        """Run the self-improvement audit cycle."""
+        from core.mesh.self_improvement import SelfImprovementLoop
+
+        loop = SelfImprovementLoop(args.root)
+        report = loop.run()
+
+        if args.format == "json":
+            return json.dumps(
+                {
+                    "findings": [
+                        {
+                            "category": f.category.value,
+                            "severity": f.severity.value,
+                            "file_path": f.file_path,
+                            "line_number": f.line_number,
+                            "description": f.description,
+                            "suggestion": f.suggestion,
+                            "confidence": f.confidence,
+                        }
+                        for f in report.findings
+                    ],
+                    "proposals": [
+                        {
+                            "proposal_id": p.proposal_id,
+                            "action_description": p.action_description,
+                            "estimated_effort": p.estimated_effort,
+                            "auto_executable": p.auto_executable,
+                            "executed": p.executed,
+                            "verified": p.verified,
+                        }
+                        for p in report.proposals
+                    ],
+                    "executed": report.executed,
+                    "verified": report.verified,
+                    "summary": report.summary,
+                },
+                indent=2,
+            )
+
+        # Text mode: summary, findings by severity, executed/verified proposals.
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        lines = [
+            "SELF-IMPROVEMENT AUDIT",
+            "=" * 40,
+            report.summary,
+            "",
+            "FINDINGS BY SEVERITY:",
+        ]
+        for f in sorted(report.findings, key=lambda x: severity_order.get(x.severity.value, 9)):
+            lines.append(
+                f"  [{f.severity.value.upper()}] {f.file_path}:{f.line_number}  {f.description[:60]}"
+            )
+        if report.executed:
+            lines.append("")
+            lines.append(f"EXECUTED PROPOSALS: {', '.join(report.executed)}")
+        if report.verified:
+            lines.append("")
+            lines.append(f"VERIFIED PROPOSALS: {', '.join(report.verified)}")
         return "\n".join(lines)
 
     def cmd_evals(self, args: argparse.Namespace) -> str:
