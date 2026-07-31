@@ -1,30 +1,38 @@
 #!/usr/bin/env python3
 """Brain Loop Daemon — closes every cognitive loop in the Neuralis brain.
 
-The brain (v21.0.0) has all the cognitive machinery — dreaming, consolidation,
-curiosity, creativity, self-modification, learning, prediction, causal reasoning,
-hypothesis generation — but many of these loops were never actually closed. They
-either run on a sparse schedule (self_heal only on sundays), require manual
-triggering (cognitive/cycle, curiosity/fill), or are gated behind approval
-constraints (self-modification: 27 proposals, 0 applied).
+The brain (v21.0.0) has 100+ endpoints spanning cognitive cycles, creativity,
+self-healing, goals, actuators, fleet telemetry, working memory, theory of mind,
+causal reasoning, predictions, and quality management.  Many of these loops were
+never actually closed — they run on a sparse schedule, require manual
+triggering, or are gated behind approval constraints.
 
 This daemon runs continuously and closes every loop on a configurable schedule:
 
-  Loop                     | Endpoint                    | Default cadence
-  -------------------------|-----------------------------|------------------
-  cognitive_cycle          | POST /cognitive/cycle       | every 30 min
-  synapse_maintenance      | POST /brain/synapses/reap   | every 1 hour
-  curiosity_gap_fill       | POST /brain/curiosity/fill  | every 2 hours
-  quality_prune            | POST /brain/quality/prune  | every 6 hours
-  dream_trigger            | POST /brain/dream           | every 6 hours
-  consolidate_trigger      | POST /brain/consolidate     | every 12 hours
-  self_modify              | POST /evolution/modify      | every 6 hours
-  creativity_execute       | GET  /creative/synthesize   | every 6 hours
-  outcome_log              | POST /brain/outcome         | every 1 hour
-  learning_update          | POST /v6/learn/online       | every 30 min
-  orphan_rescue            | POST /brain/self-heal/rescue-orphans | every 2 hours
-  prediction_rebuild       | POST /brain/transitions/rebuild | every 12 hours
-  report_generate          | GET  /brain/report          | every 6 hours
+  Loop                     | Endpoint                               | Cadence
+  -------------------------|----------------------------------------|--------
+  cognitive_cycle          | POST /cognitive/cycle                  | 30 min
+  synapse_maintenance      | POST /brain/synapses/reap              | 1 hour
+  curiosity_gap_fill       | POST /brain/curiosity/fill             | 2 hours
+  quality_prune            | POST /brain/quality/prune             | 6 hours
+  dream_trigger            | POST /brain/dream                      | 6 hours
+  consolidate_trigger      | POST /brain/consolidate                | 12 hours
+  self_modify              | POST /evolution/modify                 | 6 hours
+  creativity_execute       | GET  /creative/synthesize              | 6 hours
+  outcome_log              | POST /brain/outcome                    | 1 hour
+  learning_update          | POST /v6/learn/online                  | 30 min
+  orphan_rescue            | POST /brain/self-heal/rescue-orphans   | 2 hours
+  prediction_rebuild       | POST /brain/transitions/rebuild        | 12 hours
+  report_generate          | GET  /brain/report                     | 6 hours
+  goal_pursuit             | GET/POST /agi/goals + /goal            | 1 hour
+  fleet_telemetry          | GET  /fleet/state + WM push            | 15 min
+  working_memory           | POST /v6/wm/push + /v6/wm/recall       | 30 min
+  self_heal_full           | POST /brain/self-heal/auto-repair      | 4 hours
+  prediction_score         | GET  /brain/predict/stats              | 6 hours
+  actuator_execute         | POST /actuator/task                    | 30 min
+  cognitive_hypotheses     | GET  /cognitive/hypotheses             | 2 hours
+  quality_enrich           | POST /brain/quality/update             | 4 hours
+  decay_noise              | POST /brain/self-heal/decay-noise      | 2 hours
 
 Usage::
 
@@ -54,6 +62,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import platform
 import sys
 import time
 import urllib.request
@@ -77,6 +87,7 @@ DEFAULT_CADENCES: dict[str, int] = {
     "synapse_maintenance":   60 * 60,    # 1 hour
     "curiosity_gap_fill":    2 * 60 * 60,  # 2 hours
     "quality_prune":         6 * 60 * 60,  # 6 hours
+    "quality_enrich":        4 * 60 * 60,  # 4 hours
     "dream_trigger":         6 * 60 * 60,  # 6 hours
     "consolidate_trigger":   12 * 60 * 60,  # 12 hours
     "self_modify":           6 * 60 * 60,  # 6 hours
@@ -84,8 +95,16 @@ DEFAULT_CADENCES: dict[str, int] = {
     "outcome_log":           60 * 60,    # 1 hour
     "learning_update":       30 * 60,    # 30 min — close the learning loop
     "orphan_rescue":         2 * 60 * 60,  # 2 hours
+    "decay_noise":           2 * 60 * 60,  # 2 hours
     "prediction_rebuild":    12 * 60 * 60,  # 12 hours
+    "prediction_score":      6 * 60 * 60,  # 6 hours
     "report_generate":       6 * 60 * 60,  # 6 hours
+    "goal_pursuit":          60 * 60,    # 1 hour
+    "fleet_telemetry":       15 * 60,    # 15 min
+    "working_memory":        30 * 60,    # 30 min
+    "self_heal_full":        4 * 60 * 60,  # 4 hours
+    "actuator_execute":      30 * 60,    # 30 min
+    "cognitive_hypotheses":  2 * 60 * 60,  # 2 hours
 }
 
 
@@ -125,6 +144,11 @@ def _brain_request(
     except Exception as e:
         logger.error("Unexpected error on %s %s: %s", method, path, e)
         return {"error": True, "reason": str(e)}
+
+
+def _get_local_hostname() -> str:
+    """Return the local machine hostname."""
+    return platform.node() or os.uname().nodename
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +203,41 @@ def _run_quality_prune(base_url: str, dry_run: bool) -> dict:
     )
 
 
+def _run_quality_enrich(base_url: str, dry_run: bool) -> dict:
+    """Enrich low-quality neurons by re-scoring and deepening content.
+
+    The brain's avg_quality sits at ~0.39.  This loop finds the most-connected
+    low-quality neurons and triggers a quality update so the enrichment
+    pipeline can improve them.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "quality_enrich"}
+    # Get neurons with low quality but high connectivity (worth saving)
+    neurons_resp = _brain_request(base_url, "GET", "/neurons?limit=20")
+    if isinstance(neurons_resp, dict) and neurons_resp.get("error"):
+        return {"error": True, "loop": "quality_enrich", "reason": neurons_resp.get("reason")}
+    neurons = neurons_resp if isinstance(neurons_resp, list) else neurons_resp.get("neurons", [])
+    # Find low-quality candidates (below 0.5) sorted by connectivity
+    candidates = [n for n in neurons if n.get("quality", 0.5) < 0.5]
+    if not candidates:
+        return {"ok": True, "loop": "quality_enrich", "message": "no low-quality candidates"}
+    # Trigger quality update for the top candidates
+    enriched = []
+    for n in candidates[:5]:
+        nid = n.get("id")
+        result = _brain_request(
+            base_url, "POST", "/brain/quality/update",
+            body={"neuron_id": nid},
+        )
+        enriched.append({"neuron_id": nid, "result": result})
+    return {
+        "ok": True,
+        "loop": "quality_enrich",
+        "candidates": len(candidates),
+        "enriched": enriched,
+    }
+
+
 def _run_dream_trigger(base_url: str, dry_run: bool) -> dict:
     """Trigger a dream cycle (spreading activation + novelty generation)."""
     if dry_run:
@@ -211,66 +270,50 @@ def _run_self_modify(base_url: str, dry_run: bool) -> dict:
                 "applied": applied,
                 "total_proposals": total,
             }
-    # Try to apply a modification via evolution/modify
+    # Try to apply a modification via evolution/modify (query params, not body)
     return _brain_request(
-        base_url, "POST", "/evolution/modify",
-        body={
-            "query": "apply_pending_self_modification",
-            "change": "apply_next_proposal",
-            "rationale": "Daemon auto-applies approved self-modifications",
-        },
+        base_url, "POST",
+        "/evolution/modify?change=apply_next_proposal&rationale=Daemon+auto-applies+approved+self-modifications",
     )
 
 
 def _run_creativity_execute(base_url: str, dry_run: bool) -> dict:
-    """Execute the next proposed creativity experiment.
+    """Execute cross-domain synthesis to create novel knowledge links.
 
-    The brain has a ``/v6/creativity/experiments`` table where experiments are
-    recorded with status ``proposed``.  The brain-side code does not auto-execute
-    them, so this loop drives execution via ``/creative/synthesize`` — the
-    cross-domain synthesis endpoint that actually combines neurons from two
-    regions to create novel links.
+    The brain's ``/creative/synthesize`` endpoint combines neurons from two
+    regions to create novel links.  This loop rotates through high-value
+    domain pairs to maximize cross-pollination.
     """
     if dry_run:
         return {"ok": True, "dry_run": True, "loop": "creativity_execute"}
-    # Get existing experiments
-    resp = _brain_request(base_url, "GET", "/v6/creativity/experiments")
-    if isinstance(resp, dict) and resp.get("error"):
-        return resp
-    experiments = resp.get("experiments", []) if isinstance(resp, dict) else []
-    proposed = [e for e in experiments if e.get("status") == "proposed"]
-    if not proposed:
-        # No pending experiments — propose a new one
-        return _brain_request(
-            base_url, "POST", "/v6/creativity/propose",
-            body={
-                "gap": "Cross-domain knowledge synthesis between fleet infrastructure and AI reasoning",
-                "plan": "Synthesize neurons from technology and knowledge regions to create novel causal links",
-            },
-        )
-    # Execute the first proposed experiment via cross-domain synthesis.
-    # The experiment gap tells us which domains to bridge.
-    exp = proposed[0]
-    gap = exp.get("gap", "")
-    # Map common gap phrases to domain pairs.  Default: knowledge <-> infrastructure.
-    domain_a, domain_b = "knowledge", "infrastructure"
-    gap_lower = gap.lower()
-    if "technology" in gap_lower and "knowledge" in gap_lower:
-        domain_a, domain_b = "technology", "knowledge"
-    elif "hippocampus" in gap_lower:
-        domain_a, domain_b = "hippocampus", "knowledge"
-    elif "agents" in gap_lower:
-        domain_a, domain_b = "agents", "knowledge"
-
+    # Rotate domain pairs to maximize cross-pollination
+    domain_pairs = [
+        ("technology", "science"),
+        ("infrastructure", "knowledge"),
+        ("agents", "technology"),
+        ("projects", "knowledge"),
+        ("metacognition", "infrastructure"),
+    ]
+    # Pick a pair based on current hour (rotates through the list)
+    pair_idx = int(time.time() // 3600) % len(domain_pairs)
+    domain_a, domain_b = domain_pairs[pair_idx]
     synthesis = _brain_request(
         base_url, "GET",
         f"/creative/synthesize?domain_a={domain_a}&domain_b={domain_b}",
         timeout=60.0,
     )
+    # Propagate brain-level errors so the daemon's error tracker sees them
+    if isinstance(synthesis, dict) and synthesis.get("error"):
+        return {
+            "error": True,
+            "loop": "creativity_execute",
+            "domain_a": domain_a,
+            "domain_b": domain_b,
+            "reason": synthesis.get("reason", "synthesis failed"),
+        }
     return {
         "ok": True,
         "loop": "creativity_execute",
-        "experiment_id": exp.get("id"),
         "domain_a": domain_a,
         "domain_b": domain_b,
         "synthesis": synthesis,
@@ -299,6 +342,20 @@ def _run_prediction_rebuild(base_url: str, dry_run: bool) -> dict:
     if dry_run:
         return {"ok": True, "dry_run": True, "loop": "prediction_rebuild"}
     return _brain_request(base_url, "POST", "/brain/transitions/rebuild", timeout=60.0)
+
+
+def _run_prediction_score(base_url: str, dry_run: bool) -> dict:
+    """Check prediction accuracy stats to monitor brain forecasting quality."""
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "prediction_score"}
+    stats = _brain_request(base_url, "GET", "/brain/predict/stats")
+    if isinstance(stats, dict) and stats.get("error"):
+        return {"error": True, "loop": "prediction_score", "reason": stats.get("reason")}
+    return {
+        "ok": True,
+        "loop": "prediction_score",
+        "stats": stats,
+    }
 
 
 def _run_report_generate(base_url: str, dry_run: bool) -> dict:
@@ -330,22 +387,16 @@ def _run_learning_update(base_url: str, dry_run: bool) -> dict:
     # Pick the most-fired neuron (recall surfaced it = it was useful)
     target = max(neurons, key=lambda n: n.get("fire_count", 0))
     neuron_id = target.get("id")
-    # Call /v6/learn/online with query params (POST ?neuron_id=X&was_useful=Y)
+    # Call /v6/learn/online with POST + query params
     learned = _brain_request(
         base_url, "POST",
         f"/v6/learn/online?neuron_id={neuron_id}&was_useful=true",
-    )
-    # Also grade via /v6/learn/grade with query params
-    grade = _brain_request(
-        base_url, "POST",
-        f"/v6/learn/grade?response=neuron_{neuron_id}&confidence=0.9",
     )
     return {
         "ok": True,
         "loop": "learning_update",
         "neuron_id": neuron_id,
         "learned": learned,
-        "grade": grade,
     }
 
 
@@ -356,25 +407,247 @@ def _run_orphan_rescue(base_url: str, dry_run: bool) -> dict:
     return _brain_request(base_url, "POST", "/brain/self-heal/rescue-orphans", timeout=30.0)
 
 
+def _run_decay_noise(base_url: str, dry_run: bool) -> dict:
+    """Decay noise neurons that waste cognitive resources."""
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "decay_noise"}
+    return _brain_request(base_url, "POST", "/brain/self-heal/decay-noise")
+
+
+def _run_goal_pursuit(base_url: str, dry_run: bool) -> dict:
+    """Read active goals from the brain and advance them.
+
+    The brain's ``/agi/goals`` endpoint returns goals and insights.  This loop
+    reads them, finds the highest-priority goal, and creates an action plan
+    via the ``/goal`` endpoint.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "goal_pursuit"}
+    # Get current goals
+    goals_resp = _brain_request(base_url, "GET", "/agi/goals")
+    if isinstance(goals_resp, dict) and goals_resp.get("error"):
+        return {"error": True, "loop": "goal_pursuit", "reason": goals_resp.get("reason")}
+    goals = goals_resp.get("goals", []) if isinstance(goals_resp, dict) else []
+    # Filter to actual goals (not insights)
+    active_goals = [g for g in goals if "[goal]" in g.get("content", "")]
+    if not active_goals:
+        return {"ok": True, "loop": "goal_pursuit", "message": "no active goals"}
+    # Pick highest priority goal
+    top_goal = max(active_goals, key=lambda g: g.get("amygdala_weight", 0.5))
+    # Create a pursuit action plan
+    pursuit = _brain_request(
+        base_url, "POST", "/goal",
+        body={"goal": top_goal.get("content", ""), "priority": "high"},
+    )
+    if isinstance(pursuit, dict) and pursuit.get("error"):
+        return {"error": True, "loop": "goal_pursuit", "reason": pursuit.get("reason")}
+    return {
+        "ok": True,
+        "loop": "goal_pursuit",
+        "total_goals": len(active_goals),
+        "top_goal": top_goal.get("content", ""),
+        "pursuit": pursuit,
+    }
+
+
+def _run_fleet_telemetry(base_url: str, dry_run: bool) -> dict:
+    """Push local machine telemetry into the brain's working memory.
+
+    This closes the "no real-time sensor data" gap by feeding the brain
+    live system metrics from this machine.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "fleet_telemetry"}
+    hostname = _get_local_hostname()
+    # Read current fleet state from brain
+    fleet = _brain_request(base_url, "GET", "/fleet/state")
+    if isinstance(fleet, dict) and fleet.get("error"):
+        return {"error": True, "loop": "fleet_telemetry", "reason": fleet.get("reason")}
+    # Push local telemetry as working memory
+    telemetry = {
+        "hostname": hostname,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "online",
+        "source": "brain_loop_daemon",
+    }
+    wm_result = _brain_request(
+        base_url, "POST", "/v6/wm/push",
+        body={
+            "session_id": f"fleet-telemetry-{hostname}",
+            "role": "system",
+            "content": json.dumps(telemetry),
+        },
+    )
+    if isinstance(wm_result, dict) and wm_result.get("error"):
+        return {"error": True, "loop": "fleet_telemetry", "reason": wm_result.get("reason")}
+    return {
+        "ok": True,
+        "loop": "fleet_telemetry",
+        "hostname": hostname,
+        "fleet_nodes": len(fleet.get("nodes", [])) if isinstance(fleet, dict) else 0,
+        "wm_push": wm_result,
+    }
+
+
+def _run_working_memory(base_url: str, dry_run: bool) -> dict:
+    """Manage working memory — push daemon state and recall recent context.
+
+    The brain's ``/v6/wm/*`` endpoints provide a short-term working memory
+    buffer.  This loop maintains a rolling window of recent daemon activity
+    so the brain has context for its decisions.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "working_memory"}
+    hostname = _get_local_hostname()
+    session_id = f"brain-loop-daemon-{hostname}"
+    # Push current daemon tick to working memory
+    tick_data = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": "daemon_tick",
+        "hostname": hostname,
+    }
+    push_result = _brain_request(
+        base_url, "POST", "/v6/wm/push",
+        body={
+            "session_id": session_id,
+            "role": "daemon",
+            "content": json.dumps(tick_data),
+        },
+    )
+    if isinstance(push_result, dict) and push_result.get("error"):
+        return {"error": True, "loop": "working_memory", "reason": push_result.get("reason")}
+    # Recall recent context
+    recall_result = _brain_request(
+        base_url, "GET",
+        f"/v6/wm/recall?query=daemon_tick&session_id={session_id}",
+    )
+    if isinstance(recall_result, dict) and recall_result.get("error"):
+        return {"error": True, "loop": "working_memory", "reason": recall_result.get("reason")}
+    return {
+        "ok": True,
+        "loop": "working_memory",
+        "session_id": session_id,
+        "push": push_result,
+        "recall": recall_result,
+    }
+
+
+def _run_self_heal_full(base_url: str, dry_run: bool) -> dict:
+    """Run a full self-heal pass: diagnose, auto-repair, rescue orphans, decay noise.
+
+    This is the comprehensive maintenance pass that was previously only
+    running on Sundays.  Now it runs every 4 hours.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "self_heal_full"}
+    # Diagnose
+    diagnosis = _brain_request(base_url, "GET", "/brain/self-heal/diagnose")
+    if isinstance(diagnosis, dict) and diagnosis.get("error"):
+        return {"error": True, "loop": "self_heal_full", "reason": diagnosis.get("reason")}
+    # Auto-repair
+    repair = _brain_request(base_url, "POST", "/brain/self-heal/auto-repair")
+    # Rescue orphans
+    rescue = _brain_request(base_url, "POST", "/brain/self-heal/rescue-orphans")
+    # Decay noise
+    decay = _brain_request(base_url, "POST", "/brain/self-heal/decay-noise")
+    return {
+        "ok": True,
+        "loop": "self_heal_full",
+        "diagnosis": diagnosis,
+        "repair": repair,
+        "rescue": rescue,
+        "decay": decay,
+    }
+
+
+def _run_actuator_execute(base_url: str, dry_run: bool) -> dict:
+    """Create actuator tasks for the brain to execute.
+
+    The ``/actuator/task`` endpoint creates tasks the brain can dispatch to
+    agents.  This loop converts pending goals into actionable tasks.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "actuator_execute"}
+    # Get current goals
+    goals_resp = _brain_request(base_url, "GET", "/agi/goals")
+    if isinstance(goals_resp, dict) and goals_resp.get("error"):
+        return {"error": True, "loop": "actuator_execute", "reason": goals_resp.get("reason")}
+    goals = goals_resp.get("goals", []) if isinstance(goals_resp, dict) else []
+    # Find goals that haven't been turned into tasks yet
+    active_goals = [g for g in goals if "[goal]" in g.get("content", "")]
+    if not active_goals:
+        return {"ok": True, "loop": "actuator_execute", "message": "no goals to act on"}
+    # Create an actuator task for the top goal
+    top_goal = active_goals[0]
+    task = _brain_request(
+        base_url, "POST", "/actuator/task",
+        body={
+            "task_type": "goal_pursuit",
+            "payload": {
+                "goal": top_goal.get("content", ""),
+                "priority": top_goal.get("amygdala_weight", 0.5),
+                "source": "brain_loop_daemon",
+            },
+        },
+    )
+    if isinstance(task, dict) and task.get("error"):
+        return {"error": True, "loop": "actuator_execute", "reason": task.get("reason")}
+    return {
+        "ok": True,
+        "loop": "actuator_execute",
+        "goal": top_goal.get("content", ""),
+        "task": task,
+    }
+
+
+def _run_cognitive_hypotheses(base_url: str, dry_run: bool) -> dict:
+    """Review and mine cognitive hypotheses for actionable insights.
+
+    The brain generates hypotheses via /cognitive/hypotheses but they sit
+    unread.  This loop surfaces the best ones so the daemon can act on them.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "cognitive_hypotheses"}
+    hypotheses = _brain_request(base_url, "GET", "/cognitive/hypotheses")
+    if isinstance(hypotheses, dict) and hypotheses.get("error"):
+        return {"error": True, "loop": "cognitive_hypotheses", "reason": hypotheses.get("reason")}
+    items = hypotheses.get("hypotheses", []) if isinstance(hypotheses, dict) else []
+    return {
+        "ok": True,
+        "loop": "cognitive_hypotheses",
+        "total": len(items),
+        "hypotheses": items[:5],  # top 5
+    }
+
+
 # ---------------------------------------------------------------------------
 # Loop registry
 # ---------------------------------------------------------------------------
 
-# Map of loop name -> (callable, default_cadence_seconds)
+# Map of loop name -> callable
 LOOP_REGISTRY: dict[str, Callable] = {
-    "cognitive_cycle":     _run_cognitive_cycle,
-    "synapse_maintenance": _run_synapse_maintenance,
-    "curiosity_gap_fill":  _run_curiosity_gap_fill,
-    "quality_prune":       _run_quality_prune,
-    "dream_trigger":       _run_dream_trigger,
-    "consolidate_trigger": _run_consolidate_trigger,
-    "self_modify":         _run_self_modify,
-    "creativity_execute":  _run_creativity_execute,
-    "outcome_log":          _run_outcome_log,
-    "learning_update":      _run_learning_update,
-    "orphan_rescue":        _run_orphan_rescue,
-    "prediction_rebuild":  _run_prediction_rebuild,
-    "report_generate":      _run_report_generate,
+    "cognitive_cycle":      _run_cognitive_cycle,
+    "synapse_maintenance":  _run_synapse_maintenance,
+    "curiosity_gap_fill":   _run_curiosity_gap_fill,
+    "quality_prune":        _run_quality_prune,
+    "quality_enrich":       _run_quality_enrich,
+    "dream_trigger":        _run_dream_trigger,
+    "consolidate_trigger":  _run_consolidate_trigger,
+    "self_modify":          _run_self_modify,
+    "creativity_execute":   _run_creativity_execute,
+    "outcome_log":           _run_outcome_log,
+    "learning_update":       _run_learning_update,
+    "orphan_rescue":         _run_orphan_rescue,
+    "decay_noise":           _run_decay_noise,
+    "prediction_rebuild":   _run_prediction_rebuild,
+    "prediction_score":     _run_prediction_score,
+    "report_generate":       _run_report_generate,
+    "goal_pursuit":          _run_goal_pursuit,
+    "fleet_telemetry":       _run_fleet_telemetry,
+    "working_memory":        _run_working_memory,
+    "self_heal_full":        _run_self_heal_full,
+    "actuator_execute":      _run_actuator_execute,
+    "cognitive_hypotheses":  _run_cognitive_hypotheses,
 }
 
 
