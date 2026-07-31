@@ -36,6 +36,13 @@ This daemon runs continuously and closes every loop on a configurable schedule:
   cognitive_hypotheses     | GET  /cognitive/hypotheses             | 2 hours
   synthesis_chain          | POST /brain/synthesize/chain           | 4 hours
   self_mod_watcher         | GET  /v6/self/status + auto-apply      | 1 hour
+  cognitive_insights       | POST /cognitive/insights               | 4 hours
+  theory_of_mind           | GET  /v6/tom/model + /v6/tom/update    | 2 hours
+  causal_reasoning         | GET  /causal/chain + /causal/link      | 4 hours
+  fleet_monitor            | GET  /fleet/issues + /fleet/topology   | 15 min
+  brain_reasoning          | POST /brain/reason                     | 3 hours
+  knowledge_distillation   | POST /brain/distill                    | 6 hours
+  evolution_self_play      | POST /evolution/self_play              | 6 hours
 
 Usage::
 
@@ -111,6 +118,14 @@ DEFAULT_CADENCES: dict[str, int] = {
     "cognitive_hypotheses":  2 * 60 * 60,  # 2 hours
     "synthesis_chain":       4 * 60 * 60,  # 4 hours — drive /brain/synthesize/chain
     "self_mod_watcher":      1 * 60 * 60,  # 1 hour — watch gate, auto-apply when clear
+    # v23 loops — deeper cognitive closure
+    "cognitive_insights":    4 * 60 * 60,  # 4 hours — mine cognitive insights
+    "theory_of_mind":        2 * 60 * 60,  # 2 hours — model user intent
+    "causal_reasoning":      4 * 60 * 60,  # 4 hours — discover cause-effect chains
+    "fleet_monitor":         15 * 60,    # 15 min — fleet health/issues/predictions
+    "brain_reasoning":       3 * 60 * 60,  # 3 hours — deep reasoning over knowledge
+    "knowledge_distillation": 6 * 60 * 60,  # 6 hours — distill lessons
+    "evolution_self_play":   6 * 60 * 60,  # 6 hours — self-play challenges
 }
 
 
@@ -320,13 +335,6 @@ def _run_outcome_log(base_url: str, dry_run: bool) -> dict:
     )
 
 
-def _run_prediction_rebuild(base_url: str, dry_run: bool) -> dict:
-    """Rebuild the transition graph for sequence prediction."""
-    if dry_run:
-        return {"ok": True, "dry_run": True, "loop": "prediction_rebuild"}
-    return _brain_request(base_url, "POST", "/brain/transitions/rebuild", timeout=60.0)
-
-
 def _run_prediction_score(base_url: str, dry_run: bool) -> dict:
     """Check prediction accuracy stats to monitor brain forecasting quality."""
     if dry_run:
@@ -362,7 +370,7 @@ def _run_learning_update(base_url: str, dry_run: bool) -> dict:
     # Get recently-fired neurons (these are the ones recall actually surfaced)
     recent = _brain_request(base_url, "GET", "/neurons?limit=5")
     if isinstance(recent, dict) and recent.get("error"):
-        return recent
+        return {"error": True, "loop": "learning_update", "reason": recent.get("reason")}
     # /neurons returns a list directly
     neurons = recent if isinstance(recent, list) else recent.get("neurons", [])
     if not neurons:
@@ -603,6 +611,222 @@ def _run_cognitive_hypotheses(base_url: str, dry_run: bool) -> dict:
     }
 
 
+def _run_cognitive_insights(base_url: str, dry_run: bool) -> dict:
+    """Mine cognitive insights — patterns the brain discovers from its knowledge.
+
+    The brain's /cognitive/insights endpoint analyzes existing neurons to
+    surface non-obvious patterns and relationships.  This loop drives that
+    endpoint on a regular schedule to continuously extract value from the
+    knowledge graph.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "cognitive_insights"}
+    result = _brain_request(base_url, "POST", "/cognitive/insights", timeout=60.0)
+    if isinstance(result, dict) and result.get("error"):
+        return {"error": True, "loop": "cognitive_insights", "reason": result.get("reason")}
+    return {
+        "ok": True,
+        "loop": "cognitive_insights",
+        "insights_mined": result.get("insights_mined", 0) if isinstance(result, dict) else 0,
+        "result": result,
+    }
+
+
+def _run_theory_of_mind(base_url: str, dry_run: bool) -> dict:
+    """Model user intent via the Theory of Mind engine.
+
+    The brain's /v6/tom/* endpoints maintain a model of the user's beliefs,
+    goals, and focus.  This loop reads the current model and updates it based
+    on recent daemon activity, so the brain can better predict what the user
+    needs.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "theory_of_mind"}
+    # Read current user model
+    model = _brain_request(base_url, "GET", "/v6/tom/model")
+    if isinstance(model, dict) and model.get("error"):
+        return {"error": True, "loop": "theory_of_mind", "reason": model.get("reason")}
+    user_model = model.get("user_model", []) if isinstance(model, dict) else []
+    # Update the model with recent daemon activity focus
+    update = _brain_request(
+        base_url, "POST", "/v6/tom/update",
+        body={"field": "focus", "value": "Neuralis AGI upgrade + brain loop daemon", "confidence": 0.8},
+    )
+    return {
+        "ok": True,
+        "loop": "theory_of_mind",
+        "model_entries": len(user_model),
+        "update": update,
+    }
+
+
+def _run_causal_reasoning(base_url: str, dry_run: bool) -> dict:
+    """Discover cause-effect relationships via the causal reasoning engine.
+
+    The brain's /causal/* endpoints trace causal chains and link cause to
+    effect.  This loop drives causal discovery so the brain can build a
+    richer model of how its actions produce outcomes.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "causal_reasoning"}
+    # Get a high-fire neuron to trace its causal chain
+    neurons_resp = _brain_request(base_url, "GET", "/neurons?limit=5")
+    if isinstance(neurons_resp, dict) and neurons_resp.get("error"):
+        return {"error": True, "loop": "causal_reasoning", "reason": neurons_resp.get("reason")}
+    neurons = neurons_resp if isinstance(neurons_resp, list) else neurons_resp.get("neurons", [])
+    if not neurons:
+        return {"ok": True, "loop": "causal_reasoning", "message": "no neurons for causal trace"}
+    seed = max(neurons, key=lambda n: n.get("fire_count", 0))
+    seed_id = seed.get("id")
+    # Trace the causal chain from this neuron
+    chain = _brain_request(base_url, "GET", f"/causal/chain?neuron_id={seed_id}")
+    if isinstance(chain, dict) and chain.get("error"):
+        return {"error": True, "loop": "causal_reasoning", "reason": chain.get("reason")}
+    chain_data = chain.get("chain", []) if isinstance(chain, dict) else []
+    # Create a causal link between the seed and its top effect
+    link_result = None
+    if chain_data:
+        top_effect = chain_data[0].get("to")
+        if top_effect:
+            link_result = _brain_request(
+                base_url, "POST", "/causal/link",
+                body={"cause_id": seed_id, "effect_id": top_effect, "confidence": 0.6},
+            )
+    return {
+        "ok": True,
+        "loop": "causal_reasoning",
+        "seed_id": seed_id,
+        "chain_length": len(chain_data),
+        "link": link_result,
+    }
+
+
+def _run_fleet_monitor(base_url: str, dry_run: bool) -> dict:
+    """Monitor fleet health — issues, topology, and predictions.
+
+    The brain has /fleet/issues, /fleet/topology, and /fleet/predictions
+    endpoints but they were never polled.  This loop checks all three so
+    the brain (and by extension the daemon) can detect and respond to
+    fleet problems.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "fleet_monitor"}
+    # Check for fleet issues
+    issues = _brain_request(base_url, "GET", "/fleet/issues")
+    if isinstance(issues, dict) and issues.get("error"):
+        return {"error": True, "loop": "fleet_monitor", "reason": issues.get("reason")}
+    issue_count = issues.get("count", 0) if isinstance(issues, dict) else 0
+    # Get fleet topology
+    topology = _brain_request(base_url, "GET", "/fleet/topology")
+    if isinstance(topology, dict) and topology.get("error"):
+        return {"error": True, "loop": "fleet_monitor", "reason": topology.get("reason")}
+    nodes = topology.get("nodes", []) if isinstance(topology, dict) else []
+    # Get fleet predictions
+    predictions = _brain_request(base_url, "GET", "/fleet/predictions")
+    has_alert = predictions.get("has_alert", False) if isinstance(predictions, dict) else False
+    return {
+        "ok": True,
+        "loop": "fleet_monitor",
+        "issue_count": issue_count,
+        "nodes": len(nodes),
+        "node_statuses": [
+            {"name": n.get("name"), "status": n.get("status"), "role": n.get("role")}
+            for n in nodes
+        ],
+        "prediction_alert": has_alert,
+    }
+
+
+def _run_brain_reasoning(base_url: str, dry_run: bool) -> dict:
+    """Drive deep reasoning over the brain's knowledge.
+
+    The brain's /brain/reason endpoint answers questions using its full
+    knowledge graph.  This loop poses strategic questions to keep the
+    reasoning engine warm and to surface insights that shorter loops miss.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "brain_reasoning"}
+    # Rotate questions to explore different aspects of the brain's knowledge
+    questions = [
+        "What are the strongest connections between technology and infrastructure knowledge?",
+        "What patterns emerge from recent fleet telemetry?",
+        "How can the brain improve its average neuron quality?",
+        "What is the relationship between prediction accuracy and synapse count?",
+    ]
+    q_idx = int(time.time() // 3600) % len(questions)
+    result = _brain_request(
+        base_url, "POST", "/brain/reason",
+        body={"question": questions[q_idx]},
+        timeout=60.0,
+    )
+    if isinstance(result, dict) and result.get("error"):
+        return {"error": True, "loop": "brain_reasoning", "reason": result.get("reason")}
+    return {
+        "ok": True,
+        "loop": "brain_reasoning",
+        "question": questions[q_idx],
+        "answer_preview": (result.get("answer", "")[:200] if isinstance(result, dict) else ""),
+    }
+
+
+def _run_knowledge_distillation(base_url: str, dry_run: bool) -> dict:
+    """Distill lessons from high-value neurons into compact form.
+
+    The brain's /brain/distill endpoint takes a set of neuron IDs and
+    distills their lessons into a compact representation.  This loop
+    feeds it the most active neurons to continuously refine the brain's
+    knowledge.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "knowledge_distillation"}
+    # Get the most-fired neurons for distillation
+    neurons_resp = _brain_request(base_url, "GET", "/neurons?limit=10")
+    if isinstance(neurons_resp, dict) and neurons_resp.get("error"):
+        return {"error": True, "loop": "knowledge_distillation", "reason": neurons_resp.get("reason")}
+    neurons = neurons_resp if isinstance(neurons_resp, list) else neurons_resp.get("neurons", [])
+    if not neurons:
+        return {"ok": True, "loop": "knowledge_distillation", "message": "no neurons to distill"}
+    neuron_ids = [n.get("id") for n in neurons[:6] if n.get("id") is not None]
+    result = _brain_request(
+        base_url, "POST", "/brain/distill",
+        body={"neuron_ids": neuron_ids},
+        timeout=60.0,
+    )
+    if isinstance(result, dict) and result.get("error"):
+        return {"error": True, "loop": "knowledge_distillation", "reason": result.get("reason")}
+    return {
+        "ok": True,
+        "loop": "knowledge_distillation",
+        "neurons_distilled": len(neuron_ids),
+        "result": result,
+    }
+
+
+def _run_evolution_self_play(base_url: str, dry_run: bool) -> dict:
+    """Create self-play challenges for evolutionary growth.
+
+    The brain's /evolution/self_play endpoint generates challenges that
+    the brain can use to test and improve its reasoning.  This loop
+    creates these challenges on a regular schedule so the brain
+    continuously stress-tests itself.
+    """
+    if dry_run:
+        return {"ok": True, "dry_run": True, "loop": "evolution_self_play"}
+    result = _brain_request(
+        base_url, "POST", "/evolution/self_play",
+        body={},
+        timeout=60.0,
+    )
+    if isinstance(result, dict) and result.get("error"):
+        return {"error": True, "loop": "evolution_self_play", "reason": result.get("reason")}
+    return {
+        "ok": True,
+        "loop": "evolution_self_play",
+        "challenge_created": result.get("challenge_created", False) if isinstance(result, dict) else False,
+        "result": result,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Gap-fix loops (v22.1 — closes remaining brain gaps)
 # ---------------------------------------------------------------------------
@@ -830,6 +1054,13 @@ LOOP_REGISTRY: dict[str, Callable] = {
     "cognitive_hypotheses":  _run_cognitive_hypotheses,
     "synthesis_chain":       _run_synthesis_chain,
     "self_mod_watcher":      _run_self_mod_watcher,
+    "cognitive_insights":   _run_cognitive_insights,
+    "theory_of_mind":       _run_theory_of_mind,
+    "causal_reasoning":     _run_causal_reasoning,
+    "fleet_monitor":        _run_fleet_monitor,
+    "brain_reasoning":      _run_brain_reasoning,
+    "knowledge_distillation": _run_knowledge_distillation,
+    "evolution_self_play":  _run_evolution_self_play,
 }
 
 
@@ -845,6 +1076,7 @@ class LoopState:
     last_result: Any = None
     run_count: int = 0
     error_count: int = 0
+    adaptive_cadence: float = 0.0  # 0 = use default; >0 = overridden by adaptive logic
 
 
 @dataclass
@@ -856,6 +1088,7 @@ class TickReport:
     loops_errored: list[str] = field(default_factory=list)
     results: dict[str, Any] = field(default_factory=dict)
     dry_run: bool = False
+    health: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -865,6 +1098,7 @@ class TickReport:
             "loops_errored": self.loops_errored,
             "results": self.results,
             "dry_run": self.dry_run,
+            "health": self.health,
         }
 
 
@@ -911,7 +1145,8 @@ class BrainLoopDaemon:
 
         for name, func in LOOP_REGISTRY.items():
             state = self._states[name]
-            cadence = self.cadences.get(name, 3600)
+            # Adaptive cadence: use override if set, otherwise default
+            cadence = state.adaptive_cadence if state.adaptive_cadence > 0 else self.cadences.get(name, 3600)
             elapsed = now - state.last_run
 
             if state.last_run > 0 and elapsed < cadence:
@@ -931,14 +1166,74 @@ class BrainLoopDaemon:
                 if isinstance(result, dict) and result.get("error"):
                     state.error_count += 1
                     report.loops_errored.append(name)
+                    self._adapt_cadence_on_error(name, state)
+                else:
+                    self._adapt_cadence_on_success(name, state)
             except Exception as e:
                 logger.exception("Loop %s raised", name)
                 state.error_count += 1
                 state.last_run = now
                 report.loops_errored.append(name)
                 report.results[name] = {"error": True, "exception": str(e)}
+                self._adapt_cadence_on_error(name, state)
 
+        report.health = self._health_summary()
         return report
+
+    @staticmethod
+    def _adapt_cadence_on_error(name: str, state: LoopState) -> None:
+        """Increase cadence (retry less often) when a loop errors.
+
+        Each consecutive error doubles the cadence up to 8x the default.
+        This prevents hammering broken endpoints.
+        """
+        base = DEFAULT_CADENCES.get(name, 3600)
+        current = state.adaptive_cadence if state.adaptive_cadence > 0 else base
+        new_cadence = min(current * 2, base * 8)
+        if new_cadence != current:
+            state.adaptive_cadence = new_cadence
+            logger.info("Adaptive cadence: %s error → cadence %.0fs (was %.0fs)", name, new_cadence, current)
+
+    @staticmethod
+    def _adapt_cadence_on_success(name: str, state: LoopState) -> None:
+        """Decrease cadence (retry sooner) when a loop succeeds.
+
+        Each success halves the adaptive cadence down to the base.
+        This makes healthy loops run more frequently.
+        """
+        if state.adaptive_cadence <= 0:
+            return  # Already at default
+        base = DEFAULT_CADENCES.get(name, 3600)
+        new_cadence = max(state.adaptive_cadence * 0.5, base)
+        if new_cadence <= base:
+            state.adaptive_cadence = 0  # Back to default
+            logger.info("Adaptive cadence: %s recovered → default %.0fs", name, base)
+        else:
+            state.adaptive_cadence = new_cadence
+            logger.info("Adaptive cadence: %s improving → %.0fs", name, new_cadence)
+
+    def _health_summary(self) -> dict[str, Any]:
+        """Build a health summary of all loops."""
+        total_runs = sum(s.run_count for s in self._states.values())
+        total_errors = sum(s.error_count for s in self._states.values())
+        loops = {}
+        for name, state in self._states.items():
+            base = DEFAULT_CADENCES.get(name, 3600)
+            effective = state.adaptive_cadence if state.adaptive_cadence > 0 else base
+            error_rate = state.error_count / max(state.run_count, 1)
+            loops[name] = {
+                "run_count": state.run_count,
+                "error_count": state.error_count,
+                "error_rate": round(error_rate, 2),
+                "adaptive_cadence": state.adaptive_cadence if state.adaptive_cadence > 0 else None,
+                "effective_cadence": effective,
+            }
+        return {
+            "total_runs": total_runs,
+            "total_errors": total_errors,
+            "overall_error_rate": round(total_errors / max(total_runs, 1), 2),
+            "loops": loops,
+        }
 
     def run_forever(self) -> None:
         """Run the daemon continuously until interrupted."""
@@ -1023,6 +1318,11 @@ def main() -> None:
         default=[],
         help="Override cadence for a loop as name=seconds (repeatable)",
     )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Print loop health status as JSON and exit",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -1048,6 +1348,14 @@ def main() -> None:
         cadences=cadences or None,
         dry_run=args.dry_run,
     )
+
+    if args.status:
+        # Just print health status without running any loops
+        health = daemon._health_summary()
+        health["timestamp"] = datetime.now(timezone.utc).isoformat()
+        health["total_loops"] = len(LOOP_REGISTRY)
+        print(json.dumps(health, indent=2, default=str))
+        return
 
     if args.once:
         report = daemon.tick()

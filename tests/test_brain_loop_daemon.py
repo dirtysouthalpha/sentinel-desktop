@@ -18,6 +18,7 @@ import pytest
 
 from scripts.brain_loop_daemon import (
     BrainLoopDaemon,
+    LoopState,
     TickReport,
     _run_cognitive_cycle,
     _run_synapse_maintenance,
@@ -33,6 +34,13 @@ from scripts.brain_loop_daemon import (
     _run_prediction_health,
     _run_report_generate,
     _run_decay_noise,
+    _run_cognitive_insights,
+    _run_theory_of_mind,
+    _run_causal_reasoning,
+    _run_fleet_monitor,
+    _run_brain_reasoning,
+    _run_knowledge_distillation,
+    _run_evolution_self_play,
     LOOP_REGISTRY,
     DEFAULT_CADENCES,
 )
@@ -100,6 +108,13 @@ class TestLoopRegistry:
             "cognitive_hypotheses",
             "synthesis_chain",
             "self_mod_watcher",
+            "cognitive_insights",
+            "theory_of_mind",
+            "causal_reasoning",
+            "fleet_monitor",
+            "brain_reasoning",
+            "knowledge_distillation",
+            "evolution_self_play",
         }
         assert set(LOOP_REGISTRY) == expected
 
@@ -763,3 +778,348 @@ class TestOrphanRescue:
 
 # Need urllib.error imported at module level for tests above
 import urllib.error  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Test: v23 new loops
+# ---------------------------------------------------------------------------
+
+class TestCognitiveInsights:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_cognitive_insights(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"ok": True, "insights_mined": 8})
+        result = _run_cognitive_insights("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert result["insights_mined"] == 8
+        req = mock_urlopen.call_args[0][0]
+        assert req.full_url == "http://brain:8001/cognitive/insights"
+        assert req.method == "POST"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_cognitive_insights_error(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        result = _run_cognitive_insights("http://brain:8001", dry_run=False)
+        assert result["error"] is True
+        assert result["loop"] == "cognitive_insights"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_cognitive_insights_dry_run(self, mock_urlopen):
+        result = _run_cognitive_insights("http://brain:8001", dry_run=True)
+        mock_urlopen.assert_not_called()
+        assert result["dry_run"] is True
+
+
+class TestTheoryOfMind:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_theory_of_mind(self, mock_urlopen):
+        mock_urlopen.side_effect = [
+            _mock_urlopen({"user_model": [{"id": 1, "field": "focus", "value": "test", "confidence": 0.9}]}),
+            _mock_urlopen({"ok": True, "field": "focus"}),
+        ]
+        result = _run_theory_of_mind("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert result["model_entries"] == 1
+        # First call reads model, second updates
+        assert mock_urlopen.call_count == 2
+        update_req = mock_urlopen.call_args_list[1][0][0]
+        assert update_req.full_url == "http://brain:8001/v6/tom/update"
+        assert update_req.method == "POST"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_theory_of_mind_error(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        result = _run_theory_of_mind("http://brain:8001", dry_run=False)
+        assert result["error"] is True
+        assert result["loop"] == "theory_of_mind"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_theory_of_mind_dry_run(self, mock_urlopen):
+        result = _run_theory_of_mind("http://brain:8001", dry_run=True)
+        mock_urlopen.assert_not_called()
+        assert result["dry_run"] is True
+
+
+class TestCausalReasoning:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_causal_reasoning(self, mock_urlopen):
+        mock_urlopen.side_effect = [
+            _mock_urlopen([{"id": 1, "fire_count": 100}, {"id": 2, "fire_count": 50}]),
+            _mock_urlopen({"ok": True, "chain": [{"from": 1, "to": 2, "confidence": 0.7}], "nodes_visited": 2}),
+            _mock_urlopen({"ok": True, "cause": 1, "effect": 2}),
+        ]
+        result = _run_causal_reasoning("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert result["seed_id"] == 1
+        assert result["chain_length"] == 1
+        assert result["link"] == {"ok": True, "cause": 1, "effect": 2}
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_causal_reasoning_no_neurons(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen([])
+        result = _run_causal_reasoning("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert "no neurons" in result["message"]
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_causal_reasoning_dry_run(self, mock_urlopen):
+        result = _run_causal_reasoning("http://brain:8001", dry_run=True)
+        mock_urlopen.assert_not_called()
+        assert result["dry_run"] is True
+
+
+class TestFleetMonitor:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_fleet_monitor(self, mock_urlopen):
+        mock_urlopen.side_effect = [
+            _mock_urlopen({"ok": True, "issues": [], "count": 0}),
+            _mock_urlopen({"nodes": [{"name": "nuke", "status": "online", "role": "compute"}]}),
+            _mock_urlopen({"ok": True, "alert": None, "has_alert": False}),
+        ]
+        result = _run_fleet_monitor("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert result["issue_count"] == 0
+        assert result["nodes"] == 1
+        assert result["node_statuses"][0]["name"] == "nuke"
+        assert result["prediction_alert"] is False
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_fleet_monitor_error(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        result = _run_fleet_monitor("http://brain:8001", dry_run=False)
+        assert result["error"] is True
+        assert result["loop"] == "fleet_monitor"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_fleet_monitor_dry_run(self, mock_urlopen):
+        result = _run_fleet_monitor("http://brain:8001", dry_run=True)
+        mock_urlopen.assert_not_called()
+        assert result["dry_run"] is True
+
+
+class TestBrainReasoning:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_brain_reasoning(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({
+            "question": "test question",
+            "answer": "This is a detailed answer about the brain's knowledge.",
+        })
+        result = _run_brain_reasoning("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        # Loop rotates questions by time — just verify one was selected
+        assert "question" in result
+        assert len(result["question"]) > 0
+        assert result["answer_preview"].startswith("This is a detailed")
+        req = mock_urlopen.call_args[0][0]
+        assert req.full_url == "http://brain:8001/brain/reason"
+        assert req.method == "POST"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_brain_reasoning_error(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        result = _run_brain_reasoning("http://brain:8001", dry_run=False)
+        assert result["error"] is True
+        assert result["loop"] == "brain_reasoning"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_brain_reasoning_dry_run(self, mock_urlopen):
+        result = _run_brain_reasoning("http://brain:8001", dry_run=True)
+        mock_urlopen.assert_not_called()
+        assert result["dry_run"] is True
+
+
+class TestKnowledgeDistillation:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_knowledge_distillation(self, mock_urlopen):
+        mock_urlopen.side_effect = [
+            _mock_urlopen([{"id": 1, "fire_count": 100}, {"id": 2, "fire_count": 90},
+                          {"id": 3, "fire_count": 80}, {"id": 4, "fire_count": 70},
+                          {"id": 5, "fire_count": 60}, {"id": 6, "fire_count": 50}]),
+            _mock_urlopen({"distilled": {"lesson1": "summary"}, "skipped": {}}),
+        ]
+        result = _run_knowledge_distillation("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert result["neurons_distilled"] == 6
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_knowledge_distillation_no_neurons(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen([])
+        result = _run_knowledge_distillation("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert "no neurons" in result["message"]
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_knowledge_distillation_dry_run(self, mock_urlopen):
+        result = _run_knowledge_distillation("http://brain:8001", dry_run=True)
+        mock_urlopen.assert_not_called()
+        assert result["dry_run"] is True
+
+
+class TestEvolutionSelfPlay:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_evolution_self_play(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"ok": True, "challenge_created": True})
+        result = _run_evolution_self_play("http://brain:8001", dry_run=False)
+        assert result["ok"] is True
+        assert result["challenge_created"] is True
+        req = mock_urlopen.call_args[0][0]
+        assert req.full_url == "http://brain:8001/evolution/self_play"
+        assert req.method == "POST"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_evolution_self_play_error(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        result = _run_evolution_self_play("http://brain:8001", dry_run=False)
+        assert result["error"] is True
+        assert result["loop"] == "evolution_self_play"
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_evolution_self_play_dry_run(self, mock_urlopen):
+        result = _run_evolution_self_play("http://brain:8001", dry_run=True)
+        mock_urlopen.assert_not_called()
+        assert result["dry_run"] is True
+
+
+# ---------------------------------------------------------------------------
+# Test: adaptive cadence
+# ---------------------------------------------------------------------------
+
+class TestAdaptiveCadence:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_error_increases_cadence(self, mock_urlopen):
+        """When a loop errors, its adaptive cadence should double."""
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        daemon = BrainLoopDaemon(base_url="http://brain:8001", cadences={"cognitive_cycle": 0})
+        # Run tick twice to trigger error adaptation
+        daemon.tick()
+        state = daemon._states["cognitive_cycle"]
+        assert state.error_count == 1
+        assert state.adaptive_cadence == 30 * 60 * 2  # doubled from base
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_success_recovers_cadence(self, mock_urlopen):
+        """When a loop succeeds after errors, cadence should recover."""
+        mock_urlopen.return_value = _mock_urlopen({"ok": True})
+        daemon = BrainLoopDaemon(base_url="http://brain:8001", cadences={"cognitive_cycle": 0})
+        state = daemon._states["cognitive_cycle"]
+        # Simulate a previous error that set adaptive cadence
+        state.adaptive_cadence = 30 * 60 * 4  # 4x base
+        daemon.tick()
+        # Should halve back toward base
+        assert state.adaptive_cadence == 30 * 60 * 2
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_cadence_floor_at_base(self, mock_urlopen):
+        """Adaptive cadence should never go below the base cadence."""
+        mock_urlopen.return_value = _mock_urlopen({"ok": True})
+        daemon = BrainLoopDaemon(base_url="http://brain:8001", cadences={"cognitive_cycle": 0})
+        state = daemon._states["cognitive_cycle"]
+        # Set adaptive just above base
+        state.adaptive_cadence = 30 * 60 * 1.5
+        daemon.tick()
+        # Should reset to 0 (use default) since it would go below base
+        assert state.adaptive_cadence == 0
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_cadence_ceiling_at_8x(self, mock_urlopen):
+        """Adaptive cadence should never exceed 8x the base."""
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        daemon = BrainLoopDaemon(base_url="http://brain:8001", cadences={"cognitive_cycle": 0})
+        state = daemon._states["cognitive_cycle"]
+        # Set already at 8x
+        state.adaptive_cadence = 30 * 60 * 8
+        daemon.tick()
+        # Should stay at 8x (not go higher)
+        assert state.adaptive_cadence == 30 * 60 * 8
+
+
+# ---------------------------------------------------------------------------
+# Test: health summary
+# ---------------------------------------------------------------------------
+
+class TestHealthSummary:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_health_includes_all_loops(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"ok": True})
+        daemon = BrainLoopDaemon(base_url="http://brain:8001")
+        health = daemon._health_summary()
+        assert len(health["loops"]) == len(LOOP_REGISTRY)
+        assert "total_runs" in health
+        assert "total_errors" in health
+        assert "overall_error_rate" in health
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_health_tracks_error_rate(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "fail"})
+        daemon = BrainLoopDaemon(base_url="http://brain:8001", cadences={"cognitive_cycle": 0})
+        daemon.tick()
+        health = daemon._health_summary()
+        assert health["total_errors"] >= 1
+        assert health["overall_error_rate"] > 0
+
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_tick_report_includes_health(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen({"ok": True})
+        daemon = BrainLoopDaemon(base_url="http://brain:8001", cadences={"cognitive_cycle": 0})
+        report = daemon.tick()
+        assert "health" in report.to_dict()
+        assert isinstance(report.health, dict)
+
+
+# ---------------------------------------------------------------------------
+# Test: bug fix verification
+# ---------------------------------------------------------------------------
+
+class TestBugFixes:
+    @patch("scripts.brain_loop_daemon.urllib.request.urlopen")
+    def test_learning_update_wraps_error(self, mock_urlopen):
+        """Bug fix: learning_update should wrap brain errors with loop name."""
+        mock_urlopen.return_value = _mock_urlopen({"error": True, "reason": "brain fail"})
+        from scripts.brain_loop_daemon import _run_learning_update
+        result = _run_learning_update("http://brain:8001", dry_run=False)
+        assert result["error"] is True
+        assert result["loop"] == "learning_update"
+        assert result["reason"] == "brain fail"
+
+    def test_no_duplicate_prediction_rebuild(self):
+        """Bug fix: there should be only one _run_prediction_rebuild definition."""
+        import ast
+        with open("scripts/brain_loop_daemon.py") as f:
+            tree = ast.parse(f.read())
+        count = sum(
+            1 for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef) and node.name == "_run_prediction_rebuild"
+        )
+        assert count == 1, f"Expected 1 _run_prediction_rebuild, found {count}"
+
+
+# ---------------------------------------------------------------------------
+# Test: --status CLI flag
+# ---------------------------------------------------------------------------
+
+class TestStatusFlag:
+    @patch("scripts.brain_loop_daemon.argparse")
+    def test_status_flag_outputs_json(self, mock_argparse):
+        """The --status flag should print health JSON and exit."""
+        import io
+        import sys
+        from unittest.mock import patch as upatch
+
+        with patch("scripts.brain_loop_daemon.BrainLoopDaemon") as mock_daemon_cls:
+            mock_daemon = MagicMock()
+            mock_daemon._health_summary.return_value = {
+                "total_runs": 0, "total_errors": 0, "overall_error_rate": 0,
+                "loops": {},
+            }
+            mock_daemon_cls.return_value = mock_daemon
+
+            # Simulate --status by calling main with patched args
+            with upatch("sys.argv", ["brain_loop_daemon.py", "--status"]):
+                with upatch("sys.stdout", io.StringIO()) as fake_out:
+                    from scripts.brain_loop_daemon import main
+                    try:
+                        main()
+                    except SystemExit:
+                        pass
+                    output = fake_out.getvalue()
+                    # Should have printed JSON
+                    assert "total_loops" in output or "total_runs" in output
