@@ -445,6 +445,18 @@ class SentinelServer:
         app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
 
+        # v31.1.0 — Dashboard filesystem browsing (root-jailed, see core/filesystem.py)
+        app.get("/api/files")(self._handle_files_list)
+        app.get("/api/files/content")(self._handle_files_content)
+        app.get("/api/files/download")(self._handle_files_download)
+        # v31.1.0 — Conversation persistence
+        app.get("/api/conversations")(self._handle_convs_list)
+        app.post("/api/conversations")(self._handle_convs_create)
+        app.get("/api/conversations/{conv_id}")(self._handle_conv_get)
+        app.delete("/api/conversations/{conv_id}")(self._handle_conv_delete)
+        app.get("/api/conversations/{conv_id}/messages")(self._handle_conv_messages)
+        app.post("/api/conversations/{conv_id}/messages")(self._handle_conv_add_message)
+
         # v30.0.0 — Dashboard static files
         from pathlib import Path as _P
 
@@ -452,6 +464,37 @@ class SentinelServer:
         _dash_dir = _P(__file__).parent.parent / "dashboard"
         if _dash_dir.exists():
             app.mount("/dashboard", StaticFiles(directory=str(_dash_dir), html=True), name="dashboard")
+
+        # v31.1.0 — Command Center "Prime".
+        #
+        # Prime had no server at all: it existed only as a file in the
+        # sentinel-override repo and was opened over file://. On a file:// page
+        # `location.host` is the empty string, so the dashboard's
+        # `new WebSocket(`${proto}//${location.host}/ws`)` built `ws:///ws`,
+        # which can never connect — and ws.onmessage is the only path an
+        # assistant reply has. Serving it from this origin is what makes the
+        # chat able to receive a response at all.
+        #
+        # The sentinel-override repo stays the source of truth. Candidates are
+        # tried in order because this package runs from two trees: the dev clone
+        # at C:\AgentLink\sentinel-desktop (where ../sentinel-override is a
+        # sibling) and the deployed copy at C:\SentinelDesktop (where it is not).
+        # SENTINEL_PRIME_DIR overrides both.
+        _prime_candidates = [
+            os.environ.get("SENTINEL_PRIME_DIR"),
+            _P(__file__).parent.parent.parent / "sentinel-override" / "web",
+            _P(r"C:\AgentLink\sentinel-override\web"),
+        ]
+        for _candidate in _prime_candidates:
+            if not _candidate:
+                continue
+            _prime_dir = _P(_candidate)
+            if _prime_dir.is_dir():
+                app.mount("/prime", StaticFiles(directory=str(_prime_dir), html=True), name="prime")
+                logger.info("Prime dashboard served from %s", _prime_dir)
+                break
+        else:
+            logger.warning("Prime dashboard directory not found; /prime not mounted")
 
         app.websocket("/ws")(self._handle_ws)
 
@@ -1336,3 +1379,174 @@ class SentinelServer:
         if not dup:
             raise HTTPException(404, "Workflow not found")
         return dup.to_dict()
+
+    # -- v31.1.0: dashboard filesystem -----------------------------------
+    #
+    # These three endpoints are what the Command Center's file explorer has
+    # been calling since v8. They never existed, so the panel read "Cannot
+    # list directory" on every load.
+    #
+    # They are arbitrary file read over HTTP on a Tailscale-reachable host,
+    # so every path goes through core.filesystem's root jail. See that
+    # module for why containment is checked after resolve() and not before.
+
+    @staticmethod
+    def _fs_error(exc) -> HTTPException:
+        """Map a jail refusal onto its HTTP status.
+
+        503 is preserved rather than flattened to 500: the dashboard's
+        apiFetch() renders 'degraded' differently from 'error', and "no roots
+        are configured" is a service-configuration problem, not a bad request.
+        """
+        return HTTPException(exc.status, exc.message)
+
+    async def _handle_files_list(
+        self,
+        path: str | None = None,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core.filesystem import FilesystemError, allowed_roots, list_directory
+
+        # No path → the first configured root, so the explorer opens somewhere
+        # legal instead of at a hardcoded C:\ that the jail would refuse.
+        if not (path or "").strip():
+            roots = allowed_roots()
+            if not roots:
+                raise HTTPException(503, "No browsable roots are configured")
+            path = str(roots[0])
+        try:
+            return list_directory(path)
+        except FilesystemError as exc:
+            raise self._fs_error(exc) from exc
+
+    async def _handle_files_content(
+        self,
+        path: str | None = None,
+        max_bytes: int | None = None,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core.filesystem import FilesystemError, read_file
+
+        try:
+            return read_file(path, max_bytes)
+        except FilesystemError as exc:
+            raise self._fs_error(exc) from exc
+
+    async def _handle_files_download(
+        self,
+        path: str | None = None,
+        authorization: str | None = Header(default=None),
+    ):
+        self._check_auth(authorization)
+        from fastapi.responses import FileResponse
+
+        from core.filesystem import FilesystemError, open_for_download
+
+        try:
+            target, filename = open_for_download(path)
+        except FilesystemError as exc:
+            raise self._fs_error(exc) from exc
+        # application/octet-stream + attachment: never let the browser decide to
+        # render a downloaded file inline on this origin.
+        return FileResponse(
+            str(target),
+            media_type="application/octet-stream",
+            filename=filename,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # -- v31.1.0: conversation persistence -------------------------------
+
+    async def _handle_convs_list(
+        self,
+        q: str | None = None,
+        limit: int = 200,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        if (q or "").strip():
+            return {"conversations": conversations.search(q, limit)}
+        return {"conversations": conversations.list_all(limit)}
+
+    async def _handle_convs_create(
+        self,
+        req: Request,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        title = None
+        try:
+            body = await req.json()
+            if isinstance(body, dict):
+                title = body.get("title")
+        except Exception:
+            pass  # the dashboard POSTs with no body at all
+        return conversations.create(title)
+
+    async def _handle_conv_get(
+        self,
+        conv_id: str,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        conv = conversations.get(conv_id)
+        if conv is None:
+            raise HTTPException(404, "Conversation not found")
+        conv["messages"] = conversations.messages(conv_id)
+        return conv
+
+    async def _handle_conv_delete(
+        self,
+        conv_id: str,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        if not conversations.delete(conv_id):
+            raise HTTPException(404, "Conversation not found")
+        return {"deleted": True, "id": conv_id}
+
+    async def _handle_conv_messages(
+        self,
+        conv_id: str,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        if conversations.get(conv_id) is None:
+            raise HTTPException(404, "Conversation not found")
+        return {"messages": conversations.messages(conv_id)}
+
+    async def _handle_conv_add_message(
+        self,
+        conv_id: str,
+        req: Request,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        try:
+            body = await req.json()
+        except Exception as exc:
+            raise HTTPException(400, "Body must be JSON") from exc
+        if not isinstance(body, dict):
+            raise HTTPException(400, "Body must be a JSON object")
+        try:
+            return conversations.add_message(conv_id, body.get("role", ""), body.get("content", ""))
+        except KeyError as exc:
+            # A message for an unknown conversation is a 404, not an implicit
+            # create: silently creating one lets a typo'd id fork the history.
+            raise HTTPException(404, "Conversation not found") from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
