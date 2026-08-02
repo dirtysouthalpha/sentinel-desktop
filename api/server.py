@@ -516,15 +516,20 @@ class SentinelServer:
         from starlette.responses import Response as _PlainResponse
 
         if _prime_index:
-            @app.get("/", include_in_schema=False)
+            # GET *and* HEAD — Cloudflare health-probes the origin with HEAD, and
+            # a 405 there can make it treat the origin as down and serve an
+            # Always-Online 503 with a stale cached page.
+            @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
             async def _serve_prime_root():
-                # no-store so Cloudflare never caches the cockpit HTML again —
-                # a stale edge-cached copy of an old build is exactly what shadowed
-                # this page (Cloudflare served a cached v17 app while the origin
-                # was healthy). After a one-time cache purge, this keeps it fresh.
+                # Cache-Control: PRIVATE is the load-bearing word here. This zone
+                # (dirtysouthalpha.com) has a Browser-Cache-TTL setting that stamps
+                # max-age=14400 OVER a plain no-cache/no-store on the response, so
+                # browsers + the CF edge pin a stale build for 4h — the exact bug
+                # that kept serving an old v17 app. `private` forces Cloudflare to
+                # BYPASS edge + browser TTL stamping; the ETag still gives cheap
+                # 304s. (Verified fix, per the brain: cf-browser-cache-ttl-stale-js.)
                 return _FileResponse(_prime_index, headers={
-                    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-                    "CDN-Cache-Control": "no-store",
+                    "Cache-Control": "private, no-cache, must-revalidate",
                 })
 
         _SW_KILL = (
@@ -539,9 +544,12 @@ class SentinelServer:
         )
 
         async def _sw_kill():
+            # `private` — same reason as the root route: this zone's
+            # Browser-Cache-TTL would otherwise stamp a 4h max-age over a plain
+            # no-cache and pin the stale worker.
             return _PlainResponse(
                 _SW_KILL, media_type="application/javascript",
-                headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+                headers={"Cache-Control": "private, no-cache, must-revalidate"})
 
         for _swpath in ("/sw.js", "/service-worker.js", "/v17-sw.js", "/worker.js"):
             app.add_api_route(_swpath, _sw_kill, methods=["GET"],
