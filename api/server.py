@@ -485,6 +485,7 @@ class SentinelServer:
             _P(__file__).parent.parent.parent / "sentinel-override" / "web",
             _P(r"C:\AgentLink\sentinel-override\web"),
         ]
+        _prime_index = None
         for _candidate in _prime_candidates:
             if not _candidate:
                 continue
@@ -492,9 +493,94 @@ class SentinelServer:
             if _prime_dir.is_dir():
                 app.mount("/prime", StaticFiles(directory=str(_prime_dir), html=True), name="prime")
                 logger.info("Prime dashboard served from %s", _prime_dir)
+                _idx = _prime_dir / "dashboard-prime.html"
+                if _idx.is_file():
+                    _prime_index = str(_idx)
                 break
         else:
             logger.warning("Prime dashboard directory not found; /prime not mounted")
+
+        # v32 — serve Prime at the ROOT and evict any stale service worker.
+        #
+        # prime.dirtysouthalpha.com reaches this origin at "/", which used to
+        # 404 — so browsers kept running a CACHED older PWA (v17-boot.js /
+        # council.js) from a registered service worker, complete with a syntax
+        # error, instead of the current dashboard. Two fixes:
+        #  1) serve the current dashboard at "/", so once the stale SW is gone
+        #     the right app loads;
+        #  2) ship a SELF-DESTRUCTING service worker at the paths a prior PWA is
+        #     likely to have registered, so the browser's next SW update check
+        #     unregisters it and drops its caches. The current dashboard
+        #     registers no SW of its own.
+        from starlette.responses import FileResponse as _FileResponse
+        from starlette.responses import Response as _PlainResponse
+
+        if _prime_index:
+            @app.get("/", include_in_schema=False)
+            async def _serve_prime_root():
+                return _FileResponse(_prime_index)
+
+        _SW_KILL = (
+            "self.addEventListener('install', () => self.skipWaiting());\n"
+            "self.addEventListener('activate', async () => {\n"
+            "  try { const ks = await caches.keys();\n"
+            "        await Promise.all(ks.map(k => caches.delete(k))); } catch (e) {}\n"
+            "  try { await self.registration.unregister(); } catch (e) {}\n"
+            "  try { const cs = await self.clients.matchAll();\n"
+            "        cs.forEach(c => c.navigate(c.url)); } catch (e) {}\n"
+            "});\n"
+        )
+
+        async def _sw_kill():
+            return _PlainResponse(
+                _SW_KILL, media_type="application/javascript",
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+        for _swpath in ("/sw.js", "/service-worker.js", "/v17-sw.js", "/worker.js"):
+            app.add_api_route(_swpath, _sw_kill, methods=["GET"],
+                              include_in_schema=False)
+
+
+        # v31.1.1 — Brain API reverse proxy.
+        #
+        # The dashboard runs in the browser and cannot reach localhost:8001
+        # (the Neuralis brain) directly. This proxy bridges the two: the
+        # dashboard calls /__brain/* on this origin, and we forward to the
+        # brain. Keeps the brain off the public internet while still letting
+        # the dashboard panels (stats, health, fleet, cognition) load.
+        from starlette.responses import Response as _StarletteResponse
+        import httpx as _httpx
+
+        _BRAIN_URL = "http://localhost:8001"
+
+        @app.api_route("/__brain/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+        async def _brain_proxy(request: Request, path: str):
+            """Proxy requests to the Neuralis brain."""
+            target_url = f"{_BRAIN_URL}/{path}"
+            if request.url.query:
+                target_url += f"?{request.url.query}"
+            headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
+            body = await request.body()
+            try:
+                async with _httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.request(
+                        method=request.method,
+                        url=target_url,
+                        headers=headers,
+                        content=body,
+                    )
+                return _StarletteResponse(
+                    content=resp.content,
+                    status_code=resp.status_code,
+                    headers=dict(resp.headers),
+                )
+            except Exception as exc:
+                logger.error("Brain proxy error: %s", exc)
+                return _StarletteResponse(
+                    content=f'{{"error":"brain proxy error: {exc}"}}',
+                    status_code=502,
+                    media_type="application/json",
+                )
 
         app.websocket("/ws")(self._handle_ws)
 
