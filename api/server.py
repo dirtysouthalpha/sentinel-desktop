@@ -518,7 +518,14 @@ class SentinelServer:
         if _prime_index:
             @app.get("/", include_in_schema=False)
             async def _serve_prime_root():
-                return _FileResponse(_prime_index)
+                # no-store so Cloudflare never caches the cockpit HTML again —
+                # a stale edge-cached copy of an old build is exactly what shadowed
+                # this page (Cloudflare served a cached v17 app while the origin
+                # was healthy). After a one-time cache purge, this keeps it fresh.
+                return _FileResponse(_prime_index, headers={
+                    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                    "CDN-Cache-Control": "no-store",
+                })
 
         _SW_KILL = (
             "self.addEventListener('install', () => self.skipWaiting());\n"
