@@ -1363,6 +1363,25 @@ class AgentEngine:
         stay in sync with the screenshot encoding or Anthropic will reject.
         """
         provider = self.config.get("provider", "")
+        # Vision degradation. The configured endpoint may be text-only (the z.ai
+        # coding endpoint rejects image content with 400 code 1210 on every
+        # model), or a vision backend may be down. When `vision` is off, or no
+        # screenshot was captured, send TEXT ONLY so the run proceeds and the
+        # chat gets a reply, instead of every LLM call 400ing on rejected image
+        # content. Default is True, so a real vision setup is unaffected.
+        if not self.config.get("vision", True) or not screenshot_b64:
+            content = text
+            if not self.config.get("vision", True):
+                content += ("\n\n(No screen capture is available in this session — "
+                            "answer from the conversation; do not claim to see a "
+                            "screen. If the request needs no desktop action, reply "
+                            "with a finish action whose summary is your answer.)")
+            messages.append({
+                "role": "user",
+                "content": content,
+                "_sentinel_step": self.step,
+            })
+            return
         if provider == "anthropic":
             messages.append(
                 {
