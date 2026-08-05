@@ -6,6 +6,8 @@ import logging
 import os
 import sqlite3
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -18,10 +20,35 @@ class StateCache:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Open a connection, run the caller's work in a transaction, then CLOSE it.
+
+        The close is the whole point. `with sqlite3.connect(...) as conn:` is a
+        *transaction* manager (it commits or rolls back), NOT a resource manager —
+        it never closes the connection. That left every call here leaking an open
+        handle for the GC to reap whenever it felt like it.
+
+        On CPython 3.10 refcounting reaped them at method exit, so nobody noticed.
+        From 3.11 on, sqlite3 connections land in reference cycles, so refcounting
+        can't free them and they survive until a generational GC pass. On POSIX that
+        is merely untidy — an unlinked-but-open file just disappears on last close.
+        On Windows an open handle makes the file undeletable, so tearing down a
+        tempdir over a still-open cache.db raised WinError 32 and reddened only the
+        windows-latest 3.11/3.12 CI legs.
+
+        Closing here rather than in the tests fixes the leak for the daemon too,
+        which opens a connection per operation and never reclaimed one on its own.
+        """
         conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            # Preserve the previous commit-on-success / rollback-on-error semantics
+            # that callers got from `with sqlite3.connect(...)`.
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _init_db(self) -> None:
         with self._connect() as conn:
