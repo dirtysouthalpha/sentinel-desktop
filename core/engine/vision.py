@@ -152,6 +152,34 @@ class VisionMessageBuilder:
         """
         provider = self._config.get("provider", "")
         step = self._step_ref()
+
+        # Vision degradation. The configured endpoint may be text-only (the z.ai
+        # coding endpoint rejects image content with 400 code 1210 on every
+        # model), or a vision backend may be down. When `vision` is off, or no
+        # screenshot was captured, send TEXT ONLY so the run proceeds and the
+        # chat gets a reply, instead of every LLM call 400ing on rejected image
+        # content. Default is True, so a real vision setup is unaffected.
+        #
+        # 2026-08-04: ported here during the rebase of fix/chat-vision-degradation
+        # onto main. The original commit patched the monolithic core/engine.py,
+        # which main had since split into this package, so the hunk no longer
+        # applied. Logic is unchanged; only the bindings moved
+        # (self.config -> self._config, self.step -> the `step` resolved above).
+        if not self._config.get("vision", True) or not screenshot_b64:
+            content = text
+            if not self._config.get("vision", True):
+                content += (
+                    "\n\n(No screen capture is available in this session — "
+                    "answer from the conversation; do not claim to see a "
+                    "screen. If the request needs no desktop action, reply "
+                    "with a finish action whose summary is your answer.)"
+                )
+            messages.append({
+                "role": "user",
+                "content": content,
+                "_sentinel_step": step,
+            })
+            return
         if provider == "anthropic":
             messages.append(
                 {

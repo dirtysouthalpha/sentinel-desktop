@@ -445,6 +445,18 @@ class SentinelServer:
         app.delete("/workflows/builder/{wf_id}")(self._handle_workflow_builder_delete)
         app.post("/workflows/builder/{wf_id}/duplicate")(self._handle_workflow_duplicate)
 
+        # v31.1.0 — Dashboard filesystem browsing (root-jailed, see core/filesystem.py)
+        app.get("/api/files")(self._handle_files_list)
+        app.get("/api/files/content")(self._handle_files_content)
+        app.get("/api/files/download")(self._handle_files_download)
+        # v31.1.0 — Conversation persistence
+        app.get("/api/conversations")(self._handle_convs_list)
+        app.post("/api/conversations")(self._handle_convs_create)
+        app.get("/api/conversations/{conv_id}")(self._handle_conv_get)
+        app.delete("/api/conversations/{conv_id}")(self._handle_conv_delete)
+        app.get("/api/conversations/{conv_id}/messages")(self._handle_conv_messages)
+        app.post("/api/conversations/{conv_id}/messages")(self._handle_conv_add_message)
+
         # v30.0.0 — Dashboard static files
         from pathlib import Path as _P
 
@@ -452,6 +464,138 @@ class SentinelServer:
         _dash_dir = _P(__file__).parent.parent / "dashboard"
         if _dash_dir.exists():
             app.mount("/dashboard", StaticFiles(directory=str(_dash_dir), html=True), name="dashboard")
+
+        # v31.1.0 — Command Center "Prime".
+        #
+        # Prime had no server at all: it existed only as a file in the
+        # sentinel-override repo and was opened over file://. On a file:// page
+        # `location.host` is the empty string, so the dashboard's
+        # `new WebSocket(`${proto}//${location.host}/ws`)` built `ws:///ws`,
+        # which can never connect — and ws.onmessage is the only path an
+        # assistant reply has. Serving it from this origin is what makes the
+        # chat able to receive a response at all.
+        #
+        # The sentinel-override repo stays the source of truth. Candidates are
+        # tried in order because this package runs from two trees: the dev clone
+        # at C:\AgentLink\sentinel-desktop (where ../sentinel-override is a
+        # sibling) and the deployed copy at C:\SentinelDesktop (where it is not).
+        # SENTINEL_PRIME_DIR overrides both.
+        _prime_candidates = [
+            os.environ.get("SENTINEL_PRIME_DIR"),
+            _P(__file__).parent.parent.parent / "sentinel-override" / "web",
+            _P(r"C:\AgentLink\sentinel-override\web"),
+        ]
+        _prime_index = None
+        for _candidate in _prime_candidates:
+            if not _candidate:
+                continue
+            _prime_dir = _P(_candidate)
+            if _prime_dir.is_dir():
+                app.mount("/prime", StaticFiles(directory=str(_prime_dir), html=True), name="prime")
+                logger.info("Prime dashboard served from %s", _prime_dir)
+                _idx = _prime_dir / "dashboard-prime.html"
+                if _idx.is_file():
+                    _prime_index = str(_idx)
+                break
+        else:
+            logger.warning("Prime dashboard directory not found; /prime not mounted")
+
+        # v32 — serve Prime at the ROOT and evict any stale service worker.
+        #
+        # prime.dirtysouthalpha.com reaches this origin at "/", which used to
+        # 404 — so browsers kept running a CACHED older PWA (v17-boot.js /
+        # council.js) from a registered service worker, complete with a syntax
+        # error, instead of the current dashboard. Two fixes:
+        #  1) serve the current dashboard at "/", so once the stale SW is gone
+        #     the right app loads;
+        #  2) ship a SELF-DESTRUCTING service worker at the paths a prior PWA is
+        #     likely to have registered, so the browser's next SW update check
+        #     unregisters it and drops its caches. The current dashboard
+        #     registers no SW of its own.
+        from starlette.responses import FileResponse as _FileResponse
+        from starlette.responses import Response as _PlainResponse
+
+        if _prime_index:
+            # GET *and* HEAD — Cloudflare health-probes the origin with HEAD, and
+            # a 405 there can make it treat the origin as down and serve an
+            # Always-Online 503 with a stale cached page.
+            @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+            async def _serve_prime_root():
+                # Cache-Control: PRIVATE is the load-bearing word here. This zone
+                # (dirtysouthalpha.com) has a Browser-Cache-TTL setting that stamps
+                # max-age=14400 OVER a plain no-cache/no-store on the response, so
+                # browsers + the CF edge pin a stale build for 4h — the exact bug
+                # that kept serving an old v17 app. `private` forces Cloudflare to
+                # BYPASS edge + browser TTL stamping; the ETag still gives cheap
+                # 304s. (Verified fix, per the brain: cf-browser-cache-ttl-stale-js.)
+                return _FileResponse(_prime_index, headers={
+                    "Cache-Control": "private, no-cache, must-revalidate",
+                })
+
+        _SW_KILL = (
+            "self.addEventListener('install', () => self.skipWaiting());\n"
+            "self.addEventListener('activate', async () => {\n"
+            "  try { const ks = await caches.keys();\n"
+            "        await Promise.all(ks.map(k => caches.delete(k))); } catch (e) {}\n"
+            "  try { await self.registration.unregister(); } catch (e) {}\n"
+            "  try { const cs = await self.clients.matchAll();\n"
+            "        cs.forEach(c => c.navigate(c.url)); } catch (e) {}\n"
+            "});\n"
+        )
+
+        async def _sw_kill():
+            # `private` — same reason as the root route: this zone's
+            # Browser-Cache-TTL would otherwise stamp a 4h max-age over a plain
+            # no-cache and pin the stale worker.
+            return _PlainResponse(
+                _SW_KILL, media_type="application/javascript",
+                headers={"Cache-Control": "private, no-cache, must-revalidate"})
+
+        for _swpath in ("/sw.js", "/service-worker.js", "/v17-sw.js", "/worker.js"):
+            app.add_api_route(_swpath, _sw_kill, methods=["GET"],
+                              include_in_schema=False)
+
+
+        # v31.1.1 — Brain API reverse proxy.
+        #
+        # The dashboard runs in the browser and cannot reach localhost:8001
+        # (the Neuralis brain) directly. This proxy bridges the two: the
+        # dashboard calls /__brain/* on this origin, and we forward to the
+        # brain. Keeps the brain off the public internet while still letting
+        # the dashboard panels (stats, health, fleet, cognition) load.
+        from starlette.responses import Response as _StarletteResponse
+        import httpx as _httpx
+
+        _BRAIN_URL = "http://localhost:8001"
+
+        @app.api_route("/__brain/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+        async def _brain_proxy(request: Request, path: str):
+            """Proxy requests to the Neuralis brain."""
+            target_url = f"{_BRAIN_URL}/{path}"
+            if request.url.query:
+                target_url += f"?{request.url.query}"
+            headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
+            body = await request.body()
+            try:
+                async with _httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.request(
+                        method=request.method,
+                        url=target_url,
+                        headers=headers,
+                        content=body,
+                    )
+                return _StarletteResponse(
+                    content=resp.content,
+                    status_code=resp.status_code,
+                    headers=dict(resp.headers),
+                )
+            except Exception as exc:
+                logger.error("Brain proxy error: %s", exc)
+                return _StarletteResponse(
+                    content=f'{{"error":"brain proxy error: {exc}"}}',
+                    status_code=502,
+                    media_type="application/json",
+                )
 
         app.websocket("/ws")(self._handle_ws)
 
@@ -1336,3 +1480,174 @@ class SentinelServer:
         if not dup:
             raise HTTPException(404, "Workflow not found")
         return dup.to_dict()
+
+    # -- v31.1.0: dashboard filesystem -----------------------------------
+    #
+    # These three endpoints are what the Command Center's file explorer has
+    # been calling since v8. They never existed, so the panel read "Cannot
+    # list directory" on every load.
+    #
+    # They are arbitrary file read over HTTP on a Tailscale-reachable host,
+    # so every path goes through core.filesystem's root jail. See that
+    # module for why containment is checked after resolve() and not before.
+
+    @staticmethod
+    def _fs_error(exc) -> HTTPException:
+        """Map a jail refusal onto its HTTP status.
+
+        503 is preserved rather than flattened to 500: the dashboard's
+        apiFetch() renders 'degraded' differently from 'error', and "no roots
+        are configured" is a service-configuration problem, not a bad request.
+        """
+        return HTTPException(exc.status, exc.message)
+
+    async def _handle_files_list(
+        self,
+        path: str | None = None,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core.filesystem import FilesystemError, allowed_roots, list_directory
+
+        # No path → the first configured root, so the explorer opens somewhere
+        # legal instead of at a hardcoded C:\ that the jail would refuse.
+        if not (path or "").strip():
+            roots = allowed_roots()
+            if not roots:
+                raise HTTPException(503, "No browsable roots are configured")
+            path = str(roots[0])
+        try:
+            return list_directory(path)
+        except FilesystemError as exc:
+            raise self._fs_error(exc) from exc
+
+    async def _handle_files_content(
+        self,
+        path: str | None = None,
+        max_bytes: int | None = None,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core.filesystem import FilesystemError, read_file
+
+        try:
+            return read_file(path, max_bytes)
+        except FilesystemError as exc:
+            raise self._fs_error(exc) from exc
+
+    async def _handle_files_download(
+        self,
+        path: str | None = None,
+        authorization: str | None = Header(default=None),
+    ):
+        self._check_auth(authorization)
+        from fastapi.responses import FileResponse
+
+        from core.filesystem import FilesystemError, open_for_download
+
+        try:
+            target, filename = open_for_download(path)
+        except FilesystemError as exc:
+            raise self._fs_error(exc) from exc
+        # application/octet-stream + attachment: never let the browser decide to
+        # render a downloaded file inline on this origin.
+        return FileResponse(
+            str(target),
+            media_type="application/octet-stream",
+            filename=filename,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # -- v31.1.0: conversation persistence -------------------------------
+
+    async def _handle_convs_list(
+        self,
+        q: str | None = None,
+        limit: int = 200,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        if (q or "").strip():
+            return {"conversations": conversations.search(q, limit)}
+        return {"conversations": conversations.list_all(limit)}
+
+    async def _handle_convs_create(
+        self,
+        req: Request,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        title = None
+        try:
+            body = await req.json()
+            if isinstance(body, dict):
+                title = body.get("title")
+        except Exception:
+            pass  # the dashboard POSTs with no body at all
+        return conversations.create(title)
+
+    async def _handle_conv_get(
+        self,
+        conv_id: str,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        conv = conversations.get(conv_id)
+        if conv is None:
+            raise HTTPException(404, "Conversation not found")
+        conv["messages"] = conversations.messages(conv_id)
+        return conv
+
+    async def _handle_conv_delete(
+        self,
+        conv_id: str,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        if not conversations.delete(conv_id):
+            raise HTTPException(404, "Conversation not found")
+        return {"deleted": True, "id": conv_id}
+
+    async def _handle_conv_messages(
+        self,
+        conv_id: str,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        if conversations.get(conv_id) is None:
+            raise HTTPException(404, "Conversation not found")
+        return {"messages": conversations.messages(conv_id)}
+
+    async def _handle_conv_add_message(
+        self,
+        conv_id: str,
+        req: Request,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        self._check_auth(authorization)
+        from core import conversations
+
+        try:
+            body = await req.json()
+        except Exception as exc:
+            raise HTTPException(400, "Body must be JSON") from exc
+        if not isinstance(body, dict):
+            raise HTTPException(400, "Body must be a JSON object")
+        try:
+            return conversations.add_message(conv_id, body.get("role", ""), body.get("content", ""))
+        except KeyError as exc:
+            # A message for an unknown conversation is a 404, not an implicit
+            # create: silently creating one lets a typo'd id fork the history.
+            raise HTTPException(404, "Conversation not found") from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc

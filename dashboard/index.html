@@ -1,122 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentinel Desktop — Dashboard</title>
-    <link rel="stylesheet" href="/dashboard/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel Dashboard — moved</title>
+<!-- v11: this page is retired.
+     It was a third dashboard (5 KB, last touched 2026-07-29) reaching zero
+     brain endpoints, kept alive only because the Desktop API happened to mount
+     this directory at /dashboard. "One surface" was a Phase 3 goal on
+     2026-07-31 that did not happen; this is that cleanup.
+     Everything now lives in Command Center Prime at /prime/.
+     styles.css and app.js are left in place so this page keeps working if the
+     redirect is ever removed; nothing else references them. -->
+<meta http-equiv="refresh" content="0; url=/prime/dashboard-prime.html">
+<link rel="canonical" href="/prime/dashboard-prime.html">
+<style>
+  html, body {
+    height: 100%; margin: 0;
+    background: #050608; color: #e0e7ff;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    border: 1px solid rgba(0,212,255,0.15); border-radius: 10px;
+    background: rgba(15,25,45,0.65); padding: 22px 26px; max-width: 460px;
+  }
+  h1 { font-size: 1rem; letter-spacing: .5px; margin: 0 0 8px; color: #00d4ff; }
+  p { margin: 0 0 10px; color: #8b95b5; }
+  a { color: #00d4ff; }
+</style>
 </head>
 <body>
-    <div id="app">
-        <header>
-            <h1>🛡️ Sentinel Desktop</h1>
-            <span id="version-badge" class="badge">v—</span>
-            <div class="header-actions">
-                <button id="btn-update" class="btn btn-sm" onclick="checkUpdate()">Check Updates</button>
-                <button id="btn-refresh" class="btn btn-sm" onclick="loadAll()">⟳ Refresh</button>
-            </div>
-        </header>
-
-        <div class="grid">
-            <!-- Health Card -->
-            <div class="card" id="card-health">
-                <h2>System Health</h2>
-                <div id="health-content" class="card-body"><p class="muted">Loading...</p></div>
-            </div>
-
-            <!-- Agent Status Card -->
-            <div class="card" id="card-agent">
-                <h2>Agent Status</h2>
-                <div id="agent-content" class="card-body"><p class="muted">Loading...</p></div>
-            </div>
-
-            <!-- Telemetry Card -->
-            <div class="card" id="card-telemetry">
-                <h2>Telemetry (30 days)</h2>
-                <div id="telemetry-content" class="card-body"><p class="muted">Loading...</p></div>
-            </div>
-
-            <!-- Plugins Card -->
-            <div class="card" id="card-plugins">
-                <h2>Plugins</h2>
-                <div id="plugins-content" class="card-body"><p class="muted">Loading...</p></div>
-            </div>
-
-            <!-- Marketplace Card -->
-            <div class="card" id="card-marketplace">
-                <h2>Marketplace</h2>
-                <div id="marketplace-content" class="card-body"><p class="muted">Loading...</p></div>
-            </div>
-
-            <!-- Quick Actions Card -->
-            <div class="card" id="card-actions">
-                <h2>Quick Actions</h2>
-                <div class="card-body">
-                    <div class="input-group">
-                        <input type="text" id="goal-input" placeholder="Enter agent goal..." size="40">
-                        <button class="btn" onclick="startGoal()">Start Agent</button>
-                    </div>
-                    <button class="btn btn-danger" onclick="stopAgent()">Stop Agent</button>
-                    <button class="btn" onclick="takeScreenshot()">Screenshot</button>
-                    <pre id="action-result" class="code-output"></pre>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script src="/dashboard/app.js"></script>
+<div class="card">
+  <h1>This dashboard has moved</h1>
+  <p>Sentinel Command Center is now served at <a href="/prime/dashboard-prime.html">/prime/</a>.</p>
+  <p>Redirecting… if nothing happens, follow the link above.</p>
+</div>
+<script>
+  // The meta refresh covers the normal case; replace() keeps Back from bouncing
+  // the user straight back here.
+  location.replace('/prime/dashboard-prime.html');
+</script>
 </body>
 </html>
-<!-- v27-v30 Feature Panels -->
-<div class="v27-panels" style="margin-top: 2rem;">
-  <h2>🚀 Advanced Features</h2>
-  
-  <div class="feature-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-    
-    <!-- Swarm Panel -->
-    <div class="card" id="swarm-panel">
-      <h3>🐝 Swarm Control</h3>
-      <div id="swarm-status">No swarms active</div>
-      <input type="text" id="swarm-name" placeholder="Swarm name" style="width: 60%; margin-top: 0.5rem;">
-      <input type="number" id="swarm-agents" placeholder="Agents" value="3" style="width: 30%;">
-      <button onclick="createSwarm()">Create Swarm</button>
-    </div>
-    
-    <!-- Fleet Panel -->
-    <div class="card" id="fleet-panel">
-      <h3>🌐 Fleet Status</h3>
-      <div id="fleet-status">No fleet data</div>
-    </div>
-    
-    <!-- Memory Panel -->
-    <div class="card" id="memory-panel">
-      <h3>🧠 Vector Memory</h3>
-      <div id="memory-stats">No memory data</div>
-      <input type="text" id="memory-query" placeholder="Search memories..." style="width: 70%; margin-top: 0.5rem;">
-      <button onclick="searchMemory()">Search</button>
-    </div>
-    
-    <!-- Playbooks Panel -->
-    <div class="card" id="playbook-panel">
-      <h3>📚 Playbooks</h3>
-      <div id="playbook-list">No playbooks learned</div>
-      <button onclick="learnPlaybooks()" style="margin-top: 0.5rem;">Learn from Telemetry</button>
-    </div>
-    
-    <!-- Voice Panel -->
-    <div class="card" id="voice-panel">
-      <h3>🎙️ Voice Control</h3>
-      <div id="voice-status">Checking...</div>
-      <input type="text" id="tts-text" placeholder="Text to speak..." style="width: 70%; margin-top: 0.5rem;">
-      <button onclick="speakText()">Speak</button>
-    </div>
-    
-    <!-- NL Workflow Panel -->
-    <div class="card" id="workflow-panel">
-      <h3>⚡ NL Workflow Builder</h3>
-      <input type="text" id="workflow-desc" placeholder="Describe workflow..." style="width: 100%; margin-top: 0.5rem;">
-      <button onclick="generateWorkflow()" style="margin-top: 0.5rem;">Generate Workflow</button>
-      <div id="workflow-output" style="margin-top: 0.5rem;"></div>
-    </div>
-    
-  </div>
-</div>
